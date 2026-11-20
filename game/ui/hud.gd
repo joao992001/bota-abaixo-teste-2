@@ -30,7 +30,7 @@ func panel(r: Rect2, tint := Color.WHITE) -> void:
 	Kit.paper(self, r, tint)
 
 func _look(p: Dictionary) -> Dictionary:
-	return {"color": p["color"], "model": p["model"], "acc": p["acc"]}
+	return {"color": p["color"], "model": p["model"], "acc": p["acc"], "skin": p.get("skin", {})}
 
 func _draw() -> void:
 	var S = main.S
@@ -232,7 +232,7 @@ func _draw_join() -> void:
 				lab = "BOT · %s" % main.bots.LEVEL_NAMES[p.get("level", 1)]
 			Kit.text(self, Vector2(r.position.x, r.position.y + 118), lab, 22, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 			Kit.text(self, Vector2(r.position.x, r.end.y - 62), "◄ %s ►" % Data.COLOR_NAMES[p["color"]], 28, DARK, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-			Kit.text(self, Vector2(r.position.x, r.end.y - 28), "▲▼ %s  ·  %s" % [Data.MODEL_NAMES[p["model"]], Data.ACC_NAMES[p["acc"]]], 22, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+			Kit.text(self, Vector2(r.position.x, r.end.y - 28), "▲▼ %s  ·  %s" % [p["skin"]["nome"] if not p.get("skin", {}).is_empty() else Data.MODEL_NAMES[p["model"]], Data.ACC_NAMES[p["acc"]]], 22, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		else:
 			panel(lr, Color(1, 1, 1, 0.55))
 			draw_set_transform(Vector2.ZERO)
@@ -367,7 +367,7 @@ func _draw_win() -> void:
 	var w: int = main.winner
 	var pw: Dictionary = main.players[w]
 	_ribbon_pop("P%d  VENCEU!" % (w + 1), 230, 1100, 90)
-	RobotVis.draw_robot(self, _look(pw), RobotVis.victory_pose(t), Transform2D(0.0, Vector2(4, 4), 0.0, Vector2(960, 830)))
+	RobotVis.draw_robot(self, _look(pw), RobotVis.victory_pose(t, pw.get("skin", {}).get("danca", 0)), Transform2D(0.0, Vector2(4, 4), 0.0, Vector2(960, 830)))
 	draw_set_transform(Vector2.ZERO)
 	if main.mode == "demolicao":
 		_draw_titles()

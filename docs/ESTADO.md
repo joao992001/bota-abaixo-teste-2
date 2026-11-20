@@ -12,11 +12,15 @@ Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controle
 - **12 itens:** TNT, furadeira, cola, teletransporte, raio laser, bomba de vórtice, soprador, raio congelante (botão ITEM) ·
   martelão, ímã, botas de mola, bota-foguete (automáticos). Ferramentas aparecem na mão ao usar.
 - **9 eventos** configuráveis; Amassômetro (dano % aumenta o empurrão); aderência limitada na parede/borda com medidor.
+- **Temas de arena:** Canteiro, Fábrica, Porto e Cidade à noite (blocos, tábuas e fundo animado por tema; `tema:` no .lvl).
+- **Garagem (personalização):** 8 robôs salvos em `user://garagem.cfg` — modelo, cor livre (16), cor 2, padrão (5),
+  chapéu (16), rosto (6), ferramenta (6), comemoração (4). Na entrada, ▲▼ passa pelos 4 robôs de fábrica e pelos da Garagem.
+  A cor do jogador só identifica (setinha "P1" acima da cabeça, placar). Bots sorteiam um robô. Prancha: `-- --skins=DIR`.
 - **Menus:** intro animada, cenário próprio do menu, OFICINA (painel de testes), opções (vibração, testar/configurar controle).
 - **Arte:** estilo papel e giz (gerada por código em `art/src`, cópias em `game/assets`). **Som:** `tools/sfxforge.py`.
 
 ## Como rodar e testar
-- Jogar: `godot --path game` · bateria de testes: `godot --headless --path game --fixed-fps 60 -- --autotest` (206 verificações, 0 falhas).
+- Jogar: `godot --path game` · bateria de testes: `godot --headless --path game --fixed-fps 60 -- --autotest` (213 verificações, 0 falhas).
 - Só uma parte: `-- --autotest --so=itens_novos,parede,controle_real` · ritmo com bots: `-- --stats=4`.
 - Capturas: `-- --menus=DIR`, `--itens=DIR`, `--parede=DIR`, `--intro=DIR`, `--oficina=DIR` (com xvfb-run e `--rendering-driver opengl3`).
 

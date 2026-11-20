@@ -43,8 +43,11 @@ def side_shade(cid, d, x, w, col, box):
     return f'<g clip-path="url(#{cid})"><rect x="{x}" y="{box[1]}" width="{w}" height="{box[3] - box[1]}" fill="{col}"/></g>'
 
 
-def body_svg(model, ci):
-    c = COLORS[ci]
+NEUTRAL = "#f2f2f2"   # corpo neutro: a Godot pinta na cor escolhida (personalização)
+
+
+def body_svg(model, ci, color=None, details=True):
+    c = color or COLORS[ci]
     dark, light, mid = shade(c, -0.18), shade(c, 0.3), shade(c, -0.08)
     s = ci * 10 + list(MODELS).index(model)
     b = []
@@ -59,7 +62,8 @@ def body_svg(model, ci):
         b.append(shape("b1", rect_d(56, 64, 16, 23, 2), mid, s + 2, (54, 62, 74, 88)))
         b.append(shape("b2", d, c, s, (42, 32, 86, 68)))
         b.append(side_shade("b2", d, 80, 5, dark, (0, 32, 0, 68)))
-        b.append(f'<path d="M48.5,38.5 L79.5,38 L79,62 L49,62.5 Z" fill="{SCREEN}"/>')
+        if details:
+            b.append(f'<path d="M48.5,38.5 L79.5,38 L79,62 L49,62.5 Z" fill="{SCREEN}"/>')
     elif model == "baixinho":
         b.append(shape("b1", rect_d(56, 80, 16, 17, 3), mid, s + 2, (54, 78, 74, 98)))
         d = ellipse_d(64, 60, 23, 23)
@@ -67,16 +71,147 @@ def body_svg(model, ci):
         b.append('<g clip-path="url(#b2)">' + shape("b3", ellipse_d(61, 57.5, 23, 23), c, s + 5, (37, 33, 85, 81)) + '</g>')
         b.append(f'<path d="M47,50 Q52,41 61,39" stroke="{light}" stroke-width="2.2" fill="none" stroke-linecap="round"/>')
     elif model == "pescocao":
-        b.append(f'<path d="M64,72 C61,66 67,61 63,56 C60,52 65,50 64,47" stroke="{METAL}" stroke-width="2.2" fill="none" stroke-linecap="round"/>')
+        if details:
+            b.append(f'<path d="M64,72 C61,66 67,61 63,56 C60,52 65,50 64,47" stroke="{METAL}" stroke-width="2.2" fill="none" stroke-linecap="round"/>')
         d = rect_d(53, 70, 22, 23, 3)
         b.append(shape("b1", d, c, s, (50, 68, 78, 94)))
         b.append(side_shade("b1", d, 71, 4, dark, (0, 68, 0, 94)))
-        b.append(f'<rect x="58" y="77" width="8.5" height="6" rx="1" fill="{YELLOW}"/><circle cx="60.3" cy="80" r="0.9" fill="{RED}"/>')
+        if details:
+            b.append(f'<rect x="58" y="77" width="8.5" height="6" rx="1" fill="{YELLOW}"/><circle cx="60.3" cy="80" r="0.9" fill="{RED}"/>')
         hd = "M51,42 C51,34 58,31 66,31 C75,31 80,36 79,43 C78,50 71,52 64,52 C56,52 51,49 51,42 Z"
         b.append(shape("b2", hd, dark, s + 3, (49, 29, 81, 54)))
         hd2 = "M48,40 C48,32 55,29 63,29 C72,29 77,34 76,41 C75,48 68,50 61,50 C53,50 48,47 48,40 Z"
         b.append('<g clip-path="url(#b2)">' + shape("b3", hd2, c, s + 6, (46, 27, 78, 52)) + '</g>')
     return wrap("".join(b), 100 + s)
+
+
+# ------------------------------------------------------------------ personalização
+# formas pintáveis de cada modelo (para recortar os padrões)
+BODY_PATHS = {
+    "lata": [rect_d(53, 40, 22, 45, 4)],
+    "tv": ["M44,35 L84,34 L84.5,66 L44.5,67 Z", rect_d(56, 64, 16, 23, 2)],
+    "baixinho": [ellipse_d(64, 60, 23, 23), rect_d(56, 80, 16, 17, 3)],
+    "pescocao": [rect_d(53, 70, 22, 23, 3), "M51,42 C51,34 58,31 66,31 C75,31 80,36 79,43 C78,50 71,52 64,52 C56,52 51,49 51,42 Z"],
+}
+
+
+def detail_svg(model):
+    """Partes que não mudam de cor (tela da TV, pescoço e plaquinha do Pescoção)."""
+    b = []
+    if model == "tv":
+        b.append(f'<path d="M48.5,38.5 L79.5,38 L79,62 L49,62.5 Z" fill="{SCREEN}"/>')
+    elif model == "pescocao":
+        b.append(f'<path d="M64,72 C61,66 67,61 63,56 C60,52 65,50 64,47" stroke="{METAL}" stroke-width="2.2" fill="none" stroke-linecap="round"/>')
+        b.append(f'<rect x="58" y="77" width="8.5" height="6" rx="1" fill="{YELLOW}"/><circle cx="60.3" cy="80" r="0.9" fill="{RED}"/>')
+    return wrap("".join(b), 150)
+
+
+def pattern_svg(model, pat):
+    """Padrão branco recortado no corpo (a Godot pinta com a cor secundária)."""
+    import random as _r
+    rnd = _r.Random(hash(model + pat) % 1000)
+    clip = "".join(f'<path d="{d}"/>' for d in BODY_PATHS[model])
+    b = [f'<clipPath id="pc">{clip}</clipPath><g clip-path="url(#pc)">']
+    if pat == "listras":
+        for y in range(20, 110, 8):
+            b.append(f'<rect x="20" y="{y}" width="90" height="3.6" fill="#ffffff"/>')
+    elif pat == "bolinhas":
+        for row, y in enumerate(range(24, 108, 7)):
+            for x in range(28, 100, 7):
+                b.append(f'<circle cx="{x + (row % 2) * 3.5}" cy="{y}" r="1.7" fill="#ffffff"/>')
+    elif pat == "manchas":
+        for k in range(16):
+            x, y = rnd.uniform(40, 90), rnd.uniform(28, 100)
+            b.append(f'<ellipse cx="{x:.1f}" cy="{y:.1f}" rx="{rnd.uniform(2.5, 5.5):.1f}" ry="{rnd.uniform(1.8, 4):.1f}" fill="#ffffff"/>')
+    elif pat == "raio":
+        b.append('<path d="M40,58 L60,48 L58,58 L90,44 L90,52 L64,64 L66,54 L40,66 Z" fill="#ffffff"/>')
+        b.append('<path d="M40,84 L62,74 L60,82 L90,70 L90,76 L64,88 L66,80 L40,90 Z" fill="#ffffff"/>')
+    b.append('</g>')
+    return wrap("".join(b), 160)
+
+
+def hat_svg2(name):
+    """Chapéus novos (aba centrada em (64,64), largura ~60, mesmo esquema do hat_svg)."""
+    b = []
+    if name == "cartola":
+        b.append(shape("a", rect_d(46, 22, 36, 40, 2), "#2f3145", 31, (44, 20, 84, 64), k=1.4))
+        b.append('<rect x="46" y="48" width="36" height="7" fill="#d14d35"/><path d="M32,60 Q64,56 96,60 L95,66 Q64,62 33,66 Z" fill="#2f3145"/>')
+    elif name == "coroa":
+        b.append(shape("a", "M40,62 L40,36 L52,48 L64,30 L76,48 L88,36 L88,62 Z", "#f2c84b", 32, (38, 28, 90, 64), k=1.4))
+        b.append('<circle cx="64" cy="52" r="4" fill="#d14d35"/><circle cx="50" cy="56" r="3" fill="#4f86d9"/><circle cx="78" cy="56" r="3" fill="#5cc45c"/>')
+    elif name == "cowboy":
+        b.append(shape("a", "M46,58 C44,40 52,32 64,32 C76,32 84,40 82,58 Z", "#b07a3d", 33, (42, 30, 86, 60), k=1.4))
+        b.append('<path d="M20,58 Q30,66 64,64 Q98,66 108,58 Q100,72 64,72 Q28,72 20,58 Z" fill="#8a5a2a"/><rect x="46" y="52" width="36" height="5" fill="#5a3a1c"/>')
+    elif name == "chef":
+        b.append(shape("a", "M44,60 L44,44 C34,40 38,24 50,28 C52,18 76,18 78,28 C90,24 94,40 84,44 L84,60 Z", "#ffffff", 34, (36, 16, 92, 62), k=1.4, dark="#cfd6de"))
+        b.append('<rect x="44" y="54" width="40" height="8" fill="#e9eef2"/>')
+    elif name == "viking":
+        b.append(shape("a", "M40,62 C40,42 50,34 64,34 C78,34 88,42 88,62 Z", "#8a96a2", 35, (38, 32, 90, 64), k=1.4))
+        b.append('<path d="M42,50 C30,46 26,34 30,22 C34,34 40,40 46,42 Z M86,50 C98,46 102,34 98,22 C94,34 88,40 82,42 Z" fill="#f2e6c8"/><rect x="40" y="56" width="48" height="6" fill="#b07a3d"/>')
+    elif name == "helice":
+        b.append(shape("a", "M40,62 C40,44 50,38 64,38 C78,38 88,44 88,62 Q64,58 40,62 Z", "#5cc45c", 36, (38, 36, 90, 64), k=1.4))
+        b.append('<path d="M64,38 V26" stroke="#4b535e" stroke-width="3"/><path d="M40,24 Q64,18 88,24 Q64,30 40,24 Z" fill="#d14d35"/><circle cx="64" cy="25" r="3.5" fill="#f2c84b"/>')
+    elif name == "laco":
+        b.append('<path d="M64,52 L44,40 Q38,52 44,64 Z M64,52 L84,40 Q90,52 84,64 Z" fill="#f06aa8"/><circle cx="64" cy="52" r="6" fill="#d94a8c"/>')
+    elif name == "fone":
+        b.append('<path d="M38,64 C36,36 50,26 64,26 C78,26 92,36 90,64" stroke="#2f3640" stroke-width="6" fill="none"/>')
+        b.append('<rect x="30" y="56" width="14" height="22" rx="5" fill="#d14d35"/><rect x="84" y="56" width="14" height="22" rx="5" fill="#d14d35"/>')
+    elif name == "pirata":
+        b.append(shape("a", "M30,60 Q36,34 64,36 Q92,34 98,60 Q64,52 30,60 Z", "#2f3145", 37, (28, 32, 100, 62), k=1.4))
+        b.append('<circle cx="64" cy="48" r="5" fill="#f2f2f2"/><path d="M59,55 L69,61 M69,55 L59,61" stroke="#f2f2f2" stroke-width="2"/>')
+    elif name == "flor":
+        for k in range(6):
+            import math as _m
+            a = k * _m.pi / 3
+            b.append(f'<circle cx="{64 + _m.cos(a) * 8:.1f}" cy="{46 + _m.sin(a) * 8:.1f}" r="6.5" fill="#f06aa8"/>')
+        b.append('<circle cx="64" cy="46" r="5.5" fill="#f2c84b"/><path d="M64,54 Q62,60 66,64" stroke="#5cc45c" stroke-width="3" fill="none"/>')
+    elif name == "cone":
+        b.append(shape("a", "M64,18 L84,62 L44,62 Z", "#f08a3d", 38, (42, 16, 86, 64), k=1.4))
+        b.append('<path d="M55,40 L73,40 L76,48 L52,48 Z" fill="#ffffff"/><rect x="38" y="60" width="52" height="7" fill="#e0782a"/>')
+    elif name == "balde":
+        b.append(shape("a", "M44,64 L48,30 L80,30 L84,64 Z", "#8fb7c9", 39, (42, 28, 86, 66), k=1.4))
+        b.append('<path d="M44,34 Q64,14 84,34" stroke="#5a6370" stroke-width="2.5" fill="none"/><rect x="47" y="36" width="34" height="4" fill="#6d97ab"/>')
+    return wrap("".join(b), 141)
+
+
+def face_item_svg(name):
+    """Itens de rosto 64x32, centro (32,16) entre os olhos; espaço entre olhos ~12 px."""
+    b = []
+    if name == "oculos_sol":
+        b.append('<rect x="12" y="10" width="17" height="12" rx="4" fill="#2f3145"/><rect x="35" y="10" width="17" height="12" rx="4" fill="#2f3145"/>'
+                 '<path d="M29,14 H35" stroke="#2f3145" stroke-width="3"/><path d="M15,13 L21,13" stroke="#8a8fb0" stroke-width="2"/>')
+    elif name == "oculos_solda":
+        b.append('<path d="M6,16 H58" stroke="#3e4752" stroke-width="5"/><circle cx="22" cy="16" r="9" fill="#5a6370"/><circle cx="42" cy="16" r="9" fill="#5a6370"/>'
+                 '<circle cx="22" cy="16" r="6" fill="#2f6b4f"/><circle cx="42" cy="16" r="6" fill="#2f6b4f"/><path d="M19,13 l3,-2" stroke="#9ff7c8" stroke-width="2"/>')
+    elif name == "bigode":
+        b.append('<path d="M32,26 C26,22 18,22 12,28 C18,32 26,32 32,28 C38,32 46,32 52,28 C46,22 38,22 32,26 Z" fill="#5a3a1c"/>')
+    elif name == "tapa_olho":
+        b.append('<path d="M4,8 L60,20" stroke="#2f3145" stroke-width="2"/><ellipse cx="22" cy="15" rx="8" ry="7" fill="#2f3145"/>')
+    elif name == "oculos_redondos":
+        b.append('<circle cx="21" cy="16" r="8" fill="none" stroke="#b07a3d" stroke-width="2.6"/><circle cx="43" cy="16" r="8" fill="none" stroke="#b07a3d" stroke-width="2.6"/>'
+                 '<path d="M29,15 Q32,12 35,15" stroke="#b07a3d" stroke-width="2.4" fill="none"/>')
+    return doc(64, 32, "".join(b))
+
+
+def tool_svg(name):
+    """Ferramentas 64x64 no lugar da marreta: cabo vertical, pega em (32,56)."""
+    handle = '<path d="M31,26 L33.4,26 L33.8,62 L31.3,62 Z" fill="#b07a3d"/><path d="M31.8,28 L32.1,60" stroke="#d29a58" stroke-width="0.6"/>'
+    if name == "picareta":
+        head = shape("h", "M10,26 Q32,8 54,26 L50,28 Q32,16 14,28 Z", "#9aa4ae", 51, (8, 8, 56, 30), k=1.0)
+        return doc(64, 64, f'<g filter="url(#rough)">{handle}{head}</g>', rough(seed=51, scale=0.8))
+    if name == "chave_inglesa":
+        body = shape("h", "M30,62 L30,26 C24,24 22,14 28,8 L30,16 L36,16 L38,8 C44,14 42,24 36,26 L36,62 Z", "#c3ccd3", 52, (20, 6, 46, 64), k=1.0, dark="#8a96a2")
+        return doc(64, 64, f'<g filter="url(#rough)">{body}</g>', rough(seed=52, scale=0.8))
+    if name == "frigideira":
+        pan = shape("h", ellipse_d(32, 20, 17, 14), "#3e4752", 53, (14, 4, 50, 36), k=1.0)
+        return doc(64, 64, f'<g filter="url(#rough)"><path d="M30,32 L34,32 L34.6,62 L29.4,62 Z" fill="#2f3640"/>{pan}<ellipse cx="32" cy="20" rx="12" ry="9.5" fill="#5a6370"/><path d="M24,14 Q28,10 34,11" stroke="#8a96a2" stroke-width="2" fill="none"/></g>', rough(seed=53, scale=0.8))
+    if name == "martelo_borracha":
+        head = shape("h", rect_d(16, 12, 32, 18, 7), "#f06aa8", 54, (14, 10, 50, 32), k=1.0, dark="#c94a86")
+        return doc(64, 64, f'<g filter="url(#rough)">{handle}{head}<path d="M20,15 H36" stroke="#ff9ccb" stroke-width="2.4" stroke-linecap="round"/></g>', rough(seed=54, scale=0.8))
+    if name == "desentupidor":
+        cup = shape("h", "M16,30 C16,16 48,16 48,30 Z", "#d14d35", 55, (14, 14, 50, 32), k=1.0)
+        return doc(64, 64, f'<g filter="url(#rough)"><path d="M30.6,28 L33.4,28 L33.8,62 L30.3,62 Z" fill="#e3c08a"/>{cup}<rect x="14" y="28" width="36" height="4" rx="2" fill="#a83a28"/></g>', rough(seed=55, scale=0.8))
+    return hammer_svg()
 
 
 def antenna_svg(model):
@@ -195,9 +330,21 @@ def main():
     queue(hammer_svg(), f"{SRC}/marreta.svg", f"{OUT}/marreta.png", 64, 64, K)
     for a in ("capacete", "bone", "gorro"):
         queue(hat_svg(a), f"{ROOT}/art/src/acessorios/{a}.svg", f"{OUT}/acc_{a}.png", 128, 128, K)
+    # personalização: corpo neutro (pintado pela Godot), detalhes, padrões, chapéus, rosto, ferramentas
+    for model in MODELS:
+        queue(body_svg(model, 0, NEUTRAL, details=False), f"{SRC}/corpo_{model}.svg", f"{OUT}/corpo_{model}.png", 128, 128, K)
+        queue(detail_svg(model), f"{SRC}/detalhe_{model}.svg", f"{OUT}/detalhe_{model}.png", 128, 128, K)
+        for pat in ("listras", "bolinhas", "manchas", "raio"):
+            queue(pattern_svg(model, pat), f"{SRC}/padrao_{pat}_{model}.svg", f"{OUT}/padrao_{pat}_{model}.png", 128, 128, K)
+    for a in ("cartola", "coroa", "cowboy", "chef", "viking", "helice", "laco", "fone", "pirata", "flor", "cone", "balde"):
+        queue(hat_svg2(a), f"{ROOT}/art/src/acessorios/{a}.svg", f"{OUT}/acc_{a}.png", 128, 128, K)
+    for f in ("oculos_sol", "oculos_solda", "bigode", "tapa_olho", "oculos_redondos"):
+        queue(face_item_svg(f), f"{ROOT}/art/src/acessorios/rosto_{f}.svg", f"{OUT}/rosto_item_{f}.png", 64, 32, K)
+    for tl in ("picareta", "chave_inglesa", "frigideira", "martelo_borracha", "desentupidor"):
+        queue(tool_svg(tl), f"{SRC}/ferramenta_{tl}.svg", f"{OUT}/ferramenta_{tl}.png", 64, 64, K)
     os.makedirs(OUT, exist_ok=True)
     meta = {"cores": COLORS, "membros": [shade(c, -0.5) for c in COLORS],
-            "modelos": {k: {kk: v[kk] for kk in ("hips", "shoulders", "hand_back", "hand_front", "hat", "antenna")} for k, v in MODELS.items()}}
+            "modelos": {k: {kk: v[kk] for kk in ("hips", "shoulders", "hand_back", "hand_front", "hat", "antenna", "eyes")} for k, v in MODELS.items()}}
     with open(f"{OUT}/modelos.json", "w") as f:
         json.dump(meta, f, indent=1)
     print("robôs renderizados:", render_all())

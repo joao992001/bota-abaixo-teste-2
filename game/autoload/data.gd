@@ -10,8 +10,30 @@ const DANGER := Color("#d42035")
 const INK := Color("#2a1a2e")
 const TILE := 64
 const ARENA_Y := 56
-const ACCS := ["", "capacete", "bone", "gorro"]
-const ACC_NAMES := ["sem chapéu", "capacete", "boné", "gorro"]
+const ACCS := ["", "capacete", "bone", "gorro", "cartola", "coroa", "cowboy", "chef", "viking", "helice", "laco", "fone",
+	"pirata", "flor", "cone", "balde"]
+const ACC_NAMES := ["sem chapéu", "capacete", "boné", "gorro", "cartola", "coroa", "caubói", "chef",
+	"viking", "hélice", "laço", "fone", "pirata", "flor", "cone", "balde"]
+# --- personalização (Garagem): o corpo é pintado com qualquer cor; a cor do jogador só identifica (setinha, placar)
+const PALETA := [Color("#4f86d9"), Color("#5cc45c"), Color("#f06aa8"), Color("#f2c84b"), Color("#f08a3d"), Color("#d14d35"),
+	Color("#8a63d2"), Color("#3fc1c9"), Color("#2f3145"), Color("#f2f2f2"), Color("#9aa4ae"), Color("#8a5a2a"),
+	Color("#b5e35a"), Color("#ffb3c7"), Color("#1f6b5c"), Color("#c9a76e")]
+const PADROES := ["", "listras", "bolinhas", "manchas", "raio"]
+const PADRAO_NAMES := ["liso", "listras", "bolinhas", "manchas", "raio"]
+const ROSTOS := ["", "oculos_sol", "oculos_solda", "bigode", "tapa_olho", "oculos_redondos"]
+const ROSTO_NAMES := ["nada", "óculos escuros", "óculos de solda", "bigode", "tapa-olho", "óculos redondos"]
+const FERRAMENTAS := ["marreta", "picareta", "chave_inglesa", "frigideira", "martelo_borracha", "desentupidor"]
+const FERRAMENTA_NAMES := ["marreta", "picareta", "chave inglesa", "frigideira", "martelo de borracha", "desentupidor"]
+const DANCAS := ["pulinho", "marreteiro", "pião", "robozinho"]
+
+## Aparência padrão de um jogador (usada quando ele não escolheu um robô da Garagem).
+static func default_skin(color_idx: int, model: int, acc := 0) -> Dictionary:
+	return {"nome": "", "model": model, "cor": color_idx % PALETA.size(), "cor2": 9, "padrao": 0, "chapeu": acc,
+		"rosto": 0, "ferramenta": 0, "danca": 0}
+
+static func tool_tex(skin_tool: int) -> String:
+	var n: String = FERRAMENTAS[clampi(skin_tool, 0, FERRAMENTAS.size() - 1)]
+	return "robo/marreta" if n == "marreta" else "robo/ferramenta_" + n
 
 var ctrl: Dictionary
 var scoring: Dictionary

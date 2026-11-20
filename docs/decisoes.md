@@ -45,3 +45,9 @@
 - 2026-11-20 · Exportado com Godot 4.7.1 (mesma do usuário, controles via SDL3): bateria completa (206) passa no editor 4.7.1 e no executável exportado numa pasta limpa; o .exe traz o SDL3 com DualSense/PS5. Exportação feita numa cópia do projeto (o repositório segue abrindo na 4.3 e na 4.7).
 - 2026-11-20 · Áudio: músicas voltaram para WAV (OGG sujava as ondas quadradas). Clique do mouse colocava peça (ferramenta de depuração): só com F1 no modo clássico. Menu com cenário próprio (chão de caixotes, robôs brigando em loop) e o mapa escondido nos menus; a intro entra direto nessa cena. Ícone gravado no .exe (Godot 4.7 sem rcedit). tools/exportar.sh exporta numa cópia temporária.
 - 2026-11-20 · Temas de arena (art/src/cenarios/temas.py → game/assets/temas/<tema>/): Fábrica (Esteiras, Prensa, Fornalha), Porto (Guindastes, Ponte), Cidade à noite (Torre). Cada tema troca bloco que quebra (3 variações), bloco fixo, tábua, cor de rachadura/corda e fundo, com ambiente animado no fundo. Cabeçalho 'tema:' no .lvl.
+
+## 2026-11-20 — Personalização dos robôs (Garagem)
+- Corpo neutro pintado pela Godot (qualquer cor) + padrão pintado com a 2ª cor + detalhes sem tinta (tela da TV, pescoço).
+- A cor do jogador deixa de ser a cor do corpo nos robôs da Garagem: identificação por setinha "P1" e cor no placar.
+- Robôs "de fábrica" continuam iguais (cor do jogador), para quem não quer montar nada.
+

@@ -40,6 +40,10 @@ func _run() -> void:
 			await parede_frames(a.substr(9))
 			get_tree().quit(0)
 			return
+		if a.begins_with("--skins="):
+			await skins_sheet(a.trim_prefix("--skins="))
+			get_tree().quit()
+			return
 		if a.begins_with("--oficina="):
 			DirAccess.make_dir_recursive_absolute(a.substr(10))
 			get_window().size = Vector2i(1920, 1080)
@@ -601,6 +605,7 @@ func demolicao_test() -> void:
 	await controles_test()
 	await controle_real_test()
 	await oficina_test()
+	await garagem_test()
 	await imagens_test()
 
 func menus_test() -> void:
@@ -661,9 +666,9 @@ func menus_test() -> void:
 	await tap("v0", "down")
 	await tap("v0", "jump")
 	check(main.state == S.MENU and not main.paused, "pausa → MENU PRINCIPAL")
-	await tap("v0", "down")
-	await tap("v0", "down")
-	await tap("v0", "down")
+	main.menus.sel = 0
+	for k in 4:
+		await tap("v0", "down")
 	await tap("v0", "jump")
 	check(main.state == S.OPTIONS, "OPÇÕES abre")
 	await tap("v0", "down")
@@ -1180,6 +1185,7 @@ func oficina_test() -> void:
 	await frames(2)
 	main.menus.sel = 0
 	await tap("v0", "down")
+	await tap("v0", "down")
 	await tap("v0", "jump")
 	check(main.sandbox and main.state == S.RUN and main.level.id == "oficina" and main.players.size() == 1, "menu ▸ OFICINA abre a arena de testes com 1 jogador")
 	main.countdown = 0.0
@@ -1234,6 +1240,48 @@ func oficina_test() -> void:
 	ofi.sel = ofi.ROWS.find("sair")
 	await tap("v0", "jump")
 	check(main.state == S.MENU and not main.sandbox and not main.paused and Engine.time_scale == 1.0, "SAIR DA OFICINA volta ao menu")
+
+## GARAGEM: muda uma peça, salva, recarrega; na entrada ▲▼ chega aos robôs da Garagem e a partida usa o robô.
+func garagem_test() -> void:
+	print("== Garagem (personalização)")
+	var g = main.garagem
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(g.path))
+	g.load_all()
+	main.go_menu()
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	await frames(2)
+	main.menus.sel = 0
+	await tap("v0", "down")
+	await tap("v0", "jump")
+	check(main.state == S.GARAGEM and g.robots.size() == 8, "menu ▸ GARAGEM abre com 8 robôs")
+	await tap("v0", "right")   # linha ROBÔ: vai para o 2º robô
+	for k in 3:
+		await tap("v0", "down")   # NOME, MODELO, COR
+	var before: int = g.robots[1]["cor"]
+	await tap("v0", "right")
+	check(g.slot == 1 and g.robots[1]["cor"] == posmod(before + 1, Data.PALETA.size()), "◄► muda a cor do robô escolhido")
+	g.robots[1]["cor"] = 99
+	g.load_all()
+	check(g.robots[1]["cor"] == posmod(before + 1, Data.PALETA.size()), "a Garagem fica salva no arquivo")
+	await tap("v0", "back")
+	check(main.state == S.MENU, "VOLTAR sai da Garagem")
+	# entrada: P1 desce até o primeiro robô da Garagem
+	main.mode = "demolicao"
+	main.go_join()
+	await frames(2)
+	await tap("v0", "jump")
+	await tap("v1", "jump")
+	for k in Data.MODELS.size():
+		await tap("v0", "down")
+	var sk: Dictionary = main.players[0].get("skin", {})
+	check(not sk.is_empty() and sk["nome"] == g.robots[0]["nome"], "▲▼ na entrada escolhe o robô da Garagem (%s)" % sk.get("nome", "-"))
+	main.start_match()
+	await frames(3)
+	check(main.robots[0].vis.skin.get("nome", "") == g.robots[0]["nome"] and main.robots[1].vis.skin.is_empty(), "a partida usa o robô da Garagem (P2 segue de fábrica)")
+	var parts: Array = main.robots[0].vis.parts(main.robots[0].vis.look())
+	check(parts.size() > 4 and parts[0].has("mods"), "o robô da Garagem desmonta com as próprias cores")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(g.path))
+	main.go_menu()
 
 ## Toda imagem pedida no código existe (a lama da Maré faltava e enchia o log de erros, travando o jogo).
 func imagens_test() -> void:
@@ -1664,6 +1712,42 @@ func shots(dir: String) -> void:
 	await frames(3)
 	await snap(dir, "prancha_robos")
 
+## Prancha da personalização: robôs da Garagem montados pelo motor (cores, padrões, chapéus, rosto, ferramentas, danças).
+func skins_sheet(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	var layer := CanvasLayer.new()
+	layer.layer = 10
+	add_child(layer)
+	var sheet := Node2D.new()
+	var Vis = load("res://player/robot_visual.gd")
+	var tt := [0.0]
+	sheet.draw.connect(func():
+		sheet.draw_texture_rect(Data.tex("temas/fabrica/fundo"), Rect2(0, 0, 1920, 1080), false)
+		for k in 16:
+			var sk := Data.default_skin(0, k % 4)
+			sk["cor"] = k
+			sk["cor2"] = (k * 5 + 3) % 16
+			sk["padrao"] = k % 5
+			sk["chapeu"] = k % 16
+			sk["rosto"] = k % 6
+			sk["ferramenta"] = k % 6
+			var lk := {"color": k % 4, "model": k % 4, "acc": 0, "skin": sk}
+			Vis.draw_robot(sheet, lk, Vis.idle_pose(0.5), Transform2D(0.0, Vector2(2.3, 2.3), 0.0, Vector2(130 + (k % 8) * 236, 330 + (k / 8) * 300)))
+		for d in 4:
+			var sk2 := Data.default_skin(0, d)
+			sk2["cor"] = [5, 6, 7, 12][d]
+			sk2["padrao"] = d + 1
+			sk2["chapeu"] = [4, 5, 9, 15][d]
+			sk2["ferramenta"] = d + 1
+			Vis.draw_robot(sheet, {"color": d, "model": d, "acc": 0, "skin": sk2}, Vis.victory_pose(tt[0] + d * 0.13, d), Transform2D(0.0, Vector2(2.0, 2.0), 0.0, Vector2(300 + d * 440, 1010)))
+	)
+	layer.add_child(sheet)
+	for f in 3:
+		tt[0] = 0.21 * f
+		sheet.queue_redraw()
+		await frames(3)
+		await snap(dir, "skins_%d" % f)
+
 # ---------------------------------------------------------------- animação (quadros para GIF)
 var _frame_no := 0
 
@@ -1794,12 +1878,19 @@ func menus_frames(dir: String) -> void:
 	main.state = S.ARENAS
 	await frames(10)
 	await snap(dir, "m4b_arenas")
+	main.garagem.open()
+	main.garagem.slot = 2
+	main.garagem.row = 6
+	await frames(20)
+	await snap(dir, "m4d_garagem")
 	main.state = S.JOIN
 	main.mode = "demolicao"
 	main.demo.cfg["rounds_to_win"] = 5
 	await tap("v0", "jump")
 	await tap("v1", "jump")
 	await tap("v1", "down")
+	for k in 6:
+		await tap("v0", "down")   # P1 com um robô da Garagem
 	main.add_bot()
 	await frames(20)
 	await snap(dir, "m5_entrada")
