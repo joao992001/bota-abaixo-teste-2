@@ -24,12 +24,12 @@ var extra_solid := Callable()   # sólidos que se movem (plataformas do guindast
 var anim_t := 0.0
 ## Tema visual da arena (cabeçalho "tema:" do .lvl): troca blocos, bloco fixo, tábuas e fundo (assets/temas/<tema>/).
 const THEMES := {
-	"canteiro": {"crack": "#5a3a1c", "rope": "#8a6a47"},
+	"canteiro": {"crack": "#4a3a30", "rope": "#8a6a45"},
 	"fabrica": {"crack": "#2f3640", "rope": "#5a6370"},
 	"porto": {"crack": "#232a35", "rope": "#8a6a47"},
 	"cidade": {"crack": "#3a1c14", "rope": "#3e3f5a"},
-	"demolicao": {"crack": "#4a3a34", "rope": "#6a5a52"},
-	"viaduto": {"crack": "#3a3550", "rope": "#5a5470"},
+	"demolicao": {"crack": "#3e2c2a", "rope": "#6e625c"},
+	"viaduto": {"crack": "#363a4c", "rope": "#4f4a5e"},
 	"pantano": {"crack": "#2e3a1c", "rope": "#6b5a3a"},
 	"mina": {"crack": "#2a1e18", "rope": "#8a6a47"},
 	"serraria": {"crack": "#4a2c14", "rope": "#8a6a47"},
