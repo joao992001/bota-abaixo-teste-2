@@ -24,13 +24,13 @@ YELLOW, RED = "#f2c84b", "#d14d35"
 # geometria de cada modelo (px de jogo, tela 128x128, pés em y≈117)
 MODELS = {
     "lata": dict(hips=[[59, 84], [69, 84]], shoulders=[[54, 62], [74, 62]], hand_back=[44, 74], hand_front=[84, 60],
-                 hat=[64, 42, 0.42], eyes=[[60, 52], [68.5, 51.5]], eye_r=2.3, mouth=[64, 59], screen=False),
+                 hat=[64, 42, 0.42], antenna=[63, 38], eyes=[[60, 52], [68.5, 51.5]], eye_r=2.3, mouth=[64, 59], screen=False),
     "tv": dict(hips=[[60, 86], [68, 86]], shoulders=[[57, 71], [71, 71]], hand_back=[45, 82], hand_front=[83, 74],
-               hat=[64, 35, 0.68], eyes=[[58, 47], [70, 47]], eye_r=2.6, mouth=[64, 54], screen=True),
+               hat=[64, 35, 0.68], antenna=[64, 35], eyes=[[58, 47], [70, 47]], eye_r=2.6, mouth=[64, 54], screen=True),
     "baixinho": dict(hips=[[60, 95], [68, 95]], shoulders=[[57, 85], [71, 85]], hand_back=[44, 88], hand_front=[86, 80],
-                     hat=[64, 40, 0.82], eyes=[[57, 62], [70, 61]], eye_r=3.0, mouth=[64, 72], screen=False),
+                     hat=[64, 40, 0.82], antenna=[64, 38], eyes=[[57, 62], [70, 61]], eye_r=3.0, mouth=[64, 72], screen=False),
     "pescocao": dict(hips=[[58, 92], [70, 92]], shoulders=[[54, 75], [74, 75]], hand_back=[43, 86], hand_front=[85, 70],
-                     hat=[65, 33, 0.5], eyes=[[61, 41], [69.5, 40]], eye_r=2.0, mouth=[65, 46], screen=False),
+                     hat=[65, 33, 0.5], antenna=[68, 32], eyes=[[61, 41], [69.5, 40]], eye_r=2.0, mouth=[65, 46], screen=False),
 }
 
 
@@ -103,8 +103,12 @@ def face_svg(model, expr):
         return (f'<ellipse cx="{x}" cy="{y}" rx="{r}" ry="{r * 1.1}" fill="#ffffff"/>'
                 f'<circle cx="{x + r * 0.15}" cy="{y + r * py}" r="{r * pr}" fill="#1c2233"/>')
 
-    if expr == "normal":
-        b += [eye(lx, ly, er), eye(rx, ry, er)]
+    if expr in ("normal", "piscar"):
+        if expr == "normal":
+            b += [eye(lx, ly, er), eye(rx, ry, er)]
+        else:  # olhos fechados (piscada)
+            for x, y in ((lx, ly), (rx, ry)):
+                b.append(f'<path d="M{x - er},{y} Q{x},{y + er * 0.9} {x + er},{y}" stroke="{ink}" stroke-width="1.4" fill="none" stroke-linecap="round"/>')
         if tv:
             b.append(f'<path d="M{mx - 6},{my - 1} Q{mx},{my + 3} {mx + 6},{my - 1}" stroke="{MINT}" stroke-width="1.6" fill="none" stroke-linecap="round"/>')
         elif model == "lata":
@@ -184,7 +188,7 @@ def main():
         for ci in range(4):
             queue(body_svg(model, ci), f"{SRC}/corpo_{model}_p{ci + 1}.svg", f"{OUT}/corpo_{model}_p{ci + 1}.png", 128, 128, K)
         queue(antenna_svg(model), f"{SRC}/antena_{model}.svg", f"{OUT}/antena_{model}.png", 128, 128, K)
-        for e in ("normal", "esforco", "susto", "vitoria", "eliminado"):
+        for e in ("normal", "piscar", "esforco", "susto", "vitoria", "eliminado"):
             queue(face_svg(model, e), f"{SRC}/rosto_{model}_{e}.svg", f"{OUT}/rosto_{model}_{e}.png", 128, 128, K)
     queue(hand_svg(), f"{SRC}/mao.svg", f"{OUT}/mao.png", 16, 16, K)
     queue(foot_svg(), f"{SRC}/pe.svg", f"{OUT}/pe.png", 24, 14, K)
@@ -193,7 +197,7 @@ def main():
         queue(hat_svg(a), f"{ROOT}/art/src/acessorios/{a}.svg", f"{OUT}/acc_{a}.png", 128, 128, K)
     os.makedirs(OUT, exist_ok=True)
     meta = {"cores": COLORS, "membros": [shade(c, -0.5) for c in COLORS],
-            "modelos": {k: {kk: v[kk] for kk in ("hips", "shoulders", "hand_back", "hand_front", "hat")} for k, v in MODELS.items()}}
+            "modelos": {k: {kk: v[kk] for kk in ("hips", "shoulders", "hand_back", "hand_front", "hat", "antenna")} for k, v in MODELS.items()}}
     with open(f"{OUT}/modelos.json", "w") as f:
         json.dump(meta, f, indent=1)
     print("robôs renderizados:", render_all())

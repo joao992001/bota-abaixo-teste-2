@@ -24,6 +24,8 @@ var spring := false
 var floor_piece = null
 var was_on_floor := true
 var spin := 0.0
+var wall_sliding := false
+var wall_dust := 0.0
 var vis: Node2D
 
 func setup(p: int, col_idx: int, m: Node, acc := 0, model := 0) -> void:
@@ -106,8 +108,13 @@ func _physics_process(dt: float) -> void:
 	if spring and velocity.y >= 0.0:
 		spring = false
 	var max_fall := f("fast_max_fall") if PlayerInput.held(pid, "down") else f("max_fall")
-	if wall_dir != 0 and int(signf(ix)) == wall_dir and velocity.y > 0.0:
+	wall_sliding = wall_dir != 0 and int(signf(ix)) == wall_dir and velocity.y > 0.0
+	if wall_sliding:
 		max_fall = f("wall_slide_speed")
+		wall_dust -= dt
+		if wall_dust <= 0.0:
+			wall_dust = 0.08
+			main.dust(position + Vector2(wall_dir * 24, -40), 0.5)
 	velocity.y = minf(velocity.y, max_fall)
 	# marreta (não trava o movimento)
 	if PlayerInput.pressed(pid, "hammer") and hammer_anim <= 0.0:
@@ -187,26 +194,30 @@ func launch(tiles: float) -> void:
 	buffer = 0.0
 	vis.stretch()
 
+## Eliminado: o robô desmonta em peças (main.break_robot) e some.
 func eliminate() -> void:
 	alive = false
 	active = false
 	collision_mask = 0
-	velocity = Vector2(randf_range(-260, 260), -1150)
-	spin = randf_range(8, 14) * (1 if randf() < 0.5 else -1)
-	vis.expression = "eliminado"
-	vis.queue_redraw()
+	main.break_robot(self)
+	visible = false
 
-func _dead_fall(dt: float) -> void:
-	velocity.y += f("gravity") * 0.45 * dt
-	position += velocity * dt
-	vis.rotation += spin * dt
-	if position.y > 1400:
-		visible = false
+func _dead_fall(_dt: float) -> void:
+	pass
 
+## Chegou: dá um pulinho de alegria, anda até o meio do elevador e some lá dentro.
 func finish() -> void:
 	finished = true
 	active = false
 	vis.expression = "vitoria"
+	var g: Rect2 = main.level.goal_rect
+	var floor_pos := Vector2(g.get_center().x, g.end.y)
+	facing = 1 if floor_pos.x >= position.x else -1
 	var tw := create_tween()
-	tw.tween_property(self, "scale", Vector2(0.2, 0.2), 0.3)
+	# desce até o chão (se chegou pulando), pulinho de alegria no centro da porta, entra e some
+	tw.tween_property(self, "position", floor_pos, 0.22).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(vis, "position", Vector2(0, -16), 0.13).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(vis, "position", Vector2.ZERO, 0.13).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(self, "scale", Vector2(0.85, 0.85), 0.25)
+	tw.parallel().tween_property(self, "modulate", Color(0.35, 0.3, 0.3, 0.0), 0.25)
 	tw.tween_callback(func(): visible = false)

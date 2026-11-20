@@ -75,7 +75,8 @@ func _draw_join() -> void:
 		if i < main.players.size():
 			var p: Dictionary = main.players[i]
 			var col: Color = Data.COLORS[p["color"]]
-			RobotVis.draw_robot(self, p["color"], "normal", 0.0, Time.get_ticks_msec() / 400.0, false, p["acc"], false, Transform2D(0.0, Vector2(2.6, 2.6), 0.0, r.get_center() + Vector2(-10, 150)), p["model"])
+			var tt := Time.get_ticks_msec() / 1000.0 + i * 0.77
+			RobotVis.draw_robot(self, {"color": p["color"], "model": p["model"], "acc": p["acc"]}, RobotVis.idle_pose(tt), Transform2D(0.0, Vector2(2.6, 2.6), 0.0, r.get_center() + Vector2(-10, 150)))
 			draw_set_transform(Vector2.ZERO)
 			text(r.position + Vector2(0, 52), "P%d" % (i + 1), 46, col, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 10)
 			text(r.position + Vector2(0, 382), "◄ %s ►   ▲▼ %s" % [Data.COLOR_NAMES[p["color"]], Data.MODEL_NAMES[p["model"]]], 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 6)
@@ -162,7 +163,8 @@ func _draw_win() -> void:
 	draw_rect(Rect2(0, 56, 1920, 1024), DIM)
 	var w: int = main.winner
 	var col = main.player_color(w)
-	RobotVis.draw_robot(self, main.players[w]["color"], "vitoria", 0.0, Time.get_ticks_msec() / 300.0, true, main.players[w]["acc"], false, Transform2D(0.0, Vector2(4, 4), 0.0, Vector2(960, 820)), main.players[w]["model"])
+	var pw: Dictionary = main.players[w]
+	RobotVis.draw_robot(self, {"color": pw["color"], "model": pw["model"], "acc": pw["acc"]}, RobotVis.victory_pose(Time.get_ticks_msec() / 1000.0), Transform2D(0.0, Vector2(4, 4), 0.0, Vector2(960, 820)))
 	draw_set_transform(Vector2.ZERO)
 	text(Vector2(0, 330), "P%d VENCEU!" % (w + 1), 140, col, HORIZONTAL_ALIGNMENT_CENTER, 1920, 30)
 	text(Vector2(0, 900), "PULAR ou START para jogar de novo", 36, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 8)

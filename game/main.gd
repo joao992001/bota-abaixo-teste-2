@@ -7,6 +7,8 @@ const Level := preload("res://level/level.gd")
 const Background := preload("res://level/background.gd")
 const Robot := preload("res://player/robot.gd")
 const Hud := preload("res://ui/hud.gd")
+const Debris := preload("res://fx/debris.gd")
+const RobotVis := preload("res://player/robot_visual.gd")
 const PIECE_SCRIPTS := {
 	"P01": preload("res://pieces/viga.gd"),
 	"P02": preload("res://pieces/mola.gd"),
@@ -39,6 +41,11 @@ var debug_piece := 0
 var debug_owner := 0
 var floaters: Array = []     # textos flutuantes {pos, text, color, t}
 var puffs: Array = []        # poeira {pos, t, r}
+var sparks: Array = []       # estrelinhas {pos, vel, t, rot}
+var shake_amt := 0.0
+const SHAKE_ON := true
+var door_open := 0.0
+var cam_lock: Array = []      # [zoom, centro] fixa a câmera (capturas de animação)
 
 var world: Node2D
 var level: Level
@@ -91,7 +98,7 @@ func _ready() -> void:
 	conv_layer.add_child(conveyor_root)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim"):
 			var drv: Node = load("res://tests/driver.gd").new()
 			drv.main = self
 			add_child(drv)
@@ -130,6 +137,18 @@ func _physics_process(dt: float) -> void:
 	for p in puffs:
 		p["t"] += dt
 	puffs = puffs.filter(func(x): return x["t"] < 0.45)
+	for s in sparks:
+		s["t"] += dt
+		s["pos"] += s["vel"] * dt
+		s["vel"] *= 0.9
+	sparks = sparks.filter(func(x): return x["t"] < 0.4)
+	# portas do elevador abrem com robô por perto ou chegando
+	var near := false
+	for r in robots:
+		if r.visible and r.position.distance_to(level.goal_rect.get_center()) < 170.0:
+			near = true
+	door_open = move_toward(door_open, 1.0 if near else 0.0, dt * 5.0)
+	level.door_open = door_open
 	_update_camera(dt)
 	overlay.queue_redraw()
 	hud.queue_redraw()
@@ -155,6 +174,10 @@ func _update_camera(dt: float) -> void:
 			tz = cam_zoom
 			tc = cam_center
 	var k := 1.0 - exp(-dt * 3.0)
+	if cam_lock.size() == 2:
+		tz = cam_lock[0]
+		tc = cam_lock[1]
+		k = 1.0
 	cam_zoom = lerpf(cam_zoom, tz, k)
 	cam_center = cam_center.lerp(tc, k)
 	var hw := 960.0 / cam_zoom
@@ -163,6 +186,8 @@ func _update_camera(dt: float) -> void:
 	cam_center.y = clampf(cam_center.y, hh, 1024.0 - hh)
 	camera.zoom = Vector2(cam_zoom, cam_zoom)
 	camera.position = cam_center + Vector2(0, Data.ARENA_Y) - Vector2(0, 28) / cam_zoom
+	shake_amt = move_toward(shake_amt, 0.0, dt * 40.0)
+	camera.offset = Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)) * shake_amt
 	# fundo em paralaxe (camada própria, move menos que o mundo)
 	var zb := 1.0 + (cam_zoom - 1.0) * 0.4
 	var bc := Vector2(960, 540) + (cam_center - Vector2(960, 512)) * 0.5
@@ -532,9 +557,29 @@ func _after_score() -> void:
 func float_text(pos: Vector2, text: String, col: Color) -> void:
 	floaters.append({"pos": pos, "text": text, "color": col, "t": 0.0})
 
-func dust(pos: Vector2) -> void:
-	for k in 3:
-		puffs.append({"pos": pos + Vector2(rng.randf_range(-18, 18), rng.randf_range(-8, 0)), "t": 0.0, "r": rng.randf_range(7, 12)})
+func dust(pos: Vector2, size := 1.0) -> void:
+	for k in (3 if size >= 1.0 else 1):
+		puffs.append({"pos": pos + Vector2(rng.randf_range(-18, 18), rng.randf_range(-8, 0)) * size, "t": 0.0, "r": rng.randf_range(7, 12) * size})
+
+## Estrelinhas de impacto (marretada, eliminação).
+func spark(pos: Vector2, n := 5) -> void:
+	for k in n:
+		var a := rng.randf_range(0, TAU)
+		sparks.append({"pos": pos, "vel": Vector2.from_angle(a) * rng.randf_range(120, 320), "t": 0.0, "rot": rng.randf_range(0, TAU)})
+
+## Tremor leve de câmera (desligável em SHAKE_ON).
+func shake(amount: float) -> void:
+	if SHAKE_ON:
+		shake_amt = maxf(shake_amt, amount)
+
+## Robô eliminado desmonta: partes voando + poeira + estrelas.
+func break_robot(r: CharacterBody2D) -> void:
+	var d: Node2D = Debris.new()
+	d.setup(RobotVis.parts(r.vis.look()), r.position, r.facing, Vector2(r.velocity.x * 0.3, 0))
+	world.add_child(d)
+	dust(r.position + Vector2(0, -30))
+	spark(r.position + Vector2(0, -40), 7)
+	shake(8.0)
 
 func _draw_overlay() -> void:
 	var puff := Data.tex("cenario/poeira")
@@ -542,6 +587,13 @@ func _draw_overlay() -> void:
 		var k: float = p["t"] / 0.45
 		var sz: float = p["r"] * 3.0 * (0.8 + k * 0.7)
 		overlay.draw_texture_rect(puff, Rect2(p["pos"] + Vector2(-sz / 2, -sz * 0.75 - k * 14), Vector2(sz, sz)), false, Color(1, 1, 1, 1.0 - k * k))
+	var star := Data.tex("cenario/brilho")
+	for sp in sparks:
+		var k: float = sp["t"] / 0.4
+		var sz := 22.0 * (1.0 - k * 0.6)
+		overlay.draw_set_transform(sp["pos"], sp["rot"] + k * 3.0)
+		overlay.draw_texture_rect(star, Rect2(-sz / 2, -sz / 2, sz, sz), false, Color(1, 1, 1, 1.0 - k))
+	overlay.draw_set_transform(Vector2.ZERO)
 	if state == S.BUILD:
 		for i in players.size():
 			var p: Dictionary = players[i]

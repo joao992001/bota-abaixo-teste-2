@@ -12,10 +12,16 @@ func _ready() -> void:
 
 func _run() -> void:
 	var shot := ""
+	var anim := ""
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--shot="):
 			shot = a.substr(7)
-	if shot != "":
+		if a.begins_with("--anim="):
+			anim = a.substr(7)
+	if anim != "":
+		await anim_frames(anim)
+		get_tree().quit(0)
+	elif shot != "":
 		await shots(shot)
 		get_tree().quit(0)
 	else:
@@ -350,12 +356,92 @@ func shots(dir: String) -> void:
 		sheet.draw_rect(Rect2(0, 0, 1920, 1080), Color("#9fe3ee"))
 		var ex := ["normal", "esforco", "susto", "vitoria", "eliminado"]
 		for k in 4:  # os 4 modelos em azul, como em versoes.png
-			Vis.draw_robot(sheet, 0, "normal", 0.0, 0.0, false, 0, false, Transform2D(0.0, Vector2(4.2, 4.2), 0.0, Vector2(230 + k * 480, 520)), k)
+			Vis.draw_robot(sheet, {"color": 0, "model": k, "acc": 0}, Vis.idle_pose(0.5), Transform2D(0.0, Vector2(4.2, 4.2), 0.0, Vector2(230 + k * 480, 520)))
 		for k in 4:  # cores, chapéus e expressões
-			Vis.draw_robot(sheet, k, ex[k + 1], 0.0, 0.0, false, (k + 1) % 4, false, Transform2D(0.0, Vector2(2.2, 2.2), 0.0, Vector2(200 + k * 250, 1010)), (k + 1) % 4)
+			var po: Dictionary = Vis.idle_pose(0.5)
+			po["expr"] = ex[k + 1]
+			Vis.draw_robot(sheet, {"color": k, "model": (k + 1) % 4, "acc": (k + 1) % 4}, po, Transform2D(0.0, Vector2(2.2, 2.2), 0.0, Vector2(200 + k * 250, 1010)))
 		for k in 4:
-			Vis.draw_robot(sheet, k, "normal", 0.0, 1.0 + k, true, 0, false, Transform2D(0.0, Vector2(1, 1), 0.0, Vector2(1260 + k * 150, 1000)), k)
+			Vis.draw_robot(sheet, {"color": k, "model": k, "acc": 0}, Vis.victory_pose(0.3 + k * 0.2), Transform2D(0.0, Vector2(1, 1), 0.0, Vector2(1260 + k * 150, 1000)))
 	)
 	layer.add_child(sheet)
 	await frames(3)
 	await snap(dir, "prancha_robos")
+
+# ---------------------------------------------------------------- animação (quadros para GIF)
+var _frame_no := 0
+
+func grab(dir: String, prefix: String) -> void:
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(dir.path_join("%s_%04d.png" % [prefix, _frame_no]))
+	_frame_no += 1
+
+func anim_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	get_window().size = Vector2i(1920, 1080)
+	PlayerInput.virtual = {"v0": {}, "v1": {}, "v2": {}, "v3": {}}
+	await frames(2)
+	for d in ["v0", "v1", "v2", "v3"]:
+		await tap(d, "jump")
+	await tap("v0", "start")
+	main.skip_phase()
+	await frames(2)
+	main.skip_phase()
+	await frames(2)
+	main.countdown = 0.0
+	main.timer = 999.0
+	for r in main.robots:
+		r.active = true
+	# --- cena 1: corrida, giro, pulo, parede, marretada e queda nos espinhos
+	main.cam_lock = [1.7, Vector2(565, 723)]
+	_frame_no = 0
+	for f in 300:
+		var a := {"v0": {}, "v1": {}, "v2": {}, "v3": {}}
+		# Lata (P1): anda, freia e vira, pula, marreta e cai no poço
+		if f >= 40 and f < 80: a["v0"]["right"] = true
+		if f >= 80 and f < 100: a["v0"]["left"] = true
+		if f >= 115 and f < 130: a["v0"]["jump"] = true
+		if f >= 150 and f < 153: a["v0"]["hammer"] = true
+		if f >= 190: a["v0"]["right"] = true
+		# TV (P2): pulos
+		if f % 70 >= 10 and f % 70 < 24: a["v1"]["jump"] = true
+		# Baixinho (P3): pula na parede da esquerda e desliza
+		if f < 140: a["v2"]["left"] = true
+		if (f >= 20 and f < 34) or (f >= 100 and f < 112): a["v2"]["jump"] = true
+		if f >= 160 and f < 200: a["v2"]["right"] = true
+		# Pescoção (P4): marretadas
+		if f % 60 >= 30 and f % 60 < 33: a["v3"]["hammer"] = true
+		PlayerInput.virtual = a
+		await frames(1)
+		if f % 2 == 0:
+			await grab(dir, "a")
+	# --- cena 2: marretada numa peça rival, chegada ao elevador com a porta abrindo
+	_frame_no = 0
+	await reset_run()
+	main.cam_lock = [2.0, Vector2(1440, 740)]
+	place("P04", 0, Vector2i(21, 11))
+	var rs: Array = main.robots
+	put(rs[0], Vector2(-400, 768))
+	put(rs[2], Vector2(-400, 768))
+	put(rs[3], Vector2(1306, 768))
+	put(rs[1], Vector2(1240, 704))
+	rs[1].position = Vector2(1250, 768)
+	for f in 140:
+		var a := {"v0": {}, "v1": {}, "v2": {}, "v3": {}}
+		if f >= 20 and f < 23: a["v3"]["hammer"] = true
+		if f >= 50: a["v1"]["right"] = true
+		if f >= 56 and f < 70: a["v1"]["jump"] = true
+		PlayerInput.virtual = a
+		await frames(1)
+		if f % 2 == 0:
+			await grab(dir, "b")
+	# --- cena 3: tela de vitória (dancinha)
+	_frame_no = 0
+	main.cam_lock = []
+	main.winner = 2
+	main.state = S.WIN
+	main._clear_robots()
+	for f in 60:
+		await frames(1)
+		if f % 2 == 0:
+			await grab(dir, "c")

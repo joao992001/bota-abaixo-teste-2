@@ -11,6 +11,7 @@ var elevator_cell := Vector2i(-1, -1)
 var goal_rect := Rect2()
 var hazard_rects: Array = []
 var skin: Node = null       # arte do mapa (opcional); sem ela, formas simples
+var door_open := 0.0        # 0 fechado .. 1 aberto (main anima)
 
 func load_level(level_id: String) -> void:
 	id = level_id
@@ -36,7 +37,7 @@ func load_level(level_id: String) -> void:
 				spawns[int(ch)] = Vector2(x * T + T / 2.0, (y + 1) * T)
 			elif ch == "E":
 				elevator_cell = c
-				goal_rect = Rect2(x * T + 8, (y - 1) * T, T - 16, 2 * T)
+				goal_rect = Rect2(x * T + 4, (y - 2) * T + 20, T - 8, 3 * T - 20)  # elevador inteiro (3 tiles)
 			elif ch == "^":
 				# espinhos altos (1,5 tile), em pé no fundo do poço
 				hazard_rects.append(Rect2(x * T + 4, y * T + T - 100, T - 8, 100))
@@ -137,7 +138,24 @@ func _draw_art() -> void:
 				"^":
 					draw_texture_rect(Data.tex("cenario/espinho_%d" % ((x * 5 + y) % 3)), Rect2(pos + Vector2(0, T - 128), Vector2(T, 128)), false)
 	if elevator_cell.x >= 0:
-		draw_texture_rect(Data.tex("cenario/elevador"), Rect2(elevator_cell.x * T - 32, (elevator_cell.y - 2) * T, 128, 192), false)
+		var e := Vector2(elevator_cell.x * T - 32, (elevator_cell.y - 2) * T)
+		var tx := Data.tex("cenario/elevador")
+		draw_texture_rect(tx, Rect2(e, Vector2(128, 192)), false)
+		if door_open > 0.01:
+			# porta pantográfica recolhe para os lados e mostra o interior iluminado
+			var o := door_open * 36.0
+			draw_rect(Rect2(e + Vector2(63 - o, 47), Vector2(2 + 2 * o, 145)), Color("#f3dd92"))
+			draw_rect(Rect2(e + Vector2(63 - o, 47), Vector2(2 + 2 * o, 10)), Color("#fff4c8"))
+			var sc := 3.0
+			draw_texture_rect_region(tx, Rect2(e + Vector2(25, 47), Vector2(38 - o, 145)), Rect2(Vector2(25 + o, 47) * sc, Vector2(38 - o, 145) * sc))
+			draw_texture_rect_region(tx, Rect2(e + Vector2(65 + o, 47), Vector2(38 - o, 145)), Rect2(Vector2(65, 47) * sc, Vector2(38 - o, 145) * sc))
+
+func _process(_dt: float) -> void:
+	if door_open > 0.0 or _was_open:
+		queue_redraw()
+	_was_open = door_open > 0.0
+
+var _was_open := false
 
 ## Tábuas one-way penduradas por cordas que sobem até fora da tela.
 func _draw_ropes_and_planks() -> void:
