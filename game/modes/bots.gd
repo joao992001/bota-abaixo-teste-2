@@ -131,6 +131,25 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 				if L.is_solid(c2) and not (L.blocks.has(c2) and L.blocks[c2]["warn"] > 0.0):
 					cmd["dir"] = signi(dc)
 					return _safe(r, cmd, lv)
+	# 2b) maré de lama chegando: subir para o caixote mais alto alcançável
+	var fx = demo.fx
+	if fx != null and is_instance_valid(fx) and fx.goo_on and fx.goo_y - pos.y < 330.0 and r.is_on_floor():
+		var best := Vector2i(-1, -1)
+		for dr in range(1, 5):
+			for dc in range(-7, 8):
+				var cc := Vector2i(col + dc, row - dr)
+				if L.is_solid(cc) and not L.is_solid(cc + Vector2i.UP) and not L.is_solid(cc + Vector2i(0, -2)):
+					if best.x < 0 or absi(dc) < absi(best.x - col):
+						best = cc
+			if best.x >= 0:
+				break
+		if best.x >= 0:
+			var gx := best.x * 64 + 32 - pos.x
+			cmd["dir"] = signi(int(gx)) if absf(gx) > 20.0 else 0
+			if absf(gx) < 150.0:
+				cmd["jump"] = true
+				cmd["jump_frames"] = 16
+			return _safe(r, cmd, lv)
 	# alvo: rival mais perto
 	var target = null
 	var td := 1e9

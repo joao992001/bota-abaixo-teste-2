@@ -1,0 +1,23 @@
+id: paiol
+terremoto: 35
+fundo: #fff2ea
+size: 30x16
+spawns: 1,2,3,4
+legend: "d = caixote, T = TNT, < > = esteira, = = tábua one-way, I = parede invisível, ^ = espinho, 1-4 = spawn"
+=== map
+IIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+I............................I
+I............................I
+I............................I
+I............................I
+I............................I
+I...ddTdd....dddd....ddTdd...I
+I............................I
+I.1........3......4........2.I
+IdddTddd..ddTdTdTddd..dddTdddI
+I............................I
+I............................I
+I....ddTddd........dddTdd....I
+I............................I
+I............................I
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

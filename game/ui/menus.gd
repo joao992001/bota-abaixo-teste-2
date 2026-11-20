@@ -24,6 +24,7 @@ var opt_sel := 0
 var pause_sel := 0
 var t := 0.0
 var shake_card := 0.0
+var arena_sel := 0
 
 func setup(m: Node) -> void:
 	main = m
@@ -65,7 +66,10 @@ func update(dt: float) -> void:
 				if m["ok"]:
 					main.mode = m["id"]
 					main.demo.cfg["rounds_to_win"] = STAR_GOALS[goal_sel]
-					main.go_join()
+					if m["id"] == "demolicao":
+						main.state = S.ARENAS
+					else:
+						main.go_join()
 				else:
 					shake_card = 0.35
 			elif pressed("back"):
@@ -73,6 +77,17 @@ func update(dt: float) -> void:
 		S.HOWTO:
 			if confirm() or pressed("back"):
 				main.state = S.MENU
+		S.ARENAS:
+			var n := arena_list().size()
+			arena_sel = posmod(arena_sel + move_h(), n)
+			var v := move_v()
+			if v != 0:
+				arena_sel = clampi(arena_sel + v * 4, 0, n - 1)
+			if confirm():
+				main.arena_choice = arena_list()[arena_sel]["id"]
+				main.go_join()
+			elif pressed("back"):
+				main.state = S.MODES
 		S.OPTIONS:
 			opt_sel = posmod(opt_sel + move_v(), 4)
 			var h := move_h()
@@ -111,6 +126,7 @@ func draw(ci: CanvasItem) -> void:
 		S.MODES: _draw_modes(ci)
 		S.HOWTO: _draw_howto(ci)
 		S.OPTIONS: _draw_options(ci)
+		S.ARENAS: _draw_arenas(ci)
 	if main.paused:
 		_draw_pause(ci)
 
@@ -196,6 +212,42 @@ func _draw_modes(ci: CanvasItem) -> void:
 	for k in goal:
 		Kit.star(ci, Vector2(900 + k * 46, 905), 44, true)
 	Kit.text(ci, Vector2(0, 1056), "◄► modo  ·  PULAR confirmar  ·  BACKSPACE/ESC voltar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
+
+## SORTEIO + arenas de data/modos.json.
+func arena_list() -> Array:
+	var out: Array = [{"id": "sorteio", "nome": "SORTEIO", "dica": "Cada rodada numa arena diferente"}]
+	out.append_array(main.demo.cfg["arenas"])
+	return out
+
+func _draw_arenas(ci: CanvasItem) -> void:
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.35))
+	Kit.ribbon(ci, Rect2(560, 30, 800, 128), "ESCOLHA A ARENA", 58)
+	var list := arena_list()
+	for i in list.size():
+		var a: Dictionary = list[i]
+		var on := i == arena_sel
+		var col := i % 4
+		var row := i / 4
+		var c := Vector2(255 + col * 470, 370 + row * 400)
+		var xf := Transform2D(sin(i * 1.9) * 0.025, Vector2(1.06, 1.06) if on else Vector2.ONE, 0.0, c)
+		ci.draw_set_transform_matrix(xf)
+		var r := Rect2(-205, -165, 410, 330)
+		if on:
+			Kit.paper(ci, r.grow(12), Color("#f2c84b"))
+		Kit.paper(ci, r)
+		var thumb := Data.tex("ui/arena_" + a["id"])
+		var tr := Rect2(-180, -142, 360, 192)
+		if a["id"] == "sorteio":
+			ci.draw_rect(tr, Color("#9fe3ee"))
+			Kit.sticker(ci, Vector2(-180, 0), "?", 150, Color("#f2c84b"), HORIZONTAL_ALIGNMENT_CENTER, 360)
+		elif thumb != null:
+			ci.draw_texture_rect(thumb, tr, false)
+		else:
+			ci.draw_rect(tr, Color("#9fe3ee"))
+		Kit.text(ci, Vector2(r.position.x, 100), String(a["nome"]).to_upper(), 34 if String(a["nome"]).length() < 15 else 28, Color("#1f3a40"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, 138), a["dica"], 21, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	ci.draw_set_transform(Vector2.ZERO)
+	Kit.text(ci, Vector2(0, 1056), "◄►▲▼ escolher  ·  PULAR confirmar  ·  BACKSPACE/ESC voltar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
 
 func _draw_howto(ci: CanvasItem) -> void:
 	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.35))

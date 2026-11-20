@@ -1,0 +1,25 @@
+id: esteiras
+esteira_vel: 3.2
+esteira_inverte: 7
+terremoto: 35
+fundo: #fff7ee
+size: 30x16
+spawns: 1,2,3,4
+legend: "d = caixote, T = TNT, < > = esteira, = = tábua one-way, I = parede invisível, ^ = espinho, 1-4 = spawn"
+=== map
+IIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+I............................I
+I............................I
+I............................I
+I......dddd........dddd......I
+I............................I
+I..1.......3......4.......2..I
+I.ddd>>>>>>dddddddd<<<<<<ddd.I
+I............................I
+I............................I
+I....>>>>>>>>....<<<<<<<<....I
+I............................I
+I............................I
+I..dddd....dddddddd....dddd..I
+I............................I
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

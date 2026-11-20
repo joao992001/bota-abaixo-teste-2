@@ -21,10 +21,10 @@ const PIECE_SCRIPTS := {
 const T := 64
 const MILESTONE := 1
 
-enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS }
+enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS }
 var state := S.MENU
 var paused := false
-const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS]
+const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS]
 var timer := 0.0
 var round_no := 0
 var players: Array = []      # {dev, color, score, piece, sel, unlock, cursor, ghost, placed, rep}
@@ -56,6 +56,7 @@ var bots: Node
 var menus: Node
 var fall_log: Array = []
 var self_falls := 0          # quedas sem ter levado golpe nos últimos 2 s (bots: deve ficar perto de 0)
+var arena_choice := "sorteio"   # arena da Demolição: "sorteio" ou o id do .lvl
 var bot_level := 1            # 0 fácil, 1 médio, 2 difícil (M na entrada)
 var match_over := false
 var cam_lock: Array = []      # [zoom, centro] fixa a câmera (capturas de animação)
@@ -120,7 +121,7 @@ func _ready() -> void:
 	add_child(menus)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas"):
 			state = S.JOIN   # testes e capturas começam direto na entrada de jogadores
 			var drv: Node = load("res://tests/driver.gd").new()
 			drv.main = self

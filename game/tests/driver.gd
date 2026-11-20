@@ -18,6 +18,10 @@ func _run() -> void:
 			shot = a.substr(7)
 		if a.begins_with("--anim="):
 			anim = a.substr(7)
+		if a.begins_with("--arenas="):
+			await arenas_frames(a.substr(9))
+			get_tree().quit(0)
+			return
 		if a.begins_with("--menus="):
 			await menus_frames(a.substr(8))
 			get_tree().quit(0)
@@ -351,6 +355,7 @@ func demo_round() -> void:
 func demolicao_test() -> void:
 	print("== Demolição")
 	main.mode = "demolicao"
+	main.arena_choice = "demolicao"   # mecânicas básicas testadas no Canteiro
 	main.start_match()
 	check(main.level.id == "demolicao" and main.level.blocks.size() > 30, "arena de caixotes carregada (%d caixotes)" % main.level.blocks.size())
 	await demo_round()
@@ -446,6 +451,7 @@ func demolicao_test() -> void:
 	check(main.state == S.WIN and main.winner == 0, "%d ★ vence a partida" % int(main.demo.cfg["rounds_to_win"]))
 	await itens_test()
 	await bots_test()
+	await arenas_test()
 	await menus_test()
 
 func menus_test() -> void:
@@ -462,7 +468,11 @@ func menus_test() -> void:
 	await tap("v0", "left")
 	await tap("v0", "down")
 	await tap("v0", "jump")
-	check(main.state == S.JOIN and main.mode == "demolicao" and int(main.demo.cfg["rounds_to_win"]) == 3, "Demolição escolhida, vence com 3 ★")
+	check(main.state == S.ARENAS, "Demolição abre a escolha de arena")
+	await tap("v0", "right")
+	await tap("v0", "right")
+	await tap("v0", "jump")
+	check(main.state == S.JOIN and main.mode == "demolicao" and int(main.demo.cfg["rounds_to_win"]) == 3 and main.arena_choice == "esteiras", "arena Fábrica de Esteiras escolhida, vence com 3 ★")
 	await tap("v0", "jump")
 	main.add_bot()
 	await tap("v0", "start")
@@ -568,6 +578,7 @@ func itens_test() -> void:
 func bots_test() -> void:
 	print("== Bots")
 	main.mode = "demolicao"
+	main.arena_choice = "demolicao"
 	main.state = S.JOIN
 	main.players.clear()
 	PlayerInput.slots.clear()
@@ -832,6 +843,9 @@ func menus_frames(dir: String) -> void:
 	main.state = S.OPTIONS
 	await frames(10)
 	await snap(dir, "m4_opcoes")
+	main.state = S.ARENAS
+	await frames(10)
+	await snap(dir, "m4b_arenas")
 	main.state = S.JOIN
 	main.mode = "demolicao"
 	main.demo.cfg["rounds_to_win"] = 5
@@ -866,3 +880,121 @@ func menus_frames(dir: String) -> void:
 	main._clear_robots()
 	await frames(30)
 	await snap(dir, "m10_vitoria")
+
+func arena_round(id: String) -> void:
+	main.arena_choice = id
+	main.mode = "demolicao"
+	await demo_round()
+	main.demo.item_t = 999.0
+
+func arenas_test() -> void:
+	print("== Arenas")
+	main.state = S.JOIN
+	main.players.clear()
+	PlayerInput.slots.clear()
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	await frames(2)
+	await tap("v0", "jump")
+	await tap("v1", "jump")
+	main.start_match()
+	# todas carregam e rodam um pouco sem erro
+	for a in main.demo.cfg["arenas"]:
+		await arena_round(a["id"])
+		await frames(30)
+		check(main.level.id == a["id"] and main.robots.size() == 2, "arena %s carrega e roda" % a["nome"])
+	# esteiras: carregam e invertem
+	await arena_round("esteiras")
+	var r0 = main.robots[0]
+	put(main.robots[1], Vector2(col_x(15), 448))
+	put(r0, Vector2(col_x(7), 448))
+	var x0: float = r0.position.x
+	await frames(20)
+	var moved: float = r0.position.x - x0
+	main.demo.fx.flip_t = 0.01
+	await frames(4)
+	var x1: float = r0.position.x
+	await frames(20)
+	check(moved > 40.0 and r0.position.x - x1 < -40.0, "esteira carrega (%.0f px) e depois inverte (%.0f px)" % [moved, r0.position.x - x1])
+	# guindastes: robô em cima da plataforma anda junto
+	await arena_round("guindastes")
+	r0 = main.robots[0]
+	await frames(2)
+	var p0: Dictionary = main.demo.fx.plats[0]
+	var pp: Vector2 = p0["body"].position
+	put(r0, pp + Vector2(96, -2))
+	await frames(10)
+	var dx_robot: float = r0.position.x
+	var dx_plat: float = p0["body"].position.x
+	await frames(40)
+	check(r0.alive and r0.is_on_floor() and absf((r0.position.x - dx_robot) - (p0["body"].position.x - dx_plat)) < 6.0 and absf(p0["body"].position.x - dx_plat) > 20.0, "plataforma do guindaste carrega o robô")
+	# maré: lama sobe e elimina quem ficou embaixo
+	await arena_round("mare")
+	r0 = main.robots[0]
+	main.demo.t = 6.0
+	main.demo.fx.goo_y = 820.0
+	put(r0, Vector2(col_x(3), 832))
+	await frames(60)
+	check(not r0.alive, "a lama alcança e elimina")
+	# bola: quem está no caminho é arremessado
+	await arena_round("bola")
+	r0 = main.robots[0]
+	var r1 = main.robots[1]
+	put(r1, Vector2(col_x(26), 384))
+	var hit := false
+	for i in 300:
+		await frames(1)
+		var bp: Vector2 = main.demo.fx.ball["pos"]
+		if i == 0 or r0.stun_t <= 0.0:
+			put(r0, Vector2(clampf(bp.x, col_x(6), col_x(23)), 576))
+		if r0.stun_t > 0.3 and absf(r0.velocity.y) > 0.0:
+			hit = true
+			break
+	check(hit, "bola de demolição arremessa o robô")
+	# paiol: quebrar 1 TNT explode os vizinhos em cadeia
+	await arena_round("paiol")
+	put(main.robots[0], Vector2(col_x(2), 576))
+	put(main.robots[1], Vector2(col_x(27), 576))
+	var before: int = main.level.blocks.size()
+	main.level.break_block(Vector2i(12, 9))
+	await frames(40)
+	var tnt_left := 0
+	for c in [Vector2i(14, 9), Vector2i(16, 9)]:
+		if main.level.blocks.has(c):
+			tnt_left += 1
+	check(before - main.level.blocks.size() > 6 and tnt_left == 0, "TNT explode em cadeia (%d caixotes destruídos)" % (before - main.level.blocks.size()))
+
+# ---------------------------------------------------------------- miniaturas e capturas das arenas
+func arenas_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	get_window().size = Vector2i(1920, 1080)
+	PlayerInput.virtual = {}
+	main.mode = "demolicao"
+	main.bot_level = 1
+	for k in 4:
+		main.add_bot()
+	main.start_match()
+	for a in main.demo.cfg["arenas"]:
+		main.arena_choice = a["id"]
+		main._clear_robots()
+		main.demo.start_round()
+		# miniatura: arena inteira, sem HUD e sem robôs
+		main.cam_lock = [1.0, Vector2(960, 512)]
+		main.hud.visible = false
+		for r in main.robots:
+			r.visible = false
+		await frames(8)
+		await RenderingServer.frame_post_draw
+		var img := get_viewport().get_texture().get_image()
+		img = img.get_region(Rect2i(0, 56, 1920, 1024))
+		img.resize(480, 256, Image.INTERPOLATE_LANCZOS)
+		img.save_png(dir.path_join("arena_%s.png" % a["id"]))
+		main.hud.visible = true
+		main.cam_lock = []
+		for r in main.robots:
+			r.visible = true
+		main.countdown = 0.0
+		for r in main.robots:
+			r.active = true
+		main.demo.item_t = 1.0
+		await frames(260)
+		await snap(dir, "jogo_%s" % a["id"])

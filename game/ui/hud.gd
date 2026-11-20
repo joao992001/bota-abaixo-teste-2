@@ -34,7 +34,7 @@ func _look(p: Dictionary) -> Dictionary:
 
 func _draw() -> void:
 	var S = main.S
-	if main.state in [S.MENU, S.MODES, S.HOWTO, S.OPTIONS]:
+	if main.state in main.MENU_STATES:
 		main.menus.draw(self)
 		return
 	match main.state:
@@ -198,8 +198,8 @@ func _draw_run() -> void:
 		if main.countdown > 0.0:
 			var note := Rect2(360, 900, 1200, 110)
 			panel(note)
-			Kit.text(self, Vector2(note.position.x, 945), "MARRETA quebra caixote e empurra  ·  PULE na cabeça para atordoar", 30, DARK, HORIZONTAL_ALIGNMENT_CENTER, note.size.x)
-			Kit.text(self, Vector2(note.position.x, 985), "▼ + MARRETA quebra o chão embaixo  ·  item: G / vírgula / Y", 26, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, note.size.x)
+			Kit.text(self, Vector2(note.position.x, 948), String(main.demo.arena.get("dica", "")), 34, DARK, HORIZONTAL_ALIGNMENT_CENTER, note.size.x)
+			Kit.text(self, Vector2(note.position.x, 988), "MARRETA quebra e empurra  ·  PULE na cabeça  ·  item: G / vírgula / Y", 24, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, note.size.x)
 	if main.countdown > 0.0:
 		var go: bool = main.countdown <= 0.6
 		var s := "VAI!" if go else "PRONTOS?"

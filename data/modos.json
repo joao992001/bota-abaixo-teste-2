@@ -71,7 +71,39 @@
       }
     },
     "stomp_immune_s": 1.4,
-    "stomp_side_push": 320
+    "stomp_side_push": 320,
+    "arenas": [
+      {
+        "id": "demolicao",
+        "nome": "Canteiro",
+        "dica": "Ilhas de caixotes. Terremoto aos 30 s!"
+      },
+      {
+        "id": "esteiras",
+        "nome": "Fábrica de Esteiras",
+        "dica": "As esteiras invertem a cada 7 s!"
+      },
+      {
+        "id": "guindastes",
+        "nome": "Guindastes",
+        "dica": "Plataformas que se movem!"
+      },
+      {
+        "id": "mare",
+        "nome": "Maré de Lama",
+        "dica": "A lama sobe! Suba brigando."
+      },
+      {
+        "id": "bola",
+        "nome": "Bola de Demolição",
+        "dica": "Cuidado com a bola gigante!"
+      },
+      {
+        "id": "paiol",
+        "nome": "Paiol de TNT",
+        "dica": "TNT explode em cadeia!"
+      }
+    ]
   },
   "bots": {
     "nota": "react_s = tempo de reação; hammer_acc = chance de marretar quando dá; safety = chance de checar buraco antes de andar",

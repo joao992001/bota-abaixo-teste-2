@@ -19,6 +19,11 @@ var booms: Array = []        # explosões desenhadas {pos, t}
 var item_t := 4.0
 var canvas: Node2D           # desenha itens, dinamites e explosões no mundo
 var crumbling := false       # quebra por ter ficado parado em cima (culpa de quem estava em cima)
+const ArenaFx := preload("res://modes/arena_fx.gd")
+var fx: Node2D = null        # mecânicas da arena (plataformas, lama, bola, esteiras)
+var arena := {}              # {id, nome, dica} da rodada atual
+var last_arena := ""
+var tnt_queue: Array = []    # TNT quebrado explode logo depois: {pos, t}
 
 func setup(m: Node) -> void:
 	main = m
@@ -30,9 +35,29 @@ func c(key: String) -> float:
 func item_cfg(kind: String) -> Dictionary:
 	return cfg["itens"][kind]
 
+## Arena da rodada: a escolhida ou, no sorteio, uma diferente da anterior.
+func pick_arena() -> Dictionary:
+	var list: Array = cfg["arenas"]
+	var choice: String = main.arena_choice
+	if choice != "sorteio":
+		for a in list:
+			if a["id"] == choice:
+				return a
+	var opts := list.filter(func(a): return a["id"] != last_arena)
+	return opts[main.rng.randi() % opts.size()]
+
 ## Nova rodada: arena nova, robôs nos spawns de acordo com o número de jogadores.
 func start_round() -> void:
-	main.load_arena("demolicao")
+	arena = pick_arena()
+	last_arena = arena["id"]
+	main.load_arena(arena["id"])
+	if fx != null and is_instance_valid(fx):
+		fx.queue_free()
+	fx = ArenaFx.new()
+	main.world.add_child(fx)
+	main.world.move_child(fx, 1)
+	fx.setup(main, main.level)
+	tnt_queue.clear()
 	main.level.block_hp = int(c("block_hp"))
 	for b in main.level.blocks.values():
 		b["hp"] = main.level.block_hp
@@ -49,7 +74,7 @@ func start_round() -> void:
 	dynamites.clear()
 	booms.clear()
 	item_t = 4.0
-	banner = "DERRUBE OS OUTROS!"
+	banner = String(arena["nome"]).to_upper()
 	banner_t = 2.2
 	var n: int = main.players.size()
 	var spots: Array = cfg["spawns_by_players"].get(str(n), [1, 2, 3, 4])
@@ -61,8 +86,15 @@ func start_round() -> void:
 func update(dt: float) -> void:
 	banner_t = maxf(banner_t - dt, 0.0)
 	_update_fx(dt)
+	if fx != null and is_instance_valid(fx):
+		fx.update(dt, main.countdown <= 0.0)
 	if main.countdown > 0.0:
 		return
+	for q in tnt_queue:
+		q["t"] -= dt
+		if q["t"] <= 0.0:
+			explode(q["pos"], 150.0)
+	tnt_queue = tnt_queue.filter(func(q): return q["t"] > 0.0)
 	t += dt
 	var lv = main.level
 	var alive: Array = main.robots.filter(func(r): return r.alive)
@@ -118,7 +150,8 @@ func update(dt: float) -> void:
 			if b["warn"] <= 0.0:
 				lv.break_block(cell)
 	# terremoto depois de um tempo: garante que a rodada acaba
-	if t >= c("quake_start_s"):
+	var quake_at := float(main.level.prop("terremoto", str(c("quake_start_s"))))
+	if quake_at > 0.0 and t >= quake_at:
 		if not quaking:
 			quaking = true
 			banner = "TERREMOTO!"
@@ -158,7 +191,21 @@ func _update_items(dt: float, alive: Array) -> void:
 	for it in items:
 		it["t"] += dt
 		var cell := Vector2i(int(it["pos"].x / 64.0), int(floor((it["pos"].y + 26.0) / 64.0)))
-		if lv.is_solid(cell) and it["pos"].y + 26.0 >= cell.y * 64.0:
+		var plat = fx.platform_at(it["pos"] + Vector2(0, 26)) if fx != null and is_instance_valid(fx) else null
+		if plat != null and it["vy"] >= 0.0:
+			# pousou numa plataforma que se move: anda junto
+			var pp: Vector2 = plat["body"].position
+			if it.get("plat") == plat:
+				it["pos"].x += pp.x - it["plat_x"]
+			it["plat"] = plat
+			it["plat_x"] = pp.x
+			it["pos"].y = pp.y - 26.0
+			it["vy"] = 0.0
+		elif lv.extra_solid.is_valid() and lv.extra_solid.call(cell):
+			it["plat"] = null
+			it["vy"] = minf(it["vy"] + 900.0 * dt, 420.0)
+			it["pos"].y += it["vy"] * dt
+		elif lv.is_solid(cell) and it["pos"].y + 26.0 >= cell.y * 64.0:
 			it["pos"].y = cell.y * 64.0 - 26.0
 			it["vy"] = 0.0
 		else:
@@ -221,10 +268,11 @@ func _update_dynamites(dt: float, alive: Array) -> void:
 			d["t"] = 999.0
 	dynamites = dynamites.filter(func(d): return d["t"] < 999.0)
 
-## Explosão: destrói caixotes no raio e lança os robôs para longe.
-func explode(pos: Vector2) -> void:
+## Explosão: destrói caixotes no raio e lança os robôs para longe (TNT tem raio maior).
+func explode(pos: Vector2, rad := -1.0) -> void:
 	var dc := item_cfg("dinamite")
-	var rad := float(dc["radius_px"])
+	if rad < 0.0:
+		rad = float(dc["radius_px"])
 	var lv = main.level
 	for cell in lv.blocks.keys():
 		if (Vector2(cell * 64) + Vector2(32, 32)).distance_to(pos) < rad:
@@ -311,8 +359,10 @@ func hammer(r) -> void:
 			lv.damage(cell, int(item_cfg("martelao")["block_damage"]) if big else 1)
 			return
 
-func _on_block_broken(cell: Vector2i) -> void:
+func _on_block_broken(cell: Vector2i, kind: String) -> void:
 	var center := Vector2(cell * 64) + Vector2(32, 32)
+	if kind == "tnt":
+		tnt_queue.append({"pos": center, "t": 0.18})   # explode logo depois (dá para ver a reação em cadeia)
 	# quem estava em cima caiu por golpe/explosão/terremoto (não "sozinho"), a não ser que tenha ficado parado
 	for r in main.robots:
 		if r.alive and absf(r.position.x - center.x) < 56.0 and absf(r.position.y - cell.y * 64.0) < 6.0:

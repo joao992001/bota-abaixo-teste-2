@@ -14,7 +14,13 @@ var skin: Node = null       # arte do mapa (opcional); sem ela, formas simples
 var door_open := 0.0        # 0 fechado .. 1 aberto (main anima)
 var blocks := {}            # caixotes destrutíveis 'd': Vector2i -> {hp, body, load, warn}
 var block_hp := 2
-signal block_broken(cell: Vector2i)
+signal block_broken(cell: Vector2i, kind: String)
+var props := {}             # cabeçalho do .lvl ("chave: valor"): mecânicas da arena
+var belts: Array = []       # esteiras do mapa: {body, dir, cells}
+var belt_speed := 192.0
+var belt_warn := false      # esteiras piscando antes de inverter
+var extra_solid := Callable()   # sólidos que se movem (plataformas do guindaste), para bots e itens
+var anim_t := 0.0
 
 func load_level(level_id: String) -> void:
 	id = level_id
@@ -28,6 +34,9 @@ func load_level(level_id: String) -> void:
 			var p := line.substr(5).strip_edges().split("x")
 			cols = int(p[0])
 			rows = int(p[1])
+		elif ":" in line and not line.begins_with("#"):
+			var kv := line.split(":", true, 1)
+			props[kv[0].strip_edges()] = kv[1].strip_edges().trim_prefix("\"").trim_suffix("\"")
 		elif line.begins_with("=== map"):
 			in_map = true
 	if grid.size() != rows:
@@ -53,7 +62,19 @@ func ch_at(c: Vector2i) -> String:
 	return String(grid[c.y])[c.x]
 
 func is_solid(c: Vector2i) -> bool:
-	return ch_at(c) in ["#", "o", "I", "d"]
+	if ch_at(c) in ["#", "o", "I", "d", "T", "<", ">"]:
+		return true
+	return extra_solid.is_valid() and extra_solid.call(c)
+
+func prop(key: String, default = null):
+	return props.get(key, default)
+
+## Inverte todas as esteiras do mapa (a velocidade de plataforma da Godot carrega quem está em cima).
+func flip_belts() -> void:
+	for b in belts:
+		b["dir"] = -b["dir"]
+		b["body"].constant_linear_velocity = Vector2(b["dir"] * belt_speed, 0)
+	queue_redraw()
 
 ## Caixote destrutível: perde vida; quebra em 0. Retorna true se quebrou.
 func damage(c: Vector2i, amount := 1) -> bool:
@@ -71,10 +92,11 @@ func break_block(c: Vector2i) -> void:
 		return
 	blocks[c]["body"].queue_free()
 	blocks.erase(c)
+	var kind: String = "tnt" if ch_at(c) == "T" else "caixote"
 	var row := String(grid[c.y])
 	grid[c.y] = row.substr(0, c.x) + "." + row.substr(c.x + 1)
 	queue_redraw()
-	block_broken.emit(c)
+	block_broken.emit(c, kind)
 
 func can_build(c: Vector2i) -> bool:
 	return ch_at(c) == "."
@@ -94,7 +116,27 @@ func _build_colliders() -> void:
 			var ch := ch_at(Vector2i(x, y))
 			if ch == "o" or ch == "I":
 				ch = "#"
-			if ch == "d":
+			if ch == "<" or ch == ">":
+				# esteira do mapa: um corpo por trecho contínuo, com velocidade de plataforma
+				var x0b := x
+				while x < cols and ch_at(Vector2i(x, y)) == ch:
+					x += 1
+				var bb := StaticBody2D.new()
+				bb.collision_layer = 1
+				bb.collision_mask = 0
+				var bcs := CollisionShape2D.new()
+				var brs := RectangleShape2D.new()
+				brs.size = Vector2((x - x0b) * T, T)
+				bcs.shape = brs
+				bcs.position = Vector2(x0b * T + brs.size.x / 2.0, y * T + T / 2.0)
+				bb.add_child(bcs)
+				add_child(bb)
+				belt_speed = float(prop("esteira_vel", "3")) * T
+				var dir := 1 if ch == ">" else -1
+				bb.constant_linear_velocity = Vector2(dir * belt_speed, 0)
+				belts.append({"body": bb, "dir": dir, "x0": x0b, "x1": x, "y": y})
+				continue
+			if ch == "d" or ch == "T":
 				# caixote destrutível: corpo próprio para poder sumir sozinho
 				var body := StaticBody2D.new()
 				body.collision_layer = 1
@@ -113,7 +155,7 @@ func _build_colliders() -> void:
 				x += 1
 				continue
 			var x0 := x
-			while x < cols and (ch_at(Vector2i(x, y)) == ch or (ch == "#" and is_solid(Vector2i(x, y)) and ch_at(Vector2i(x, y)) != "d")):
+			while x < cols and (ch_at(Vector2i(x, y)) == ch or (ch == "#" and ch_at(Vector2i(x, y)) in ["#", "o", "I"])):
 				x += 1
 			var cs := CollisionShape2D.new()
 			var r := RectangleShape2D.new()
@@ -174,10 +216,22 @@ func _draw_art() -> void:
 			match ch_at(c):
 				"#":
 					draw_texture_rect(Data.tex("cenario/caixote_%d" % ((x * 7 + y * 3) % 3)), Rect2(pos, tile), false)
-				"d":
+				"d", "T":
 					_draw_block_d(c, pos)
+				"<", ">":
+					draw_texture_rect(Data.tex("cenario/esteira_piso"), Rect2(pos, tile), false)
 				"^":
 					draw_texture_rect(Data.tex("cenario/espinho_%d" % ((x * 5 + y) % 3)), Rect2(pos + Vector2(0, T - 128), Vector2(T, 128)), false)
+	for b in belts:
+		if belt_warn and fmod(anim_t, 0.25) < 0.12:
+			continue
+		var off := fposmod(anim_t * belt_speed * 0.5 * b["dir"], 32.0)
+		var x := float(b["x0"] * T) + off
+		while x < b["x1"] * T - 8:
+			var p := Vector2(x + 8, b["y"] * T + 9)
+			var d := float(b["dir"])
+			draw_polyline(PackedVector2Array([p + Vector2(-4 * d, -5), p + Vector2(3 * d, 0), p + Vector2(-4 * d, 5)]), Color("#fff4c8") if not belt_warn else Color("#f2c84b"), 2.6, true)
+			x += 32.0
 	if elevator_cell.x >= 0:
 		var e := Vector2(elevator_cell.x * T - 32, (elevator_cell.y - 2) * T)
 		var tx := Data.tex("cenario/elevador")
@@ -191,7 +245,10 @@ func _draw_art() -> void:
 			draw_texture_rect_region(tx, Rect2(e + Vector2(25, 47), Vector2(38 - o, 145)), Rect2(Vector2(25 + o, 47) * sc, Vector2(38 - o, 145) * sc))
 			draw_texture_rect_region(tx, Rect2(e + Vector2(65 + o, 47), Vector2(38 - o, 145)), Rect2(Vector2(65, 47) * sc, Vector2(38 - o, 145) * sc))
 
-func _process(_dt: float) -> void:
+func _process(dt: float) -> void:
+	anim_t += dt
+	if belts.size() > 0:
+		queue_redraw()
 	if door_open > 0.0 or _was_open:
 		queue_redraw()
 	for b in blocks.values():
@@ -208,7 +265,8 @@ func _draw_block_d(c: Vector2i, pos: Vector2) -> void:
 	var off := Vector2.ZERO
 	if b.get("warn", 0.0) > 0.0:
 		off = Vector2(randf_range(-3, 3), randf_range(-2, 2))
-	draw_texture_rect(Data.tex("cenario/caixote_%d" % ((c.x * 7 + c.y * 3) % 3)), Rect2(pos + off, Vector2(T, T)), false)
+	var tx := Data.tex("cenario/tnt") if ch_at(c) == "T" else Data.tex("cenario/caixote_%d" % ((c.x * 7 + c.y * 3) % 3))
+	draw_texture_rect(tx, Rect2(pos + off, Vector2(T, T)), false)
 	var dmg := block_hp - int(b.get("hp", block_hp))
 	var crack := Color("#5a3a1c")
 	if dmg >= 1 or b.get("load", 0.0) > 0.0:
