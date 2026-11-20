@@ -29,7 +29,7 @@ Não diga que algo funciona sem ter rodado. Se a Godot não estiver instalada ou
 ## Nunca
 - Copiar personagens, logotipos, nomes, emblemas ou fundos exatos das referências. **Copie o estilo** (traço, formas, cores, efeitos), não o conteúdo.
 - Usar IA geradora de imagem ou áudio (desligado neste projeto).
-- Adicionar online, campanha, bots jogáveis ou editor de mapas.
+- Adicionar online, campanha ou editor de mapas. (Bots: liberados pelo usuário em 2026-11-20, para jogar contra o computador no Modo Festa.)
 
 ## Estrutura
 ```

@@ -60,6 +60,16 @@ func _draw_strip() -> void:
 		text(Vector2(40 + i * 260, 42), "P%d %d" % [i + 1, p["score"]], 34, Data.TEXT_COLORS[p["color"]])
 		if main.mode == "demolicao":
 			star(Vector2(40 + i * 260 + 112, 29), 13, Data.TEXT_COLORS[p["color"]])
+			if main.state == S.RUN and i < main.robots.size() and main.robots[i].alive:
+				var fx: Dictionary = main.robots[i].fx_flags()
+				var ix: float = 40 + i * 260 + 132
+				for k in ["item", "martelao", "capacete", "mola"]:
+					var on = fx[k]
+					if k == "item":
+						on = fx[k] != ""
+					if on:
+						draw_texture_rect(Data.tex("itens/" + ("dinamite" if k == "item" else k)), Rect2(ix, 8, 40, 40), false)
+						ix += 36
 	var names := {S.JOIN: "ENTRADA", S.PICK: "ESCOLHA", S.BUILD: "CONSTRUÇÃO", S.RUN: "CORRIDA", S.SCORE: "PLACAR", S.WIN: "VITÓRIA"}
 	var label: String = names[main.state]
 	if main.mode == "demolicao" and main.state in [S.RUN, S.SCORE]:
@@ -86,10 +96,14 @@ func _draw_join() -> void:
 			text(r.position + Vector2(0, 52), "P%d" % (i + 1), 46, col, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 10)
 			text(r.position + Vector2(0, 382), "◄ %s ►   ▲▼ %s" % [Data.COLOR_NAMES[p["color"]], Data.MODEL_NAMES[p["model"]]], 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 6)
 			text(r.position + Vector2(0, 412), "marreta: %s" % Data.ACC_NAMES[p["acc"]], 20, Color("#d9f3f6"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-			text(r.position + Vector2(0, 30), PlayerInput.label(p["dev"]), 18, Color("#d9f3f6"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+			var lab: String = PlayerInput.label(p["dev"])
+			if p.get("bot", false):
+				lab = "BOT · %s" % main.bots.LEVEL_NAMES[p.get("level", 1)]
+			text(r.position + Vector2(0, 30), lab, 18 if not p.get("bot", false) else 24, Color("#d9f3f6") if not p.get("bot", false) else Color("#ffd23f"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		else:
 			text(r.position + Vector2(0, 220), "livre", 40, Color(1, 1, 1, 0.4), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-	text(Vector2(0, 900), "Teclado A: WASD, Espaço pula, F marreta (Backspace sai)  ·  Teclado B: setas, Ctrl direito pula, ponto marreta (Delete sai)  ·  Controle: A pula, X marreta", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
+	text(Vector2(0, 880), "Teclado A: WASD · Espaço pula · F marreta · G item (Backspace sai)   |   Teclado B: setas · Ctrl dir. pula · ponto marreta · vírgula item (Delete sai)", 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
+	text(Vector2(0, 920), "Controle: A pula · X marreta · Y item · Select sai      BOTS:  B adiciona · N remove · M dificuldade (%s)" % main.bots.LEVEL_NAMES[main.bot_level], 24, Color("#fff4c8"), HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
 
 func _dev_name(dev: String) -> String:
 	match dev:

@@ -50,7 +50,10 @@ func stretch() -> void:
 	sq = Vector2(0.78, 1.28)
 
 func look() -> Dictionary:
-	return {"color": color_idx, "model": model, "acc": acc, "hammer": has_hammer}
+	var lk := {"color": color_idx, "model": model, "acc": acc, "hammer": has_hammer}
+	if robot != null and robot.has_method("fx_flags"):
+		lk["fx"] = robot.fx_flags()
+	return lk
 
 func tick(r, dt: float) -> void:
 	robot = r
@@ -218,9 +221,11 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 	var hf: Vector2 = bx * _v(g["hand_front"]) + pose["hf_off"]
 	var hb: Vector2 = bx * _v(g["hand_back"]) + pose["hb_off"]
 	# marreta (atrás do corpo)
+	var fx: Dictionary = lk.get("fx", {})
 	if lk.get("hammer", true):
-		ci.draw_set_transform_matrix(base * Transform2D(pose["hammer_ang"], q, 0.0, hf))
-		ci.draw_texture(Data.tex("robo/marreta"), -GRIP * 4.0)
+		var big: bool = fx.get("martelao", false)
+		ci.draw_set_transform_matrix(base * Transform2D(pose["hammer_ang"], q * (1.55 if big else 1.0), 0.0, hf))
+		ci.draw_texture(Data.tex("robo/marreta"), -GRIP * 4.0, Color(1.0, 0.82, 0.3) if big else Color.WHITE)
 	# pernas + botas
 	var foot := Data.tex("robo/pe")
 	for i in 2:
@@ -228,6 +233,10 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 		var hip: Vector2 = bx * _v(hips[i])
 		var fp: Vector2 = Vector2(_v(hips[i]).x + s * 4.0, -4.0) + pose["feet"][i]
 		_limb(ci, base, hip, fp, limb, pose["knee"][i])
+		if fx.get("mola", false):
+			ci.draw_set_transform_matrix(base)
+			for k in 3:
+				ci.draw_arc(fp + Vector2(s * 1.5, 4.0 + k * 3.0), 5.0, 0.0, TAU, 12, Color("#8e98a8"), 1.6, true)
 		ci.draw_set_transform_matrix(base * Transform2D(0.0, q * 0.72, 0.0, fp + Vector2(s * 1.5, 0.5)))
 		ci.draw_texture(foot, -Vector2(12, 7) * 4.0, limb)
 	_limb(ci, base, bx * _v(sh[0]), hb, limb, Vector2(0, 3))
@@ -245,6 +254,15 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 		var hs := float(h[2]) * 0.25
 		ci.draw_set_transform_matrix(base * bx * Transform2D(pose["ant"] * 0.15, Vector2(hs, hs), 0.0, _v(h)))
 		ci.draw_texture(Data.tex("robo/acc_" + Data.ACCS[accessory]), -Vector2(64, 64) * 4.0)
+	var ha: Array = g["hat"]
+	if fx.get("capacete", false):
+		var size := 64.0 * (60.0 * float(ha[2]) / 52.0)
+		ci.draw_set_transform_matrix(base * bx)
+		ci.draw_texture_rect(Data.tex("itens/capacete"), Rect2(_v(ha) - Vector2(size / 2.0, size * 45.0 / 64.0), Vector2(size, size)), false)
+	if fx.get("item", "") == "dinamite":
+		ci.draw_set_transform_matrix(base * bx)
+		var bobd := sin(Time.get_ticks_msec() / 150.0) * 2.0
+		ci.draw_texture_rect(Data.tex("itens/dinamite"), Rect2(_v(ha) + Vector2(-11, -38 + bobd), Vector2(22, 22)), false)
 	_limb(ci, base, bx * _v(sh[1]), hf, limb, Vector2(0, 3))
 	var hand := Data.tex("robo/mao")
 	for p in [hb, hf]:

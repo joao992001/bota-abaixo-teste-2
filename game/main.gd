@@ -10,6 +10,7 @@ const Hud := preload("res://ui/hud.gd")
 const Debris := preload("res://fx/debris.gd")
 const RobotVis := preload("res://player/robot_visual.gd")
 const Demolicao := preload("res://modes/demolicao.gd")
+const Bots := preload("res://modes/bots.gd")
 const PIECE_SCRIPTS := {
 	"P01": preload("res://pieces/viga.gd"),
 	"P02": preload("res://pieces/mola.gd"),
@@ -48,6 +49,10 @@ const SHAKE_ON := true
 var door_open := 0.0
 var mode := "demolicao"      # Modo Festa: "demolicao" · modo antigo de peças: "construcao" (F7 na entrada)
 var demo: Node
+var bots: Node
+var fall_log: Array = []
+var self_falls := 0          # quedas sem ter levado golpe nos últimos 2 s (bots: deve ficar perto de 0)
+var bot_level := 1            # 0 fácil, 1 médio, 2 difícil (M na entrada)
 var match_over := false
 var cam_lock: Array = []      # [zoom, centro] fixa a câmera (capturas de animação)
 
@@ -103,6 +108,9 @@ func _ready() -> void:
 	demo = Demolicao.new()
 	demo.setup(self)
 	add_child(demo)
+	bots = Bots.new()
+	bots.setup(self)
+	add_child(bots)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
 		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo"):
@@ -130,6 +138,7 @@ func _physics_process(dt: float) -> void:
 		S.BUILD: _build_update(dt)
 		S.RUN:
 			if mode == "demolicao":
+				bots.update(dt)
 				demo.update(dt)
 			_run_update(dt)
 		S.SCORE:
@@ -455,6 +464,7 @@ func _clear_robots() -> void:
 
 func _demo_next_round() -> void:
 	round_no += 1
+	bots.reset()
 	_clear_robots()
 	demo.start_round()
 
@@ -525,6 +535,12 @@ func check_contacts(r: CharacterBody2D) -> void:
 func kill(r: CharacterBody2D, owner: int, pc: Node2D) -> void:
 	if not r.alive or r.finished:
 		return
+	if r.last_hit > 2.0 and r.fall_reason == "":
+		self_falls += 1
+	if r.last_hit > 2.0:
+		fall_log.append("P%d %s %s" % [r.pid + 1, str(Vector2i(r.position / 64.0)), r.fall_reason if r.fall_reason != "" else "andou"])
+		if r.has_meta("takeoff"):
+			print("    QUEDA P%d — saiu do chão: %s" % [r.pid + 1, r.get_meta("takeoff")])
 	r.eliminate()
 	if owner >= 0 and owner != r.pid:
 		round_kills[owner] = round_kills.get(owner, 0) + 1
@@ -536,6 +552,32 @@ func finish(r: CharacterBody2D) -> void:
 	r.finish()
 	finish_order.append(r.pid)
 	float_text(r.position + Vector2(0, -100), "1º!" if finish_order.size() == 1 else "%dº" % finish_order.size(), player_color(r.pid))
+
+func use_item(r: CharacterBody2D) -> void:
+	if mode == "demolicao":
+		demo.use_item(r)
+
+## Bot entra como jogador com dispositivo virtual (o cérebro em modes/bots.gd aperta os botões).
+func add_bot() -> void:
+	if players.size() >= 4:
+		return
+	var n := 1
+	while ("bot%d" % n) in PlayerInput.slots:
+		n += 1
+	var dev := "bot%d" % n
+	PlayerInput.virtual[dev] = {}
+	add_player(dev)
+	players[-1]["bot"] = true
+	players[-1]["level"] = bot_level
+	players[-1]["model"] = rng.randi() % Data.MODELS.size()
+
+func remove_last_bot() -> void:
+	for i in range(players.size() - 1, -1, -1):
+		if players[i].get("bot", false):
+			PlayerInput.virtual.erase(players[i]["dev"])
+			players.remove_at(i)
+			PlayerInput.slots.remove_at(i)
+			return
 
 func try_hammer(r: CharacterBody2D) -> void:
 	if mode == "demolicao":
@@ -723,6 +765,18 @@ func _input(e: InputEvent) -> void:
 			KEY_F7:
 				if state == S.JOIN:
 					mode = "construcao" if mode == "demolicao" else "demolicao"
+			KEY_B:
+				if state == S.JOIN:
+					add_bot()
+			KEY_N:
+				if state == S.JOIN:
+					remove_last_bot()
+			KEY_M:
+				if state == S.JOIN:
+					bot_level = (bot_level + 1) % 3
+					for p in players:
+						if p.get("bot", false):
+							p["level"] = bot_level
 	elif e is InputEventMouseButton and e.pressed and state != S.JOIN:
 		var c := Vector2i((world.get_local_mouse_position() / T).floor())
 		if e.button_index == MOUSE_BUTTON_LEFT:

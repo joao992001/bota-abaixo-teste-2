@@ -19,3 +19,4 @@
 - 2026-11-20 · Teclado sem Shift (Windows manda Shift fantasma nas setas com NumLock: era a marreta sozinha do vídeo); teclado A marreta = F/E; teclado B pula com Ctrl direito, marreta = ponto, / ou Enter num.; teclas lidas por evento com esquerda/direita — usuário (vídeo) + sessão principal.
 - 2026-11-20 · Jogo abre em tela cheia (display/window/size/mode=3); F11 alterna tela cheia/janela 1280x720 — usuário.
 - 2026-11-20 · **Novo núcleo: Modo Festa** (Demolição primeiro; depois Rei da Obra, Corrida Sabotada, Torre Maluca). Robôs agora se atrapalham direto (marretada empurra, pisão atordoa). Modo de peças vira F7 — usuário.
+- 2026-11-20 · Demolição: caixote com 3 de vida, racha parado em 2,5 s e cai em 4 s, terremoto aos 30 s; itens (dinamite arremessável, martelão, capacete de aço, botas de mola) caem do céu; bots (fácil/médio/difícil) liberados — usuário.

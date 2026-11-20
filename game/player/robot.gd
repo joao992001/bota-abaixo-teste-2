@@ -26,6 +26,11 @@ var was_on_floor := true
 var spin := 0.0
 var wall_sliding := false
 var stun_t := 0.0            # atordoado: ignora o controle (pisão na cabeça, marretada)
+var item := ""               # item guardado (dinamite), usado com o botão de item
+var fx_t := {"martelao": 0.0, "mola": 0.0}   # efeitos com tempo
+var shield := 0              # capacete de aço: golpes que ainda aguenta
+var fall_reason := ""
+var last_hit := 99.0         # segundos desde o último golpe (para saber se caiu sozinho)
 var wall_dust := 0.0
 var vis: Node2D
 
@@ -66,6 +71,11 @@ func _physics_process(dt: float) -> void:
 	var ix := _ix()
 	var on_floor := is_on_floor()
 	stun_t = maxf(stun_t - dt, 0.0)
+	last_hit += dt
+	for k in fx_t:
+		fx_t[k] = maxf(fx_t[k] - dt, 0.0)
+	if _pressed("item") and item != "":
+		main.use_item(self)
 	# timers
 	coyote = maxf(coyote - dt, 0.0)
 	buffer = maxf(buffer - dt, 0.0)
@@ -99,7 +109,7 @@ func _physics_process(dt: float) -> void:
 	# sustain: velocidade de subida mantida enquanto segura, até var_jump_time
 	if var_jump > 0.0:
 		if _held("jump"):
-			velocity.y = minf(velocity.y, -f("jump_speed"))
+			velocity.y = minf(velocity.y, -_jump_speed())
 			var_jump -= dt
 		else:
 			var_jump = 0.0
@@ -160,8 +170,30 @@ func _pressed(a: String) -> bool:
 func _ix() -> float:
 	return 0.0 if stun_t > 0.0 else PlayerInput.axis_x(pid)
 
-## Empurrão (marretada): sai voando para o lado e fica atordoado.
+func _jump_speed() -> float:
+	var js := float(c["jump_speed"])
+	if fx_t["mola"] > 0.0:
+		js *= float(main.demo.item_cfg("mola")["jump_mult"])
+	return js
+
+## O capacete de aço aguenta o golpe? (gasta o escudo)
+func absorb() -> bool:
+	if shield <= 0:
+		return false
+	shield -= 1
+	main.spark(rect().get_center() + Vector2(0, -30), 8)
+	main.float_text(position + Vector2(0, -110), "BLOQUEOU!", Color.WHITE)
+	vis.land()
+	return true
+
+func fx_flags() -> Dictionary:
+	return {"martelao": fx_t["martelao"] > 0.0, "mola": fx_t["mola"] > 0.0, "capacete": shield > 0, "item": item}
+
+## Empurrão (marretada, explosão): sai voando para o lado e fica atordoado. O capacete bloqueia.
 func knock(dir: int, vx: float, vy: float, stun: float) -> void:
+	last_hit = 0.0
+	if absorb():
+		return
 	own_vx = dir * vx
 	velocity.y = -vy
 	var_jump = 0.0
@@ -169,7 +201,7 @@ func knock(dir: int, vx: float, vy: float, stun: float) -> void:
 	vis.stretch()
 
 func _jump(ix: float) -> void:
-	velocity.y = -f("jump_speed")
+	velocity.y = -_jump_speed()
 	own_vx += ix * f("jump_h_boost")
 	var_jump = f("var_jump_time")
 	buffer = 0.0
@@ -178,7 +210,7 @@ func _jump(ix: float) -> void:
 	main.dust(position)
 
 func _wall_jump(wd: int) -> void:
-	velocity.y = -f("jump_speed")
+	velocity.y = -_jump_speed()
 	own_vx = -wd * f("wall_jump_h_speed")
 	facing = -wd
 	wall_lock = f("wall_jump_lock_time")

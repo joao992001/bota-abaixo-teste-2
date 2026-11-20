@@ -5,12 +5,12 @@ extends Node
 ## Teclas lidas por evento (_input), para separar Ctrl esquerdo/direito; "ctrl_r" = só o Ctrl direito.
 ## Controle: analógico/direcional + A (pular) + X/B/RB (marreta) + Start. Enter/Start começa a partida.
 
-const ACTIONS := ["left", "right", "up", "down", "jump", "hammer", "start", "back"]
+const ACTIONS := ["left", "right", "up", "down", "jump", "hammer", "item", "start", "back"]
 const KEYMAP := {
 	"kb_a": {"left": [KEY_A], "right": [KEY_D], "up": [KEY_W], "down": [KEY_S],
-		"jump": [KEY_SPACE], "hammer": [KEY_F, KEY_E], "start": [KEY_ENTER], "back": [KEY_BACKSPACE]},
+		"jump": [KEY_SPACE], "hammer": [KEY_F, KEY_E], "item": [KEY_G, KEY_Q], "start": [KEY_ENTER], "back": [KEY_BACKSPACE]},
 	"kb_b": {"left": [KEY_LEFT], "right": [KEY_RIGHT], "up": [KEY_UP], "down": [KEY_DOWN],
-		"jump": ["ctrl_r", KEY_KP_0, KEY_L], "hammer": [KEY_PERIOD, KEY_SLASH, KEY_KP_ENTER, KEY_K], "start": [KEY_ENTER], "back": [KEY_DELETE]},
+		"jump": ["ctrl_r", KEY_KP_0, KEY_L], "hammer": [KEY_PERIOD, KEY_SLASH, KEY_KP_ENTER, KEY_K], "item": [KEY_COMMA, KEY_J, KEY_KP_1], "start": [KEY_ENTER], "back": [KEY_DELETE]},
 }
 
 var slots: Array = []   # dispositivo de cada jogador (índice = jogador)
@@ -55,8 +55,9 @@ func _read(dev: String) -> Dictionary:
 		s["up"] = y < -0.45 or Input.is_joy_button_pressed(j, JOY_BUTTON_DPAD_UP)
 		s["down"] = y > 0.45 or Input.is_joy_button_pressed(j, JOY_BUTTON_DPAD_DOWN)
 		s["jump"] = Input.is_joy_button_pressed(j, JOY_BUTTON_A)
-		s["hammer"] = Input.is_joy_button_pressed(j, JOY_BUTTON_X) or Input.is_joy_button_pressed(j, JOY_BUTTON_B) \
-			or Input.is_joy_button_pressed(j, JOY_BUTTON_RIGHT_SHOULDER)
+		s["hammer"] = Input.is_joy_button_pressed(j, JOY_BUTTON_X) or Input.is_joy_button_pressed(j, JOY_BUTTON_RIGHT_SHOULDER)
+		s["item"] = Input.is_joy_button_pressed(j, JOY_BUTTON_Y) or Input.is_joy_button_pressed(j, JOY_BUTTON_B) \
+			or Input.is_joy_button_pressed(j, JOY_BUTTON_LEFT_SHOULDER)
 		s["start"] = Input.is_joy_button_pressed(j, JOY_BUTTON_START)
 		s["back"] = Input.is_joy_button_pressed(j, JOY_BUTTON_BACK)
 	return s
@@ -99,6 +100,8 @@ func label(dev: String) -> String:
 	match dev:
 		"kb_a": return "teclado A"
 		"kb_b": return "teclado B"
+	if dev.begins_with("bot"):
+		return "BOT"
 	if dev.begins_with("joy"):
 		var nm := Input.get_joy_name(int(dev.substr(3)))
 		return "controle %d: %s" % [int(dev.substr(3)) + 1, nm.substr(0, 22)]
