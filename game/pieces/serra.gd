@@ -16,6 +16,13 @@ func _draw() -> void:
 	var c := Vector2(32, 32)
 	var safe := (not ghost) and owner_near(1.5 * T) and not rival_near(2 * T)
 	var ang := 0.0 if safe else t * 9.0
+	var blade := Data.tex("pecas/serra_dono" if safe else "pecas/serra_rival")
+	if blade != null:
+		draw_set_transform(c, ang)
+		draw_texture_rect(blade, Rect2(-32, -32, 64, 64), false)
+		draw_set_transform(Vector2.ZERO)
+		draw_art("serra_cubo", Rect2(0, 0, 64, 64))
+		return
 	var teeth := 10
 	if not safe:
 		var pts := PackedVector2Array()

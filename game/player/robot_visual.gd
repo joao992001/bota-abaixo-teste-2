@@ -1,20 +1,27 @@
 extends Node2D
-## Visual do robô: squash/stretch e expressão. Formas simples até a arte cut-out entrar.
+## Visual cut-out do robô: corpo, rosto (expressão), pés, mãos, marreta e acessório como partes separadas
+## (PNGs 2x de art/out/game/robo). Squash/stretch e virar de lado por escala; nunca mexe na hitbox.
+## Tela das partes: 128x128 (px de jogo) com a origem do robô (pés no chão) em (64,120).
 
-const Piece := preload("res://pieces/piece.gd")
+const ORIGIN := Vector2(64, 120)
+const HAND := Vector2(94, 94)      # mão da marreta (pega)
+const HAND2 := Vector2(40, 98)
+const GRIP := Vector2(32, 54)      # pega dentro da textura da marreta (64x64)
+const REST := 0.75                 # ângulo da marreta parada (rad, horário)
 
 var color_idx := 0
-var pid := 0
+var acc := 0
 var expression := "normal"
 var sq := Vector2.ONE
 var facing := 1
 var hammer := 0.0
 var run_t := 0.0
 var moving := false
+var airborne := false
 
-func setup(col_idx: int, p: int) -> void:
+func setup(col_idx: int, accessory: int) -> void:
 	color_idx = col_idx
-	pid = p
+	acc = accessory
 
 func land() -> void:
 	sq = Vector2(1.25, 0.8)
@@ -27,86 +34,58 @@ func tick(robot, dt: float) -> void:
 	facing = robot.facing
 	hammer = robot.hammer_anim
 	moving = absf(robot.velocity.x) > 40 and robot.is_on_floor()
-	run_t += dt * (12.0 if moving else 2.0)
+	airborne = not robot.is_on_floor()
+	run_t += dt * (14.0 if moving else 2.5)
 	if robot.alive and not robot.finished:
-		if robot.hammer_anim > 0.0 or (robot.velocity.y < -200 and not robot.is_on_floor()):
+		if robot.hammer_anim > 0.0 or (robot.velocity.y < -200 and airborne):
 			expression = "esforco"
 		elif robot.main.danger_near(robot) or robot.velocity.y > 1000:
 			expression = "susto"
 		else:
 			expression = "normal"
-	scale = sq
+	scale = Vector2(sq.x * facing, sq.y)
 	queue_redraw()
 
 func _draw() -> void:
-	draw_robot(self, Data.COLORS[color_idx], pid, expression, facing, hammer, run_t, moving)
+	draw_robot(self, color_idx, expression, hammer, run_t, moving, acc, airborne)
 
-static func draw_robot(ci: CanvasItem, col: Color, sym: int, expr: String, face: int, hammer_t: float, run_t: float, moving: bool) -> void:
-	var ink := Data.INK
-	var bob := sin(run_t) * (3.0 if moving else 1.5)
-	# pés
+## Desenha o robô montado em qualquer CanvasItem (também usado nas telas de entrada e vitória).
+static func draw_robot(ci: CanvasItem, col_idx: int, expr: String, hammer_t: float, run_t: float, moving: bool, accessory: int, air := false, base := Transform2D.IDENTITY) -> void:
+	var body := Data.tex("robo/corpo_p%d" % (col_idx + 1))
+	if body == null:
+		return
+	var bob := (absf(sin(run_t)) * -3.0) if moving else sin(run_t) * 1.0
+	var lean := 0.08 if moving else 0.0
+	# marreta (atrás do corpo): parada no ombro; na marretada gira para a frente e para baixo
+	var ang := REST
+	if hammer_t > 0.0:
+		var k := 1.0 - hammer_t / float(Data.ctrl["hammer_time"])
+		ang = lerpf(-0.6, 2.3, clampf(k * 1.6, 0.0, 1.0))
+	var hand := HAND - ORIGIN + Vector2(0, bob)
+	ci.draw_set_transform_matrix(base * Transform2D(ang, Vector2(0.5, 0.5), 0.0, hand))
+	ci.draw_texture(Data.tex("robo/marreta"), -GRIP * 2.0)
+	# pés: alternam na corrida; no ar ficam juntos e para baixo
+	var foot := Data.tex("robo/pe")
 	for s in [-1, 1]:
-		var fx: float = s * 13 + (sin(run_t + (0 if s < 0 else PI)) * 8 if moving else 0)
-		ci.draw_circle(Vector2(fx, -7), 10, ink)
-		ci.draw_circle(Vector2(fx, -7), 6, col.darkened(0.3))
-	# corpo (cabeça grande ~60%)
-	var body := Rect2(-22, -48 + bob, 44, 38)
-	ci.draw_rect(body.grow(5), ink)
-	ci.draw_circle(Vector2(0, -52 + bob), 31, ink)
-	ci.draw_rect(body, col)
-	ci.draw_circle(Vector2(0, -52 + bob), 26, col)
-	ci.draw_rect(Rect2(body.position.x + 30, body.position.y, 14, body.size.y), col.darkened(0.18))
-	Piece.draw_symbol(ci, sym, Vector2(-2, -24 + bob), 6.0, ink)
-	# olhos
-	var ex := 7.0 * face
-	var eye_y := -56.0 + bob
-	if expr == "eliminado":
-		for s in [-1, 1]:
-			var e := Vector2(ex + s * 11, eye_y)
-			ci.draw_line(e + Vector2(-6, -6), e + Vector2(6, 6), ink, 4)
-			ci.draw_line(e + Vector2(-6, 6), e + Vector2(6, -6), ink, 4)
-	else:
-		var eh := 12.0 if expr != "susto" else 14.0
-		for s in [-1, 1]:
-			var e := Vector2(ex + s * 11, eye_y)
-			_oval(ci, e, 9, eh + 2, ink)
-			_oval(ci, e, 7, eh, Color.WHITE)
-			var pr := 3.5 if expr == "susto" else 4.5
-			if expr == "vitoria":
-				ci.draw_arc(e + Vector2(0, 3), 5, PI, TAU, 8, ink, 3)
-			else:
-				ci.draw_circle(e + Vector2(2.5 * face, 2), pr, ink)
-		if expr == "esforco":
-			ci.draw_line(Vector2(ex - 19, eye_y - 15), Vector2(ex - 4, eye_y - 10), ink, 4)
-			ci.draw_line(Vector2(ex + 19, eye_y - 15), Vector2(ex + 4, eye_y - 10), ink, 4)
-	# boca
-	var m := Vector2(ex, -36 + bob)
-	match expr:
-		"susto": _oval(ci, m, 5, 6, ink)
-		"vitoria": ci.draw_arc(m + Vector2(0, -3), 8, 0.2, PI - 0.2, 10, ink, 4)
-		"esforco": ci.draw_rect(Rect2(m - Vector2(8, 2), Vector2(16, 5)), ink)
-		"eliminado": ci.draw_arc(m + Vector2(0, 5), 7, PI + 0.3, TAU - 0.3, 10, ink, 4)
-		_: ci.draw_arc(m + Vector2(0, -4), 6, 0.4, PI - 0.4, 8, ink, 3.5)
-	# marreta
-	var ang := -1.9 if hammer_t <= 0.0 else lerpf(-2.4, 0.4, 1.0 - hammer_t / 0.25)
-	var pivot := Vector2(18 * face, -28 + bob)
-	var dir := Vector2.from_angle(ang if face > 0 else PI - ang)
-	var head := pivot + dir * 30
-	ci.draw_line(pivot, head, ink, 8)
-	ci.draw_line(pivot, head, Color("#c98b4e"), 4)
-	var perp := dir.orthogonal()
-	var hp := PackedVector2Array([head + perp * 12 - dir * 7, head + perp * 12 + dir * 7, head - perp * 12 + dir * 7, head - perp * 12 - dir * 7])
-	ci.draw_colored_polygon(hp, ink)
-	var hp2 := PackedVector2Array()
-	for p in hp:
-		hp2.append(head + (p - head) * 0.7)
-	ci.draw_colored_polygon(hp2, Color("#9aa3af"))
-	ci.draw_circle(pivot, 6, ink)
-	ci.draw_circle(pivot, 3.5, col)
-
-static func _oval(ci: CanvasItem, c: Vector2, rx: float, ry: float, col: Color) -> void:
-	var pts := PackedVector2Array()
-	for i in 20:
-		var a := TAU * i / 20.0
-		pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
-	ci.draw_colored_polygon(pts, col)
+		var off := Vector2.ZERO
+		if moving:
+			var ph: float = run_t + (0.0 if s < 0 else PI)
+			off = Vector2(cos(ph) * 7.0, minf(sin(ph), 0.0) * 6.0)
+		elif air:
+			off = Vector2(s * -3, 3)
+		ci.draw_set_transform_matrix(base * Transform2D(0.0, Vector2(0.5, 0.5), 0.0, Vector2(s * 12, -7) + off))
+		ci.draw_texture(foot, -Vector2(16, 11) * 2.0)
+	# corpo + rosto + acessório (mesma tela)
+	ci.draw_set_transform_matrix(base * Transform2D(lean, Vector2(0.5, 0.5), 0.0, Vector2(0, bob)))
+	ci.draw_texture(body, -ORIGIN * 2.0)
+	ci.draw_texture(Data.tex("robo/rosto_" + expr), -ORIGIN * 2.0)
+	if accessory > 0:
+		ci.draw_texture(Data.tex("robo/acc_" + Data.ACCS[accessory]), -ORIGIN * 2.0)
+	# mãos
+	var h := Data.tex("robo/mao")
+	ci.draw_set_transform_matrix(base * Transform2D(0.0, Vector2(0.5, 0.5), 0.0, hand))
+	ci.draw_texture(h, -Vector2(12, 12) * 2.0)
+	var swing := sin(run_t) * 4.0 if moving else 0.0
+	ci.draw_set_transform_matrix(base * Transform2D(0.0, Vector2(0.5, 0.5), 0.0, HAND2 - ORIGIN + Vector2(swing, bob)))
+	ci.draw_texture(h, -Vector2(12, 12) * 2.0)
+	ci.draw_set_transform_matrix(base)

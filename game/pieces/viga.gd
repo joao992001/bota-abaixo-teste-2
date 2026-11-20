@@ -18,6 +18,13 @@ func is_solid_for(p: int) -> bool:
 
 func _draw() -> void:
 	var s := Vector2(size_tiles() * T)
+	if rot == 1:
+		draw_set_transform(Vector2(64, 0), PI / 2)
+	var drew := draw_art("viga", Rect2(0, 0, 192, 64))
+	draw_set_transform(Vector2.ZERO)
+	if drew:
+		_draw_arrows(s)
+		return
 	var r := Rect2(Vector2.ZERO, s).grow(-3)
 	draw_rect(r, Data.INK)
 	var f := r.grow(-5)
@@ -29,6 +36,10 @@ func _draw() -> void:
 		var c := Vector2(32 + i * 64, 38) if rot == 0 else Vector2(32, 38 + i * 64)
 		draw_circle(c, 5, Data.INK)
 	draw_owner_mark(Vector2(s.x - 22, 22) if rot == 0 else Vector2(22, s.y - 22), 12)
+	_draw_arrows(s)
+
+func _draw_arrows(s: Vector2) -> void:
+	var n := maxi(size_tiles().x, size_tiles().y)
 	if not ghost and owner_near(3 * T):
 		for i in n:
 			var b := Vector2(32 + i * 64, -14) if rot == 0 else Vector2(32, -14)

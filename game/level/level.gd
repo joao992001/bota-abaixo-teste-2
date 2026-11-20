@@ -47,6 +47,9 @@ func ch_at(c: Vector2i) -> String:
 		return "#"
 	return String(grid[c.y])[c.x]
 
+func is_solid(c: Vector2i) -> bool:
+	return ch_at(c) in ["#", "o"]
+
 func can_build(c: Vector2i) -> bool:
 	return ch_at(c) == "."
 
@@ -63,11 +66,13 @@ func _build_colliders() -> void:
 		var x := 0
 		while x < cols:
 			var ch := ch_at(Vector2i(x, y))
+			if ch == "o":
+				ch = "#"
 			if ch != "#" and ch != "=":
 				x += 1
 				continue
 			var x0 := x
-			while x < cols and ch_at(Vector2i(x, y)) == ch:
+			while x < cols and (ch_at(Vector2i(x, y)) == ch or (ch == "#" and is_solid(Vector2i(x, y)))):
 				x += 1
 			var cs := CollisionShape2D.new()
 			var r := RectangleShape2D.new()
@@ -85,7 +90,8 @@ func _build_colliders() -> void:
 
 # ---------- formas simples (substituídas pela arte quando existir) ----------
 func _draw() -> void:
-	if skin != null:
+	if Data.tex("cenario/bloco_laranja") != null:
+		_draw_art()
 		return
 	for y in rows:
 		for x in cols:
@@ -115,6 +121,26 @@ func _draw() -> void:
 		for i in 6:
 			draw_rect(Rect2(e.position.x + i * 22, e.position.y, 11, 18), Data.INK)
 		draw_string(ThemeDB.fallback_font, e.position + Vector2(0, -10), "ELEVADOR", HORIZONTAL_ALIGNMENT_CENTER, 128, 22, Color.WHITE)
+
+func _draw_art() -> void:
+	var tile := Vector2(T, T)
+	for y in rows:
+		for x in cols:
+			var c := Vector2i(x, y)
+			var pos := Vector2(x * T, y * T)
+			match ch_at(c):
+				"#":
+					var n := "cenario/bloco_laranja" if (x / 2 + y / 2) % 2 == 0 else "cenario/bloco_magenta"
+					draw_texture_rect(Data.tex(n), Rect2(pos, tile), false)
+				"o":
+					draw_texture_rect(Data.tex("cenario/bloco_dourado"), Rect2(pos, tile), false)
+				"=":
+					draw_texture_rect(Data.tex("cenario/oneway"), Rect2(pos, tile), false)
+				"^":
+					draw_texture_rect(Data.tex("cenario/lama"), Rect2(pos, tile), false)
+					draw_texture_rect(Data.tex("cenario/espinho"), Rect2(pos + Vector2(0, 4), tile), false)
+	if elevator_cell.x >= 0:
+		draw_texture_rect(Data.tex("cenario/elevador"), Rect2(elevator_cell.x * T - 32, (elevator_cell.y - 2) * T, 128, 192), false)
 
 static func draw_block(ci: CanvasItem, r: Rect2, base: Color) -> void:
 	var inner := r.grow(-2)

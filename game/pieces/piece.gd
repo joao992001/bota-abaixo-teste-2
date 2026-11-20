@@ -7,6 +7,7 @@ var piece_id := ""
 var def := {}
 var owner_id := -1
 var color := Color.WHITE
+var color_idx := 4          # índice da cor do dono (4 = neutro)
 var cell := Vector2i.ZERO
 var rot := 0
 var ghost := true
@@ -15,11 +16,12 @@ var placed_round := 0
 var main: Node = null
 var t := 0.0
 
-func setup(id: String, owner: int, col: Color, c: Vector2i, r: int = 0) -> void:
+func setup(id: String, owner: int, col_idx: int, c: Vector2i, r: int = 0) -> void:
 	piece_id = id
 	def = Data.pieces[id]
 	owner_id = owner
-	color = col
+	color_idx = col_idx
+	color = Data.COLORS[col_idx] if col_idx < 4 else Color("#dfe3ea")
 	rot = r
 	move_to(c)
 
@@ -104,10 +106,19 @@ func belt_vx(_robot, _ix: float) -> float: return 0.0
 func draw_owner_mark(center: Vector2, r: float) -> void:
 	draw_circle(center, r + 4, Data.INK)
 	draw_circle(center, r, color)
-	draw_symbol(self, owner_id, center, r * 0.55, Data.INK)
+	draw_symbol(self, color_idx, center, r * 0.55, Data.INK)
+
+## Desenha a textura da peça na cor do dono (PNG 2x). Retorna false se não houver arte.
+func draw_art(name: String, rect: Rect2, per_color := true) -> bool:
+	var tx := Data.tex("pecas/%s_c%d" % [name, color_idx] if per_color else "pecas/" + name)
+	if tx == null:
+		return false
+	draw_texture_rect(tx, rect, false)
+	return true
 
 static func draw_symbol(ci: CanvasItem, idx: int, c: Vector2, r: float, col: Color) -> void:
 	match idx:
+		4: pass
 		0: ci.draw_circle(c, r, col)
 		1: ci.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -r * 1.1), c + Vector2(r, r * 0.8), c + Vector2(-r, r * 0.8)]), col)
 		2: ci.draw_rect(Rect2(c - Vector2(r, r) * 0.85, Vector2(r, r) * 1.7), col)

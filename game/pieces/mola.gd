@@ -19,6 +19,8 @@ func _process(dt: float) -> void:
 	super(dt)
 
 func _draw() -> void:
+	if draw_art("mola_comprimida" if squeeze > 0 else "mola", Rect2(0, 0, 64, 64)):
+		return
 	var top := 30.0 if squeeze > 0 else 6.0
 	draw_rect(Rect2(4, 46, 56, 16), Data.INK)
 	draw_rect(Rect2(8, 49, 48, 10), Color("#8d97a6"))

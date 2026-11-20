@@ -83,8 +83,8 @@ func steer(devs: Array, frames_max: int, trace := false) -> void:
 			vset(d, "right", true)
 			var row := int((r.position.y + 2) / 64.0)
 			var ahead := int((r.position.x + 40) / 64.0)
-			var gap: bool = main.level.ch_at(Vector2i(ahead, row)) != "#"
-			var wall: bool = main.level.ch_at(Vector2i(ahead, row - 1)) == "#"
+			var gap: bool = not main.level.is_solid(Vector2i(ahead, row))
+			var wall: bool = main.level.is_solid(Vector2i(ahead, row - 1))
 			if r.is_on_floor() and (gap or wall) and hold.get(d, 0) <= 0:
 				hold[d] = 14
 			vset(d, "jump", hold.get(d, 0) > 0)
@@ -314,6 +314,26 @@ func shots(dir: String) -> void:
 	main.countdown = 0.01
 	await steer(["v0", "v1", "v2", "v3"], 50)
 	await snap(dir, "4_corrida")
+	# prancha: 4 robôs espalhados pela obra (posições escolhidas, sem física)
+	var spots := [Vector2(250, 768), Vector2(930, 520), Vector2(700, 640), Vector2(1190, 768)]
+	for k in 4:
+		var r = main.robots[k]
+		r.active = false
+		r.set_physics_process(false)
+		r.visible = true
+		r.scale = Vector2.ONE
+		r.position = spots[k]
+		r.facing = 1 if k != 3 else -1
+	main.robots[1].vis.expression = "esforco"
+	main.robots[0].vis.expression = "vitoria"
+	main.robots[3].vis.expression = "susto"
+	main.robots[1].vis.sq = Vector2(0.85, 1.18)
+	for k in 4:
+		main.robots[k].vis.scale = Vector2(main.robots[k].vis.sq.x * main.robots[k].facing, main.robots[k].vis.sq.y)
+		main.robots[k].vis.queue_redraw()
+	main.dust(Vector2(905, 768))
+	await frames(1)
+	await snap(dir, "prancha_canteiro")
 	await steer(["v0", "v1", "v2", "v3"], 600)
 	await frames(80)
 	await snap(dir, "5_placar")

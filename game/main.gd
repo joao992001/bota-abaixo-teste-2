@@ -67,6 +67,11 @@ func _ready() -> void:
 	overlay = Node2D.new()
 	overlay.draw.connect(_draw_overlay)
 	world.add_child(overlay)
+	var crowd := Sprite2D.new()
+	crowd.texture = Data.tex("cenario/plateia")
+	crowd.centered = false
+	crowd.position = Vector2(0, 1080 - 150)
+	add_child(crowd)
 	var hud_layer := CanvasLayer.new()
 	add_child(hud_layer)
 	hud = Hud.new()
@@ -133,6 +138,10 @@ func _join_update() -> void:
 			_cycle_color(i, -1)
 		if PlayerInput.pressed(i, "right"):
 			_cycle_color(i, 1)
+		if PlayerInput.pressed(i, "up"):
+			players[i]["acc"] = posmod(players[i]["acc"] - 1, Data.ACCS.size())
+		if PlayerInput.pressed(i, "down"):
+			players[i]["acc"] = posmod(players[i]["acc"] + 1, Data.ACCS.size())
 	if players.size() >= 2:
 		for i in players.size():
 			if PlayerInput.pressed(i, "start"):
@@ -144,7 +153,7 @@ func add_player(dev: String) -> void:
 	var col := 0
 	while col in used:
 		col += 1
-	players.append({"dev": dev, "color": col, "score": 0})
+	players.append({"dev": dev, "color": col, "acc": (players.size() + 1) % Data.ACCS.size(), "score": 0})
 	PlayerInput.slots.append(dev)
 
 func _cycle_color(i: int, d: int) -> void:
@@ -198,7 +207,6 @@ func _rebuild_conveyor() -> void:
 		if conveyor[i] == "":
 			continue
 		var pc := make_piece(conveyor[i], -1, Vector2i.ZERO)
-		pc.color = Color("#e8e8e8")
 		var sz := Vector2(pc.size_tiles() * T)
 		pc.position = conveyor_slot(i) - sz / 2.0
 		conveyor_root.add_child(pc)
@@ -250,7 +258,7 @@ func start_build() -> void:
 func make_piece(id: String, owner: int, c: Vector2i, r: int = 0) -> Node2D:
 	var pc: Node2D = PIECE_SCRIPTS[id].new()
 	pc.main = self
-	pc.setup(id, owner, player_color(owner) if owner >= 0 else Color.WHITE, c, r)
+	pc.setup(id, owner, players[owner]["color"] if owner >= 0 and owner < players.size() else (owner if owner >= 0 else 4), c, r)
 	return pc
 
 func can_place(pc: Node2D) -> bool:
@@ -326,7 +334,7 @@ func start_run() -> void:
 	round_hammer = {}
 	for i in players.size():
 		var r: CharacterBody2D = Robot.new()
-		r.setup(i, players[i]["color"], self)
+		r.setup(i, players[i]["color"], self, players[i]["acc"])
 		r.position = level.spawns.get(i + 1, level.spawns[1])
 		robots_root.add_child(r)
 		robots.append(r)
@@ -479,9 +487,11 @@ func dust(pos: Vector2) -> void:
 		puffs.append({"pos": pos + Vector2(rng.randf_range(-18, 18), rng.randf_range(-8, 0)), "t": 0.0, "r": rng.randf_range(7, 12)})
 
 func _draw_overlay() -> void:
+	var puff := Data.tex("cenario/poeira")
 	for p in puffs:
 		var k: float = p["t"] / 0.45
-		overlay.draw_circle(p["pos"] + Vector2(0, -k * 14), p["r"] * (1.0 + k), Color(0.55, 0.38, 0.25, 0.75 * (1.0 - k)))
+		var sz: float = p["r"] * 3.0 * (0.8 + k * 0.7)
+		overlay.draw_texture_rect(puff, Rect2(p["pos"] + Vector2(-sz / 2, -sz * 0.75 - k * 14), Vector2(sz, sz)), false, Color(1, 1, 1, 1.0 - k * k))
 	if state == S.BUILD:
 		for i in players.size():
 			var p: Dictionary = players[i]

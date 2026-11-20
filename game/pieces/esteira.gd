@@ -21,6 +21,15 @@ func belt_vx(robot, ix: float) -> float:
 	return dir() * speed
 
 func _draw() -> void:
+	if draw_art("esteira", Rect2(0, 0, 192, 64)):
+		var seta := Data.tex("pecas/esteira_seta")
+		var off := fmod(t * param("speed_tiles_s") * T * 0.25, 44.0)
+		for i in 4:
+			var x := 20.0 + fposmod(i * 44.0 + off * dir(), 176.0 - 24.0)
+			draw_set_transform(Vector2(x + 12, 40), 0.0 if dir() > 0 else PI)
+			draw_texture_rect(seta, Rect2(-12, -12, 24, 24), false)
+		draw_set_transform(Vector2.ZERO)
+		return
 	var r := Rect2(4, 14, 184, 46)
 	draw_rect(r, Data.INK)
 	draw_rect(r.grow(-5), Color("#4a4f5c"))

@@ -16,3 +16,8 @@ Godot 4 estável, Python 3 com Pillow. Ajudam, se houver: `rsvg-convert`, Inksca
 - Primeiro marco já é **jogável** (1 mapa, 4 peças, rodada completa) **e** traz a prancha de estilo final.
 - 3 agentes (eram 13); 10 skills curtas (eram 30); sem schemas, contratos JSON, gates formais nem ferramentas construídas antes do jogo.
 - Pixel art 32 bits → **cartoon vetorial** com contorno grosso, como nas referências. Personagens com **acessórios**.
+
+## Rodar (Marco 1)
+- Jogar: `godot --path game` (Godot 4.3+). Teclado A: WASD + Espaço + Shift · Teclado B: setas + Ctrl + Enter num. · Enter começa.
+- Teste automático: `godot --headless --path game --fixed-fps 60 -- --autotest`
+- Regerar arte: `python3 art/src/robos/robos.py && python3 art/src/cenarios/canteiro.py && cp -r art/out/game/* game/assets/ && python3 art/src/prancha.py`

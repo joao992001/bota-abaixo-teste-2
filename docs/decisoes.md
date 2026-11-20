@@ -7,3 +7,8 @@
 - 2026-11-19 · **v2:** processo simplificado (4 marcos, 3 agentes, 10 skills, sem ferramentas antecipadas) por custo e demora — usuário.
 - 2026-11-19 · v2: robôs inteiros na cor do jogador + acessórios cosméticos; cada mapa com o visual de uma referência; mapa 3 vira "Cais Noturno" para casar com a referência de gelo/água — Configurador.
 - 2026-11-19 · v2: resolução 1920×1080, grade de 64 px; valores de movimento multiplicados por 4 em relação à v1 — Configurador.
+- 2026-11-20 · Marco 1: Canteiro com vãos de 3 tiles e pilar de 1 tile (vão 4 + pilar 2 era difícil demais para a rota sem peças) — sessão principal.
+- 2026-11-20 · Marreta só é gasta quando acerta uma peça rival (errar não consome) — sessão principal; testar jogando.
+- 2026-11-20 · Símbolo acompanha a cor (azul ●, verde ▲, rosa ■, amarelo ◆), não o número do jogador — sessão principal.
+- 2026-11-20 · Peças sem dono na esteira de escolha aparecem em cinza neutro — sessão principal.
+- 2026-11-20 · Arte do Marco 1 feita na sessão principal (artistas interrompidos), gerada por script SVG→PNG em art/src/ — sessão principal.

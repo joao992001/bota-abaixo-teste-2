@@ -3,9 +3,12 @@ extends Node2D
 
 var texture: Texture2D = null
 
+func _ready() -> void:
+	texture = Data.tex("cenario/fundo_canteiro")
+
 func _draw() -> void:
 	if texture != null:
-		draw_texture(texture, Vector2.ZERO)
+		draw_texture_rect(texture, Rect2(0, 0, 1920, 1080), false)
 		return
 	draw_rect(Rect2(0, 0, 1920, 1080), Color("#3aa7a3"))
 	for p in [Vector2(300, 260), Vector2(900, 180), Vector2(1500, 300), Vector2(1200, 600), Vector2(500, 650)]:

@@ -6,7 +6,7 @@ A Godot monta o mapa a partir destes arquivos: assim, mudar um mapa é editar te
 id: canteiro
 size: 30x16
 spawns: 1,2,3,4
-legend: "# = sólido, = = one-way, ^ = espinho, 1-4 = spawn, E = elevador, x = proibido construir, . = vazio"
+legend: "# = sólido, = = one-way, ^ = espinho, o = sólido especial (dourado), 1-4 = spawn, E = elevador, x = proibido construir, . = vazio"
 tema: canteiro
 === map
 (16 linhas de 30 caracteres)

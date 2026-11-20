@@ -7,6 +7,8 @@ const DANGER := Color("#d42035")
 const INK := Color("#2a1a2e")
 const TILE := 64
 const ARENA_Y := 56
+const ACCS := ["", "capacete", "bone", "gorro"]
+const ACC_NAMES := ["sem chapéu", "capacete", "boné", "gorro"]
 
 var ctrl: Dictionary
 var scoring: Dictionary
@@ -29,6 +31,15 @@ func read_text(rel: String) -> String:
 
 func read_json(rel: String):
 	return JSON.parse_string(read_text(rel))
+
+var _tex := {}
+
+## Textura de art/out/game copiada para res://assets (PNGs em 2x). null se não existir.
+func tex(path: String) -> Texture2D:
+	if not _tex.has(path):
+		var full := "res://assets/%s.png" % path
+		_tex[path] = load(full) if ResourceLoader.exists(full) else null
+	return _tex[path]
 
 func piece_ids(milestone: int, implemented: Array) -> Array:
 	var out := []
