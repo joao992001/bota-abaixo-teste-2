@@ -73,7 +73,8 @@ func tick(r, dt: float) -> void:
 		var before := int(phase / PI)
 		phase += spd * dt / STRIDE * TAU
 		if int(phase / PI) != before:
-			Audio.play("passo", 0.92 + r.pid * 0.08, -3.0)
+			if spd > 250.0 and int(phase / PI) % 2 == 0:
+				Audio.play("passo", 0.92 + r.pid * 0.08, -8.0)   # 1 passo por passada, baixinho
 			if spd > 300.0:
 				r.main.dust(r.position + Vector2(-r.facing * 10, 0), 0.45)
 	# marretada em 3 tempos (preparo, golpe, volta)

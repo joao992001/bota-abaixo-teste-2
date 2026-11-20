@@ -12,6 +12,8 @@ var _pool: Array = []
 var _music: AudioStreamPlayer
 var _music_name := ""
 var _cooldown := {}          # evita o mesmo som empilhado no mesmo instante
+var rec_log = null           # capturas de vídeo: lista de {t, path, pitch, db}; null = não grava
+var rec_time := 0.0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -23,6 +25,10 @@ func _ready() -> void:
 		_pool.append(p)
 	_music = AudioStreamPlayer.new()
 	add_child(_music)
+	# limitador no áudio principal: muitos sons juntos (explosão + marretadas) não estouram
+	var lim := AudioEffectHardLimiter.new()
+	lim.ceiling_db = -0.5
+	AudioServer.add_bus_effect(0, lim)
 
 func _process(dt: float) -> void:
 	for k in _cooldown.keys():
@@ -60,6 +66,8 @@ func play(sfx: String, pitch := 1.0, vol := 0.0) -> void:
 	p.pitch_scale = pitch * randf_range(0.97, 1.03)
 	p.volume_db = _db(sfx_vol) + vol
 	p.play()
+	if rec_log != null:
+		rec_log.append({"t": rec_time, "path": path, "pitch": p.pitch_scale, "db": p.volume_db})
 
 ## Voz do robô: o tom depende do modelo (Baixinho fininho, Pescoção grave).
 func voice(sfx: String, model: int) -> void:
@@ -84,7 +92,9 @@ func music(name: String, loop := true) -> void:
 			st.loop_end = int(st.get_length() * st.mix_rate)
 		_music.stream = st
 		_music.volume_db = _db(music_vol)
-		_music.play())
+		_music.play()
+		if rec_log != null:
+			rec_log.append({"t": rec_time + 0.35, "path": "res://assets/audio/music/%s.wav" % name, "pitch": 1.0, "db": _music.volume_db, "music": true}))
 
 func set_volumes(m: int, s: int) -> void:
 	music_vol = clampi(m, 0, 10)

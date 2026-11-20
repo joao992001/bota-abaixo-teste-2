@@ -18,6 +18,10 @@ func _run() -> void:
 			shot = a.substr(7)
 		if a.begins_with("--anim="):
 			anim = a.substr(7)
+		if a.begins_with("--video="):
+			await video_frames(a.substr(8))
+			get_tree().quit(0)
+			return
 		if a.begins_with("--arenas="):
 			await arenas_frames(a.substr(9))
 			get_tree().quit(0)
@@ -1014,3 +1018,39 @@ func arenas_frames(dir: String) -> void:
 		main.demo.item_t = 1.0
 		await frames(260)
 		await snap(dir, "jogo_%s" % a["id"])
+
+# ---------------------------------------------------------------- vídeo com som (quadros JPG + registro de sons)
+func video_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	get_window().size = Vector2i(1920, 1080)
+	PlayerInput.virtual = {}
+	Audio.rec_log = []
+	main.mode = "demolicao"
+	main.bot_level = 2
+	for k in 4:
+		main.add_bot()
+	main.players[1]["level"] = 1
+	main.players[3]["level"] = 1
+	main.demo.cfg["itens"]["spawn_every_s"] = [2.0, 3.0]
+	main.demo.cfg["itens"]["max_on_map"] = 3
+	main.arena_choice = "sorteio"
+	main.demo.last_arena = "demolicao"
+	main.start_match()
+	main.demo.item_t = 1.5
+	var f := 0
+	var end_f := -1
+	while f < 60 * 30:
+		Audio.rec_time = f / 60.0
+		await frames(1)
+		if f % 2 == 0:
+			await RenderingServer.frame_post_draw
+			var img := get_viewport().get_texture().get_image()
+			img.resize(960, 540, Image.INTERPOLATE_BILINEAR)
+			img.save_jpg(dir.path_join("v_%05d.jpg" % (f / 2)), 0.85)
+		if main.state == S.WIN:
+			break
+		f += 1
+	var fa := FileAccess.open(dir.path_join("sons.json"), FileAccess.WRITE)
+	fa.store_string(JSON.stringify({"fps": 30, "frames": f / 2, "root": ProjectSettings.globalize_path("res://"), "log": Audio.rec_log}))
+	fa.close()
+	print("vídeo: %d quadros, %d sons" % [f / 2, Audio.rec_log.size()])

@@ -159,7 +159,7 @@ func _physics_process(dt: float) -> void:
 	var landed := is_on_floor() and not was_on_floor
 	was_on_floor = is_on_floor()
 	if landed:
-		Audio.play("aterrissa", _pitch(), -2.0)
+		Audio.play("aterrissa", _pitch(), -5.0)
 		vis.land()
 		main.dust(position)
 	if floor_piece != null and is_instance_valid(floor_piece):

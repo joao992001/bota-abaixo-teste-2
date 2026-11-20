@@ -121,7 +121,7 @@ func _ready() -> void:
 	add_child(menus)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video"):
 			state = S.JOIN   # testes e capturas começam direto na entrada de jogadores
 			var drv: Node = load("res://tests/driver.gd").new()
 			drv.main = self
