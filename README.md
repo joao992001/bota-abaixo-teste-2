@@ -18,6 +18,6 @@ Godot 4 estável, Python 3 com Pillow. Ajudam, se houver: `rsvg-convert`, Inksca
 - Pixel art 32 bits → **cartoon vetorial** com contorno grosso, como nas referências. Personagens com **acessórios**.
 
 ## Rodar (Marco 1)
-- Jogar: `godot --path game` (Godot 4.3+). Teclado A: WASD + Espaço + Shift · Teclado B: setas + Ctrl + Enter num. · Enter começa.
+- Jogar: `godot --path game` (Godot 4.3+). Teclado A: WASD, Espaço pula, F marreta · Teclado B: setas, Ctrl direito pula, ponto (.) marreta · Enter começa.
 - Teste automático: `godot --headless --path game --fixed-fps 60 -- --autotest`
 - Regerar arte: `python3 art/src/robos/robos.py && python3 art/src/cenarios/canteiro.py && cp -r art/out/game/* game/assets/` (usa Node + Playwright/Chromium)

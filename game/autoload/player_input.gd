@@ -1,14 +1,16 @@
 extends Node
 ## Entrada por jogador. O jogo pergunta sempre held/pressed(jogador, ação); nunca lê o dispositivo direto.
-## Teclado A: WASD + Espaço (pular) + Shift/F (marreta). Teclado B: setas + Ctrl/L/Num0 (pular) + Enter num./K (marreta).
+## Teclado A: WASD + Espaço (pular) + F/E (marreta). Teclado B: setas + Ctrl direito/Num0/L (pular) + . / Enter num./K (marreta).
+## Sem Shift: no Windows, com NumLock ligado, as setas mandam um Shift "fantasma" (era a marreta sozinha).
+## Teclas lidas por evento (_input), para separar Ctrl esquerdo/direito; "ctrl_r" = só o Ctrl direito.
 ## Controle: analógico/direcional + A (pular) + X/B/RB (marreta) + Start. Enter/Start começa a partida.
 
 const ACTIONS := ["left", "right", "up", "down", "jump", "hammer", "start", "back"]
 const KEYMAP := {
 	"kb_a": {"left": [KEY_A], "right": [KEY_D], "up": [KEY_W], "down": [KEY_S],
-		"jump": [KEY_SPACE], "hammer": [KEY_SHIFT, KEY_F], "start": [KEY_ENTER], "back": [KEY_BACKSPACE]},
+		"jump": [KEY_SPACE], "hammer": [KEY_F, KEY_E], "start": [KEY_ENTER], "back": [KEY_BACKSPACE]},
 	"kb_b": {"left": [KEY_LEFT], "right": [KEY_RIGHT], "up": [KEY_UP], "down": [KEY_DOWN],
-		"jump": [KEY_CTRL, KEY_KP_0, KEY_L], "hammer": [KEY_KP_ENTER, KEY_K], "start": [KEY_ENTER], "back": [KEY_DELETE]},
+		"jump": ["ctrl_r", KEY_KP_0, KEY_L], "hammer": [KEY_PERIOD, KEY_SLASH, KEY_KP_ENTER, KEY_K], "start": [KEY_ENTER], "back": [KEY_DELETE]},
 }
 
 var slots: Array = []   # dispositivo de cada jogador (índice = jogador)
@@ -42,7 +44,7 @@ func _read(dev: String) -> Dictionary:
 		for a in ACTIONS:
 			s[a] = false
 			for k in KEYMAP[dev][a]:
-				if Input.is_physical_key_pressed(k):
+				if key_down(k):
 					s[a] = true
 	elif dev.begins_with("joy"):
 		var j := int(dev.substr(3))
@@ -58,6 +60,27 @@ func _read(dev: String) -> Dictionary:
 		s["start"] = Input.is_joy_button_pressed(j, JOY_BUTTON_START)
 		s["back"] = Input.is_joy_button_pressed(j, JOY_BUTTON_BACK)
 	return s
+
+var _keys := {}   # "tecla:posição" -> apertada (posição separa Ctrl/Shift esquerdo e direito)
+
+func _input(e: InputEvent) -> void:
+	if e is InputEventKey and not e.echo:
+		var k: int = e.physical_keycode if e.physical_keycode != 0 else e.keycode
+		_keys["%d:%d" % [k, e.location]] = e.pressed
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_keys.clear()   # janela perdeu o foco: nenhuma tecla fica "presa"
+
+func key_down(k) -> bool:
+	if k is String:
+		match k:
+			"ctrl_r": return _keys.get("%d:%d" % [KEY_CTRL, KEY_LOCATION_RIGHT], false)
+		return false
+	for loc in [KEY_LOCATION_UNSPECIFIED, KEY_LOCATION_LEFT, KEY_LOCATION_RIGHT]:
+		if _keys.get("%d:%d" % [k, loc], false):
+			return true
+	return false
 
 func is_keyboard(dev: String) -> bool:
 	return KEYMAP.has(dev)

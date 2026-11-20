@@ -83,7 +83,7 @@ func _draw_join() -> void:
 			text(r.position + Vector2(0, 30), PlayerInput.label(p["dev"]), 18, Color("#d9f3f6"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		else:
 			text(r.position + Vector2(0, 220), "livre", 40, Color(1, 1, 1, 0.4), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-	text(Vector2(0, 900), "Teclado A: WASD + Espaço + Shift (Backspace sai)   ·   Teclado B: setas + Ctrl + Enter num. (Delete sai)   ·   Controle: A pula, X marreta (Select sai)", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
+	text(Vector2(0, 900), "Teclado A: WASD, Espaço pula, F marreta (Backspace sai)  ·  Teclado B: setas, Ctrl direito pula, ponto marreta (Delete sai)  ·  Controle: A pula, X marreta", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
 
 func _dev_name(dev: String) -> String:
 	match dev:

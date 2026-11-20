@@ -30,6 +30,15 @@ func _run() -> void:
 		get_tree().quit(1 if fails > 0 else 0)
 
 # ---------------------------------------------------------------- utilidades
+func key_event(k: Key, down: bool, loc := KEY_LOCATION_UNSPECIFIED) -> void:
+	var e := InputEventKey.new()
+	e.physical_keycode = k
+	e.keycode = k
+	e.pressed = down
+	e.location = loc
+	Input.parse_input_event(e)
+	await frames(2)
+
 func frames(n: int) -> void:
 	for i in n:
 		await get_tree().physics_frame
@@ -103,6 +112,24 @@ func steer(devs: Array, frames_max: int, trace := false) -> void:
 
 # ---------------------------------------------------------------- teste
 func autotest() -> void:
+	print("== Teclado (Windows: Shift fantasma nas setas, Ctrl esquerdo x direito)")
+	await key_event(KEY_SHIFT, true, KEY_LOCATION_LEFT)
+	await key_event(KEY_RIGHT, true)
+	check(PlayerInput.dev_held("kb_b", "right") and not PlayerInput.dev_held("kb_a", "hammer"), "seta com Shift fantasma não aciona a marreta do teclado A")
+	await key_event(KEY_SHIFT, false, KEY_LOCATION_LEFT)
+	await key_event(KEY_RIGHT, false)
+	await key_event(KEY_CTRL, true, KEY_LOCATION_LEFT)
+	check(not PlayerInput.dev_held("kb_b", "jump"), "Ctrl esquerdo não faz o teclado B pular")
+	await key_event(KEY_CTRL, false, KEY_LOCATION_LEFT)
+	await key_event(KEY_CTRL, true, KEY_LOCATION_RIGHT)
+	check(PlayerInput.dev_held("kb_b", "jump"), "Ctrl direito faz o teclado B pular")
+	await key_event(KEY_CTRL, false, KEY_LOCATION_RIGHT)
+	await key_event(KEY_F, true)
+	check(PlayerInput.dev_held("kb_a", "hammer"), "F é a marreta do teclado A")
+	await key_event(KEY_F, false)
+	main.players.clear()   # o Ctrl direito simulado fez o teclado B entrar: limpa para o resto do teste
+	PlayerInput.slots.clear()
+
 	print("== Entrada")
 	PlayerInput.virtual = {"v0": {}, "v1": {}}
 	await frames(2)
