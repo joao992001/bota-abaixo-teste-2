@@ -2,3 +2,5 @@ game/.godot/
 *.import
 *.zip
 out/
+game/data/
+game/levels/

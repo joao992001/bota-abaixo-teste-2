@@ -9,10 +9,11 @@ static var _boxes := {}
 
 static func font() -> Font:
 	if _font == null:
-		var f := FontFile.new()
+		# carrega como recurso importado (é o que vai junto no jogo exportado; o arquivo .woff2 cru não vai)
 		var path := "res://assets/fonts/fredoka-700.woff2"
-		if FileAccess.file_exists(path):
-			f.data = FileAccess.get_file_as_bytes(path)
+		var f: FontFile = load(path) if ResourceLoader.exists(path) else null
+		if f != null:
+			f = f.duplicate()
 			f.fallbacks = [ThemeDB.fallback_font]   # setas ◄►▲▼ e outros símbolos
 			_font = f
 		else:

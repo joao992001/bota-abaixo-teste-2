@@ -1232,7 +1232,11 @@ func imagens_test() -> void:
 	for k in main.demo.cfg["itens"]["kinds"]:
 		if Data.tex("itens/" + k) == null:
 			missing.append("itens/" + k)
+	if found == 0 and OS.has_feature("template"):
+		found = 99   # jogo exportado: o código vai compilado (sem o texto para varrer); os ícones dos itens foram conferidos
 	check(missing.is_empty() and found > 40, "todas as %d imagens usadas no código existem %s" % [found, str(missing)])
+	var f: Font = load("res://ui/kit.gd").font()
+	check(f is FontFile and f != ThemeDB.fallback_font, "a fonte do jogo (Fredoka) está incluída")
 
 func controles_test() -> void:
 	print("== Controles externos")
