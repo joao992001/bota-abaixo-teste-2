@@ -106,10 +106,13 @@ func update(dt: float, running: bool) -> void:
 		for r in main.robots:
 			if r.alive and r.position.y - 20.0 > goo_y:
 				r.last_hit = 0.0
+				r.last_cause = "lama"
 				main.kill(r, -1, null)
 		for cell in level.blocks.keys():
 			if cell.y * T > goo_y + T:
+				main.demo.break_reason = "lama"
 				level.break_block(cell)
+				main.demo.break_reason = ""
 	# bola de demolição
 	if not ball.is_empty():
 		var before_x: float = ball["pos"].x - ball["pivot"].x
@@ -121,11 +124,15 @@ func update(dt: float, running: bool) -> void:
 			if r.alive and r.rect().grow(4).intersects(Rect2(bp - Vector2(46, 46), Vector2(92, 92))) and r.stun_t <= 0.2:
 				var dir := 1 if ball["vel"].x >= 0.0 else -1
 				r.knock(dir, 1250.0, 700.0, 0.6)
+				r.last_cause = "bola"
+				r.last_attacker = -1
 				main.spark(r.rect().get_center(), 8)
 				main.shake(9.0)
 		for cell in level.blocks.keys():
 			if (Vector2(cell * T) + Vector2(32, 32)).distance_to(bp) < 70.0:
+				main.demo.break_reason = "bola"
 				level.break_block(cell)
+				main.demo.break_reason = ""
 	queue_redraw()
 
 func _ball_step(_dt: float) -> void:

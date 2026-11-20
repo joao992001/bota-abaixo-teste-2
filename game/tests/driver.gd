@@ -18,6 +18,10 @@ func _run() -> void:
 			shot = a.substr(7)
 		if a.begins_with("--anim="):
 			anim = a.substr(7)
+		if a.begins_with("--stats="):
+			await stats_run(int(a.substr(8)))
+			get_tree().quit(0)
+			return
 		if a.begins_with("--video="):
 			await video_frames(a.substr(8))
 			get_tree().quit(0)
@@ -1054,3 +1058,40 @@ func video_frames(dir: String) -> void:
 	fa.store_string(JSON.stringify({"fps": 30, "frames": f / 2, "root": ProjectSettings.globalize_path("res://"), "log": Audio.rec_log}))
 	fa.close()
 	print("vídeo: %d quadros, %d sons" % [f / 2, Audio.rec_log.size()])
+
+# ---------------------------------------------------------------- estatísticas de rodadas (bots), para a análise de ritmo
+func stats_run(rounds_per_arena: int) -> void:
+	seed(7)
+	main.rng.seed = 7
+	PlayerInput.virtual = {}
+	main.mode = "demolicao"
+	main.bot_level = 1
+	for k in 4:
+		main.add_bot()
+	main.demo.cfg["rounds_to_win"] = 999
+	var out := []
+	for a in main.demo.cfg["arenas"]:
+		main.arena_choice = a["id"]
+		main.start_match()
+		for rr in rounds_per_arena:
+			main.countdown = 0.0
+			for r in main.robots:
+				r.active = true
+			var t0: float = main.demo.t
+			var first_death := -1.0
+			var n0: int = main.demo.death_log.size()
+			var hits := 0
+			for f in 60 * 120:
+				await get_tree().physics_frame
+				if first_death < 0.0 and main.demo.death_log.size() > n0:
+					first_death = main.demo.t
+				if main.state != S.RUN:
+					break
+			out.append({"arena": a["id"], "dur": main.demo.t, "first": first_death, "winner": main.demo.round_winner})
+			main.timer = 0.0
+			await get_tree().physics_frame
+			await get_tree().physics_frame
+	var fa := FileAccess.open("user://stats.json", FileAccess.WRITE)
+	fa.store_string(JSON.stringify({"rounds": out, "deaths": main.demo.death_log}))
+	fa.close()
+	print("STATS_FILE ", ProjectSettings.globalize_path("user://stats.json"))

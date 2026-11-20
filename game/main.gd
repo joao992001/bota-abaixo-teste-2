@@ -121,7 +121,7 @@ func _ready() -> void:
 	add_child(menus)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats"):
 			state = S.JOIN   # testes e capturas começam direto na entrada de jogadores
 			var drv: Node = load("res://tests/driver.gd").new()
 			drv.main = self
@@ -624,6 +624,12 @@ func kill(r: CharacterBody2D, owner: int, pc: Node2D) -> void:
 		fall_log.append("P%d %s %s" % [r.pid + 1, str(Vector2i(r.position / 64.0)), r.fall_reason if r.fall_reason != "" else "andou"])
 		if r.has_meta("takeoff"):
 			print("    QUEDA P%d — saiu do chão: %s" % [r.pid + 1, r.get_meta("takeoff")])
+	if mode == "demolicao":
+		var cause: String = r.last_cause if r.last_hit <= 2.5 or r.last_cause == "ficou parado" or r.last_cause == "lama" else "caiu sozinho"
+		if cause == "":
+			cause = "caiu sozinho"
+		demo.death_log.append({"arena": demo.arena.get("id", ""), "t": demo.t, "victim": r.pid, "cause": cause,
+			"by": r.last_attacker if r.last_hit <= 2.5 else -1, "round": round_no})
 	r.eliminate()
 	if owner >= 0 and owner != r.pid:
 		round_kills[owner] = round_kills.get(owner, 0) + 1

@@ -31,7 +31,9 @@ var fx_t := {"martelao": 0.0, "mola": 0.0}   # efeitos com tempo
 var shield := 0              # capacete de aço: golpes que ainda aguenta
 var fall_reason := ""
 var last_hit := 99.0
-var stomp_immune := 0.0      # depois de levar pisão, um tempo sem poder levar outro         # segundos desde o último golpe (para saber se caiu sozinho)
+var stomp_immune := 0.0
+var last_cause := ""          # o que atingiu este robô por último (marretada, pisão, explosão, bola, chão quebrado...)
+var last_attacker := -1       # quem causou (jogador), -1 = cenário      # depois de levar pisão, um tempo sem poder levar outro         # segundos desde o último golpe (para saber se caiu sozinho)
 var wall_dust := 0.0
 var vis: Node2D
 

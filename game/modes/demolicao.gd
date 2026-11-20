@@ -24,7 +24,10 @@ var fx: Node2D = null        # mecânicas da arena (plataformas, lama, bola, est
 var arena := {}              # {id, nome, dica} da rodada atual
 var last_arena := ""
 var tnt_queue: Array = []
-var go_played := false    # TNT quebrado explode logo depois: {pos, t}
+var go_played := false
+var break_reason := ""       # por que o caixote que está quebrando agora quebrou (para a causa da queda)
+var break_by := -1
+var death_log: Array = []    # {arena, t, victim, cause, by, round}    # TNT quebrado explode logo depois: {pos, t}
 
 func setup(m: Node) -> void:
 	main = m
@@ -125,6 +128,8 @@ func update(dt: float) -> void:
 				a.vis.stretch()
 				b.stomp_immune = c("stomp_immune_s")
 				b.last_hit = 0.0
+				b.last_cause = "pisão"
+				b.last_attacker = a.pid
 				if not b.absorb():
 					b.stun_t = c("stun_stomp_s")
 					Audio.voice("voz_ai", b.vis.model)
@@ -157,7 +162,9 @@ func update(dt: float) -> void:
 		if b["warn"] > 0.0:
 			b["warn"] -= dt
 			if b["warn"] <= 0.0:
+				break_reason = "terremoto"
 				lv.break_block(cell)
+				break_reason = ""
 	# terremoto depois de um tempo: garante que a rodada acaba
 	var quake_at := float(main.level.prop("terremoto", str(c("quake_start_s"))))
 	if quake_at > 0.0 and t >= quake_at:
@@ -291,11 +298,15 @@ func explode(pos: Vector2, rad := -1.0) -> void:
 	var lv = main.level
 	for cell in lv.blocks.keys():
 		if (Vector2(cell * 64) + Vector2(32, 32)).distance_to(pos) < rad:
+			break_reason = "explosão"
 			lv.damage(cell, int(dc["block_damage"]))
+			break_reason = ""
 	for r in main.robots:
 		if r.alive and r.rect().get_center().distance_to(pos) < rad + 30.0:
 			var dir := 1 if r.rect().get_center().x >= pos.x else -1
 			r.knock(dir, float(dc["knock_x"]), float(dc["knock_y"]), float(dc["stun_s"]))
+			r.last_cause = "explosão"
+			r.last_attacker = -1
 	booms.append({"pos": pos, "t": 0.0})
 	Audio.play("explosao")
 	main.spark(pos, 10)
@@ -352,6 +363,8 @@ func hammer(r) -> void:
 	for o in main.robots:
 		if o != r and o.alive and hit.intersects(o.rect()):
 			o.knock(r.facing, c("knock_x") * mult, c("knock_y") * mult, c("stun_hit_s"))
+			o.last_cause = "marretada"
+			o.last_attacker = r.pid
 			Audio.play("bonk", 1.0 / mult)
 			main.spark(o.rect().get_center(), 6)
 			main.shake(5.0 * mult)
@@ -374,7 +387,11 @@ func hammer(r) -> void:
 			main.spark(center, 4)
 			main.dust(center, 0.8)
 			Audio.play("caixote_pancada", 0.85 if big else 1.0)
+			break_reason = "chão marretado"
+			break_by = r.pid
 			lv.damage(cell, int(item_cfg("martelao")["block_damage"]) if big else 1)
+			break_reason = ""
+			break_by = -1
 			return
 
 func _on_block_broken(cell: Vector2i, kind: String) -> void:
@@ -387,8 +404,11 @@ func _on_block_broken(cell: Vector2i, kind: String) -> void:
 		if r.alive and absf(r.position.x - center.x) < 56.0 and absf(r.position.y - cell.y * 64.0) < 6.0:
 			if crumbling:
 				r.fall_reason = "ficou parado"
+				r.last_cause = "ficou parado"
 			else:
 				r.last_hit = 0.0
+				r.last_cause = break_reason if break_reason != "" else "chão quebrado"
+				r.last_attacker = break_by
 	main.dust(center)
 	main.break_crate(center)
 
