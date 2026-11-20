@@ -343,6 +343,7 @@ func _physics_process(dt: float) -> void:
 				return
 	if state in MENU_STATES:
 		menus.update(dt)
+	world.visible = not (state in MENU_STATES)   # nos menus aparece o cenário próprio do menu, não o mapa
 	match state:
 		S.JOIN: _join_update()
 		S.PICK: _pick_update(dt)
@@ -1004,21 +1005,6 @@ func _draw_overlay() -> void:
 		overlay.draw_set_transform(sp["pos"], sp["rot"] + k * 3.0)
 		overlay.draw_texture_rect(star, Rect2(-sz / 2, -sz / 2, sz, sz), false, Color(1, 1, 1, 1.0 - k))
 	overlay.draw_set_transform(Vector2.ZERO)
-	if state in MENU_STATES:
-		var tt := Time.get_ticks_msec() / 1000.0
-		for k in 4:
-			var pose: Dictionary = RobotVis.idle_pose(tt + k * 0.9)
-			if k == 1:
-				pose = RobotVis.victory_pose(tt)
-			elif k == 2:
-				var ph := fmod(tt, 1.6)
-				if ph < 0.25:
-					var hp := RobotVis.idle_pose(tt)
-					var e := ph / 0.25
-					pose["hammer_ang"] = lerpf(-1.3, 2.4, e * e) if e > 0.25 else lerpf(0.35, -1.3, e / 0.25)
-					pose["expr"] = "esforco"
-			RobotVis.draw_robot(overlay, {"color": k, "model": k, "acc": 0}, pose, Transform2D(0.0, Vector2(1.0 if k != 1 else -1.0, 1.0), 0.0, Vector2(1060 + k * 72, 576)))
-		overlay.draw_set_transform(Vector2.ZERO)
 	for r in robots:
 		if r.alive and r.visible and r.drop_t > 0.0:
 			# voltando pendurado no guindaste
@@ -1087,7 +1073,8 @@ func _input(e: InputEvent) -> void:
 					for p in players:
 						if p.get("bot", false):
 							p["level"] = bot_level
-	elif e is InputEventMouseButton and e.pressed and state != S.JOIN:
+	elif e is InputEventMouseButton and e.pressed and debug and mode == "construcao" and state in [S.BUILD, S.RUN]:
+		# ferramenta de depuração do modo clássico (só com F1 ligado): clique coloca/remove peça
 		var c := Vector2i((world.get_local_mouse_position() / T).floor())
 		if e.button_index == MOUSE_BUTTON_LEFT:
 			var pc := make_piece(implemented_ids()[debug_piece], debug_owner, c)

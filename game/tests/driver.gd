@@ -204,7 +204,7 @@ func autotest() -> void:
 	Audio.music("partida")
 	await frames(30)
 	var ms: AudioStream = Audio._music.stream
-	check(ms is AudioStreamOggVorbis and ms.loop, "música da partida em OGG e em loop")
+	check(ms is AudioStreamWAV and ms.loop_mode == AudioStreamWAV.LOOP_FORWARD, "música da partida em WAV (sem perda) e em loop")
 	Audio.play("bonk")
 	Audio.voice("voz_ai", 2)
 	print("== Teclado (Windows: Shift fantasma nas setas, Ctrl esquerdo x direito)")

@@ -196,6 +196,8 @@ func update_pause() -> void:
 # ---------------------------------------------------------------- desenho
 func draw(ci: CanvasItem) -> void:
 	var S = main.S
+	if main.state != S.INTRO:
+		_draw_scene(ci, [1.0, 1.0, 1.0, 1.0])
 	match main.state:
 		S.MENU: _draw_menu(ci)
 		S.MODES: _draw_modes(ci)
@@ -632,6 +634,11 @@ func _draw_intro(ci: CanvasItem) -> void:
 			var a := i * TAU / 12.0 + k * 0.4
 			var p0 := Vector2(960, 420)
 			ci.draw_colored_polygon(PackedVector2Array([p0, p0 + Vector2.from_angle(a - 0.12) * 1400.0, p0 + Vector2.from_angle(a + 0.12) * 1400.0]), Color(1, 1, 1, 0.10 * fade * _smooth(k / 0.6)))
+	# o cenário do menu (chão e robôs) já está lá: os robôs entram correndo até os lugares deles
+	var ent := []
+	for i in 4:
+		ent.append(_smooth((k - 0.7 - i * 0.1) / 0.6))
+	_draw_scene(ci, ent)
 	# logo: cai com quique, amassa no impacto, respira, e desliza para o lugar do menu
 	var tex := Data.tex("ui/logo")
 	var w0 := 1500.0
@@ -667,27 +674,6 @@ func _draw_intro(ci: CanvasItem) -> void:
 			var sp := c0 + Vector2.from_angle(a) * (300.0 + u * 420.0) * Vector2(1.6, 0.6)
 			var sz := 14.0 * (1.0 - u)
 			Kit.star(ci, sp, sz * 2.0, true)
-	# os quatro robôs entram correndo e acenam (somem quando o menu aparece)
-	if k > 0.7 and k < 2.45:
-		for i in 4:
-			var side := -1.0 if i < 2 else 1.0
-			var target := Vector2(960.0 + side * (130.0 + (i % 2) * 150.0), c0.y + h * 0.5 + 230.0)
-			var u := _smooth((k - 0.7 - i * 0.08) / 0.55)
-			var pos := Vector2(lerpf(960.0 + side * 1200.0, target.x, u), target.y)
-			var out := clampf((k - 1.75 - i * 0.04) / 0.5, 0.0, 1.0)   # pulam para fora quando o menu aparece
-			pos += Vector2(side * 260.0 * out, -180.0 * sin(out * PI) + 900.0 * out * out)
-			var look := {"color": i, "model": i, "acc": 0, "hammer": true}
-			var pose: Dictionary = RobotVis.victory_pose(k * 1.3 + i) if u >= 1.0 else RobotVis.idle_pose(k + i)
-			if u < 1.0:
-				var ph := k * 22.0 + i
-				pose["feet"] = [Vector2(cos(ph) * 9.0, -maxf(sin(ph), 0.0) * 8.0), Vector2(cos(ph + PI) * 9.0, -maxf(sin(ph + PI), 0.0) * 8.0)]
-				pose["lean"] = 0.15
-			var face := -side
-			ci.draw_set_transform(Vector2.ZERO)
-			var m := Color(1, 1, 1, fade)
-			ci.draw_set_transform_matrix(Transform2D(0.0, Vector2(2.2 * face, 2.2), 0.0, pos))
-			RobotVis.draw_robot(ci, look, pose, Transform2D(0.0, Vector2(2.2 * face, 2.2), 0.0, pos))
-			ci.draw_set_transform(Vector2.ZERO)
 	if k > 1.0 and k < 1.8:
 		var a := clampf((k - 1.0) / 0.3, 0.0, 1.0) * (0.6 + 0.4 * sin(k * 6.0))
 		Kit.text(ci, Vector2(0, 1030), "aperte qualquer botão", 30, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, 1920, 6, Color(0.12, 0.3, 0.33, a))
@@ -838,3 +824,102 @@ func _draw_config(ci: CanvasItem) -> void:
 	else:
 		Kit.text(ci, Vector2(r.position.x, r.position.y + 330), "PRONTO! Controle configurado.", 56, Color("#3c9a46"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		Kit.text(ci, Vector2(r.position.x, r.position.y + 400), "Agora teste na tela de TESTAR CONTROLES.", 32, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+
+# ---------------------------------------------------------------- cenário do menu (não depende da fase)
+const SCENE_GROUND := 880.0
+const SCENE_X := [1010.0, 1150.0, 1440.0, 1680.0]
+const SCENE_FACE := [1.0, -1.0, -1.0, -1.0]
+const SCENE_SCALE := 2.4
+
+## Chão de caixotes e os quatro robôs em ação: azul marreta o verde (que voa e volta), rosa quica de botas
+## de mola, amarelo corre desesperado com o TNT aceso. enter[i] = 0..1 (entrando correndo pela lateral).
+func _draw_scene(ci: CanvasItem, enter: Array) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	# chão de caixotes (três fileiras até o fim da tela) e um TNT de enfeite
+	for row in 4:
+		var x := -16.0
+		var y := SCENE_GROUND + row * 64.0
+		var i := 0
+		while x < 1920.0:
+			ci.draw_texture_rect(Data.tex("cenario/caixote_%d" % ((i * 7 + row * 3) % 3)), Rect2(x, y, 64, 64), false)
+			x += 64.0
+			i += 1
+	ci.draw_texture_rect(Data.tex("cenario/tnt"), Rect2(1830, SCENE_GROUND - 64, 64, 64), false)
+	ci.draw_texture_rect(Data.tex("cenario/caixote_1"), Rect2(1830, SCENE_GROUND - 128, 64, 64), false)
+	var cyc := fmod(now, 1.6) / 1.6   # ciclo da marretada
+	for i in 4:
+		var e: float = enter[i]
+		if e <= 0.0:
+			continue
+		var side := -1.0 if i < 2 else 1.0
+		var base := Vector2(lerpf(SCENE_X[i] + side * 1200.0 * (-1.0 if i < 2 else 1.0) * -1.0, SCENE_X[i], e), SCENE_GROUND)
+		if i < 2:
+			base.x = lerpf(SCENE_X[i] - 1300.0, SCENE_X[i], e)
+		else:
+			base.x = lerpf(SCENE_X[i] + 900.0, SCENE_X[i], e)
+		var face: float = SCENE_FACE[i]
+		var look := {"color": i, "model": i, "acc": 0, "hammer": true, "fx": {}}
+		var pose: Dictionary = RobotVis.idle_pose(now + i)
+		var off := Vector2.ZERO
+		if e < 1.0:
+			# entrando correndo
+			var ph := now * 22.0 + i
+			pose["feet"] = [Vector2(cos(ph) * 9.0, -maxf(sin(ph), 0.0) * 8.0), Vector2(cos(ph + PI) * 9.0, -maxf(sin(ph + PI), 0.0) * 8.0)]
+			pose["lean"] = 0.15
+			face = 1.0 if i < 2 else -1.0
+		else:
+			match i:
+				0:   # marreta: prepara, bate, volta
+					var k := clampf(cyc / 0.4, 0.0, 1.0)
+					if k < 0.4:
+						pose["hammer_ang"] = lerpf(0.35, -1.3, k / 0.4)
+						pose["lean"] = -0.1
+					elif k < 0.6:
+						pose["hammer_ang"] = lerpf(-1.3, 2.4, pow((k - 0.4) / 0.2, 2.0))
+						pose["lean"] = 0.25
+					else:
+						pose["hammer_ang"] = lerpf(2.4, 0.35, (k - 0.6) / 0.4)
+					pose["expr"] = "esforco" if k < 0.7 else "normal"
+				1:   # levou a marretada: voa para trás e volta
+					if cyc > 0.22:
+						var u := (cyc - 0.22) / 0.78
+						off = Vector2(150.0 * sin(u * PI) * 1.0, -80.0 * sin(u * PI))
+						pose["expr"] = "susto" if u < 0.7 else "normal"
+						pose["hb_off"] = Vector2(-6, -22) * sin(u * PI)
+						pose["hf_off"] = Vector2(4, -20) * sin(u * PI)
+						pose["lean"] = -0.35 * sin(u * PI)
+				2:   # botas de mola: quica sem parar
+					look["fx"] = {"mola": true}
+					var b := absf(sin(now * 3.2))
+					off.y = -110.0 * b
+					pose["spring_k"] = 0.7 + 0.8 * b
+					pose["expr"] = "vitoria" if b > 0.5 else "normal"
+				3:   # TNT aceso na mão: corre no lugar, desesperado
+					look["fx"] = {"item": "dinamite"}
+					var ph := now * 18.0
+					pose["feet"] = [Vector2(cos(ph) * 8.0, -maxf(sin(ph), 0.0) * 9.0), Vector2(cos(ph + PI) * 8.0, -maxf(sin(ph + PI), 0.0) * 9.0)]
+					pose["expr"] = "susto"
+					pose["hf_off"] = Vector2(sin(now * 20.0) * 4.0, -24.0)
+					off.y = -absf(sin(ph)) * 4.0
+		# sombra no chão
+		var hgt := clampf(-off.y / 120.0, 0.0, 1.0)
+		ci.draw_set_transform(Vector2(base.x + off.x, SCENE_GROUND + 4), 0.0, Vector2(1.0 - 0.4 * hgt, 0.35))
+		ci.draw_circle(Vector2.ZERO, 46.0, Color(0.1, 0.2, 0.22, 0.25 * (1.0 - 0.5 * hgt)))
+		ci.draw_set_transform(Vector2.ZERO)
+		RobotVis.draw_robot(ci, look, pose, Transform2D(0.0, Vector2(SCENE_SCALE * face, SCENE_SCALE), 0.0, base + off))
+		ci.draw_set_transform(Vector2.ZERO)
+	# impacto da marretada no verde: estrela "POW!" e estrelinhas girando
+	if enter[0] >= 1.0 and enter[1] >= 1.0:
+		if cyc > 0.2 and cyc < 0.42:
+			var u := (cyc - 0.2) / 0.22
+			var c := Vector2(SCENE_X[1] - 20.0, SCENE_GROUND - 150.0)
+			var burst := PackedVector2Array()
+			for k in 16:
+				burst.append(c + Vector2.from_angle(k * TAU / 16.0) * (70.0 if k % 2 == 0 else 34.0) * (0.6 + 0.6 * u))
+			ci.draw_colored_polygon(burst, Color(1.0, 0.94, 0.55, 1.0 - u * 0.6))
+			Kit.sticker(ci, c + Vector2(-120, 18), "POW!", 52, Color("#d42035"), HORIZONTAL_ALIGNMENT_CENTER, 240)
+		if cyc > 0.3 and cyc < 0.95:
+			var u := (cyc - 0.22) / 0.78
+			var head := Vector2(SCENE_X[1] + 150.0 * sin(u * PI), SCENE_GROUND - 80.0 * sin(u * PI) - 200.0)
+			for k in 3:
+				Kit.star(ci, head + Vector2.from_angle(now * 8.0 + k * TAU / 3.0) * Vector2(40, 14), 22.0, true)
