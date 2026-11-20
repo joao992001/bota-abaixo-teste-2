@@ -247,7 +247,7 @@ func menu_update(m: Node) -> void:
 		main.state = main.S.AJUSTES
 
 func menu_draw(ci: CanvasItem, m: Node) -> void:
-	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.35))
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.45))
 	Kit.ribbon(ci, Rect2(560, 20, 800, 128), "ESCOLHER EVENTOS", 54)
 	var list: Array = cfg["lista"]
 	var r := Rect2(360, 170, 1200, 840)
@@ -260,11 +260,11 @@ func menu_draw(ci: CanvasItem, m: Node) -> void:
 		if i < list.size():
 			var e: Dictionary = list[i]
 			var en: bool = enabled.get(e["id"], true)
-			ci.draw_rect(Rect2(r.position.x + 60, y - 28, 40, 40), Color("#1f3a40"), false, 4.0)
+			ci.draw_rect(Rect2(r.position.x + 60, y - 28, 40, 40), Color("#2a1a2e"), false, 4.0)
 			if en:
 				ci.draw_polyline(PackedVector2Array([Vector2(r.position.x + 66, y - 8), Vector2(r.position.x + 78, y + 6), Vector2(r.position.x + 98, y - 26)]), Color("#3c9a46"), 6.0, true)
-			Kit.text(ci, Vector2(r.position.x + 130, y), String(e["nome"]).to_upper(), 34, Color("#1f3a40") if en else Color("#9aa4ae"))
-			Kit.text(ci, Vector2(r.position.x + 600, y), e["dica"], 24, Color("#4a5a60") if en else Color("#b0b8bf"))
+			Kit.text(ci, Vector2(r.position.x + 130, y), String(e["nome"]).to_upper(), 34, Color("#2a1a2e") if en else Color("#9aa4ae"))
+			Kit.text(ci, Vector2(r.position.x + 600, y), e["dica"], 24, Color("#6b5a70") if en else Color("#b0b8bf"))
 		else:
-			Kit.text(ci, Vector2(r.position.x, y), "VOLTAR  ▸", 36, Color("#1f3a40"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+			Kit.text(ci, Vector2(r.position.x, y), "VOLTAR  ▸", 36, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	Kit.text(ci, Vector2(0, 1056), "▲▼ escolher  ·  PULAR liga/desliga  ·  BACKSPACE/ESC voltar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)

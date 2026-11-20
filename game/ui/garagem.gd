@@ -9,7 +9,7 @@ const NOMES := ["Parafuso", "Faísca", "Tijolinho", "Marretinha", "Zé Graxa", "
 	"Betoneira", "Cimento", "Porca", "Trinca", "Entulho", "Prumo", "Andaime", "Viga", "Furadinho", "Caçamba",
 	"Chapisco", "Sucata"]
 const ROWS := ["ROBÔ", "NOME", "MODELO", "COR", "COR 2", "PADRÃO", "CHAPÉU", "ROSTO", "FERRAMENTA", "COMEMORAÇÃO", "SORTEAR", "VOLTAR"]
-const DARK := Color("#1f3a40")
+const DARK := Color("#2a1a2e")
 
 var main: Node
 var path := "user://garagem.cfg"
@@ -150,7 +150,7 @@ func look_of(sk: Dictionary, color_idx := 0) -> Dictionary:
 	return {"color": color_idx, "model": sk["model"], "acc": sk["chapeu"], "skin": sk}
 
 func draw(ci: CanvasItem) -> void:
-	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.35))
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.45))
 	Kit.ribbon(ci, Rect2(560, 30, 800, 128), "GARAGEM", 60)
 	var sk: Dictionary = robots[slot]
 	# vitrine: o robô grande, girando a comemoração quando muda algo ou na linha COMEMORAÇÃO
@@ -177,7 +177,7 @@ func draw(ci: CanvasItem) -> void:
 		if on:
 			Kit.paper(ci, rr.grow(6), Color("#f2c84b"))
 		Kit.paper(ci, rr)
-		var col := Color("#1f3a40") if on else Color("#2c4a52")
+		var col := Color("#2a1a2e") if on else Color("#3b2b40")
 		var simple: bool = ROWS[r] in ["SORTEAR", "VOLTAR"]
 		if simple:
 			Kit.text(ci, Vector2(rr.position.x, rr.position.y + 44), ROWS[r] + ("  ★" if ROWS[r] == "SORTEAR" else ""), 34, col, HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)

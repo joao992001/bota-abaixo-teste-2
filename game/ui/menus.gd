@@ -199,7 +199,7 @@ func update_pause() -> void:
 # ---------------------------------------------------------------- desenho
 func draw(ci: CanvasItem) -> void:
 	var S = main.S
-	if main.state != S.INTRO:
+	if main.state != S.INTRO and main.state in main.MENU_STATES:
 		_draw_scene(ci, [1.0, 1.0, 1.0, 1.0])
 	match main.state:
 		S.MENU: _draw_menu(ci)
@@ -232,25 +232,29 @@ func _logo(ci: CanvasItem, y: float, w: float) -> void:
 	var bob := sin(t * 1.6) * 6.0 * menu_in
 	ci.draw_texture_rect(Data.tex("ui/logo"), Rect2(960 - w / 2, y + bob, w, h), false)
 
+## Botão cartoon: creme com contorno; o selecionado fica amarelo, maior, inclinado e com letras brancas contornadas.
 func _button(ci: CanvasItem, r: Rect2, label: String, on: bool, rot := 0.0) -> void:
 	var c := r.get_center()
-	ci.draw_set_transform(c, rot + (sin(t * 6.0) * 0.015 if on else 0.0), Vector2.ONE * (1.06 if on else 1.0))
+	ci.draw_set_transform(c, (rot * 1.5 + sin(t * 5.0) * 0.012) if on else 0.0, Vector2.ONE * (1.08 if on else 1.0))
 	var rr := Rect2(-r.size / 2.0, r.size)
+	Kit.chunk(ci, rr, Kit.YEL if on else Kit.CREAM, int(minf(28.0, rr.size.y * 0.32)))
+	var fs := int(clampf(rr.size.y * 0.5, 22.0, 48.0))
+	var f := Kit.font()
+	while fs > 18 and f.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > rr.size.x - 40:
+		fs -= 2
 	if on:
-		Kit.paper(ci, rr.grow(10), Color("#f2c84b"))
-	Kit.paper(ci, rr)
-	Kit.text(ci, Vector2(rr.position.x, 14), label, 44, Color("#2c4a52") if not on else Color("#1f3a40"), HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
-	if on:
-		ci.draw_texture_rect(Data.tex("robo/marreta"), Rect2(rr.position.x - 70, -34, 64, 64), false)
+		Kit.text(ci, Vector2(rr.position.x, fs * 0.36), label, fs, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, rr.size.x, int(fs * 0.22))
+	else:
+		Kit.text(ci, Vector2(rr.position.x, fs * 0.36), label, fs, Kit.INK, HORIZONTAL_ALIGNMENT_CENTER, rr.size.x)
 	ci.draw_set_transform(Vector2.ZERO)
 
 func _draw_menu(ci: CanvasItem) -> void:
-	_logo(ci, 40, 1180)
+	_logo(ci, 30, 1000)
 	menu_in = minf(menu_in + get_process_delta_time() / 0.45, 1.0)
 	for i in MENU_ITEMS.size():
 		var u := _ease_out_back(clampf(menu_in * 1.6 - i * 0.12, 0.0, 1.0))
-		_button(ci, Rect2(250 - 700.0 * (1.0 - u), 420 + i * 102, 440, 84), MENU_ITEMS[i], sel == i, (-0.02 if i % 2 == 0 else 0.02))
-	Kit.text(ci, Vector2(0, 1056), "▲▼ escolher  ·  PULAR / ENTER confirmar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
+		_button(ci, Rect2(960 - 240 - 1400.0 * (1.0 - u), 262 + i * 112, 480, 86), MENU_ITEMS[i], sel == i, (-0.025 if i % 2 == 0 else 0.025))
+	Kit.pad_hint(ci, 960, 1044, ["▲▼ escolher   ", ["baixo"], " confirmar   ", ["direita"], " voltar"], 28, Color.WHITE, PlayerInput.main_pad_type(), 7)
 
 ## Ilustração do cartão; xf = transformação do cartão (girado), para não perdê-la ao desenhar peças giradas.
 func _mode_art(ci: CanvasItem, id: String, c: Vector2, xf: Transform2D) -> void:
@@ -278,7 +282,7 @@ func _mode_art(ci: CanvasItem, id: String, c: Vector2, xf: Transform2D) -> void:
 			ci.draw_texture_rect(Data.tex("pecas/mola_c2"), Rect2(c + Vector2(10, -60), Vector2(64, 64)), false)
 
 func _draw_modes(ci: CanvasItem) -> void:
-	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.35))
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.45))
 	Kit.ribbon(ci, Rect2(560, 40, 800, 128), "ESCOLHA O MODO", 60)
 	var n := MODES.size()
 	for i in n:
@@ -297,10 +301,10 @@ func _draw_modes(ci: CanvasItem) -> void:
 			Kit.paper(ci, r.grow(12), Color("#f2c84b"))
 		Kit.paper(ci, r, Color.WHITE if m["ok"] else Color(0.85, 0.85, 0.85))
 		_mode_art(ci, m["id"], Vector2(0, -90), xf)
-		Kit.text(ci, Vector2(r.position.x, 60), m["name"], 38 if m["name"].length() < 12 else 30, Color("#1f3a40"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, 60), m["name"], 38 if m["name"].length() < 12 else 30, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		var lines: PackedStringArray = m["desc"].split("\n")
 		for k in lines.size():
-			Kit.text(ci, Vector2(r.position.x, 110 + k * 32), lines[k], 24, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+			Kit.text(ci, Vector2(r.position.x, 110 + k * 32), lines[k], 24, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		if not m["ok"]:
 			ci.draw_texture_rect(Data.tex("ui/em_breve"), Rect2(-130, -150, 260, 95), false)
 		ci.draw_set_transform(Vector2.ZERO)
@@ -323,7 +327,7 @@ func _sub_art(ci: CanvasItem, id: String, c: Vector2, xf: Transform2D) -> void:
 	ci.draw_set_transform_matrix(xf)
 
 func _draw_submodes(ci: CanvasItem) -> void:
-	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.35))
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.45))
 	Kit.ribbon(ci, Rect2(560, 30, 800, 128), "DEMOLIÇÃO: SUBMODO", 52)
 	var subs: Array = main.demo.cfg["submodos"]
 	for i in subs.size():
@@ -337,22 +341,22 @@ func _draw_submodes(ci: CanvasItem) -> void:
 			Kit.paper(ci, r.grow(12), Color("#f2c84b"))
 		Kit.paper(ci, r)
 		_sub_art(ci, m["id"], Vector2(0, -110), xf)
-		Kit.text(ci, Vector2(r.position.x, 80), String(m["nome"]).to_upper(), 36 if String(m["nome"]).length() < 14 else 30, Color("#1f3a40"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, 80), String(m["nome"]).to_upper(), 36 if String(m["nome"]).length() < 14 else 30, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		var lines: PackedStringArray = String(m["dica"]).split("\n")
 		for k in lines.size():
-			Kit.text(ci, Vector2(r.position.x, 140 + k * 34), lines[k], 25, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+			Kit.text(ci, Vector2(r.position.x, 140 + k * 34), lines[k], 25, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	ci.draw_set_transform(Vector2.ZERO)
 	Kit.text(ci, Vector2(0, 1056), "◄► escolher  ·  PULAR confirmar  ·  BACKSPACE/ESC voltar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
 
 func _draw_adjust(ci: CanvasItem) -> void:
-	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.35))
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.45))
 	Kit.ribbon(ci, Rect2(560, 30, 800, 128), "AJUSTES DA PARTIDA", 54)
 	var sname: String = main.demo.find_submode(main.submode_choice)["nome"]
 	var aname := "Sorteio"
 	for a in main.demo.cfg["arenas"]:
 		if a["id"] == main.arena_choice:
 			aname = a["nome"]
-	Kit.sticker(ci, Vector2(0, 205), "%s  ·  %s" % [sname, aname], 34, Color("#1f3a40"), HORIZONTAL_ALIGNMENT_CENTER, 1920)
+	Kit.sticker(ci, Vector2(0, 205), "%s  ·  %s" % [sname, aname], 34, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_CENTER, 1920)
 	var items := [
 		"★ PARA VENCER:  ◄ %d ►" % STAR_GOALS[goal_sel],
 		"EVENTOS:  ◄ %s ►" % EVENT_LEVELS[main.event_level],
@@ -372,7 +376,7 @@ func arena_list() -> Array:
 	return out
 
 func _draw_arenas(ci: CanvasItem) -> void:
-	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.35))
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.45))
 	Kit.ribbon(ci, Rect2(560, 30, 800, 128), "ESCOLHA A ARENA", 58)
 	var list := arena_list()
 	var nrows: int = int(ceil(list.size() / 4.0))
@@ -398,13 +402,13 @@ func _draw_arenas(ci: CanvasItem) -> void:
 			ci.draw_texture_rect(thumb, tr, false)
 		else:
 			ci.draw_rect(tr, Color("#9fe3ee"))
-		Kit.text(ci, Vector2(r.position.x, 100), String(a["nome"]).to_upper(), 34 if String(a["nome"]).length() < 15 else 28, Color("#1f3a40"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-		Kit.text(ci, Vector2(r.position.x, 138), a["dica"], 21, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, 100), String(a["nome"]).to_upper(), 34 if String(a["nome"]).length() < 15 else 28, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, 138), a["dica"], 21, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	ci.draw_set_transform(Vector2.ZERO)
 	Kit.text(ci, Vector2(0, 1056), "◄►▲▼ escolher  ·  PULAR confirmar  ·  BACKSPACE/ESC voltar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
 
 func _draw_howto(ci: CanvasItem) -> void:
-	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.35))
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.45))
 	Kit.ribbon(ci, Rect2(560, 30, 800, 128), "COMO JOGAR", 60)
 	var r := Rect2(160, 180, 1600, 780)
 	Kit.paper(ci, r)
@@ -437,11 +441,11 @@ func _draw_howto(ci: CanvasItem) -> void:
 		ci.draw_set_transform(Vector2.ZERO)
 		var lines: PackedStringArray = String(tips[i][1]).split("\n")
 		for k in lines.size():
-			Kit.text(ci, Vector2(r.position.x + 260, y + 44 - (lines.size() - 1) * 18 + k * 40), lines[k], 32, Color("#1f3a40"))
+			Kit.text(ci, Vector2(r.position.x + 260, y + 44 - (lines.size() - 1) * 18 + k * 40), lines[k], 32, Color("#2a1a2e"))
 	Kit.text(ci, Vector2(0, 1050), "Teclado A: WASD · Espaço pula · F marreta · G item     Teclado B: setas · Ctrl dir. pula · ponto marreta · vírgula item     Controle: A · X · Y", 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
 
 func _draw_options(ci: CanvasItem) -> void:
-	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.35))
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.45))
 	Kit.ribbon(ci, Rect2(560, 60, 800, 128), "OPÇÕES", 60)
 	var full := DisplayServer.window_get_mode() in [DisplayServer.WINDOW_MODE_FULLSCREEN, DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN]
 	var items := [
@@ -470,7 +474,7 @@ func _draw_pause(ci: CanvasItem) -> void:
 		Kit.paper(ci, r, Color(1, 0.86, 0.82))
 		var who := ", ".join(main.lost_pads.map(func(i): return "P%d" % (i + 1)))
 		Kit.text(ci, Vector2(r.position.x, r.position.y + 52), "CONTROLE DESCONECTADO: %s" % who, 38, Color("#a01528"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-		Kit.text(ci, Vector2(r.position.x, r.position.y + 94), "Reconecte (USB ou Bluetooth) ou aperte START em outro controle", 24, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 94), "Reconecte (USB ou Bluetooth) ou aperte START em outro controle", 24, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	for i in PAUSE_ITEMS.size():
 		_button(ci, Rect2(610, 380 + i * 140, 700, 100), PAUSE_ITEMS[i], pause_sel == i)
 
@@ -504,7 +508,7 @@ func _update_pads() -> void:
 			Audio.play("item")
 
 func _draw_pads(ci: CanvasItem) -> void:
-	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.45))
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.5))
 	Kit.ribbon(ci, Rect2(560, 20, 800, 128), "TESTAR CONTROLES", 54)
 	var pads: Array = Input.get_connected_joypads()
 	if pads.is_empty():
@@ -520,7 +524,7 @@ func _draw_pads(ci: CanvasItem) -> void:
 			"Rodando dentro do editor: clique na janela do jogo para ela ter o foco.",
 		]
 		for i in tips.size():
-			Kit.text(ci, Vector2(r.position.x + 70, r.position.y + 190 + i * 88), "•  " + tips[i], 27, Color("#2c4a52"))
+			Kit.text(ci, Vector2(r.position.x + 70, r.position.y + 190 + i * 88), "•  " + tips[i], 27, Color("#3b2b40"))
 	else:
 		var n: int = mini(pads.size(), 4)
 		var cw := 430.0
@@ -535,10 +539,10 @@ func _draw_pad_card(ci: CanvasItem, j: int, r: Rect2, k: int) -> void:
 	Kit.paper(ci, r)
 	var dev := "joy%d" % j
 	var st: String = PlayerInput.pad_type(dev)
-	var dark := Color("#1f3a40")
+	var dark := Color("#2a1a2e")
 	Kit.text(ci, Vector2(r.position.x, r.position.y + 60), "CONTROLE %d" % (j + 1), 40, dark, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	var nm := Input.get_joy_name(j)
-	Kit.text(ci, Vector2(r.position.x + 20, r.position.y + 96), nm.substr(0, 30), 22, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 40)
+	Kit.text(ci, Vector2(r.position.x + 20, r.position.y + 96), nm.substr(0, 30), 22, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 40)
 	var tname := {"xbox": "tipo Xbox", "ps": "tipo PlayStation", "nintendo": "tipo Nintendo", "generico": "genérico (botões como Xbox)"}
 	Kit.text(ci, Vector2(r.position.x, r.position.y + 128), tname.get(st, ""), 22, Color("#3c9a46"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	var used: int = PlayerInput.slots.find(dev)
@@ -550,8 +554,8 @@ func _draw_pad_card(ci: CanvasItem, j: int, r: Rect2, k: int) -> void:
 	var known := Input.is_joy_known(j)
 	Kit.text(ci, Vector2(r.position.x, r.end.y - 40), ("mapeamento reconhecido" if known else "mapeamento DESCONHECIDO (botões podem vir trocados)"), 19,
 		Color("#3c9a46") if known else Color("#a01528"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-	Kit.text(ci, Vector2(r.position.x, r.end.y - 14), "último sinal: %s" % String(PlayerInput.last_raw.get(j, "—")), 19, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-	Kit.text(ci, Vector2(r.position.x + 10, r.end.y - 66), PlayerInput.raw_now(j), 18, Color("#1f3a40"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 20)
+	Kit.text(ci, Vector2(r.position.x, r.end.y - 14), "último sinal: %s" % String(PlayerInput.last_raw.get(j, "—")), 19, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	Kit.text(ci, Vector2(r.position.x + 10, r.end.y - 66), PlayerInput.raw_now(j), 18, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 20)
 	if PlayerInput.custom.has(Input.get_joy_guid(j)):
 		Kit.text(ci, Vector2(r.position.x, r.end.y - 92), "usando a SUA configuração", 19, Color("#3c9a46"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	# corpo do controle
@@ -790,30 +794,30 @@ func _cfg_finish_if_done() -> void:
 			pad_prev.clear()
 
 func _draw_config(ci: CanvasItem) -> void:
-	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.45))
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.5))
 	Kit.ribbon(ci, Rect2(510, 20, 900, 128), "CONFIGURAR CONTROLE", 54)
 	var r := Rect2(260, 180, 1400, 800)
 	Kit.paper(ci, r)
-	var dark := Color("#1f3a40")
+	var dark := Color("#2a1a2e")
 	var acts: Array = PlayerInput.LEARN_ACTIONS
 	if cfg_step < 0:
 		Kit.text(ci, Vector2(r.position.x, r.position.y + 200), "Aperte QUALQUER botão no controle", 54, dark, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-		Kit.text(ci, Vector2(r.position.x, r.position.y + 260), "que você quer configurar", 40, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 260), "que você quer configurar", 40, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		Kit.text(ci, Vector2(r.position.x, r.end.y - 90), "Se NADA acontecer ao apertar: feche a Steam (ou desligue o Steam Input),", 24, Color("#8a5a10"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		Kit.text(ci, Vector2(r.position.x, r.end.y - 56), "desconecte e conecte o controle de novo, e abra esta tela outra vez.", 24, Color("#8a5a10"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-		Kit.text(ci, Vector2(r.position.x, r.end.y - 20), "ESC cancela", 22, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, r.end.y - 20), "ESC cancela", 22, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		if _cfg_joys().is_empty():
 			Kit.text(ci, Vector2(r.position.x, r.position.y + 380), "Nenhum controle detectado pelo Windows.", 34, Color("#a01528"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		else:
 			var y := r.position.y + 380
 			for j in _cfg_joys():
-				Kit.text(ci, Vector2(r.position.x, y), "controle %d: %s" % [j + 1, Input.get_joy_name(j)], 26, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+				Kit.text(ci, Vector2(r.position.x, y), "controle %d: %s" % [j + 1, Input.get_joy_name(j)], 26, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 				y += 40
 	elif cfg_step < acts.size():
-		Kit.text(ci, Vector2(r.position.x, r.position.y + 70), cfg_msg, 26, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 70), cfg_msg, 26, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		var a: String = acts[cfg_step]
 		var verb := "Mova para" if a in ["left", "right", "up", "down"] else "Aperte o botão de"
-		Kit.text(ci, Vector2(r.position.x, r.position.y + 230), verb, 40, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 230), verb, 40, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		var pulse := 1.0 + 0.05 * sin(t * 6.0)
 		ci.draw_set_transform(Vector2(960, r.position.y + 320), 0.0, Vector2(pulse, pulse))
 		Kit.text(ci, Vector2(-700, 0), LEARN_NAMES[a], 64, Color("#d42035") if cfg_wait <= 0.0 else Color("#3c9a46"), HORIZONTAL_ALIGNMENT_CENTER, 1400)
@@ -824,10 +828,10 @@ func _draw_config(ci: CanvasItem) -> void:
 			ci.draw_circle(c, 20, Color("#5cc45c") if i < cfg_step else (Color("#f2c84b") if i == cfg_step else Color(0.8, 0.78, 0.72)))
 		if cfg_joy >= 0:
 			Kit.text(ci, Vector2(r.position.x, r.position.y + 580), "sinais agora: " + PlayerInput.raw_now(cfg_joy), 24, dark, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-		Kit.text(ci, Vector2(r.position.x, r.end.y - 40), "TAB (teclado) pula esta ação  ·  ESC cancela", 24, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, r.end.y - 40), "TAB (teclado) pula esta ação  ·  ESC cancela", 24, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	else:
 		Kit.text(ci, Vector2(r.position.x, r.position.y + 330), "PRONTO! Controle configurado.", 56, Color("#3c9a46"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-		Kit.text(ci, Vector2(r.position.x, r.position.y + 400), "Agora teste na tela de TESTAR CONTROLES.", 32, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 400), "Agora teste na tela de TESTAR CONTROLES.", 32, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 
 # ---------------------------------------------------------------- cenário do menu (não depende da fase)
 const SCENE_GROUND := 880.0

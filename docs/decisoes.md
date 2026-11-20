@@ -51,3 +51,7 @@
 - A cor do jogador deixa de ser a cor do corpo nos robôs da Garagem: identificação por setinha "P1" e cor no placar.
 - Robôs "de fábrica" continuam iguais (cor do jogador), para quem não quer montar nada.
 
+## 2026-11-20 — Interface cartoon (proposta B)
+- O usuário não quis temas novos nas arenas (desfeito); o pedido era refazer UI/HUD. Escolheu a proposta B (cartoon chapado).
+- Cartões dos jogadores foram para baixo da tela (o topo fica só com o título da rodada); somem para 35% quando um robô passa atrás.
+

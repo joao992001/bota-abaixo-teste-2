@@ -176,7 +176,7 @@ func _count(kind: String) -> int:
 
 func draw(ci: CanvasItem) -> void:
 	if not open:
-		Kit.sticker(ci, Vector2(24, 1050), "OFICINA  ·  START / TAB: painel", 26, Color("#1f3a40"), HORIZONTAL_ALIGNMENT_LEFT)
+		Kit.sticker(ci, Vector2(24, 120), "OFICINA  ·  START / TAB: painel", 26, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_LEFT)
 		if god:
 			Kit.sticker(ci, Vector2(24, 1010), "INVENCÍVEL", 24, Color("#3c9a46"), HORIZONTAL_ALIGNMENT_LEFT)
 		return
@@ -189,7 +189,7 @@ func draw(ci: CanvasItem) -> void:
 		var on := i == sel
 		if on:
 			ci.draw_rect(Rect2(r.position.x + 30, y - 44, r.size.x - 60, 60), Color(0.95, 0.78, 0.29, 0.55))
-		Kit.text(ci, Vector2(r.position.x + 60, y), _label(ROWS[i]), 30, Color("#1f3a40") if on else Color("#3e5a62"))
+		Kit.text(ci, Vector2(r.position.x + 60, y), _label(ROWS[i]), 30, Color("#2a1a2e") if on else Color("#3e5a62"))
 		if ROWS[i] in ["dar", "soltar"]:
 			var k: String = kinds()[item_i if ROWS[i] == "dar" else drop_i]
 			ci.draw_texture_rect(Data.tex("itens/" + k), Rect2(r.end.x - 110, y - 46, 56, 56), false)

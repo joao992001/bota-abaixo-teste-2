@@ -508,7 +508,7 @@ func _draw_canvas() -> void:
 			canvas.draw_set_transform(Vector2.ZERO)
 			if fmod(now, 0.2) < 0.1:
 				canvas.draw_circle(hp + shake + Vector2(14, -24), 7, Color("#fff4c8"))
-			var col := Color("#d42035") if bomb_fuse < 3.0 else Color("#1f3a40")
+			var col := Color("#d42035") if bomb_fuse < 3.0 else Color("#2a1a2e")
 			Kit.text(canvas, hp + Vector2(-60, -34), "%d" % ceili(bomb_fuse), 34, col, HORIZONTAL_ALIGNMENT_CENTER, 120, 8, Color("#fff7ee"))
 
 # ---------------------------------------------------------------- marreta
