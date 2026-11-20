@@ -22,6 +22,7 @@ var spawned := 0             # quantas coisas o evento soltou (testes)
 var dark: CanvasModulate = null
 var lights: Array = []
 var menu_sel := 0
+var manual := false           # Oficina: só dispara pelo painel
 
 func setup(m: Node) -> void:
 	main = m
@@ -44,8 +45,9 @@ func update(dt: float) -> void:
 	_update_falling(dt)
 	match phase:
 		"":
-			timer -= dt
-			if timer <= 0.0:
+			if not manual:
+				timer -= dt
+			if timer <= 0.0 and not manual:
 				var pool: Array = cfg["lista"].filter(func(e): return enabled.get(e["id"], true))
 				if pool.is_empty():
 					timer = 999.0
@@ -70,6 +72,16 @@ func update(dt: float) -> void:
 				Audio.play("evento_fim", 1.0, -4.0)
 				phase = ""
 				timer = float(cfg["intervalo_s"][main.event_level]) * main.rng.randf_range(0.8, 1.2)
+
+## Dispara um evento agora (painel da Oficina): aviso curto e depois ativo.
+func trigger(e: Dictionary) -> void:
+	_end_event()
+	current = e
+	phase = "aviso"
+	phase_t = 0.6
+	main.demo.banner = "EVENTO: %s!" % String(e["nome"]).to_upper()
+	main.demo.banner_t = 1.2
+	Audio.play("evento")
 
 func active_name() -> String:
 	return String(current.get("nome", "")) if phase == "ativo" else ""

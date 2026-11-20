@@ -569,7 +569,7 @@ func _draw() -> void:
 		var lama := Data.tex("cenario/lama")
 		var y := goo_y - 24.0
 		var x := -fposmod(t * 20.0, 64.0)
-		while x < level.cols * T:
+		while x < level.cols * T and lama != null:
 			draw_texture_rect(lama, Rect2(x, y, 64, 64), false)
 			x += 64.0
 		draw_rect(Rect2(0, y + 60, level.cols * T, level.rows * T + 200 - y), Color("#7a5fb3"))

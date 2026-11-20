@@ -19,6 +19,7 @@ Godot 4 estável, Python 3 com Pillow. Ajudam, se houver: `rsvg-convert`, Inksca
 
 ## Rodar (Marco 1)
 - Jogar: `godot --path game` (Godot 4.3+). Teclado A: WASD, Espaço pula, F marreta, G item · Teclado B: setas, Ctrl direito pula, ponto (.) marreta, vírgula item · Controle (Xbox, PlayStation, Nintendo, genérico; USB ou Bluetooth, pode conectar a qualquer hora): botão de baixo (A/✕) pula, esquerda (X/□) ou RB/RT marreta, cima (Y/△) ou LB/LT item, B/○ volta, Start pausa · Enter/Start começa. Na entrada, Y/△ adiciona bot. OPÇÕES ▸ TESTAR CONTROLES mostra cada controle ao vivo; OPÇÕES ▸ VIBRAÇÃO. Abre no menu principal (▲▼ + Pular). Na entrada: B adiciona bot, N remove, M dificuldade, F11 tela cheia. Enter/Start pausa a partida.
+- OFICINA (menu principal): ambiente de testes com todas as máquinas, respawn infinito; START/Tab abre o painel (dar item, soltar item, evento agora, trocar/recarregar arena, boneco de treino, bot, invencível, zerar dano, câmera lenta, hitbox). Outro controle entra apertando PULAR.
 - Demolição: JOGAR → DEMOLIÇÃO → submodo (Último em Pé, Vidas, Placar, Batata-Dinamite) → arena (11 + sorteio) → AJUSTES (★ para vencer, frequência e escolha de eventos, itens, ajuda para quem perde) → entrada.
 - Teste automático: `godot --headless --path game --fixed-fps 60 -- --autotest` (só uma parte: `-- --autotest --so=maquinas,itens_novos,eventos`)
 - Medir ritmo com bots: `godot --headless --path game --fixed-fps 60 -- --stats=4 [--sub=vidas] [--so-arenas=torre,ponte]` (grava `user://stats.json`)

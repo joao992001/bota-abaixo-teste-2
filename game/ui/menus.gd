@@ -5,7 +5,7 @@ extends Node
 const Kit := preload("res://ui/kit.gd")
 const RobotVis := preload("res://player/robot_visual.gd")
 
-const MENU_ITEMS := ["JOGAR", "COMO JOGAR", "OPÇÕES", "SAIR"]
+const MENU_ITEMS := ["JOGAR", "OFICINA", "COMO JOGAR", "OPÇÕES", "SAIR"]
 const MODES := [
 	{"id": "demolicao", "name": "DEMOLIÇÃO", "desc": "Quebre o chão dos outros.\nO último em pé leva ★", "ok": true},
 	{"id": "rei", "name": "REI DA OBRA", "desc": "Segure o capacete de ouro\no máximo que puder", "ok": false},
@@ -64,9 +64,10 @@ func update(dt: float) -> void:
 			if confirm():
 				match sel:
 					0: main.state = S.MODES
-					1: main.state = S.HOWTO
-					2: main.state = S.OPTIONS
-					3: main.get_tree().quit()
+					1: main.oficina.start(_who_confirmed())
+					2: main.state = S.HOWTO
+					3: main.state = S.OPTIONS
+					4: main.get_tree().quit()
 		S.MODES:
 			mode_sel = posmod(mode_sel + move_h(), MODES.size())
 			if confirm():
@@ -193,7 +194,17 @@ func draw(ci: CanvasItem) -> void:
 		S.EVENTOS: main.events.menu_draw(ci, self)
 		S.CONTROLES: _draw_pads(ci)
 	if main.paused:
-		_draw_pause(ci)
+		if main.sandbox and main.oficina.open:
+			main.oficina.draw(ci)
+		else:
+			_draw_pause(ci)
+
+## Qual dispositivo confirmou agora (vira o P1 da Oficina).
+func _who_confirmed() -> String:
+	for dev in PlayerInput.all_devices():
+		if PlayerInput.dev_pressed(dev, "jump") or PlayerInput.dev_pressed(dev, "start"):
+			return dev
+	return "kb_a"
 
 func _logo(ci: CanvasItem, y: float, w: float) -> void:
 	var h := w * 340.0 / 1700.0

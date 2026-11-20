@@ -231,6 +231,18 @@ def chute():
 
 
 
+def mud():
+    """Lama roxa 64x64 (emenda na horizontal): borda de cima ondulada com bolhas, corpo mais escuro embaixo."""
+    top = "M0,20 C10,13 22,13 32,20 C42,27 54,27 64,20 V64 H0 Z"
+    b = [shape("lm", top, "#9a7fd0", 101, (0, 10, 64, 64), k=1.4, dark="#6f55a8", light="#c4b0ee"),
+         '<rect x="0" y="44" width="64" height="20" fill="#7a5fb3"/>',
+         '<path d="M4,22 C14,16 22,16 30,21" stroke="#d8c8f6" stroke-width="3" fill="none" stroke-linecap="round"/>',
+         '<circle cx="46" cy="34" r="5" fill="none" stroke="#c4b0ee" stroke-width="2"/>',
+         '<circle cx="18" cy="40" r="3" fill="none" stroke="#c4b0ee" stroke-width="1.6"/>',
+         '<circle cx="47" cy="32.5" r="1.4" fill="#ffffff"/>']
+    return wrap(64, 64, "".join(b), 103, 0.5)
+
+
 def main():
     for name, svg, w, h in [("esteira_piso", belt_tile(), 64, 64), ("plataforma_aco", girder(), 192, 40),
                             ("tnt", tnt(), 64, 64), ("bola_demolicao", ball(), 128, 128),
@@ -241,7 +253,7 @@ def main():
                             ("barril", barrel(), 56, 56), ("alavanca_base", lever_base(), 64, 32),
                             ("alavanca_haste", lever_stick(), 16, 56), ("alcapao", trapdoor(), 64, 24),
                             ("gangorra_tabua", seesaw_plank(), 64, 28), ("gangorra_apoio", seesaw_pivot(), 64, 64),
-                            ("calha", chute(), 64, 64)]:
+                            ("calha", chute(), 64, 64), ("lama", mud(), 64, 64)]:
         queue(svg, f"{SRC}/{name}.svg", f"{OUT}/{name}.png", w, h, K)
     print("arenas:", render_all())
 

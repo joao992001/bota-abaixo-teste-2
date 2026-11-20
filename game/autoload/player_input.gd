@@ -177,6 +177,8 @@ func label(dev: String) -> String:
 		"kb_b": return "teclado B"
 	if dev.begins_with("bot"):
 		return "BOT"
+	if dev.begins_with("boneco"):
+		return "BONECO DE TREINO"
 	if dev.begins_with("joy"):
 		var nm := Input.get_joy_name(int(dev.substr(3)))
 		return "controle %d: %s" % [int(dev.substr(3)) + 1, nm.substr(0, 22)]

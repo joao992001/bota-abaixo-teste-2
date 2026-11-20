@@ -32,6 +32,7 @@ var glue_t := 0.0             # pisou na cola: lento
 var forced_t := 0.0           # movimento forçado (gancho puxando, investida da furadeira)
 var forced_vel := Vector2.ZERO
 var thrusting := false        # bota-foguete ligada neste quadro (desenho da chama)
+var god := false              # Oficina: invencível (não leva golpe)
 var push_vx := 0.0            # empurrão externo deste quadro (ímã); zera a cada quadro
 var shield := 0              # capacete de aço: golpes que ainda aguenta
 var fall_reason := ""
@@ -375,7 +376,7 @@ func _climb_update(dt: float) -> void:
 ## Golpe com o Amassômetro: soma dano e o empurrão cresce com ele. kind = chave em demolicao.amassometro.
 ## Retorna false se não pegou (invulnerável ou capacete).
 func take_hit(dir: int, kind: String, by := -1) -> bool:
-	if invuln > 0.0:
+	if invuln > 0.0 or god:
 		return false
 	last_hit = 0.0
 	last_cause = {"marretada": "marretada", "martelao": "marretada", "explosao": "explosão", "bola": "bola"}.get(kind, kind)

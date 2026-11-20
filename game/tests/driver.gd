@@ -18,6 +18,24 @@ func _run() -> void:
 			shot = a.substr(7)
 		if a.begins_with("--anim="):
 			anim = a.substr(7)
+		if a.begins_with("--oficina="):
+			DirAccess.make_dir_recursive_absolute(a.substr(10))
+			get_window().size = Vector2i(1920, 1080)
+			main.go_menu()
+			PlayerInput.virtual = {"v0": {}}
+			await frames(2)
+			main.oficina.start("v0")
+			main.sandbox_add("boneco")
+			main.sandbox_add("bot")
+			await frames(150)
+			await snap(a.substr(10), "oficina_jogo")
+			main.oficina.toggle()
+			main.oficina.sel = 0
+			main.oficina.item_i = 4
+			await frames(10)
+			await snap(a.substr(10), "oficina_painel")
+			get_tree().quit(0)
+			return
 		if a.begins_with("--itens="):
 			await itens_frames(a.substr(8))
 			get_tree().quit(0)
@@ -559,6 +577,8 @@ func demolicao_test() -> void:
 	await eventos_test()
 	await menus_test()
 	await controles_test()
+	await oficina_test()
+	await imagens_test()
 
 func menus_test() -> void:
 	print("== Menus e pausa")
@@ -618,6 +638,7 @@ func menus_test() -> void:
 	await tap("v0", "down")
 	await tap("v0", "jump")
 	check(main.state == S.MENU and not main.paused, "pausa → MENU PRINCIPAL")
+	await tap("v0", "down")
 	await tap("v0", "down")
 	await tap("v0", "down")
 	await tap("v0", "jump")
@@ -1041,6 +1062,86 @@ func eventos_test() -> void:
 	await demo_round()
 	await frames(60 * 20)
 	check(ev.phase == "", "eventos DESLIGADOS: nada acontece")
+
+func oficina_test() -> void:
+	print("== Oficina (ambiente de testes)")
+	main.go_menu()
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	await frames(2)
+	main.menus.sel = 0
+	await tap("v0", "down")
+	await tap("v0", "jump")
+	check(main.sandbox and main.state == S.RUN and main.level.id == "oficina" and main.players.size() == 1, "menu ▸ OFICINA abre a arena de testes com 1 jogador")
+	main.countdown = 0.0
+	for r in main.robots:
+		r.active = true
+	await frames(5)
+	var r0 = main.robots[0]
+	r0.invuln = 0.0
+	main.kill(r0, -1, null)
+	await frames(2)
+	check(r0.alive and main.state == S.RUN, "na Oficina, cair não tira ninguém (volta pelo guindaste)")
+	var ofi = main.oficina
+	await tap("v0", "start")
+	check(ofi.open and main.paused, "START abre o painel e pausa")
+	ofi.sel = 0
+	ofi.item_i = ofi.kinds().find("gancho")
+	await tap("v0", "jump")
+	check(r0.item == "gancho" and not ofi.open, "painel: DAR ITEM entrega o gancho e fecha")
+	await tap("v0", "start")
+	ofi.sel = ofi.ROWS.find("boneco")
+	await tap("v0", "right")
+	check(main.players.size() == 2 and main.players[1].get("boneco", false) and main.robots.size() == 2, "painel: + boneco de treino")
+	ofi.sel = ofi.ROWS.find("evento")
+	ofi.event_i = 0
+	await tap("v0", "jump")
+	check(main.events.phase == "aviso" and not ofi.open, "painel: EVENTO AGORA dispara o evento")
+	await frames(120)
+	check(main.events.phase == "ativo" or main.events.phase == "", "evento roda na Oficina")
+	await tap("v0", "start")
+	ofi.sel = ofi.ROWS.find("invencivel")
+	await tap("v0", "jump")
+	await tap("v0", "start")
+	await frames(2)
+	r0 = main.robots[0]
+	var d0: float = r0.dmg
+	r0.invuln = 0.0
+	r0.take_hit(1, "marretada", 1)
+	check(ofi.god and r0.dmg == d0, "painel: INVENCÍVEL — golpe não pega")
+	main.robots[1].invuln = 0.0
+	var hit: bool = main.robots[1].take_hit(1, "marretada", 0)
+	check(hit and main.robots[1].dmg > 0.0, "o boneco de treino apanha e mostra o dano")
+	await tap("v1", "jump")
+	await frames(2)
+	check(main.players.size() == 3 and main.robots.size() == 3, "outro controle entra na Oficina apertando PULAR")
+	await tap("v0", "start")
+	ofi.sel = ofi.ROWS.find("arena")
+	ofi.arena_i = ofi.arenas().map(func(a): return a["id"]).find("prensa")
+	await tap("v0", "jump")
+	await frames(3)
+	check(main.level.id == "prensa" and main.robots.size() == 3 and main.sandbox, "painel: trocar de arena mantém todos")
+	await tap("v0", "start")
+	ofi.sel = ofi.ROWS.find("sair")
+	await tap("v0", "jump")
+	check(main.state == S.MENU and not main.sandbox and not main.paused and Engine.time_scale == 1.0, "SAIR DA OFICINA volta ao menu")
+
+## Toda imagem pedida no código existe (a lama da Maré faltava e enchia o log de erros, travando o jogo).
+func imagens_test() -> void:
+	print("== Imagens")
+	var missing := []
+	var found := 0
+	var re := RegEx.new()
+	re.compile("Data\\.tex\\(\"([a-z_/0-9]+)\"\\)")
+	for path in ["res://main.gd", "res://modes/demolicao.gd", "res://modes/arena_fx.gd", "res://modes/eventos.gd", "res://modes/ferramentas.gd",
+			"res://level/level.gd", "res://ui/hud.gd", "res://ui/menus.gd", "res://ui/kit.gd", "res://player/robot_visual.gd"]:
+		for m in re.search_all(FileAccess.get_file_as_string(path)):
+			found += 1
+			if Data.tex(m.get_string(1)) == null:
+				missing.append(m.get_string(1))
+	for k in main.demo.cfg["itens"]["kinds"]:
+		if Data.tex("itens/" + k) == null:
+			missing.append("itens/" + k)
+	check(missing.is_empty() and found > 40, "todas as %d imagens usadas no código existem %s" % [found, str(missing)])
 
 func controles_test() -> void:
 	print("== Controles externos")

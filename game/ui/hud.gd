@@ -53,6 +53,8 @@ func _draw() -> void:
 		c.a = 1.0 - k * k
 		var p: Vector2 = main.to_screen(fl["pos"]) + Vector2(-260, -k * 60)
 		Kit.text(self, p, fl["text"], 40, c, HORIZONTAL_ALIGNMENT_CENTER, 520, 10, Color(1, 0.98, 0.94, c.a))
+	if main.sandbox and not main.paused:
+		main.oficina.draw(self)
 	if main.paused:
 		main.menus.draw(self)
 	_draw_toasts()

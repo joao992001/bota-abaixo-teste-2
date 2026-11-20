@@ -67,6 +67,8 @@ func item_cfg(kind: String) -> Dictionary:
 func pick_arena() -> Dictionary:
 	var list: Array = cfg["arenas"]
 	var choice: String = main.arena_choice
+	if choice == "oficina":
+		return {"id": "oficina", "nome": "Oficina", "dica": "Teste à vontade: START abre o painel", "musica": "partida"}
 	if choice != "sorteio":
 		for a in list:
 			if a["id"] == choice:
@@ -171,7 +173,7 @@ func update(dt: float) -> void:
 		if a.velocity.y <= 120.0 or a.stun_t > 0.0:
 			continue
 		for b in alive:
-			if a == b or b.stomp_immune > 0.0 or b.invuln > 0.0:
+			if a == b or b.stomp_immune > 0.0 or b.invuln > 0.0 or b.god:
 				continue
 			var head: float = b.rect().position.y
 			if absf(a.position.y - head) < 16.0 and absf(a.position.x - b.position.x) < 38.0:
@@ -228,7 +230,7 @@ func update(dt: float) -> void:
 				break_reason = ""
 	# terremoto depois de um tempo: garante que a rodada acaba
 	var quake_at := float(main.level.prop("terremoto", str(c("quake_start_s"))))
-	if submode() in ["placar", "batata"]:
+	if submode() in ["placar", "batata"] or main.sandbox:
 		quake_at = 0.0   # o relógio/dinamite já garante o fim da rodada
 	if quake_at > 0.0 and t >= quake_at:
 		if not quaking:
@@ -254,7 +256,7 @@ func update(dt: float) -> void:
 	feed = feed.filter(func(f): return f["t"] < 4.5)
 	_update_submode(dt, alive)
 	# fim da rodada: sobrou 1 (ou ninguém); no Placar, quando o tempo acaba
-	var over: bool = alive.size() <= 1 and main.robots.size() >= 2
+	var over: bool = alive.size() <= 1 and main.robots.size() >= 2 and not main.sandbox
 	if submode() == "placar":
 		over = time_left <= 0.0
 	if main.end_delay < 0.0 and over and submode() == "placar":
@@ -648,6 +650,12 @@ func on_knockout(by: int, victim: int) -> void:
 
 ## Antes de eliminar: Vidas e Placar trazem o robô de volta pelo guindaste. true = não elimina.
 func intercept_kill(r) -> bool:
+	if main.sandbox:
+		Audio.play("eliminado", 1.2, -4.0)
+		main.dust(r.position + Vector2(0, -30), 1.2)
+		r.dmg = 0.0
+		respawn(r)
+		return true   # na Oficina ninguém sai
 	match submode():
 		"vidas":
 			lives[r.pid] = lives.get(r.pid, 1) - 1

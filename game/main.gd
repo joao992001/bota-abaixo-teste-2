@@ -13,6 +13,7 @@ const Demolicao := preload("res://modes/demolicao.gd")
 const Bots := preload("res://modes/bots.gd")
 const Menus := preload("res://ui/menus.gd")
 const Eventos := preload("res://modes/eventos.gd")
+const Oficina := preload("res://ui/oficina.gd")
 const PIECE_SCRIPTS := {
 	"P01": preload("res://pieces/viga.gd"),
 	"P02": preload("res://pieces/mola.gd"),
@@ -26,6 +27,8 @@ enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS
 var state := S.MENU
 var paused := false
 const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.SUBMODOS, S.AJUSTES, S.EVENTOS, S.CONTROLES]
+var sandbox := false          # OFICINA: ambiente de testes (respawn infinito, rodada sem fim)
+var oficina: Node = null
 var perf_acc := {}             # tempo gasto por parte (medição --perf)
 var lost_pads: Array = []      # jogadores cujo controle desconectou no meio da partida (índices)
 var timer := 0.0
@@ -128,10 +131,13 @@ func _ready() -> void:
 	menus = Menus.new()
 	menus.setup(self)
 	add_child(menus)
+	oficina = Oficina.new()
+	oficina.setup(self)
+	add_child(oficina)
 	PlayerInput.pad_changed.connect(_on_pad_changed)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens") or a.begins_with("--oficina"):
 			state = S.JOIN   # testes e capturas começam direto na entrada de jogadores
 			var scr: GDScript = load("res://tests/driver.gd")
 			if scr == null or not scr.can_instantiate():
@@ -166,6 +172,62 @@ func _on_pad_changed(dev: String, connected: bool) -> void:
 		if state != S.WIN:
 			paused = true
 			menus.pause_sel = 0
+
+# ---------------------------------------------------------------- oficina (testes)
+## Outro dispositivo apertou PULAR na Oficina: entra na hora.
+func _sandbox_join() -> void:
+	if players.size() >= 4:
+		return
+	for dev in PlayerInput.all_devices():
+		if dev in PlayerInput.slots or dev.begins_with("bot") or dev.begins_with("boneco") or PlayerInput.aliases.has(dev):
+			continue
+		if PlayerInput.dev_pressed(dev, "jump") and PlayerInput.twin_of(dev) == "":
+			add_player(dev)
+			_spawn_robot_for(players.size() - 1)
+			return
+
+## Robô novo no meio da rodada (Oficina): aparece pelo guindaste.
+func _spawn_robot_for(i: int) -> void:
+	var r: CharacterBody2D = Robot.new()
+	r.setup(i, players[i]["color"], self, players[i]["acc"], players[i]["model"])
+	r.position = level.spawns.get(1, Vector2(960, 300))
+	robots_root.add_child(r)
+	robots.append(r)
+	r.active = true
+	r.hammer_left = 999
+	demo.respawn(r)
+
+## Oficina: adiciona boneco de treino (fica parado, apanha) ou bot.
+func sandbox_add(kind: String) -> void:
+	if players.size() >= 4:
+		Audio.play("menu_negado")
+		return
+	if kind == "bot":
+		add_bot()
+	else:
+		var n := 0
+		while PlayerInput.virtual.has("boneco%d" % n):
+			n += 1
+		var dev := "boneco%d" % n
+		PlayerInput.virtual[dev] = {}
+		add_player(dev)
+		players[-1]["boneco"] = true
+	_spawn_robot_for(players.size() - 1)
+	Audio.play("menu_ok")
+
+## Tira o último boneco/bot (só se for o último da lista, para não embaralhar os jogadores).
+func sandbox_remove(kind: String) -> void:
+	if players.size() <= 1 or not players[-1].get(kind, false):
+		Audio.play("menu_negado")
+		return
+	var i := players.size() - 1
+	PlayerInput.virtual.erase(players[i]["dev"])
+	players.remove_at(i)
+	PlayerInput.slots.remove_at(i)
+	if i < robots.size():
+		robots[i].queue_free()
+		robots.remove_at(i)
+	Audio.play("menu_voltar")
 
 ## Enquanto falta controle: um controle livre que apertar START ou PULAR assume o jogador.
 func _reassign_lost_pads() -> bool:
@@ -207,6 +269,9 @@ func load_options() -> void:
 
 ## Volta ao menu principal: sem jogadores, arena da Demolição ao fundo.
 func go_menu() -> void:
+	if sandbox:
+		oficina.stop()
+		sandbox = false
 	paused = false
 	lost_pads.clear()
 	events.reset_round()
@@ -259,12 +324,18 @@ func _physics_process(dt: float) -> void:
 	if _reassign_lost_pads():
 		return   # o START que assumiu o controle não conta como "continuar"
 	if paused:
-		menus.update_pause()
+		if sandbox and oficina.open:
+			oficina.update()
+		else:
+			menus.update_pause()
 		hud.queue_redraw()
 		overlay.queue_redraw()
 		return
 	if state in [S.PICK, S.BUILD, S.RUN, S.SCORE]:
 		for i in players.size():
+			if sandbox and not players[i].get("bot", false) and PlayerInput.pressed(i, "start"):
+				oficina.toggle()   # na Oficina, START abre o painel de testes
+				return
 			if not players[i].get("bot", false) and PlayerInput.pressed(i, "start"):
 				paused = true
 				menus.pause_sel = 0
@@ -277,6 +348,9 @@ func _physics_process(dt: float) -> void:
 		S.PICK: _pick_update(dt)
 		S.BUILD: _build_update(dt)
 		S.RUN:
+			if sandbox:
+				oficina.tick()
+				_sandbox_join()
 			if mode == "demolicao":
 				var t0 := Time.get_ticks_usec()
 				bots.update(dt)
@@ -993,6 +1067,9 @@ func _input(e: InputEvent) -> void:
 					add_player("parado%d" % players.size())
 			KEY_F6: Engine.time_scale = 0.3 if Engine.time_scale == 1.0 else 1.0
 			KEY_F11: toggle_fullscreen()
+			KEY_TAB:
+				if sandbox and state == S.RUN:
+					oficina.toggle()
 			KEY_F7:
 				if state == S.JOIN:
 					mode = "construcao" if mode == "demolicao" else "demolicao"
