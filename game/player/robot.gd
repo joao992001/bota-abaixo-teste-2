@@ -63,6 +63,8 @@ func f(key: String) -> float:
 	return float(c[key])
 
 func _physics_process(dt: float) -> void:
+	if main.paused:
+		return
 	if not alive:
 		_dead_fall(dt)
 		return

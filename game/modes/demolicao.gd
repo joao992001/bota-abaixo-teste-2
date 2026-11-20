@@ -140,7 +140,7 @@ func update(dt: float) -> void:
 		main.end_delay = 1.4
 		if round_winner >= 0:
 			alive[0].vis.expression = "vitoria"
-			banner = "P%d VENCEU A RODADA!" % (round_winner + 1)
+			banner = "P%d  VENCEU A RODADA!" % (round_winner + 1)
 		else:
 			banner = "EMPATE!"
 		banner_t = 3.0

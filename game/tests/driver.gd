@@ -18,6 +18,10 @@ func _run() -> void:
 			shot = a.substr(7)
 		if a.begins_with("--anim="):
 			anim = a.substr(7)
+		if a.begins_with("--menus="):
+			await menus_frames(a.substr(8))
+			get_tree().quit(0)
+			return
 		if a.begins_with("--demo="):
 			await demo_frames(a.substr(7))
 			get_tree().quit(0)
@@ -442,6 +446,50 @@ func demolicao_test() -> void:
 	check(main.state == S.WIN and main.winner == 0, "%d ★ vence a partida" % int(main.demo.cfg["rounds_to_win"]))
 	await itens_test()
 	await bots_test()
+	await menus_test()
+
+func menus_test() -> void:
+	print("== Menus e pausa")
+	main.go_menu()
+	PlayerInput.virtual = {"v0": {}}
+	await frames(2)
+	check(main.state == S.MENU and main.players.is_empty(), "volta ao menu principal sem jogadores")
+	await tap("v0", "jump")
+	check(main.state == S.MODES, "JOGAR abre a seleção de modo")
+	await tap("v0", "right")
+	await tap("v0", "jump")
+	check(main.state == S.MODES, "modo EM BREVE não abre")
+	await tap("v0", "left")
+	await tap("v0", "down")
+	await tap("v0", "jump")
+	check(main.state == S.JOIN and main.mode == "demolicao" and int(main.demo.cfg["rounds_to_win"]) == 3, "Demolição escolhida, vence com 3 ★")
+	await tap("v0", "jump")
+	main.add_bot()
+	await tap("v0", "start")
+	check(main.state == S.RUN and main.robots.size() == 2, "partida começa (1 pessoa + 1 bot)")
+	main.countdown = 0.0
+	for r in main.robots:
+		r.active = true
+	await frames(5)
+	await tap("v0", "start")
+	check(main.paused, "START pausa")
+	var bx: Vector2 = main.robots[1].position
+	await frames(30)
+	check(main.robots[1].position == bx, "na pausa, ninguém se mexe")
+	await tap("v0", "down")
+	await tap("v0", "down")
+	await tap("v0", "jump")
+	check(main.state == S.MENU and not main.paused, "pausa → MENU PRINCIPAL")
+	await tap("v0", "down")
+	await tap("v0", "down")
+	await tap("v0", "jump")
+	check(main.state == S.OPTIONS, "OPÇÕES abre")
+	await tap("v0", "down")
+	await tap("v0", "jump")
+	check(not main.shake_on, "tremor da tela desliga")
+	await tap("v0", "jump")
+	await tap("v0", "back")
+	check(main.state == S.MENU and main.shake_on, "voltar ao menu (tremor religado)")
 
 func itens_test() -> void:
 	print("== Itens")
@@ -766,3 +814,55 @@ func demo_frames(dir: String) -> void:
 				if k % 4 == 0:
 					await grab(dir, "d")
 			break
+
+# ---------------------------------------------------------------- capturas das telas de menu e HUD
+func menus_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	get_window().size = Vector2i(1920, 1080)
+	main.go_menu()
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	await frames(40)
+	await snap(dir, "m1_menu")
+	await tap("v0", "jump")
+	await frames(20)
+	await snap(dir, "m2_modos")
+	main.state = S.HOWTO
+	await frames(10)
+	await snap(dir, "m3_como_jogar")
+	main.state = S.OPTIONS
+	await frames(10)
+	await snap(dir, "m4_opcoes")
+	main.state = S.JOIN
+	main.mode = "demolicao"
+	main.demo.cfg["rounds_to_win"] = 5
+	await tap("v0", "jump")
+	await tap("v1", "jump")
+	await tap("v1", "down")
+	main.add_bot()
+	await frames(20)
+	await snap(dir, "m5_entrada")
+	main.start_match()
+	await frames(30)
+	await snap(dir, "m6_contagem")
+	main.countdown = 0.0
+	for r in main.robots:
+		r.active = true
+	main.players[0]["score"] = 2
+	main.players[2]["score"] = 1
+	main.demo.give(main.robots[0], "dinamite")
+	main.demo.give(main.robots[1], "capacete")
+	await frames(120)
+	await snap(dir, "m7_partida")
+	main.paused = true
+	await frames(5)
+	await snap(dir, "m8_pausa")
+	main.paused = false
+	main.kill(main.robots[1], -1, null)
+	main.kill(main.robots[2], -1, null)
+	await frames(110)
+	await snap(dir, "m9_placar")
+	main.winner = 0
+	main.state = S.WIN
+	main._clear_robots()
+	await frames(30)
+	await snap(dir, "m10_vitoria")

@@ -8,7 +8,7 @@ extends Node
 const ACTIONS := ["left", "right", "up", "down", "jump", "hammer", "item", "start", "back"]
 const KEYMAP := {
 	"kb_a": {"left": [KEY_A], "right": [KEY_D], "up": [KEY_W], "down": [KEY_S],
-		"jump": [KEY_SPACE], "hammer": [KEY_F, KEY_E], "item": [KEY_G, KEY_Q], "start": [KEY_ENTER], "back": [KEY_BACKSPACE]},
+		"jump": [KEY_SPACE], "hammer": [KEY_F, KEY_E], "item": [KEY_G, KEY_Q], "start": [KEY_ENTER], "back": [KEY_BACKSPACE, KEY_ESCAPE]},
 	"kb_b": {"left": [KEY_LEFT], "right": [KEY_RIGHT], "up": [KEY_UP], "down": [KEY_DOWN],
 		"jump": ["ctrl_r", KEY_KP_0, KEY_L], "hammer": [KEY_PERIOD, KEY_SLASH, KEY_KP_ENTER, KEY_K], "item": [KEY_COMMA, KEY_J, KEY_KP_1], "start": [KEY_ENTER], "back": [KEY_DELETE]},
 }

@@ -11,6 +11,7 @@ const Debris := preload("res://fx/debris.gd")
 const RobotVis := preload("res://player/robot_visual.gd")
 const Demolicao := preload("res://modes/demolicao.gd")
 const Bots := preload("res://modes/bots.gd")
+const Menus := preload("res://ui/menus.gd")
 const PIECE_SCRIPTS := {
 	"P01": preload("res://pieces/viga.gd"),
 	"P02": preload("res://pieces/mola.gd"),
@@ -20,8 +21,10 @@ const PIECE_SCRIPTS := {
 const T := 64
 const MILESTONE := 1
 
-enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN }
-var state := S.JOIN
+enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS }
+var state := S.MENU
+var paused := false
+const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS]
 var timer := 0.0
 var round_no := 0
 var players: Array = []      # {dev, color, score, piece, sel, unlock, cursor, ghost, placed, rep}
@@ -45,11 +48,12 @@ var floaters: Array = []     # textos flutuantes {pos, text, color, t}
 var puffs: Array = []        # poeira {pos, t, r}
 var sparks: Array = []       # estrelinhas {pos, vel, t, rot}
 var shake_amt := 0.0
-const SHAKE_ON := true
+var shake_on := true          # OPÇÕES > tremor da tela
 var door_open := 0.0
 var mode := "demolicao"      # Modo Festa: "demolicao" · modo antigo de peças: "construcao" (F7 na entrada)
 var demo: Node
 var bots: Node
+var menus: Node
 var fall_log: Array = []
 var self_falls := 0          # quedas sem ter levado golpe nos últimos 2 s (bots: deve ficar perto de 0)
 var bot_level := 1            # 0 fácil, 1 médio, 2 difícil (M na entrada)
@@ -111,13 +115,38 @@ func _ready() -> void:
 	bots = Bots.new()
 	bots.setup(self)
 	add_child(bots)
+	menus = Menus.new()
+	menus.setup(self)
+	add_child(menus)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus"):
+			state = S.JOIN   # testes e capturas começam direto na entrada de jogadores
 			var drv: Node = load("res://tests/driver.gd").new()
 			drv.main = self
 			add_child(drv)
 			break
+	if state == S.MENU:
+		load_arena("demolicao")
+
+## Volta ao menu principal: sem jogadores, arena da Demolição ao fundo.
+func go_menu() -> void:
+	paused = false
+	_clear_robots()
+	for pc in pieces:
+		pc.queue_free()
+	pieces.clear()
+	players.clear()
+	PlayerInput.slots.clear()
+	for k in PlayerInput.virtual.keys():
+		if String(k).begins_with("bot"):
+			PlayerInput.virtual.erase(k)
+	if level.id != "demolicao":
+		load_arena("demolicao")
+	state = S.MENU
+
+func go_join() -> void:
+	state = S.JOIN
 
 func implemented_ids() -> Array:
 	return Data.piece_ids(MILESTONE, PIECE_SCRIPTS.keys())
@@ -132,6 +161,19 @@ func timers(key: String) -> float:
 
 # ---------------------------------------------------------------- loop
 func _physics_process(dt: float) -> void:
+	if paused:
+		menus.update_pause()
+		hud.queue_redraw()
+		overlay.queue_redraw()
+		return
+	if state in [S.PICK, S.BUILD, S.RUN, S.SCORE]:
+		for i in players.size():
+			if not players[i].get("bot", false) and PlayerInput.pressed(i, "start"):
+				paused = true
+				menus.pause_sel = 0
+				return
+	if state in MENU_STATES:
+		menus.update(dt)
 	match state:
 		S.JOIN: _join_update()
 		S.PICK: _pick_update(dt)
@@ -146,10 +188,13 @@ func _physics_process(dt: float) -> void:
 			if timer <= 0.0:
 				_after_score()
 		S.WIN:
-			for i in players.size():
-				if PlayerInput.pressed(i, "start") or PlayerInput.pressed(i, "jump"):
-					start_match()
-					break
+			if menus.pressed("back"):
+				go_menu()
+			else:
+				for i in players.size():
+					if PlayerInput.pressed(i, "start") or PlayerInput.pressed(i, "jump"):
+						start_match()
+						break
 	for fl in floaters:
 		fl["t"] += dt
 	floaters = floaters.filter(func(x): return x["t"] < 1.2)
@@ -177,6 +222,9 @@ func _physics_process(dt: float) -> void:
 func _update_camera(dt: float) -> void:
 	var tz := 1.0
 	var tc := Vector2(960, 512)
+	if state in MENU_STATES:
+		tz = 1.25
+		tc = Vector2(1000, 470)
 	if state == S.RUN:
 		var box := Rect2()
 		var first := true
@@ -238,6 +286,8 @@ func _join_update() -> void:
 		if PlayerInput.pressed(i, "back"):
 			players.remove_at(i)
 			PlayerInput.slots.remove_at(i)
+	if players.is_empty() and menus.pressed("back"):
+		state = S.MODES
 	for i in players.size():
 		if PlayerInput.pressed(i, "left"):
 			_cycle_color(i, -1)
@@ -691,9 +741,9 @@ func spark(pos: Vector2, n := 5) -> void:
 		var a := rng.randf_range(0, TAU)
 		sparks.append({"pos": pos, "vel": Vector2.from_angle(a) * rng.randf_range(120, 320), "t": 0.0, "rot": rng.randf_range(0, TAU)})
 
-## Tremor leve de câmera (desligável em SHAKE_ON).
+## Tremor leve de câmera (desligável nas OPÇÕES).
 func shake(amount: float) -> void:
-	if SHAKE_ON:
+	if shake_on:
 		shake_amt = maxf(shake_amt, amount)
 
 ## Robô eliminado desmonta: partes voando + poeira + estrelas.
@@ -718,6 +768,21 @@ func _draw_overlay() -> void:
 		overlay.draw_set_transform(sp["pos"], sp["rot"] + k * 3.0)
 		overlay.draw_texture_rect(star, Rect2(-sz / 2, -sz / 2, sz, sz), false, Color(1, 1, 1, 1.0 - k))
 	overlay.draw_set_transform(Vector2.ZERO)
+	if state in MENU_STATES:
+		var tt := Time.get_ticks_msec() / 1000.0
+		for k in 4:
+			var pose: Dictionary = RobotVis.idle_pose(tt + k * 0.9)
+			if k == 1:
+				pose = RobotVis.victory_pose(tt)
+			elif k == 2:
+				var ph := fmod(tt, 1.6)
+				if ph < 0.25:
+					var hp := RobotVis.idle_pose(tt)
+					var e := ph / 0.25
+					pose["hammer_ang"] = lerpf(-1.3, 2.4, e * e) if e > 0.25 else lerpf(0.35, -1.3, e / 0.25)
+					pose["expr"] = "esforco"
+			RobotVis.draw_robot(overlay, {"color": k, "model": k, "acc": 0}, pose, Transform2D(0.0, Vector2(1.0 if k != 1 else -1.0, 1.0), 0.0, Vector2(1060 + k * 72, 576)))
+		overlay.draw_set_transform(Vector2.ZERO)
 	for r in robots:
 		if r.alive and r.visible and r.stun_t > 0.0:
 			var hc: Vector2 = r.rect().position + Vector2(24, -10)
