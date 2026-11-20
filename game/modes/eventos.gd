@@ -112,7 +112,7 @@ func _end_event() -> void:
 				l.queue_free()
 		lights.clear()
 		dark = null
-		main.bg.modulate = Color(main.level.prop("fundo", "#ffffff")) if main.level.prop("fundo", "") != "" else Color.WHITE
+		main.bg.modulate = main.bg_tint()
 	current = {} if phase != "aviso" else current
 
 func _tick_event(dt: float) -> void:

@@ -1,4 +1,5 @@
 id: esteiras
+tema: fabrica
 esteira_vel: 3.2
 esteira_inverte: 7
 terremoto: 70

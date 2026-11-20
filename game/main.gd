@@ -539,6 +539,13 @@ func load_arena(id: String) -> void:
 	world.add_child(level)
 	world.move_child(level, 0)
 	level.load_level(id)
+	bg.set_theme(level.theme)
+	bg.modulate = bg_tint()
+
+## Tom do fundo: o Canteiro aceita o tom do mapa ("fundo:" no .lvl); os temas usam a própria imagem.
+func bg_tint() -> Color:
+	var tint: String = level.prop("fundo", "")
+	return Color(tint) if tint != "" and level.theme == "canteiro" else Color.WHITE
 
 ## Cor do Amassômetro: branco → amarelo → laranja → vermelho.
 func dmg_color(d: float) -> Color:

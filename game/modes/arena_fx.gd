@@ -49,8 +49,7 @@ var fan_t := 0.0
 func setup(m: Node, lv: Node) -> void:
 	main = m
 	level = lv
-	var tint: String = lv.prop("fundo", "")
-	main.bg.modulate = Color(tint) if tint != "" else Color.WHITE
+	main.bg.modulate = main.bg_tint()
 	# plataformas
 	var spec: String = lv.prop("plataformas", "")
 	for part in spec.split(";", false):

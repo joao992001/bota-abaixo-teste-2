@@ -1,4 +1,5 @@
 id: torre
+tema: cidade
 rolagem: cima, 0.55, 6
 terremoto: 75
 ventilador_ciclo: 4, 2

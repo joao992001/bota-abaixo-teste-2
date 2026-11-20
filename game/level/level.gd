@@ -22,6 +22,14 @@ var belt_speed := 192.0
 var belt_warn := false      # esteiras piscando antes de inverter
 var extra_solid := Callable()   # sólidos que se movem (plataformas do guindaste), para bots e itens
 var anim_t := 0.0
+## Tema visual da arena (cabeçalho "tema:" do .lvl): troca blocos, bloco fixo, tábuas e fundo (assets/temas/<tema>/).
+const THEMES := {
+	"canteiro": {"crack": "#5a3a1c", "rope": "#8a6a47"},
+	"fabrica": {"crack": "#2f3640", "rope": "#5a6370"},
+	"porto": {"crack": "#232a35", "rope": "#8a6a47"},
+	"cidade": {"crack": "#3a1c14", "rope": "#3e3f5a"},
+}
+var theme := "canteiro"
 var traps := {}             # alçapões 'a' (fechado) / 'A' (aberto): Vector2i -> CollisionShape2D
 const FIXED_SOLID := ["#", "o", "I", "F", "f", "P", "B"]   # sólidos fixos que não quebram (máquinas incluídas)
 
@@ -42,6 +50,9 @@ func load_level(level_id: String) -> void:
 			props[kv[0].strip_edges()] = kv[1].strip_edges().trim_prefix("\"").trim_suffix("\"")
 		elif line.begins_with("=== map"):
 			in_map = true
+	theme = String(props.get("tema", "canteiro"))
+	if not THEMES.has(theme):
+		theme = "canteiro"
 	if grid.size() != rows:
 		push_error("Mapa %s: %d linhas, esperado %d" % [level_id, grid.size(), rows])
 	for y in rows:
@@ -276,7 +287,7 @@ func _draw_art() -> void:
 			var pos := Vector2(x * T, y * T)
 			match ch_at(c):
 				"#":
-					draw_texture_rect(Data.tex("cenario/caixote_%d" % ((x * 7 + y * 3) % 3)), Rect2(pos, tile), false)
+					draw_texture_rect(ttex("fixo", "cenario/caixote_%d" % ((x * 7 + y * 3) % 3)), Rect2(pos, tile), false)
 				"d", "T":
 					_draw_block_d(c, pos)
 				"<", ">":
@@ -372,10 +383,11 @@ func _draw_block_d(c: Vector2i, pos: Vector2) -> void:
 	var off := Vector2.ZERO
 	if b.get("warn", 0.0) > 0.0:
 		off = Vector2(randf_range(-3, 3), randf_range(-2, 2))
-	var tx := Data.tex("cenario/tnt") if ch_at(c) == "T" else Data.tex("cenario/caixote_%d" % ((c.x * 7 + c.y * 3) % 3))
+	var v := (c.x * 7 + c.y * 3) % 3
+	var tx := Data.tex("cenario/tnt") if ch_at(c) == "T" else ttex("bloco_%d" % v, "cenario/caixote_%d" % v)
 	draw_texture_rect(tx, Rect2(pos + off, Vector2(T, T)), false)
 	var dmg := block_hp - int(b.get("hp", block_hp))
-	var crack := Color("#5a3a1c")
+	var crack := Color(THEMES[theme]["crack"])
 	if dmg >= 1 or b.get("load", 0.0) > 0.0:
 		var p := pos + off
 		var k := 1.0 if dmg >= 1 else 0.6
@@ -386,7 +398,7 @@ func _draw_block_d(c: Vector2i, pos: Vector2) -> void:
 
 ## Tábuas one-way penduradas por cordas que sobem até fora da tela.
 func _draw_ropes_and_planks() -> void:
-	var rope := Color("#8a6a47")
+	var rope := Color(THEMES[theme]["rope"])
 	for y in rows:
 		var x := 0
 		while x < cols:
@@ -403,7 +415,7 @@ func _draw_ropes_and_planks() -> void:
 					pts.append(Vector2(rx + sin(k * 1.7 + rx) * 1.2, yy))
 				draw_polyline(pts, rope, 3.5, true)
 			for xx in range(x0, x):
-				draw_texture_rect(Data.tex("cenario/tabua"), Rect2(xx * T, y * T, T, 16), false)
+				draw_texture_rect(ttex("tabua", "cenario/tabua"), Rect2(xx * T, y * T, T, 16), false)
 
 ## Andaime de aço (células 'o'): postes, travessas e X, com tábua no topo.
 func _draw_scaffolds() -> void:
@@ -438,7 +450,15 @@ func _draw_scaffolds() -> void:
 				draw_line(Vector2(px, r.position.y), Vector2(px, r.end.y), steel, 6.0, true)
 				draw_line(Vector2(px - 1.5, r.position.y), Vector2(px - 1.5, r.end.y), lite, 1.2, true)
 			for xx in range(x, x1 + 1):
-				draw_texture_rect(Data.tex("cenario/tabua"), Rect2(xx * T, y * T, T, 22), false)
+				draw_texture_rect(ttex("tabua", "cenario/tabua"), Rect2(xx * T, y * T, T, 22), false)
+
+## Textura do tema (ou a do Canteiro, se o tema não tiver essa peça).
+func ttex(name: String, legacy: String) -> Texture2D:
+	if theme != "canteiro":
+		var t := Data.tex("temas/%s/%s" % [theme, name])
+		if t != null:
+			return t
+	return Data.tex(legacy)
 
 ## Autotile: cada bloco escolhe a variante pelas faces expostas (topo, direita, esquerda, base, canto).
 func block_tex(c: Vector2i) -> String:
