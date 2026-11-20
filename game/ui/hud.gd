@@ -13,6 +13,7 @@ const DARK := Color("#1f3a40")
 var main: Node
 var t := 0.0
 var _banner := ""
+var bare := false   # capturas para as propostas de interface: só o cenário, sem HUD
 var _banner_age := 0.0
 
 func _ready() -> void:
@@ -34,6 +35,10 @@ func _look(p: Dictionary) -> Dictionary:
 
 func _draw() -> void:
 	var S = main.S
+	if bare:
+		if main.state in main.MENU_STATES:
+			main.menus._draw_scene(self, [1.0, 1.0, 1.0, 1.0])
+		return
 	if main.state in main.MENU_STATES:
 		main.menus.draw(self)
 		_draw_toasts()

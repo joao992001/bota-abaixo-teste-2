@@ -40,6 +40,10 @@ func _run() -> void:
 			await parede_frames(a.substr(9))
 			get_tree().quit(0)
 			return
+		if a.begins_with("--maquete="):
+			await maquete_frames(a.trim_prefix("--maquete="))
+			get_tree().quit()
+			return
 		if a.begins_with("--skins="):
 			await skins_sheet(a.trim_prefix("--skins="))
 			get_tree().quit()
@@ -1711,6 +1715,61 @@ func shots(dir: String) -> void:
 	layer.add_child(sheet)
 	await frames(3)
 	await snap(dir, "prancha_robos")
+
+## Material para as propostas de interface: cenários sem HUD e robôs com fundo transparente.
+func maquete_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	get_window().size = Vector2i(1920, 1080)
+	main.hud.bare = true
+	main.go_menu()
+	await frames(90)
+	await snap(dir, "bg_menu")
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	main.mode = "demolicao"
+	main.arena_choice = "canteiro"
+	main.go_join()
+	await frames(2)
+	await tap("v0", "jump")
+	await tap("v1", "jump")
+	for k in 6:
+		await tap("v0", "down")
+	main.add_bot()
+	main.add_bot()
+	var looks: Array = []
+	for p in main.players:
+		looks.append({"color": p["color"], "model": p["model"], "acc": p["acc"], "skin": p.get("skin", {})})
+	main.start_match()
+	main.countdown = 0.0
+	for r in main.robots:
+		r.active = true
+	await frames(100)
+	await snap(dir, "bg_jogo")
+	# robôs recortados (fundo transparente)
+	get_viewport().transparent_bg = true
+	main._clear_robots()
+	main.state = S.MENU
+	main.hud.visible = false
+	main.bg.visible = false
+	var layer := CanvasLayer.new()
+	layer.layer = 20
+	add_child(layer)
+	var sheet := Node2D.new()
+	var Vis = load("res://player/robot_visual.gd")
+	var which := [0, false]
+	sheet.draw.connect(func():
+		var lk: Dictionary = looks[which[0]]
+		var pose: Dictionary = Vis.victory_pose(0.35, lk["skin"].get("danca", 0)) if which[1] else Vis.idle_pose(0.5)
+		Vis.draw_robot(sheet, lk, pose, Transform2D(0.0, Vector2(6, 6), 0.0, Vector2(960, 900)))
+	)
+	layer.add_child(sheet)
+	for k in looks.size():
+		for v in 2:
+			which[0] = k
+			which[1] = v == 1
+			sheet.queue_redraw()
+			await frames(3)
+			await snap(dir, "robo_%d%s" % [k, "_vitoria" if v == 1 else ""])
+	print("cores: ", main.players.map(func(p): return p["color"]))
 
 ## Prancha da personalização: robôs da Garagem montados pelo motor (cores, padrões, chapéus, rosto, ferramentas, danças).
 func skins_sheet(dir: String) -> void:
