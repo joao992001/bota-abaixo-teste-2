@@ -315,7 +315,7 @@ func shots(dir: String) -> void:
 	await steer(["v0", "v1", "v2", "v3"], 50)
 	await snap(dir, "4_corrida")
 	# prancha: 4 robôs espalhados pela obra (posições escolhidas, sem física)
-	var spots := [Vector2(250, 768), Vector2(930, 520), Vector2(700, 640), Vector2(1190, 768)]
+	var spots := [Vector2(560, 768), Vector2(930, 520), Vector2(680, 576), Vector2(1190, 768)]
 	for k in 4:
 		var r = main.robots[k]
 		r.active = false
@@ -332,8 +332,29 @@ func shots(dir: String) -> void:
 		main.robots[k].vis.scale = Vector2(main.robots[k].vis.sq.x * main.robots[k].facing, main.robots[k].vis.sq.y)
 		main.robots[k].vis.queue_redraw()
 	main.dust(Vector2(905, 768))
-	await frames(1)
+	await frames(90)
+	main.dust(Vector2(905, 704))
+	await frames(4)
 	await snap(dir, "prancha_canteiro")
 	await steer(["v0", "v1", "v2", "v3"], 600)
 	await frames(80)
 	await snap(dir, "5_placar")
+	# prancha dos robôs desenhada pelo próprio motor (mesma montagem do jogo)
+	var layer := CanvasLayer.new()
+	layer.layer = 10
+	add_child(layer)
+	var sheet := Node2D.new()
+	sheet.draw.connect(func():
+		sheet.draw_texture_rect(Data.tex("cenario/fundo_canteiro"), Rect2(0, 0, 1920, 1080), false)
+		var Vis = load("res://player/robot_visual.gd")
+		var ex := ["normal", "esforco", "susto", "vitoria", "eliminado"]
+		for k in 4:
+			Vis.draw_robot(sheet, k, "normal", 0.0, 0.0, false, (k + 1) % 4, false, Transform2D(0.0, Vector2(3.4, 3.4), 0.0, Vector2(250 + k * 470, 470)))
+		for k in 5:
+			Vis.draw_robot(sheet, (k + 1) % 4, ex[k], 0.0, 0.0, false, 0, false, Transform2D(0.0, Vector2(2.2, 2.2), 0.0, Vector2(200 + k * 380, 820)))
+		for k in 4:
+			Vis.draw_robot(sheet, k, "normal", 0.0, 1.0 + k, true, k % 4, false, Transform2D(0.0, Vector2(1, 1), 0.0, Vector2(780 + k * 110, 1040)))
+	)
+	layer.add_child(sheet)
+	await frames(3)
+	await snap(dir, "prancha_robos")

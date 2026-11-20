@@ -43,17 +43,29 @@ var puffs: Array = []        # poeira {pos, t, r}
 var world: Node2D
 var level: Level
 var bg: Background
+var bg_layer: CanvasLayer
+var camera: Camera2D
 var pieces_root: Node2D
 var robots_root: Node2D
 var overlay: Node2D
 var conveyor_root: Node2D
 var hud: Hud
 var rng := RandomNumberGenerator.new()
+var cam_zoom := 1.0
+var cam_center := Vector2(960, 512)
+const CAM_MAX := 1.6
 
 func _ready() -> void:
 	rng.randomize()
+	bg_layer = CanvasLayer.new()
+	bg_layer.layer = -1
+	add_child(bg_layer)
 	bg = Background.new()
-	add_child(bg)
+	bg_layer.add_child(bg)
+	camera = Camera2D.new()
+	camera.position = Vector2(960, 540)
+	add_child(camera)
+	camera.make_current()
 	world = Node2D.new()
 	world.position = Vector2(0, Data.ARENA_Y)
 	add_child(world)
@@ -70,8 +82,11 @@ func _ready() -> void:
 	var crowd := Sprite2D.new()
 	crowd.texture = Data.tex("cenario/plateia")
 	crowd.centered = false
-	crowd.position = Vector2(0, 1080 - 150)
-	add_child(crowd)
+	crowd.position = Vector2(0, 1080 - 160)
+	crowd.scale = Vector2(0.5, 0.5)
+	var crowd_layer := CanvasLayer.new()
+	add_child(crowd_layer)
+	crowd_layer.add_child(crowd)
 	var hud_layer := CanvasLayer.new()
 	add_child(hud_layer)
 	hud = Hud.new()
@@ -123,8 +138,49 @@ func _physics_process(dt: float) -> void:
 	for p in puffs:
 		p["t"] += dt
 	puffs = puffs.filter(func(x): return x["t"] < 0.45)
+	_update_camera(dt)
 	overlay.queue_redraw()
 	hud.queue_redraw()
+
+# ---------------------------------------------------------------- câmera
+## Na corrida, aproxima para enquadrar todos os robôs ainda em jogo (1x a CAM_MAX); nas outras fases mostra a obra inteira.
+func _update_camera(dt: float) -> void:
+	var tz := 1.0
+	var tc := Vector2(960, 512)
+	if state == S.RUN:
+		var box := Rect2()
+		var first := true
+		for r in robots:
+			if r.alive and not r.finished:
+				var p: Vector2 = r.rect().get_center()
+				box = Rect2(p, Vector2.ZERO) if first else box.expand(p)
+				first = false
+		if not first:
+			box = box.grow_individual(380, 300, 380, 220)
+			tz = clampf(minf(1920.0 / box.size.x, 1024.0 / box.size.y), 1.0, CAM_MAX)
+			tc = box.get_center()
+		else:
+			tz = cam_zoom
+			tc = cam_center
+	var k := 1.0 - exp(-dt * 3.0)
+	cam_zoom = lerpf(cam_zoom, tz, k)
+	cam_center = cam_center.lerp(tc, k)
+	var hw := 960.0 / cam_zoom
+	var hh := 512.0 / cam_zoom
+	cam_center.x = clampf(cam_center.x, hw, 1920.0 - hw)
+	cam_center.y = clampf(cam_center.y, hh, 1024.0 - hh)
+	camera.zoom = Vector2(cam_zoom, cam_zoom)
+	camera.position = cam_center + Vector2(0, Data.ARENA_Y) - Vector2(0, 28) / cam_zoom
+	# fundo em paralaxe (camada própria, move menos que o mundo)
+	var zb := 1.0 + (cam_zoom - 1.0) * 0.4
+	var bc := Vector2(960, 540) + (cam_center - Vector2(960, 512)) * 0.5
+	bc.x = clampf(bc.x, 960.0 / zb, 1920.0 - 960.0 / zb)
+	bc.y = clampf(bc.y, 540.0 / zb, 1080.0 - 540.0 / zb)
+	bg_layer.scale = Vector2(zb, zb)
+	bg_layer.offset = Vector2(960, 540) - bc * zb
+
+func to_screen(p: Vector2) -> Vector2:
+	return (p + world.position - camera.position) * cam_zoom + Vector2(960, 540)
 
 # ---------------------------------------------------------------- entrada
 func _join_update() -> void:
@@ -480,7 +536,7 @@ func _after_score() -> void:
 
 # ---------------------------------------------------------------- efeitos
 func float_text(pos: Vector2, text: String, col: Color) -> void:
-	floaters.append({"pos": pos + world.position, "text": text, "color": col, "t": 0.0})
+	floaters.append({"pos": pos, "text": text, "color": col, "t": 0.0})
 
 func dust(pos: Vector2) -> void:
 	for k in 3:
@@ -530,7 +586,7 @@ func _input(e: InputEvent) -> void:
 					add_player("parado%d" % players.size())
 			KEY_F6: Engine.time_scale = 0.3 if Engine.time_scale == 1.0 else 1.0
 	elif e is InputEventMouseButton and e.pressed and state != S.JOIN:
-		var c := Vector2i(((get_global_mouse_position() - world.position) / T).floor())
+		var c := Vector2i((world.get_local_mouse_position() / T).floor())
 		if e.button_index == MOUSE_BUTTON_LEFT:
 			var pc := make_piece(implemented_ids()[debug_piece], debug_owner, c)
 			var ok := true

@@ -12,3 +12,4 @@
 - 2026-11-20 · Símbolo acompanha a cor (azul ●, verde ▲, rosa ■, amarelo ◆), não o número do jogador — sessão principal.
 - 2026-11-20 · Peças sem dono na esteira de escolha aparecem em cinza neutro — sessão principal.
 - 2026-11-20 · Arte do Marco 1 feita na sessão principal (artistas interrompidos), gerada por script SVG→PNG em art/src/ — sessão principal.
+- 2026-11-20 · Estilo v2 após feedback: traço de mão, tinta, blocos em massa (autotile), robôs com membros finos, arte em 3–4x renderizada pelo Chromium (tools/render_svg.js) e câmera que aproxima até 1,6x na corrida — usuário + sessão principal.

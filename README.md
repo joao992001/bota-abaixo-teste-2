@@ -20,4 +20,4 @@ Godot 4 estável, Python 3 com Pillow. Ajudam, se houver: `rsvg-convert`, Inksca
 ## Rodar (Marco 1)
 - Jogar: `godot --path game` (Godot 4.3+). Teclado A: WASD + Espaço + Shift · Teclado B: setas + Ctrl + Enter num. · Enter começa.
 - Teste automático: `godot --headless --path game --fixed-fps 60 -- --autotest`
-- Regerar arte: `python3 art/src/robos/robos.py && python3 art/src/cenarios/canteiro.py && cp -r art/out/game/* game/assets/ && python3 art/src/prancha.py`
+- Regerar arte: `python3 art/src/robos/robos.py && python3 art/src/cenarios/canteiro.py && cp -r art/out/game/* game/assets/` (usa Node + Playwright/Chromium)

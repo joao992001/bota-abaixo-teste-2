@@ -90,7 +90,7 @@ func _build_colliders() -> void:
 
 # ---------- formas simples (substituídas pela arte quando existir) ----------
 func _draw() -> void:
-	if Data.tex("cenario/bloco_laranja") != null:
+	if Data.tex("cenario/oneway") != null:
 		_draw_art()
 		return
 	for y in rows:
@@ -129,11 +129,8 @@ func _draw_art() -> void:
 			var c := Vector2i(x, y)
 			var pos := Vector2(x * T, y * T)
 			match ch_at(c):
-				"#":
-					var n := "cenario/bloco_laranja" if (x / 2 + y / 2) % 2 == 0 else "cenario/bloco_magenta"
-					draw_texture_rect(Data.tex(n), Rect2(pos, tile), false)
-				"o":
-					draw_texture_rect(Data.tex("cenario/bloco_dourado"), Rect2(pos, tile), false)
+				"#", "o":
+					draw_texture_rect(Data.tex(block_tex(c)), Rect2(pos, tile), false)
 				"=":
 					draw_texture_rect(Data.tex("cenario/oneway"), Rect2(pos, tile), false)
 				"^":
@@ -141,6 +138,16 @@ func _draw_art() -> void:
 					draw_texture_rect(Data.tex("cenario/espinho"), Rect2(pos + Vector2(0, 4), tile), false)
 	if elevator_cell.x >= 0:
 		draw_texture_rect(Data.tex("cenario/elevador"), Rect2(elevator_cell.x * T - 32, (elevator_cell.y - 2) * T, 128, 192), false)
+
+## Autotile: cada bloco escolhe a variante pelas faces expostas (topo, direita, esquerda, base, canto).
+func block_tex(c: Vector2i) -> String:
+	var t := not is_solid(c + Vector2i.UP)
+	var r := not is_solid(c + Vector2i.RIGHT)
+	var l := not is_solid(c + Vector2i.LEFT)
+	var b := not is_solid(c + Vector2i.DOWN)
+	var k := r and (b or is_solid(c + Vector2i(1, 1)))
+	var cor := "dourado" if ch_at(c) == "o" else ("laranja" if (c.x / 3 + c.y / 2) % 2 == 0 else "magenta")
+	return "cenario/blocos/%s_%d%d%d%d%d" % [cor, int(t), int(r), int(l), int(b), int(k)]
 
 static func draw_block(ci: CanvasItem, r: Rect2, base: Color) -> void:
 	var inner := r.grow(-2)

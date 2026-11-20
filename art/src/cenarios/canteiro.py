@@ -1,6 +1,7 @@
-"""Kit do Canteiro (estilo ref1): blocos-cubo com bisel, one-way, espinho, lama, elevador,
-fundo turquesa, plateia em silhueta, poeira; e as peças P01–P04 em cada cor de dono.
-Rodar: python3 art/src/cenarios/canteiro.py
+"""Kit do Canteiro v2 (estilo ref1): blocos em massa (autotile: bisel só nas faces expostas),
+painel de caixote, contorno marrom fino com traço de mão, tinta; fundo pintado, plateia,
+lama, espinho, elevador, poeira; peças P01–P04 por cor do dono (índice 4 = neutro).
+Rodar: python3 art/src/cenarios/canteiro.py   (renderiza com o Chromium, tools/render_svg.js)
 """
 import math
 import os
@@ -8,7 +9,7 @@ import random
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from svg import DANGER, INK, PLAYER, doc, poly, save, shade, star_pts, symbol  # noqa: E402
+from svg import BROWN, DANGER, PLAYER, doc, filters, poly, queue, render_all, shade, star_pts, symbol  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 SRC_C = os.path.join(ROOT, "art/src/cenarios/svg")
@@ -16,227 +17,287 @@ SRC_P = os.path.join(ROOT, "art/src/pecas/svg")
 SRC_E = os.path.join(ROOT, "art/src/efeitos/svg")
 OUT_C = os.path.join(ROOT, "art/out/game/cenario")
 OUT_P = os.path.join(ROOT, "art/out/game/pecas")
-K = 2  # exporta em 2x (a Godot desenha em 0,5)
+K = 3  # tiles e peças em 3x (a câmera aproxima até ~1,6x)
 
-ORANGE = "#e0894a"
-MAGENTA = "#d9567f"
-GOLD = "#e8b23a"
-STEEL = "#8d97a6"
-
-
-# ------------------------------------------------------------------ blocos
-def cube(base, emblem=False):
-    """Cubo gordinho: frente na cor base, topo claro, lateral escura, contorno grosso."""
-    top, side, front = shade(base, 0.32), shade(base, -0.28), base
-    o = 3  # margem: os cubos ficam levemente separados, como na ref1
-    d = 9  # profundidade do bisel
-    b = []
-    outer = [(o, o + d), (o + d, o), (64 - o, o), (64 - o, 64 - o - d), (64 - o - d, 64 - o), (o, 64 - o)]
-    b.append(poly(outer, INK, INK, 6))
-    b.append(poly([(o + 2, o + d), (o + d, o + 2), (64 - o - 2, o + 2), (64 - o - d - 2, o + d)], top))
-    b.append(poly([(64 - o - d - 2, o + d), (64 - o - 2, o + 2), (64 - o - 2, 64 - o - d - 2), (64 - o - d - 2, 64 - o - 2)], side))
-    b.append(f'<rect x="{o + 2}" y="{o + d}" width="{64 - 2 * o - d - 4}" height="{64 - 2 * o - d - 2}" fill="{front}"/>')
-    # leve degradê chapado: faixa inferior um tom mais escura
-    b.append(f'<rect x="{o + 2}" y="{64 - o - 14}" width="{64 - 2 * o - d - 4}" height="12" fill="{shade(base, -0.1)}"/>')
-    b.append(f'<path d="M{o + d},{o + d} H{64 - o - d - 2} L{64 - o - 2},{o + 2} M{64 - o - d - 2},{o + d} V{64 - o - 2}" stroke="{INK}" stroke-width="2" fill="none"/>')
-    b.append(f'<path d="M{o + 8},{o + d + 5} H{o + 22}" stroke="{shade(base, 0.55)}" stroke-width="3" stroke-linecap="round"/>')
-    if emblem:  # emblema próprio: capacete de obra
-        cx, cy = 28, 37
-        em = shade(base, -0.22)
-        b.append(f'<path d="M{cx - 12},{cy + 3} C{cx - 12},{cy - 9} {cx - 6},{cy - 13} {cx},{cy - 13} C{cx + 6},{cy - 13} {cx + 12},{cy - 9} {cx + 12},{cy + 3} Z" fill="{em}"/>')
-        b.append(f'<rect x="{cx - 17}" y="{cy + 2}" width="34" height="6" rx="3" fill="{em}"/>')
-        b.append(f'<rect x="{cx - 3}" y="{cy - 13}" width="6" height="15" fill="{shade(base, 0.25)}"/>')
-    return doc(64, 64, "".join(b))
+D = 11  # profundidade do bisel (px de jogo)
+PAL = {
+    "laranja": dict(front="#c47546", low="#b0653b", top="#dc9562", side="#d98a5c", line="#93502c", hi="#d99368"),
+    "magenta": dict(front="#b8456e", low="#a43a61", top="#d0648a", side="#dc6c9c", line="#82294b", hi="#cc6189"),
+    "dourado": dict(front="#c8963c", low="#b4842f", top="#e0b65a", side="#d9a94a", line="#8e621c", hi="#ddb062"),
+}
+STEEL = "#8e98a8"
 
 
+# ------------------------------------------------------------------ blocos (autotile)
+def block(pal_name, T, R, L, B, C, seed):
+    p = PAL[pal_name]
+    x1 = 64 - D if R else 64
+    y0 = D if T else 0
+    defs = filters(seed=seed, wobble=0.9, grain=0.03, blotch=0.12)
+    defs += (f'<linearGradient id="fg" x1="0" y1="0" x2="0.25" y2="1"><stop offset="0" stop-color="{p["front"]}"/>'
+             f'<stop offset="1" stop-color="{p["low"]}"/></linearGradient>')
+    fill = []
+    fill.append(f'<rect x="0" y="{y0}" width="{x1}" height="{64 - y0}" fill="url(#fg)"/>')
+    if T:
+        top = ([(0, D), (D, 0)] if L else [(0, D), (0, 0)]) + [(64, 0), (x1, D)]
+        fill.append(poly(top, p["top"]))
+        fill.append(f'<path d="M{D + 6 if L else 4},{D * 0.45:.1f} H{x1 - 8}" stroke="{shade(p["top"], 0.35)}" stroke-width="2" stroke-linecap="round" opacity="0.7"/>')
+    if R:
+        rtop = [(x1, D), (64, 0)] if T else [(x1, 0), (64, 0)]
+        rbot = [(64, 64 - D), (x1, 64)] if C else [(64, 64), (x1, 64)]
+        fill.append(poly(rtop + rbot, p["side"]))
+    # painel de caixote na frente
+    px0, py0, px1, py1 = 6, y0 + 6, x1 - 6, 58
+    fill.append(f'<rect x="{px0 + 1.5}" y="{py0 + 1.5}" width="{px1 - px0}" height="{py1 - py0}" rx="5" fill="none" stroke="{p["hi"]}" stroke-width="1.6" opacity="0.8"/>')
+    lines = [f'<rect x="{px0}" y="{py0}" width="{px1 - px0}" height="{py1 - py0}" rx="5" fill="none" stroke="{p["line"]}" stroke-width="2.2"/>']
+    if pal_name == "dourado":  # emblema próprio (capacete de obra) em traço, como os emblemas da ref1
+        cx, cy = (px0 + px1) / 2, (py0 + py1) / 2 + 2
+        lines.append(f'<path d="M{cx - 13},{cy + 3} C{cx - 13},{cy - 10} {cx - 6},{cy - 14} {cx},{cy - 14} C{cx + 6},{cy - 14} {cx + 13},{cy - 10} {cx + 13},{cy + 3} '
+                     f'M{cx - 18},{cy + 3} H{cx + 18} V{cy + 8} H{cx - 18} Z M{cx - 4},{cy - 14} V{cy + 2} M{cx + 4},{cy - 14} V{cy + 2}" '
+                     f'fill="none" stroke="{p["line"]}" stroke-width="2.4" stroke-linejoin="round"/>')
+    # costuras (finas) entre faces e entre cubos
+    if T:
+        lines.append(f'<path d="M0,{D} H{x1}" stroke="{BROWN}" stroke-width="1.8"/>')
+        if not L:
+            lines.append(f'<path d="M0,{D} L{D * 0.7},{D * 0.3}" stroke="{p["line"]}" stroke-width="1.6"/>')
+    if R:
+        lines.append(f'<path d="M{x1},{y0} V64" stroke="{BROWN}" stroke-width="1.8"/>')
+    if not L:
+        lines.append(f'<path d="M0.8,{y0} V64" stroke="{p["line"]}" stroke-width="1.6"/>')
+    if not B:
+        lines.append(f'<path d="M0,63.2 H{x1}" stroke="{p["line"]}" stroke-width="1.6"/>')
+    # contorno grosso só nas bordas expostas da massa
+    ow, h = 3.4, 1.7
+    if T:
+        lines.append(f'<path d="{"M%s,%s L%s,%s" % (h, D, D, h) if L else "M0,%s" % h} H64" stroke="{BROWN}" stroke-width="{ow}" fill="none" stroke-linejoin="round"/>')
+    if R:
+        lines.append(f'<path d="M{64 - h},{0 if T or True else 0} V{64 - D if C else 64}{" L%s,%s" % (x1, 64 - h) if C else ""}" stroke="{BROWN}" stroke-width="{ow}" fill="none" stroke-linejoin="round"/>')
+    if L:
+        lines.append(f'<path d="M{h},{D if T else 0} V64" stroke="{BROWN}" stroke-width="{ow}"/>')
+    if B:
+        lines.append(f'<path d="M0,{64 - h} H{x1}" stroke="{BROWN}" stroke-width="{ow}"/>')
+    body = f'<g filter="url(#paint)">{"".join(fill)}</g><g filter="url(#wob)" stroke-linecap="round">{"".join(lines)}</g>'
+    return doc(64, 64, body, defs)
+
+
+def block_variants():
+    n = 0
+    for name in PAL:
+        for bits in range(32):
+            T, R, L, B, C = [(bits >> i) & 1 for i in range(5)]
+            if C and not R:
+                continue
+            key = f"{T}{R}{L}{B}{C}"
+            queue(block(name, T, R, L, B, C, seed=bits + 1), f"{SRC_C}/blocos/{name}_{key}.svg", f"{OUT_C}/blocos/{name}_{key}.png", 64, 64, K)
+            n += 1
+    return n
+
+
+# ------------------------------------------------------------------ demais elementos do mapa
 def oneway():
-    return doc(64, 64, (
-        f'<rect x="-2" y="3" width="68" height="17" rx="4" fill="{INK}"/>'
-        f'<rect x="1" y="6" width="62" height="11" rx="2" fill="#d79a5a"/>'
-        f'<rect x="1" y="6" width="62" height="3.5" fill="#efc08a"/>'
-        f'<path d="M20,7 Q26,11 22,16 M44,8 Q38,12 46,16" stroke="#a96c35" stroke-width="1.8" fill="none"/>'
-        f'<circle cx="7" cy="12" r="2" fill="{INK}"/><circle cx="57" cy="12" r="2" fill="{INK}"/>'))
+    return doc(64, 64, defs=filters(4), body=(
+        f'<g filter="url(#paint)"><rect x="0" y="4" width="64" height="14" fill="#cf9659"/>'
+        f'<rect x="0" y="4" width="64" height="4" fill="#e8b87e"/></g>'
+        f'<g filter="url(#wob)"><path d="M0,4.5 H64 M0,17.5 H64" stroke="{BROWN}" stroke-width="3"/>'
+        f'<path d="M18,8 Q24,11 20,15 M42,8 Q37,12 45,15" stroke="#9c6334" stroke-width="1.6" fill="none"/>'
+        f'<circle cx="6" cy="11" r="1.8" fill="{BROWN}"/><circle cx="58" cy="11" r="1.8" fill="{BROWN}"/></g>'))
 
 
 def spikes():
     b = []
     for i in range(3):
         x = 2 + i * 20
-        tip = (x + 10, 18)
-        b.append(poly([(x, 64), tip, (x + 20, 64)], "#55505e", INK, 5))
-        b.append(poly([(x + 10, 24), (x + 15, 62), (x + 18, 64), (x + 10, 64)], "#3e3a47"))
-        b.append(poly([tip, (x + 7.3, 28), (x + 12.7, 28)], DANGER))
-        b.append(f'<path d="M{x + 6},{58} L{x + 9},{34}" stroke="#8b8496" stroke-width="2" stroke-linecap="round"/>')
-    return doc(64, 64, "".join(b))
+        tip = (x + 10, 16)
+        b.append(poly([(x, 64), tip, (x + 20, 64)], "#5d5866", BROWN, 3))
+        b.append(poly([(x + 10, 22), (x + 16, 62), (x + 18.5, 64), (x + 10.5, 64)], "#45404f"))
+        b.append(poly([tip, (x + 7.2, 27), (x + 12.8, 27)], DANGER))
+        b.append(f'<path d="M{x + 6},{58} L{x + 9},{34}" stroke="#8f889a" stroke-width="1.8" stroke-linecap="round"/>')
+    return doc(64, 64, f'<g filter="url(#wob)">{"".join(b)}</g>', filters(5, wobble=0.7))
 
 
 def mud():
-    w = []
-    for i in range(0, 65, 4):
-        w.append((i, 22 + 4 * math.sin(i / 64 * 2 * math.pi * 2)))
+    w = [(i, 24 + 3.5 * math.sin(i / 64 * 2 * math.pi * 2)) for i in range(0, 65, 4)]
     top = " ".join(f"L{x},{y:.1f}" for x, y in w)
     return doc(64, 64, (
-        f'<path d="M0,64 {top} L64,64 Z" fill="#8a4fa8"/>'
-        f'<path d="M0,64 {" ".join(f"L{x},{y + 9:.1f}" for x, y in w)} L64,64 Z" fill="#6e3b8a"/>'
-        f'<path d="M0,{w[0][1]:.1f} {top}" stroke="#c48be0" stroke-width="5" fill="none"/>'
-        f'<circle cx="18" cy="42" r="3" fill="#b07fd6"/><circle cx="46" cy="48" r="2" fill="#b07fd6"/>'))
+        f'<g filter="url(#paint)"><path d="M0,64 {top} L64,64 Z" fill="#9a7fd2"/>'
+        f'<path d="M0,64 {" ".join(f"L{x},{y + 8:.1f}" for x, y in w)} L64,64 Z" fill="#8a6fc4"/>'
+        f'<path d="M0,64 {" ".join(f"L{x},{y + 26:.1f}" for x, y in w)} L64,64 Z" fill="#7a5fb3"/></g>'
+        f'<path d="M0,{w[0][1] + 2:.1f} {" ".join(f"L{x},{y + 2:.1f}" for x, y in w)}" stroke="#c4b0f0" stroke-width="3.5" fill="none"/>'
+        f'<g filter="url(#wob)"><path d="M0,{w[0][1]:.1f} {top}" stroke="{BROWN}" stroke-width="2" fill="none"/></g>'
+        f'<circle cx="16" cy="44" r="1.6" fill="#ffffff" opacity="0.6"/><circle cx="44" cy="50" r="1.2" fill="#ffffff" opacity="0.6"/>'
+        f'<circle cx="31" cy="38" r="1" fill="#ffffff" opacity="0.6"/>'), filters(6))
 
 
 def elevator():
-    b = [f'<rect x="4" y="18" width="120" height="172" rx="8" fill="{INK}"/>',
-         '<rect x="10" y="24" width="108" height="160" rx="4" fill="#f2b632"/>',
-         '<rect x="10" y="24" width="108" height="8" fill="#ffd970"/>',
-         f'<rect x="22" y="44" width="84" height="140" rx="3" fill="{INK}"/>',
-         '<rect x="26" y="48" width="37" height="136" fill="#5a6070"/>',
-         '<rect x="65" y="48" width="37" height="136" fill="#4b5060"/>']
-    for y in range(58, 184, 16):  # grade da porta-pantográfica
-        b.append(f'<path d="M26,{y} L63,{y + 12} M63,{y} L26,{y + 12} M65,{y} L102,{y + 12} M102,{y} L65,{y + 12}" stroke="#7b8294" stroke-width="2.5"/>')
-    b.append('<path d="M30,52 V182" stroke="#8d97a6" stroke-width="3"/>')
-    # faixa de atenção (amarelo/preto) no topo
-    b.append(f'<rect x="4" y="2" width="120" height="22" rx="6" fill="{INK}"/>')
-    b.append('<rect x="9" y="6" width="110" height="14" rx="3" fill="#ffd23f"/>')
-    for x in range(0, 120, 16):
-        b.append(poly([(9 + x, 20), (17 + x, 6), (25 + x, 6), (17 + x, 20)], INK, extra='clip-path="url(#sc)"'))
-    # luz de chegada (seta para cima)
-    b.append(f'<circle cx="64" cy="36" r="9" fill="#ffffff" stroke="{INK}" stroke-width="3.5"/>')
-    b.append(poly([(64, 30), (70, 39), (58, 39)], "#3aa7a3"))
-    defs = '<clipPath id="sc"><rect x="9" y="6" width="110" height="14"/></clipPath>'
+    b = ['<g filter="url(#paint)">',
+         '<rect x="6" y="20" width="116" height="170" rx="7" fill="#e9ad35"/>',
+         '<rect x="6" y="20" width="116" height="9" fill="#f7cf6c"/>',
+         '<rect x="22" y="44" width="84" height="146" rx="3" fill="#3b3442"/>',
+         '<rect x="26" y="48" width="37" height="142" fill="#5d6070"/>',
+         '<rect x="65" y="48" width="37" height="142" fill="#51545f"/>',
+         '<rect x="6" y="3" width="116" height="20" rx="5" fill="#ffd23f"/>', '</g>']
+    for x in range(-8, 120, 16):
+        b.append(poly([(10 + x, 21), (18 + x, 5), (26 + x, 5), (18 + x, 21)], "#2c2230", extra='clip-path="url(#sc)"'))
+    b.append('<g filter="url(#wob)" fill="none">')
+    for y in range(58, 186, 16):
+        b.append(f'<path d="M26,{y} L63,{y + 12} M63,{y} L26,{y + 12} M65,{y} L102,{y + 12} M102,{y} L65,{y + 12}" stroke="#808697" stroke-width="2"/>')
+    b.append(f'<rect x="6" y="20" width="116" height="170" rx="7" stroke="{BROWN}" stroke-width="3.4"/>')
+    b.append(f'<rect x="6" y="3" width="116" height="20" rx="5" stroke="{BROWN}" stroke-width="3.4"/>')
+    b.append(f'<rect x="22" y="44" width="84" height="146" rx="3" stroke="{BROWN}" stroke-width="2.4"/>')
+    b.append(f'<circle cx="64" cy="35" r="8" fill="#ffffff" stroke="{BROWN}" stroke-width="2.6"/></g>')
+    b.append(poly([(64, 30), (69.5, 38.5), (58.5, 38.5)], "#3aa7a3"))
+    defs = filters(9) + '<clipPath id="sc"><rect x="9" y="5" width="110" height="16"/></clipPath>'
     return doc(128, 192, "".join(b), defs)
+
+
+def gear(cx, cy, r, rot, fill, shadow):
+    pts = star_pts(cx, cy, 9, r, r * 0.8, rot)
+    pts_s = star_pts(cx + r * 0.06, cy + r * 0.08, 9, r, r * 0.8, rot)
+    return (poly(pts_s, shadow) + poly(pts, fill) +
+            f'<circle cx="{cx}" cy="{cy}" r="{r * 0.33:.1f}" fill="#2f9ea3"/>')
 
 
 def background():
     rnd = random.Random(7)
     W, H = 1920, 1080
-    b = ['<rect width="1920" height="1080" fill="url(#sky)"/>']
-    defs = ('<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">'
-            '<stop offset="0" stop-color="#46b5b0"/><stop offset="1" stop-color="#2f9590"/></linearGradient>')
-    # camada distante: morros e prédios em teal escuro (sem contorno)
-    far = "#2c8a86"
-    b.append(f'<path d="M0,760 C200,640 360,700 520,620 C700,540 820,690 1000,640 C1180,590 1300,520 1500,600 C1680,670 1800,560 1920,600 V1080 H0 Z" fill="{far}"/>')
-    for x, w, h in [(140, 120, 300), (300, 80, 220), (1240, 140, 360), (1420, 90, 260), (1700, 110, 320)]:
-        b.append(f'<rect x="{x}" y="{1080 - 300 - h}" width="{w}" height="{h + 300}" rx="10" fill="{far}"/>')
-    # guindaste distante (silhueta clara)
-    crane = "#5cc2bd"
-    b.append(f'<rect x="1560" y="170" width="26" height="700" fill="{crane}"/>')
-    b.append(f'<rect x="1290" y="170" width="520" height="22" fill="{crane}"/>')
-    for x in range(1300, 1800, 40):
-        b.append(f'<path d="M{x},192 L{x + 20},170 L{x + 40},192" stroke="{crane}" stroke-width="6" fill="none"/>')
-    b.append(f'<path d="M1360,192 V330" stroke="{crane}" stroke-width="4"/><rect x="1340" y="330" width="40" height="26" rx="6" fill="{crane}"/>')
-    # formas brancas grandes e suaves (nossas: engrenagens, parafusos e capacetes)
-    soft = 'fill="#ffffff" opacity="0.5"'
-    for cx, cy, r in [(250, 230, 95), (1010, 140, 70), (700, 520, 60), (1750, 560, 80)]:
-        b.append(poly(star_pts(cx, cy, 9, r, r * 0.8, rnd.random()), "#ffffff", extra='opacity="0.42"'))
-        b.append(f'<circle cx="{cx}" cy="{cy}" r="{r * 0.32}" fill="#3aa7a3" opacity="0.9"/>')
-    for cx, cy, s in [(560, 210, 1.3), (1380, 430, 1.0), (120, 560, 0.9)]:
-        b.append(f'<g transform="translate({cx},{cy}) scale({s})"><polygon points="-40,0 -20,-34 20,-34 40,0 20,34 -20,34" {soft}/>'
-                 f'<circle r="15" fill="#3aa7a3" opacity="0.7"/></g>')
-    for cx, cy, s in [(820, 330, 1.4), (1650, 300, 1.1)]:
-        b.append(f'<g transform="translate({cx},{cy}) scale({s})" {soft}><path d="M-46,10 C-46,-28 -24,-40 0,-40 C24,-40 46,-28 46,10 Z"/>'
-                 f'<rect x="-60" y="6" width="120" height="16" rx="8"/></g>')
-    for _ in range(26):  # brilhinhos
-        x, y, r = rnd.randint(0, W), rnd.randint(60, 800), rnd.choice([5, 7, 9])
-        b.append(poly(star_pts(x, y, 4, r, r * 0.35), "#ffffff", extra='opacity="0.55"'))
+    defs = ('<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3aabae"/>'
+            '<stop offset="1" stop-color="#2a929a"/></linearGradient>'
+            '<radialGradient id="vig" cx="0.5" cy="0.45" r="0.75"><stop offset="0.6" stop-color="#000" stop-opacity="0"/>'
+            '<stop offset="1" stop-color="#0b2a33" stop-opacity="0.45"/></radialGradient>'
+            '<filter id="soft"><feGaussianBlur stdDeviation="2.2"/></filter>'
+            '<filter id="beam"><feGaussianBlur stdDeviation="14"/></filter>') + filters(11, blotch=0.14, grain=0.05)
+    b = ['<g filter="url(#paint)"><rect width="1920" height="1080" fill="url(#sky)"/>']
+    # fachos de luz de palco
+    for x, w in [(380, 170), (980, 220), (1480, 160)]:
+        b.append(f'<path d="M{x},0 L{x + w},0 L{x + w * 1.8},1080 L{x - w * 0.6},1080 Z" fill="#ffffff" opacity="0.06" filter="url(#beam)"/>')
+    # massas distantes (teal escuro, bordas suaves)
+    far = "#22828b"
+    b.append(f'<g filter="url(#soft)" fill="{far}">'
+             '<path d="M-20,1080 V700 C80,610 210,640 300,700 C360,560 470,500 560,560 C620,600 640,700 700,760 V1080 Z"/>'
+             '<path d="M1180,1080 V560 C1240,470 1330,430 1420,470 C1500,380 1640,360 1720,450 C1800,520 1860,560 1940,560 V1080 Z"/>'
+             '<rect x="760" y="300" width="150" height="800" rx="70"/><rect x="1530" y="160" width="120" height="900" rx="60"/>'
+             '<rect x="120" y="380" width="110" height="700" rx="55"/></g>')
+    # guindaste em silhueta clara
+    crane = "#56bdb9"
+    b.append(f'<g filter="url(#soft)" fill="{crane}" opacity="0.8"><rect x="1690" y="140" width="24" height="760"/>'
+             '<rect x="1360" y="140" width="520" height="20"/><rect x="1430" y="160" width="4" height="150"/>'
+             '<rect x="1414" y="306" width="36" height="24" rx="5"/></g>')
+    b.append('</g>')  # fim da tinta: formas brancas ficam limpas, como na ref1
+    # formas brancas grandes e suaves (nossas: engrenagens, porcas, capacete)
+    b.append('<g filter="url(#soft)" opacity="0.92">')
+    for cx, cy, r in [(250, 220, 105), (1060, 150, 72), (640, 560, 62), (1300, 640, 88)]:
+        b.append(gear(cx, cy, r, rnd.random(), "#e9f0f0", "#b7c9cb"))
+    for cx, cy, s in [(560, 200, 1.5), (1460, 380, 1.1), (110, 620, 1.0)]:
+        b.append(f'<g transform="translate({cx},{cy}) scale({s}) rotate({rnd.randint(0, 40)})">'
+                 '<polygon points="-38,4 -18,-30 22,-30 42,4 22,38 -18,38" fill="#b7c9cb"/>'
+                 '<polygon points="-40,0 -20,-34 20,-34 40,0 20,34 -20,34" fill="#e9f0f0"/><circle r="14" fill="#2f9ea3"/></g>')
+    for cx, cy, s in [(860, 360, 1.5), (1780, 300, 1.0)]:
+        b.append(f'<g transform="translate({cx},{cy}) scale({s})"><path d="M-46,14 C-46,-26 -24,-38 0,-38 C24,-38 46,-26 46,14 Z" fill="#b7c9cb"/>'
+                 '<path d="M-48,8 C-48,-30 -26,-42 -2,-42 C22,-42 44,-30 44,8 Z" fill="#e9f0f0"/>'
+                 '<rect x="-62" y="6" width="120" height="16" rx="8" fill="#e9f0f0"/></g>')
+    b.append('</g>')
+    for _ in range(30):
+        x, y, r = rnd.randint(0, W), rnd.randint(60, 820), rnd.choice([4, 6, 8])
+        b.append(poly(star_pts(x, y, 4, r, r * 0.33), "#ffffff", extra='opacity="0.5"'))
+    for _ in range(14):
+        x, y, r = rnd.randint(0, W), rnd.randint(60, 820), rnd.choice([3, 4])
+        b.append(f'<rect x="{x}" y="{y}" width="{r}" height="{r}" fill="#ffffff" opacity="0.45"/>')
+    b.append('<rect width="1920" height="1080" fill="url(#vig)"/>')
     return doc(W, H, "".join(b), defs)
 
 
 def audience():
-    """Plateia de operários em silhueta (borda inferior), 1920x150."""
     rnd = random.Random(3)
     b = []
     x = -20
     while x < 1940:
-        w = rnd.randint(46, 64)
-        h = rnd.randint(70, 110)
-        cx = x + w / 2
-        top = 150 - h
-        col = rnd.choice(["#1a0e1c", "#22132a", "#150a17"])
-        b.append(f'<rect x="{x}" y="{top + 30}" width="{w}" height="{h}" rx="{w / 2.4:.0f}" fill="{col}"/>')
-        b.append(f'<circle cx="{cx}" cy="{top + 22}" r="{w * 0.32:.0f}" fill="{col}"/>')
-        hat = rnd.random()
-        if hat < 0.6:  # capacete
-            b.append(f'<path d="M{cx - w * 0.36},{top + 16} C{cx - w * 0.36},{top - 4} {cx + w * 0.36},{top - 4} {cx + w * 0.36},{top + 16} Z" fill="{col}"/>')
-            b.append(f'<rect x="{cx - w * 0.48}" y="{top + 12}" width="{w * 0.96}" height="7" rx="3" fill="{col}"/>')
-        elif hat < 0.8:  # braço levantado comemorando
-            side = rnd.choice([-1, 1])
-            b.append(f'<path d="M{cx + side * w * 0.3},{top + 50} L{cx + side * w * 0.6},{top - 6}" stroke="{col}" stroke-width="13" stroke-linecap="round"/>')
-        x += w - rnd.randint(4, 14)
-    return doc(1920, 150, "".join(b))
+        w, h = rnd.randint(50, 70), rnd.randint(78, 118)
+        cx, top = x + w / 2, 160 - h
+        col = rnd.choice(["#150b13", "#1b0f19", "#120810"])
+        b.append(f'<g fill="{col}"><rect x="{x}" y="{top + 32}" width="{w}" height="{h}" rx="{w / 2.3:.0f}"/>'
+                 f'<circle cx="{cx}" cy="{top + 24}" r="{w * 0.33:.0f}"/>')
+        r = rnd.random()
+        if r < 0.6:
+            b.append(f'<path d="M{cx - w * 0.37},{top + 17} C{cx - w * 0.37},{top - 5} {cx + w * 0.37},{top - 5} {cx + w * 0.37},{top + 17} Z"/>'
+                     f'<rect x="{cx - w * 0.5}" y="{top + 13}" width="{w}" height="7" rx="3"/>')
+        elif r < 0.8:
+            s = rnd.choice([-1, 1])
+            b.append(f'<path d="M{cx + s * w * 0.3},{top + 52} L{cx + s * w * 0.62},{top - 6}" stroke="{col}" stroke-width="14" stroke-linecap="round"/>')
+        b.append('</g>')
+        b.append(f'<path d="M{cx - w * 0.3},{top + 8} Q{cx},{top - 2} {cx + w * 0.3},{top + 8}" stroke="#4a2433" stroke-width="2.5" fill="none" opacity="0.7"/>')
+        x += w - rnd.randint(6, 16)
+    return doc(1920, 160, "".join(b))
 
 
 def dust():
     return doc(64, 64, (
-        '<circle cx="24" cy="38" r="15" fill="#9c7350"/><circle cx="40" cy="34" r="17" fill="#9c7350"/>'
-        '<circle cx="32" cy="26" r="13" fill="#9c7350"/>'
-        '<circle cx="28" cy="31" r="11" fill="#b88d66"/><circle cx="40" cy="28" r="10" fill="#b88d66"/>'
-        '<circle cx="34" cy="22" r="5" fill="#d2ad85"/>'))
+        '<g filter="url(#paint)"><circle cx="24" cy="38" r="15" fill="#9a7352"/><circle cx="40" cy="34" r="17" fill="#9a7352"/>'
+        '<circle cx="32" cy="25" r="13" fill="#a98262"/><circle cx="28" cy="31" r="10" fill="#b79272"/>'
+        '<circle cx="40" cy="28" r="9" fill="#b79272"/><circle cx="34" cy="21" r="4.5" fill="#cdae8e"/></g>'), filters(12, blotch=0.2))
 
 
 def sparkle():
-    return doc(32, 32, poly(star_pts(16, 16, 4, 14, 4.5), "#ffffff", INK, 2))
+    return doc(32, 32, poly(star_pts(16, 16, 4, 14, 4), "#ffffff", BROWN, 1.6))
 
 
-# ------------------------------------------------------------------ peças (por cor do dono)
+# ------------------------------------------------------------------ peças
 def badge(ci, cx, cy, r):
-    return (f'<circle cx="{cx}" cy="{cy}" r="{r + 3.5}" fill="{INK}"/><circle cx="{cx}" cy="{cy}" r="{r}" fill="{PLAYER[ci]}"/>'
-            f'<circle cx="{cx - r * 0.3}" cy="{cy - r * 0.35}" r="{r * 0.25}" fill="#ffffff" opacity="0.7"/>'
-            + symbol(ci, cx, cy + 0.5, r * 0.5))
+    return (f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{PLAYER[ci]}" stroke="{BROWN}" stroke-width="3"/>'
+            f'<circle cx="{cx - r * 0.3}" cy="{cy - r * 0.38}" r="{r * 0.22}" fill="#ffffff" opacity="0.7"/>'
+            + symbol(ci, cx, cy + 0.5, r * 0.5, BROWN))
+
+
+def piece_doc(w, h, fills, lines, seed):
+    return doc(w, h, f'<g filter="url(#paint)">{fills}</g><g filter="url(#wob)" fill="none" stroke-linejoin="round" stroke-linecap="round">{lines}</g>',
+               filters(seed, wobble=0.8))
 
 
 def viga(ci):
     col = PLAYER[ci]
-    b = [f'<rect x="3" y="8" width="186" height="50" rx="9" fill="{INK}"/>',
-         f'<rect x="8" y="13" width="176" height="40" rx="5" fill="{STEEL}"/>',
-         f'<rect x="8" y="40" width="176" height="13" rx="4" fill="{shade(STEEL, -0.25)}"/>',
-         f'<rect x="8" y="13" width="176" height="15" rx="4" fill="{col}"/>',
-         f'<rect x="8" y="24" width="176" height="4" fill="{shade(col, -0.25)}"/>',
-         f'<path d="M14,17 H70" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.8"/>',
-         f'<path d="M8,28.5 H184" stroke="{INK}" stroke-width="2.5"/>']
+    f = (f'<rect x="4" y="10" width="184" height="46" rx="7" fill="{STEEL}"/>'
+         f'<rect x="4" y="40" width="184" height="16" rx="5" fill="{shade(STEEL, -0.22)}"/>'
+         f'<rect x="4" y="10" width="184" height="16" rx="5" fill="{col}"/>'
+         f'<rect x="4" y="22" width="184" height="5" fill="{shade(col, -0.25)}"/>')
     for x in (36, 84, 132):
-        b.append(f'<ellipse cx="{x}" cy="38" rx="11" ry="5.5" fill="{shade(STEEL, -0.45)}"/>')
-    for x in (16, 176):
-        b.append(f'<circle cx="{x}" cy="47" r="3" fill="{INK}"/>')
-    b.append(badge(ci, 160, 38, 10))
-    return doc(192, 64, "".join(b))
+        f += f'<ellipse cx="{x}" cy="38" rx="11" ry="5" fill="{shade(STEEL, -0.45)}"/>'
+    lines = (f'<rect x="4" y="10" width="184" height="46" rx="7" stroke="{BROWN}" stroke-width="3.4"/>'
+             f'<path d="M5,27 H187" stroke="{BROWN}" stroke-width="2"/><path d="M12,15 H70" stroke="#ffffff" stroke-width="2.6" opacity="0.8"/>'
+             f'<circle cx="15" cy="47" r="2.2" fill="{BROWN}"/><circle cx="177" cy="47" r="2.2" fill="{BROWN}"/>')
+    return piece_doc(192, 64, f, lines + badge(ci, 160, 38, 9), 20 + ci)
 
 
 def mola(ci, compressed):
     col = PLAYER[ci]
     top = 26 if compressed else 4
-    b = [f'<rect x="5" y="47" width="54" height="15" rx="4" fill="{INK}"/>',
-         f'<rect x="9" y="51" width="46" height="7" rx="2" fill="{STEEL}"/>']
-    n = 4
-    y0, y1 = top + 16, 50
+    f = f'<rect x="6" y="48" width="52" height="13" rx="4" fill="{STEEL}"/><rect x="2" y="{top}" width="60" height="17" rx="6" fill="{col}"/>'
+    lines = ""
+    n, y0, y1 = 4, top + 16, 50
     for i in range(n):
-        ya = y0 + (y1 - y0) * i / n
-        yb = y0 + (y1 - y0) * (i + 0.5) / n
-        yc = y0 + (y1 - y0) * (i + 1) / n
-        b.append(f'<path d="M14,{ya:.1f} L50,{yb:.1f} L14,{yc:.1f}" stroke="{INK}" stroke-width="8" fill="none" stroke-linejoin="round" stroke-linecap="round"/>')
-        b.append(f'<path d="M14,{ya:.1f} L50,{yb:.1f} L14,{yc:.1f}" stroke="#c9ced6" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>')
-    b.append(f'<rect x="2" y="{top}" width="60" height="19" rx="6" fill="{INK}"/>')
-    b.append(f'<rect x="6" y="{top + 4}" width="52" height="11" rx="3" fill="{col}"/>')
-    b.append(f'<path d="M10,{top + 7} H30" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>')
-    b.append(symbol(ci, 46, top + 9.5, 4, INK))
-    return doc(64, 64, "".join(b))
+        ya, yb, yc = (y0 + (y1 - y0) * k / n for k in (i, i + 0.5, i + 1))
+        lines += (f'<path d="M14,{ya:.1f} L50,{yb:.1f} L14,{yc:.1f}" stroke="{BROWN}" stroke-width="7"/>'
+                  f'<path d="M14,{ya:.1f} L50,{yb:.1f} L14,{yc:.1f}" stroke="#cdd2da" stroke-width="3"/>')
+    lines += (f'<rect x="6" y="48" width="52" height="13" rx="4" stroke="{BROWN}" stroke-width="3"/>'
+              f'<rect x="2" y="{top}" width="60" height="17" rx="6" stroke="{BROWN}" stroke-width="3.2"/>'
+              f'<path d="M9,{top + 5} H28" stroke="#ffffff" stroke-width="2.4" opacity="0.8"/>')
+    return piece_doc(64, 64, f, lines + symbol(ci, 47, top + 8.5, 4, BROWN), 30 + ci)
 
 
 def serra_blade(rival):
-    b = []
+    f, lines = "", ""
     if rival:
-        b.append(poly(star_pts(32, 32, 12, 31, 22), INK, INK, 3))
-        b.append(poly(star_pts(32, 32, 12, 26.5, 19.5), "#55505e"))
-        for i in range(12):  # pontas vermelhas
+        f += poly(star_pts(32, 32, 12, 30, 21), "#5d5866")
+        for i in range(12):
             a = math.pi * 2 * i / 12
-            b.append(poly([(32 + math.cos(a) * 26.5, 32 + math.sin(a) * 26.5),
-                           (32 + math.cos(a - 0.12) * 21.5, 32 + math.sin(a - 0.12) * 21.5),
-                           (32 + math.cos(a + 0.12) * 21.5, 32 + math.sin(a + 0.12) * 21.5)], DANGER))
-        b.append(f'<circle cx="32" cy="32" r="19" fill="{INK}"/><circle cx="32" cy="32" r="16" fill="#c4cad3"/>')
-    else:
-        b.append(f'<circle cx="32" cy="32" r="22" fill="{INK}"/><circle cx="32" cy="32" r="18" fill="#c4cad3"/>')
+            f += poly([(32 + math.cos(a) * 30, 32 + math.sin(a) * 30), (32 + math.cos(a - 0.13) * 24.5, 32 + math.sin(a - 0.13) * 24.5),
+                       (32 + math.cos(a + 0.13) * 24.5, 32 + math.sin(a + 0.13) * 24.5)], DANGER)
+        lines += poly(star_pts(32, 32, 12, 30, 21), "none", BROWN, 2.6)
+    f += '<circle cx="32" cy="32" r="18" fill="#c4cad3"/>'
+    lines += f'<circle cx="32" cy="32" r="18" stroke="{BROWN}" stroke-width="3"/>'
     for i in range(3):
         a = math.pi * 2 * i / 3
-        b.append(f'<path d="M{32 + math.cos(a) * 8:.1f},{32 + math.sin(a) * 8:.1f} L{32 + math.cos(a) * 14:.1f},{32 + math.sin(a) * 14:.1f}" stroke="#8d97a6" stroke-width="4" stroke-linecap="round"/>')
-    b.append('<path d="M20,24 A14,14 0 0 1 30,18" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round"/>')
-    return doc(64, 64, "".join(b))
+        lines += f'<path d="M{32 + math.cos(a) * 9:.1f},{32 + math.sin(a) * 9:.1f} L{32 + math.cos(a) * 14:.1f},{32 + math.sin(a) * 14:.1f}" stroke="#8d97a6" stroke-width="3.4"/>'
+    lines += '<path d="M21,25 A13,13 0 0 1 30,19" stroke="#ffffff" stroke-width="2.6"/>'
+    return piece_doc(64, 64, f, lines, 40 + rival)
 
 
 def serra_hub(ci):
@@ -245,41 +306,39 @@ def serra_hub(ci):
 
 def esteira(ci):
     col = PLAYER[ci]
-    b = [f'<rect x="3" y="10" width="186" height="50" rx="25" fill="{INK}"/>',
-         f'<rect x="8" y="15" width="176" height="40" rx="20" fill="#454a57"/>',
-         f'<rect x="20" y="15" width="152" height="10" fill="{col}"/>',
-         f'<path d="M20,25 H172" stroke="{INK}" stroke-width="2.5"/>',
-         f'<path d="M26,18.5 H80" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" opacity="0.75"/>']
+    f = (f'<rect x="4" y="12" width="184" height="46" rx="23" fill="#474c59"/>'
+         f'<rect x="20" y="12" width="152" height="10" fill="{col}"/>')
+    lines = (f'<rect x="4" y="12" width="184" height="46" rx="23" stroke="{BROWN}" stroke-width="3.4"/>'
+             f'<path d="M20,22.5 H172" stroke="{BROWN}" stroke-width="2"/><path d="M26,16 H80" stroke="#ffffff" stroke-width="2.2" opacity="0.75"/>')
     for x in (28, 74, 118, 164):
-        b.append(f'<circle cx="{x}" cy="42" r="10" fill="{INK}"/><circle cx="{x}" cy="42" r="7" fill="#b9c0ca"/><circle cx="{x}" cy="42" r="2.4" fill="{INK}"/>')
-    b.append(badge(ci, 96, 9, 9))
-    return doc(192, 64, "".join(b))
+        lines += f'<circle cx="{x}" cy="42" r="8" fill="#b9c0ca" stroke="{BROWN}" stroke-width="2.6"/><circle cx="{x}" cy="42" r="2" fill="{BROWN}"/>'
+    return piece_doc(192, 64, f, lines + badge(ci, 96, 10, 8.5), 50 + ci)
 
 
 def seta():
-    return doc(32, 32, f'<path d="M9,6 L22,16 L9,26" stroke="{INK}" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
-                       f'<path d="M9,6 L22,16 L9,26" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>')
+    return doc(32, 32, f'<path d="M10,6 L22,16 L10,26" stroke="{BROWN}" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+                       f'<path d="M10,6 L22,16 L10,26" stroke="#ffffff" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>')
 
 
 def main():
-    for name, svg in [("bloco_laranja", cube(ORANGE)), ("bloco_magenta", cube(MAGENTA)), ("bloco_dourado", cube(GOLD, True)),
-                      ("oneway", oneway()), ("espinho", spikes()), ("lama", mud()), ("elevador", elevator())]:
-        save(svg, f"{SRC_C}/{name}.svg", f"{OUT_C}/{name}.png", K)
-    save(background(), f"{SRC_C}/fundo_canteiro.svg", f"{OUT_C}/fundo_canteiro.png", 1)
-    save(audience(), f"{SRC_C}/plateia.svg", f"{OUT_C}/plateia.png", 1)
-    save(dust(), f"{SRC_E}/poeira.svg", f"{OUT_C}/poeira.png", K)
-    save(sparkle(), f"{SRC_E}/brilho.svg", f"{OUT_C}/brilho.png", K)
+    n = block_variants()
+    for name, svg, w, h in [("oneway", oneway(), 64, 64), ("espinho", spikes(), 64, 64), ("lama", mud(), 64, 64), ("elevador", elevator(), 128, 192)]:
+        queue(svg, f"{SRC_C}/{name}.svg", f"{OUT_C}/{name}.png", w, h, K)
+    queue(background(), f"{SRC_C}/fundo_canteiro.svg", f"{OUT_C}/fundo_canteiro.png", 1920, 1080, 2)
+    queue(audience(), f"{SRC_C}/plateia.svg", f"{OUT_C}/plateia.png", 1920, 160, 2)
+    queue(dust(), f"{SRC_E}/poeira.svg", f"{OUT_C}/poeira.png", 64, 64, K)
+    queue(sparkle(), f"{SRC_E}/brilho.svg", f"{OUT_C}/brilho.png", 32, 32, K)
     for ci in range(5):
         c = f"c{ci}"
-        save(viga(ci), f"{SRC_P}/viga_{c}.svg", f"{OUT_P}/viga_{c}.png", K)
-        save(mola(ci, False), f"{SRC_P}/mola_{c}.svg", f"{OUT_P}/mola_{c}.png", K)
-        save(mola(ci, True), f"{SRC_P}/mola_comprimida_{c}.svg", f"{OUT_P}/mola_comprimida_{c}.png", K)
-        save(serra_hub(ci), f"{SRC_P}/serra_cubo_{c}.svg", f"{OUT_P}/serra_cubo_{c}.png", K)
-        save(esteira(ci), f"{SRC_P}/esteira_{c}.svg", f"{OUT_P}/esteira_{c}.png", K)
-    save(serra_blade(True), f"{SRC_P}/serra_rival.svg", f"{OUT_P}/serra_rival.png", K)
-    save(serra_blade(False), f"{SRC_P}/serra_dono.svg", f"{OUT_P}/serra_dono.png", K)
-    save(seta(), f"{SRC_P}/esteira_seta.svg", f"{OUT_P}/esteira_seta.png", K)
-    print("cenário e peças gerados")
+        queue(viga(ci), f"{SRC_P}/viga_{c}.svg", f"{OUT_P}/viga_{c}.png", 192, 64, K)
+        queue(mola(ci, False), f"{SRC_P}/mola_{c}.svg", f"{OUT_P}/mola_{c}.png", 64, 64, K)
+        queue(mola(ci, True), f"{SRC_P}/mola_comprimida_{c}.svg", f"{OUT_P}/mola_comprimida_{c}.png", 64, 64, K)
+        queue(serra_hub(ci), f"{SRC_P}/serra_cubo_{c}.svg", f"{OUT_P}/serra_cubo_{c}.png", 64, 64, K)
+        queue(esteira(ci), f"{SRC_P}/esteira_{c}.svg", f"{OUT_P}/esteira_{c}.png", 192, 64, K)
+    queue(serra_blade(1), f"{SRC_P}/serra_rival.svg", f"{OUT_P}/serra_rival.png", 64, 64, K)
+    queue(serra_blade(0), f"{SRC_P}/serra_dono.svg", f"{OUT_P}/serra_dono.png", 64, 64, K)
+    queue(seta(), f"{SRC_P}/esteira_seta.svg", f"{OUT_P}/esteira_seta.png", 32, 32, K)
+    print("renderizados:", render_all(), "arquivos (", n, "blocos )")
 
 
 if __name__ == "__main__":

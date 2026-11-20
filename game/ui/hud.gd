@@ -43,7 +43,7 @@ func _draw() -> void:
 		var k: float = fl["t"] / 1.2
 		var c: Color = fl["color"]
 		c.a = 1.0 - k * k
-		text(fl["pos"] + Vector2(-60, -k * 60), fl["text"], 44, c, HORIZONTAL_ALIGNMENT_CENTER, 120, 12)
+		text(main.to_screen(fl["pos"]) + Vector2(-60, -k * 60), fl["text"], 44, c, HORIZONTAL_ALIGNMENT_CENTER, 120, 12)
 	if main.debug:
 		var ids: Array = main.implemented_ids()
 		text(Vector2(20, 1060), "DEBUG  F2 pula fase · F3 peça: %s · F4 dono: P%d · clique coloca/remove · F6 lento" % [PIECE_NAMES[ids[main.debug_piece]], main.debug_owner + 1], 22, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT, -1, 6)
