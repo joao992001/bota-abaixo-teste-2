@@ -192,11 +192,42 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 			cmd["jump"] = true
 			cmd["jump_frames"] = 16
 		return _safe(r, cmd, lv)
-	# alvo: rival mais perto (na Batata, ninguém vai atrás de quem está com a bomba)
+	# 2b) Rei da Obra: o rei foge de quem chega perto; os outros vão atrás do rei ou do capacete solto
+	if demo.rule() == "rei":
+		if demo.king == r.pid:
+			var near = null
+			var nd := 1e9
+			for o in main.robots:
+				if o != r and o.alive and o.position.distance_to(pos) < nd:
+					nd = o.position.distance_to(pos)
+					near = o
+			if near != null and nd < 300.0:
+				cmd["dir"] = 1 if pos.x >= near.position.x else -1
+				if absf(near.position.x - pos.x) < 150.0 and r.is_on_floor():
+					cmd["jump"] = true
+					cmd["jump_frames"] = 16
+				return _safe(r, cmd, lv)
+			return cmd
+		if demo.king < 0:
+			return _climb(r, demo.crown_pos, lv)
+		var kr = main.robots[demo.king]
+		if kr.position.y < pos.y - 110.0:
+			return _climb(r, kr.position, lv)   # o rei está lá em cima: sobe degrau por degrau
+	# 2c) Fuga: corre para o elevador; só briga com quem estiver colado
+	if demo.rule() == "fuga" and L.elevator_cell != Vector2i(-1, -1):
+		var close := false
+		for o in main.robots:
+			if o != r and o.alive and absf(o.position.x - pos.x) < 80.0 and absf(o.position.y - pos.y) < 50.0:
+				close = true
+		if not close:
+			var g: Rect2 = L.goal_rect
+			return _climb(r, Vector2(g.get_center().x, g.end.y), lv)
+	# alvo: rival mais perto (na Batata, ninguém vai atrás de quem está com a bomba; no Rei, todos vão no rei)
 	var target = null
 	var td := 1e9
 	for o in main.robots:
-		if o != r and o.alive and not o.finished and not (holder != null and o == holder and r != holder):
+		if o != r and o.alive and not o.finished and not (holder != null and o == holder and r != holder) \
+				and (demo.rule() != "rei" or demo.king < 0 or o.pid == demo.king):
 			var dd: float = o.position.distance_to(pos)
 			if dd < td:
 				td = dd
@@ -245,6 +276,50 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 	if absf(gx) > 20.0:
 		cmd["dir"] = signi(int(gx))
 	if goal.y < pos.y - 90.0 and r.is_on_floor() and absf(gx) < 260.0:
+		cmd["jump"] = true
+		cmd["jump_frames"] = 16
+	return _safe(r, cmd, lv)
+
+## Subir até um objetivo no alto: escolhe um degrau (chão com espaço em cima, 1–3 linhas acima e perto)
+## que aproxime do objetivo; tábuas dão para atravessar por baixo, blocos sólidos ele pega pela lateral.
+func _climb(r, goal: Vector2, lv: Dictionary) -> Dictionary:
+	var L = main.level
+	var pos: Vector2 = r.position
+	var cmd := {"dir": 0}
+	var row := int((pos.y + 2.0) / 64.0)
+	var col := int(pos.x / 64.0)
+	var tx := goal.x
+	if goal.y < pos.y - 90.0:
+		var best := Vector2i(-1, -1)
+		var bs := 1e9
+		for dy in range(1, 4):
+			var y := row - dy
+			for x in range(col - 7, col + 8):
+				var c := Vector2i(x, y)
+				var standable: bool = (L.is_solid(c) or L.ch_at(c) == "=") and L.ch_at(c) != "I" \
+					and not L.is_solid(c + Vector2i.UP) and not L.is_solid(c + Vector2i(0, -2))
+				if not standable:
+					continue
+				var sc := Vector2(x * 64 + 32, y * 64).distance_to(goal) + absf(x - col) * 24.0
+				if sc < bs:
+					bs = sc
+					best = c
+		if best.x >= 0:
+			tx = best.x * 64 + 32
+			var dx := tx - pos.x
+			var solid_step: bool = L.is_solid(best)
+			if solid_step and absf(dx) < 50.0:
+				cmd["dir"] = -1 if dx >= 0.0 else 1   # embaixo de um bloco: sai para o lado antes de pular
+				return _safe(r, cmd, lv)
+			cmd["dir"] = signi(int(dx)) if absf(dx) > 12.0 else 0
+			if r.is_on_floor() and absf(dx) < (140.0 if solid_step else 110.0):
+				cmd["jump"] = true
+				cmd["jump_frames"] = 18
+			return _safe(r, cmd, lv)
+	var gx := tx - pos.x
+	if absf(gx) > 16.0:
+		cmd["dir"] = signi(int(gx))
+	if goal.y < pos.y - 70.0 and r.is_on_floor() and absf(gx) < 120.0:
 		cmd["jump"] = true
 		cmd["jump_frames"] = 16
 	return _safe(r, cmd, lv)

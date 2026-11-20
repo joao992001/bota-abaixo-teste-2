@@ -1,0 +1,23 @@
+id: piramide
+terremoto: 0
+size: 30x16
+spawns: 1,2,3,4
+tema: canteiro
+legend: "K trono (capacete de ouro), # sólido, = tábua, d caixote, n rede, ^ espinho, 1-4 spawn"
+=== map
+IIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+I............................I
+I............................I
+I.............K..............I
+I............dddd............I
+I...........dddddd...........I
+I..===.....dddddddd.....===..I
+I.........dddddddddd.........I
+I........dddddddddddd........I
+I.===...dddddddddddddd...===.I
+I.1.2..dddddddddddddddd..3.4.I
+I############################I
+I############################I
+I############################I
+I############################I
+I############################I

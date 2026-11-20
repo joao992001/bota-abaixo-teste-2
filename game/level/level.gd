@@ -30,6 +30,7 @@ const THEMES := {
 	"cidade": {"crack": "#3a1c14", "rope": "#3e3f5a"},
 }
 var theme := "canteiro"
+var throne := Vector2.INF
 var traps := {}             # alçapões 'a' (fechado) / 'A' (aberto): Vector2i -> CollisionShape2D
 const FIXED_SOLID := ["#", "o", "I", "F", "f", "P", "B"]   # sólidos fixos que não quebram (máquinas incluídas)
 
@@ -61,6 +62,8 @@ func load_level(level_id: String) -> void:
 			var ch := ch_at(c)
 			if ch in ["1", "2", "3", "4"]:
 				spawns[int(ch)] = Vector2(x * T + T / 2.0, (y + 1) * T)
+			elif ch == "K":
+				throne = Vector2(x * T + T / 2.0, (y + 1) * T)   # Rei da Obra: onde o capacete de ouro aparece
 			elif ch == "E":
 				elevator_cell = c
 				goal_rect = Rect2(x * T + 4, (y - 2) * T + 20, T - 8, 3 * T - 20)  # elevador inteiro (3 tiles)

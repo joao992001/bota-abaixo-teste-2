@@ -617,8 +617,8 @@ func check_contacts(r: CharacterBody2D) -> void:
 		if rr.intersects(h):
 			kill(r, -1, null)
 			return
-	if rr.intersects(level.goal_rect):
-		finish(r)
+	if level.elevator_cell != Vector2i(-1, -1) and demo.rule() == "fuga" and rr.intersects(level.goal_rect):
+		finish(r)   # Fuga: chegou ao elevador primeiro
 	elif r.position.y > level.rows * T + 100:
 		kill(r, -1, null)
 

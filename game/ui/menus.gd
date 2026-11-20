@@ -103,6 +103,9 @@ func update(dt: float) -> void:
 				"vidas":
 					if h2 != 0 or c2:
 						main.demo.lives_setting = clampi(main.demo.lives_setting + (h2 if h2 != 0 else 1), 1, 5) if h2 != 0 else posmod(main.demo.lives_setting, 5) + 1
+				"rei":
+					if h2 != 0 or c2:
+						main.demo.king_setting = posmod(main.demo.king_setting + (h2 if h2 != 0 else 1), 3)
 				"pavio":
 					if h2 != 0 or c2:
 						main.demo.fuse_setting = posmod(main.demo.fuse_setting + (h2 if h2 != 0 else 1), 3)
@@ -323,6 +326,7 @@ func _draw_adjust(ci: CanvasItem) -> void:
 		"estrelas": "★ PARA VENCER:  ◄ %d ►" % STAR_GOALS[goal_sel],
 		"vidas": "VIDAS:  ◄ %d ►" % main.demo.lives_setting,
 		"pavio": "PAVIO:  ◄ %s ►" % ["CURTO", "NORMAL", "LONGO"][main.demo.fuse_setting],
+		"rei": "SEGUNDOS PARA VENCER:  ◄ %d ►" % main.demo.KING_GOALS[main.demo.king_setting],
 		"eventos": "EVENTOS:  ◄ %s ►" % EVENT_LEVELS[main.event_level],
 		"escolher": "ESCOLHER EVENTOS  ▸",
 		"itens": "ITENS:  ◄ %s ►" % ("SIM" if main.demo.items_on else "NÃO"),
@@ -341,6 +345,7 @@ func adjust_rows() -> Array:
 	match main.game_mode:
 		"derruba": rows.append("vidas")
 		"batata": rows.append("pavio")
+		"rei": rows.append("rei")
 	rows.append_array(["eventos", "escolher", "itens", "ajuda", "comecar"])
 	return rows
 

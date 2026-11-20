@@ -491,12 +491,12 @@ func menus_test() -> void:
 	check(main.state == S.MENU and main.players.is_empty(), "volta ao menu principal sem jogadores")
 	await tap("v0", "jump")
 	check(main.state == S.MODES, "JOGAR abre a seleção de modo")
-	await tap("v0", "right")
-	await tap("v0", "right")
-	await tap("v0", "jump")
-	check(main.state == S.MODES, "modo EM BREVE não abre")
-	await tap("v0", "left")
-	await tap("v0", "left")
+	check(main.demo.cfg["modos"].all(func(m): return m["ok"]) and main.demo.cfg["modos"].size() == 4, "4 modos prontos: Derruba, Batata, Rei, Fuga")
+	for k in 3:
+		await tap("v0", "right")
+	check(main.menus.mode_sel == 3, "◄► passa pelos modos")
+	for k in 3:
+		await tap("v0", "left")
 	await tap("v0", "jump")
 	check(main.state == S.ARENAS and main.game_mode == "derruba", "DERRUBA escolhido → arenas do modo")
 	check(main.menus.arena_list().size() == 1 + main.demo.find_mode("derruba")["arenas"].size(), "só as arenas da Derruba (+ sorteio)")
@@ -1008,6 +1008,40 @@ func submodos_test() -> void:
 	check(not other.alive, "Batata: o pavio acabou e quem estava com ela explodiu")
 	await frames(100)
 	check(main.state == S.SCORE and main.demo.round_winner == h, "Batata: P%d vence a rodada" % (h + 1))
+	# Rei da Obra: pega o capacete no trono, perde com um golpe, vence ao juntar os segundos
+	main.game_mode = "rei"
+	main.arena_choice = "piramide"
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	check(main.level.throne != Vector2.INF and main.demo.crown_pos.distance_to(main.level.throne) < 6.0, "Rei: capacete de ouro no trono (K)")
+	r0.invuln = 0.0
+	r1.invuln = 0.0
+	put(r0, main.demo.crown_pos + Vector2(0, 2))
+	await frames(4)
+	check(main.demo.king == 0, "Rei: P1 pegou o capacete")
+	await frames(30)
+	check(main.demo.king_time.get(0, 0.0) > 0.3 and r0.speed_k < 1.0, "Rei: o rei soma segundos e fica mais lento")
+	r0.take_hit(1, "marretada", 1)
+	await frames(3)
+	check(main.demo.king == -1 and r0.speed_k == 1.0, "Rei: golpe derruba o capacete")
+	main.demo.crown_cd.clear()
+	main.demo.king = 1
+	main.demo.king_hit[1] = r1.last_hit
+	main.demo.king_time[1] = main.demo.king_goal() - 0.05
+	await frames(100)
+	check(main.state == S.SCORE and main.demo.round_winner == 1, "Rei: quem junta os segundos vence a rodada")
+	# Fuga: quem chega ao elevador vence na hora
+	main.game_mode = "fuga"
+	main.arena_choice = "mare"
+	await demo_round()
+	r0 = main.robots[0]
+	check(main.level.elevator_cell != Vector2i(-1, -1), "Fuga: a Maré tem elevador de chegada")
+	var g: Rect2 = main.level.goal_rect
+	put(r0, Vector2(g.get_center().x, g.end.y - 2))
+	await frames(100)
+	check(main.state == S.SCORE and main.demo.round_winner == 0, "Fuga: chegou ao elevador, venceu a rodada")
+	main.arena_choice = "demolicao"
 	main.game_mode = "derruba"
 	main.demo.lives_setting = 1
 

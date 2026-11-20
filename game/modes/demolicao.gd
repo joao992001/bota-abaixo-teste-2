@@ -37,6 +37,16 @@ var lives := {}              # Derruba: pid -> vidas restantes
 var lives_setting := 3       # AJUSTES (Derruba): vidas por rodada
 var fuse_setting := 1        # AJUSTES (Batata): 0 curto, 1 normal, 2 longo
 const FUSES := [[6, 10], [9, 15], [13, 20]]
+# Rei da Obra
+var king := -1               # quem está com o capacete de ouro (-1: no chão)
+var crown_pos := Vector2.ZERO
+var crown_vel := Vector2.ZERO
+var crown_home := Vector2.ZERO
+var king_time := {}          # pid -> segundos com o capacete
+var crown_cd := {}           # pid -> espera para pegar de novo depois de perder
+var king_hit := {}           # pid -> last_hit do quadro anterior (para perceber o golpe)
+var king_setting := 0        # AJUSTES: 0 = 20 s, 1 = 30 s, 2 = 45 s
+const KING_GOALS := [20, 30, 45]
 var bomb_holder := -1        # Batata: quem está com a dinamite
 var bomb_fuse := 0.0
 var bomb_next := 0.0
@@ -116,6 +126,7 @@ func start_round() -> void:
 	quaking = false
 	round_winner = -1
 	sub = find_mode(main.game_mode)
+	_reset_crown()
 	lives.clear()
 	for i in main.players.size():
 		lives[i] = lives_setting if rule() == "derruba" else 1
@@ -242,8 +253,8 @@ func update(dt: float) -> void:
 				break_reason = ""
 	# terremoto depois de um tempo: garante que a rodada acaba
 	var quake_at := float(main.level.prop("terremoto", str(c("quake_start_s"))))
-	if rule() == "batata" or main.sandbox:
-		quake_at = 0.0   # a dinamite já garante o fim da rodada
+	if rule() in ["batata", "rei"] or main.sandbox:
+		quake_at = 0.0   # a dinamite / o relógio do rei já garantem o fim da rodada
 	if quake_at > 0.0 and t >= quake_at:
 		if not quaking:
 			quaking = true
@@ -267,8 +278,19 @@ func update(dt: float) -> void:
 		f["t"] += dt
 	feed = feed.filter(func(f): return f["t"] < 4.5)
 	_update_bomb(dt, alive)
+	var king_won := _update_king(dt, alive)
 	# fim da rodada: sobrou 1 (ou ninguém)
 	var over: bool = alive.size() <= 1 and main.robots.size() >= 2 and not main.sandbox
+	if rule() == "rei":
+		over = king_won >= 0 and not main.sandbox
+		if over:
+			alive = [main.robots[king_won]]
+	if rule() == "fuga":
+		for rf in main.robots:
+			if rf.finished:   # chegou ao elevador: vence na hora
+				over = true
+				alive = [rf]
+				break
 	if main.end_delay < 0.0 and over:
 		round_winner = alive[0].pid if alive.size() == 1 else -1
 		main.end_delay = 1.4
@@ -436,6 +458,18 @@ func _update_fx(dt: float) -> void:
 
 func _draw_canvas() -> void:
 	var now := Time.get_ticks_msec() / 1000.0
+	if rule() == "rei":
+		var cp := crown_pos
+		var glow := 0.5 + 0.5 * sin(now * 6.0)
+		canvas.draw_circle(cp, 40.0 + glow * 8.0, Color(1.0, 0.85, 0.3, 0.18 + glow * 0.12))
+		if king < 0:
+			cp.y += sin(now * 3.0) * 4.0 - 26.0
+			canvas.draw_line(cp + Vector2(0, 30), Vector2(cp.x, crown_pos.y), Color(1, 0.9, 0.5, 0.4), 3.0)
+		canvas.draw_texture_rect(Data.tex("itens/capacete"), Rect2(cp - Vector2(30, 30), Vector2(60, 60)), false, Color(1.0, 0.82, 0.25))
+		for k in 3:
+			var a2 := now * 2.0 + k * TAU / 3.0
+			var sp := cp + Vector2(cos(a2) * 36.0, sin(a2) * 14.0 - 18.0)
+			canvas.draw_circle(sp, 3.0, Color(1, 1, 0.8, 0.9))
 	for it in items:
 		var life: float = float(cfg["itens"]["lifetime_s"]) - it["t"]
 		if life < 3.0 and fmod(now, 0.3) < 0.12:
@@ -653,18 +687,103 @@ func intercept_kill(r) -> bool:
 		r.dmg = 0.0
 		respawn(r)
 		return true   # na Oficina ninguém sai
-	if rule() != "derruba":
+	if rule() == "rei":
+		if r.pid == king:
+			_drop_crown(Vector2.ZERO, true)   # caiu com o capacete: ele volta para o trono
+	elif rule() != "derruba":
 		return false
-	lives[r.pid] = lives.get(r.pid, 1) - 1
-	if lives[r.pid] <= 0:
-		return false
-	main.float_text(r.position + Vector2(0, -90), "-1 VIDA", main.player_color(r.pid))
+	else:
+		lives[r.pid] = lives.get(r.pid, 1) - 1
+		if lives[r.pid] <= 0:
+			return false
+		main.float_text(r.position + Vector2(0, -90), "-1 VIDA", main.player_color(r.pid))
 	Audio.play("eliminado", 1.2, -4.0)
 	main.dust(r.position + Vector2(0, -30), 1.2)
 	r.dmg = 0.0
 	r.item = ""
 	respawn(r)
 	return true
+
+## Rei da Obra: capacete de ouro no trono ("K" no mapa; sem K, no alto do centro).
+func _reset_crown() -> void:
+	king = -1
+	king_time.clear()
+	crown_cd.clear()
+	king_hit.clear()
+	var lv = main.level
+	crown_home = (lv.throne if lv.throne != Vector2.INF else Vector2(lv.cols * 32.0, 3 * 64.0)) + Vector2(0, -4)
+	crown_pos = crown_home
+	crown_vel = Vector2.ZERO
+
+func king_goal() -> float:
+	return float(KING_GOALS[clampi(king_setting, 0, KING_GOALS.size() - 1)])
+
+## O rei perde o capacete: ele voa (ou volta para o trono, se o rei caiu no poço).
+func _drop_crown(vel: Vector2, home := false) -> void:
+	if king >= 0 and king < main.robots.size():
+		var kr = main.robots[king]
+		kr.speed_k = 1.0
+		crown_cd[king] = 1.0
+		crown_pos = kr.rect().get_center() + Vector2(0, -40)
+	king = -1
+	crown_vel = vel
+	if home:
+		crown_pos = crown_home
+		crown_vel = Vector2.ZERO
+	Audio.play("bonk", 0.8)
+
+## Devolve o vencedor quando alguém junta os segundos; senão -1.
+func _update_king(dt: float, alive: Array) -> int:
+	if rule() != "rei" or main.countdown > 0.0:
+		return -1
+	for k in crown_cd.keys():
+		crown_cd[k] = maxf(crown_cd[k] - dt, 0.0)
+	if king >= 0:
+		var kr = main.robots[king]
+		if not kr.alive:
+			_drop_crown(Vector2.ZERO, true)
+			return -1
+		# levou golpe (marretada, pisão, explosão): o capacete voa para longe do golpe
+		if kr.last_hit < float(king_hit.get(king, 99.0)) and kr.last_hit < 0.1:
+			var away: float = -1.0 if kr.velocity.x < 0.0 else 1.0
+			_drop_crown(Vector2(away * 260.0, -620.0))
+			main.float_text(kr.position + Vector2(0, -110), "PERDEU A COROA!", main.player_color(kr.pid))
+			return -1
+		king_hit[king] = kr.last_hit
+		kr.speed_k = float(sub.get("lento", 0.85))
+		var before: float = king_time.get(king, 0.0)
+		king_time[king] = before + dt
+		if int(before) != int(king_time[king]) and int(king_time[king]) >= int(king_goal()) - 5:
+			Audio.play("contagem", 1.2)
+		crown_pos = kr.rect().get_center() + Vector2(0, -70)
+		if king_time[king] >= king_goal():
+			return king
+		return -1
+	# capacete solto: cai até o chão; quem encostar pega
+	var lv = main.level
+	crown_vel.y = minf(crown_vel.y + 1800.0 * dt, 900.0)
+	crown_vel.x = move_toward(crown_vel.x, 0.0, 200.0 * dt)
+	var np := crown_pos + crown_vel * dt
+	var below := Vector2i(int(np.x / 64.0), int((np.y + 4.0) / 64.0))
+	if crown_vel.y > 0.0 and lv.is_solid(below) and lv.ch_at(below) != "I":
+		np.y = below.y * 64.0 - 4.0
+		crown_vel = Vector2.ZERO
+	if lv.is_solid(Vector2i(int(np.x / 64.0), int((np.y - 10.0) / 64.0))):
+		crown_vel.x = -crown_vel.x * 0.5
+		np.x = crown_pos.x
+	crown_pos = np
+	if crown_pos.y > lv.rows * 64.0 + 64.0 or crown_pos.x < 0.0 or crown_pos.x > lv.cols * 64.0:
+		crown_pos = crown_home
+		crown_vel = Vector2.ZERO
+	for r in alive:
+		if crown_cd.get(r.pid, 0.0) <= 0.0 and r.rect().grow(10).has_point(crown_pos):
+			king = r.pid
+			king_hit[king] = r.last_hit
+			banner = "P%d  É O REI DA OBRA!" % (r.pid + 1)
+			banner_t = 1.4
+			Audio.play("item")
+			break
+	return -1
 
 ## Batata-Dinamite (pavio, passar com a marreta, explosão).
 func _update_bomb(dt: float, alive: Array) -> void:

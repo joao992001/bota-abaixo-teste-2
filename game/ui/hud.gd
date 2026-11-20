@@ -217,6 +217,12 @@ func _draw_sub_badge(i: int, r: Rect2) -> void:
 			Kit.chunk(self, b, Kit.CREAM, 22, 5, 0.0)
 			for k in tot:
 				_heart(Vector2(b.position.x + 29 + k * 34, b.get_center().y + 1), 13.0, k < n)
+		"rei":
+			var secs: float = float(d.king_time.get(i, 0.0))
+			var b3 := Rect2(r.end.x - 184, r.position.y - 30, 170, 44)
+			Kit.chunk(self, b3, Color("#ffe48a") if d.king == i else Kit.CREAM, 22, 5, 0.0)
+			draw_texture_rect(Data.tex("itens/capacete"), Rect2(b3.position.x + 10, b3.position.y + 3, 38, 38), false, Color(1.0, 0.82, 0.25))
+			Kit.text(self, Vector2(b3.position.x + 52, b3.position.y + 33), "%d/%d s" % [int(secs), int(d.king_goal())], 26, DARK)
 		"batata":
 			if d.bomb_holder == i:
 				var b2 := Rect2(r.end.x - 184, r.position.y - 30, 170, 44)

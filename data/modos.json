@@ -156,13 +156,13 @@
         "id": "mare",
         "musica": "caos",
         "nome": "Maré de Lama",
-        "dica": "A lama sobe! Suba brigando."
+        "dica": "A lama sobe! Chegue ao elevador lá em cima."
       },
       {
         "id": "bola",
         "musica": "caos",
         "nome": "Bola de Demolição",
-        "dica": "Cuidado com a bola gigante!"
+        "dica": "Pegue o capacete no alto. Cuidado com a bola!"
       },
       {
         "id": "paiol",
@@ -174,13 +174,13 @@
         "id": "torre",
         "musica": "altura",
         "nome": "Torre em Ruínas",
-        "dica": "A câmera sobe! Não fique para trás."
+        "dica": "A câmera sobe: o elevador está no topo!"
       },
       {
         "id": "ponte",
         "musica": "altura",
         "nome": "Ponte Quebradiça",
-        "dica": "A câmera avança! Barris e serra."
+        "dica": "A câmera avança: o elevador está no fim!"
       },
       {
         "id": "gangorras",
@@ -211,6 +211,18 @@
         "nome": "Andaime do Elevador",
         "dica": "Fuja pelo elevador do meio!",
         "musica": "altura"
+      },
+      {
+        "id": "laje",
+        "nome": "Laje do Prédio",
+        "dica": "O trono é a caixa-d'água!",
+        "musica": "altura"
+      },
+      {
+        "id": "piramide",
+        "nome": "Pirâmide de Caixotes",
+        "dica": "Derrube a pirâmide do rei!",
+        "musica": "partida"
       }
     ],
     "amassometro": {
@@ -431,18 +443,21 @@
       {
         "id": "rei",
         "nome": "REI DA OBRA",
-        "dica": "Segure o capacete de ouro\no máximo que puder",
-        "ok": false,
+        "dica": "Segure o capacete de ouro.\nUma marretada derruba!",
+        "ok": true,
         "arenas": [
-          "bola"
+          "bola",
+          "laje",
+          "piramide"
         ],
-        "itens": true
+        "itens": true,
+        "lento": 0.85
       },
       {
         "id": "fuga",
         "nome": "FUGA",
-        "dica": "A obra desaba atrás:\nnão fique para trás!",
-        "ok": false,
+        "dica": "Corra até o elevador!\nQuem ficar para trás, sai.",
+        "ok": true,
         "arenas": [
           "torre",
           "ponte",

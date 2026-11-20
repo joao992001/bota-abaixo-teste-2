@@ -29,6 +29,7 @@ var stun_t := 0.0            # atordoado: ignora o controle (pisão na cabeça, 
 var item := ""               # item guardado (dinamite), usado com o botão de item
 var fx_t := {"martelao": 0.0, "mola": 0.0, "ima": 0.0, "foguete": 0.0}   # efeitos com tempo
 var glue_t := 0.0             # pisou na cola: lento
+var speed_k := 1.0            # multiplicador da corrida (Rei da Obra: o rei anda mais devagar)
 var forced_t := 0.0           # movimento forçado (investida da furadeira, carga do laser, teletransporte)
 var forced_vel := Vector2.ZERO
 var thrusting := false        # bota-foguete ligada neste quadro (desenho da chama)
@@ -158,7 +159,7 @@ func _physics_process(dt: float) -> void:
 			a *= 0.25   # empurrado: desliza longe
 		if on_floor and main.events != null:
 			a *= main.events.slip   # evento Sabão: chão escorregadio
-		own_vx = move_toward(own_vx, ix * f("max_run"), a * dt)
+		own_vx = move_toward(own_vx, ix * f("max_run") * speed_k, a * dt)
 	# pulo / parede
 	var wall_dir := 0 if on_floor else _wall_dir()
 	if on_floor:
