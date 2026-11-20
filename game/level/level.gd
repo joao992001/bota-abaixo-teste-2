@@ -24,17 +24,10 @@ var extra_solid := Callable()   # sólidos que se movem (plataformas do guindast
 var anim_t := 0.0
 ## Tema visual da arena (cabeçalho "tema:" do .lvl): troca blocos, bloco fixo, tábuas e fundo (assets/temas/<tema>/).
 const THEMES := {
-	"canteiro": {"crack": "#4a3a30", "rope": "#8a6a45"},
+	"canteiro": {"crack": "#5a3a1c", "rope": "#8a6a47"},
 	"fabrica": {"crack": "#2f3640", "rope": "#5a6370"},
 	"porto": {"crack": "#232a35", "rope": "#8a6a47"},
 	"cidade": {"crack": "#3a1c14", "rope": "#3e3f5a"},
-	"demolicao": {"crack": "#3e2c2a", "rope": "#6e625c"},
-	"viaduto": {"crack": "#363a4c", "rope": "#4f4a5e"},
-	"pantano": {"crack": "#3a2a1e", "rope": "#d1b67c"},
-	"mina": {"crack": "#2e2428", "rope": "#b88d5c"},
-	"serraria": {"crack": "#4a2c1c", "rope": "#9a6b3c"},
-	"ferro_velho": {"crack": "#3a2a2c", "rope": "#5c4a3e"},
-	"fundicao": {"crack": "#241c2a", "rope": "#8c8496"},
 }
 var theme := "canteiro"
 var traps := {}             # alçapões 'a' (fechado) / 'A' (aberto): Vector2i -> CollisionShape2D
@@ -461,8 +454,11 @@ func _draw_scaffolds() -> void:
 
 ## Textura do tema (ou a do Canteiro, se o tema não tiver essa peça).
 func ttex(name: String, legacy: String) -> Texture2D:
-	var t := Data.tex("temas/%s/%s" % [theme, name])
-	return t if t != null else Data.tex(legacy)
+	if theme != "canteiro":
+		var t := Data.tex("temas/%s/%s" % [theme, name])
+		if t != null:
+			return t
+	return Data.tex(legacy)
 
 ## Autotile: cada bloco escolhe a variante pelas faces expostas (topo, direita, esquerda, base, canto).
 func block_tex(c: Vector2i) -> String:
