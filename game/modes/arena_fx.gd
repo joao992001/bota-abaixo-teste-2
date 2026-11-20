@@ -289,12 +289,13 @@ func _update_seesaws(dt: float) -> void:
 			if absf(lp.x) <= half + 8.0 and lp.y > -40.0 and lp.y < 8.0 and r.velocity.y >= -10.0:
 				torque += lp.x
 				on.append(r)
-		var target := clampf(torque / half * 0.45, -0.4, 0.4)
-		var spd := 2.2 if on.size() > 0 else 0.9
+		var target := clampf(torque / half * 0.35, -0.3, 0.3)
+		var spd := 1.3 if on.size() > 0 else 0.9
 		g["ang"] = lerpf(g["ang"], target, 1.0 - exp(-dt * spd))
 		g["body"].rotation = g["ang"]
 		for r in on:
-			r.own_vx += sin(g["ang"]) * 1500.0 * dt   # escorrega para o lado mais baixo
+			if r.stun_t > 0.0 or absf(r.own_vx) < 60.0:
+				r.push_vx += sin(g["ang"]) * 420.0   # parado ou tonto: escorrega para o lado mais baixo
 
 func _update_machines(dt: float) -> void:
 	# ventiladores (ligam e desligam)

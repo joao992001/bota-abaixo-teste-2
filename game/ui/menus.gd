@@ -368,7 +368,7 @@ func _draw_howto(ci: CanvasItem) -> void:
 		["marreta", "MARRETA: quebra o caixote à frente (3 golpes) e empurra quem estiver ali."],
 		["pisao", "PULE NA CABEÇA de alguém para deixá-lo tonto.\n▼ + MARRETA quebra o chão embaixo de você."],
 		["itens", "Pegue as bolhas que caem (12 itens): dinamite, gancho, cola, chave-bumerangue,\nfuradeira, tábua, mola portátil (botão de ITEM usa) · martelão, ímã, botas, capacete."],
-		["parado", "Caixote racha se você fica parado em cima. Aos 30 s, TERREMOTO!"],
+		["parado", "Caixote racha se você fica parado em cima. No fim da rodada, TERREMOTO!"],
 	]
 	for i in tips.size():
 		var y := r.position.y + 80 + i * 140

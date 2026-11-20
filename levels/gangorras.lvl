@@ -1,6 +1,6 @@
 id: gangorras
 gangorras: 6,10,6; 14.5,7,7; 23,10,6
-ventilador_ciclo: 3.5, 3
+ventilador_ciclo: 4, 1.5
 ventilador_alcance: 9
 terremoto: 70
 fundo: #fff4d0

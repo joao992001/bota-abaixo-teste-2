@@ -651,7 +651,7 @@ func maquinas_test() -> void:
 	put(main.robots[0], g["pivot"] + Vector2(190, -30))
 	put(main.robots[1], Vector2(col_x(2), 200))
 	await frames(70)
-	check(g["ang"] > 0.12, "Gangorras: peso na direita inclina para a direita (%.2f rad)" % g["ang"])
+	check(g["ang"] > 0.08, "Gangorras: peso na direita inclina para a direita (%.2f rad)" % g["ang"])
 	# Prensa: alavanca abre o alçapão; pistão desce e acerta
 	await arena_round("prensa")
 	fx = main.demo.fx
@@ -1427,12 +1427,29 @@ func video_frames(dir: String) -> void:
 	main.demo.cfg["itens"]["max_on_map"] = 3
 	main.arena_choice = "sorteio"
 	main.demo.last_arena = "demolicao"
+	var tour: Array = []
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--tour="):
+			tour = Array(a.substr(7).split(","))
+	main.event_level = 3 if tour.size() > 0 else main.event_level
+	if tour.size() > 0:
+		main.arena_choice = tour[0]
 	main.start_match()
 	main.demo.item_t = 1.5
 	var f := 0
 	var end_f := -1
-	while f < 60 * 30:
+	var per := 60 * 10
+	var limit := 60 * 30 if tour.is_empty() else per * tour.size()
+	while f < limit:
 		Audio.rec_time = f / 60.0
+		if tour.size() > 0 and f > 0 and f % per == 0:
+			main.arena_choice = tour[f / per]
+			main._clear_robots()
+			main.round_no += 1
+			main.demo.start_round()
+			main.demo.item_t = 1.0
+		if tour.size() > 0 and f % per == 200:
+			main.events.timer = 0.01   # um evento por arena no tour
 		await frames(1)
 		if f % 2 == 0:
 			await RenderingServer.frame_post_draw
@@ -1457,6 +1474,11 @@ func stats_run(rounds_per_arena: int) -> void:
 	for k in 4:
 		main.add_bot()
 	main.demo.cfg["rounds_to_win"] = 999
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--sub="):
+			main.submode_choice = a.substr(6)
+		if a.begins_with("--so-arenas="):
+			main.demo.cfg["arenas"] = main.demo.cfg["arenas"].filter(func(x): return x["id"] in a.substr(12).split(","))
 	var out := []
 	for a in main.demo.cfg["arenas"]:
 		main.arena_choice = a["id"]

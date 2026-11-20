@@ -25,3 +25,8 @@
 - 2026-11-20 · Demolição ganha 6 arenas com mecânicas próprias (Canteiro, Fábrica de Esteiras que invertem, Guindastes com plataformas móveis, Maré de Lama que sobe, Bola de Demolição em pêndulo, Paiol de TNT em cadeia); tela de escolha com SORTEIO; mecânicas no cabeçalho do .lvl — usuário.
 - 2026-11-20 · Áudio: 32 efeitos e 3 músicas por síntese (sfxforge com camadas), vozes por modelo de robô, tom por jogador, volumes de música/efeitos nas OPÇÕES; opções salvas em user://opcoes.cfg — usuário.
 - 2026-11-20 · Fase 1 (ritmo): Amassômetro (dano % aumenta o empurrão), pulo duplo do propulsor, agarrar borda, 3 s de invulnerabilidade no início, água (volta do alto +25%) e rede (quica, rasga); crédito por derrubada e avisos. Medição com bots: rodada 14 s → 26 s, 1ª queda 4,7 → 9,2 s — usuário.
+- 2026-11-20 · Submodos (Último em Pé, Vidas, Placar 90 s, Batata-Dinamite) escolhidos antes da arena; fluxo Modo → Submodo → Arena → Ajustes → Entrada. Vitória mostra títulos (Marreteiro, Demolidor, Desastrado).
+- 2026-11-20 · Eventos dinâmicos (9) em modes/eventos.gd: frequência 0–3 e liga/desliga por evento nos AJUSTES; aviso de 2 s com faixa e som.
+- 2026-11-20 · 5 arenas novas com arquitetura própria: Torre (vertical, câmera sobe), Ponte (horizontal, câmera avança), Gangorras, Prensa, Fornalha. Máquinas: ventilador, chama, pistão, serra em trilho, barril, alavanca/alçapão, gangorra.
+- 2026-11-20 · 8 itens novos (gancho, ímã, tábua, furadeira, cola, bota-foguete, chave-bumerangue, mola portátil). Bota-foguete: segurar PULAR depois do ápice. Ímã empurra como esteira (a frenagem anulava força direta).
+- 2026-11-20 · Som: 18 efeitos novos, músicas por família de arena (fábrica, altura, caos), "locutor" de bipes nas faixas, música acelera 10% na tensão.

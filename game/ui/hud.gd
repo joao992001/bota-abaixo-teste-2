@@ -377,4 +377,4 @@ func _draw_titles() -> void:
 		var st: Dictionary = main.players[i]["stats"]
 		var yy: float = r2.position.y + 130 + i * 80
 		Kit.text(self, Vector2(r2.position.x + 40, yy), "P%d" % (i + 1), 36, Data.TEXT_COLORS[main.players[i]["color"]])
-		Kit.text(self, Vector2(r2.position.x + 120, yy), "%d derrub. · %d caixas · %d quedas" % [st["derrubadas"], st["caixotes"], st["quedas"]], 24, DARK)
+		Kit.text(self, Vector2(r2.position.x + 120, yy), "%d derrub. · %d caixa%s · %d queda%s" % [st["derrubadas"], st["caixotes"], "" if st["caixotes"] == 1 else "s", st["quedas"], "" if st["quedas"] == 1 else "s"], 24, DARK)

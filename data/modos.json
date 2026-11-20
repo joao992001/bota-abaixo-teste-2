@@ -79,7 +79,7 @@
       {
         "id": "demolicao", "musica": "partida",
         "nome": "Canteiro",
-        "dica": "Ilhas de caixotes. Terremoto aos 30 s!"
+        "dica": "Ilhas de caixotes. Terremoto no fim!"
       },
       {
         "id": "esteiras", "musica": "fabrica",
@@ -109,22 +109,22 @@
       {
         "id": "torre", "musica": "altura",
         "nome": "Torre em Ruínas",
-        "dica": "A câmera sobe! Quem fica para trás, cai."
+        "dica": "A câmera sobe! Não fique para trás."
       },
       {
         "id": "ponte", "musica": "altura",
         "nome": "Ponte Quebradiça",
-        "dica": "A câmera avança! Cuidado com barris e serra."
+        "dica": "A câmera avança! Barris e serra."
       },
       {
         "id": "gangorras", "musica": "partida",
         "nome": "Gangorras",
-        "dica": "O peso inclina a tábua. Ventiladores sopram!"
+        "dica": "O peso inclina a tábua!"
       },
       {
         "id": "prensa", "musica": "fabrica",
         "nome": "Prensa da Fábrica",
-        "dica": "Pistões descem! Marrete a alavanca: alçapão!"
+        "dica": "Pistões! Alavanca abre o alçapão."
       },
       {
         "id": "fornalha", "musica": "fabrica",

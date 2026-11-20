@@ -48,7 +48,9 @@ func update(dt: float) -> void:
 			if chk.get("dir", 0) == 0:
 				cmd = cmd.duplicate()
 				cmd["dir"] = 0
-			elif chk.get("jump", false) and st["jump_hold"] <= 0:
+			elif chk.get("jump", false) and (st["jump_hold"] <= 0 or PlayerInput.virtual.get(dev, {}).get("jump", false)):
+				# ainda segurando o pulo anterior: solta 1 quadro para o novo pulo valer
+				st["release"] = PlayerInput.virtual.get(dev, {}).get("jump", false)
 				st["jump_hold"] = chk.get("jump_frames", 16)
 				cmd = cmd.duplicate()
 				cmd["jump_frames"] = st["jump_hold"]
@@ -89,7 +91,9 @@ func update(dt: float) -> void:
 		if cmd.get("down", false):
 			inp["down"] = true
 		var prev: Dictionary = PlayerInput.virtual.get(dev, {})
-		if st["jump_hold"] > 0:
+		if st.get("release", false):
+			st["release"] = false   # solta agora; aperta no próximo quadro
+		elif st["jump_hold"] > 0:
 			inp["jump"] = not (prev.get("jump", false) and st["jump_hold"] == cmd.get("jump_frames", 14))
 			st["jump_hold"] -= 1
 		# marreta e item: um quadro apertado (borda), depois solta
@@ -262,7 +266,7 @@ func _safe(r, cmd: Dictionary, lv: Dictionary, may_distract := true) -> Dictiona
 					cmd["dir"] = 0
 					cmd.erase("jump")
 				return cmd
-			if may_distract and main.rng.randf() > float(lv["safety"]):
+			if may_distract and absf(r.velocity.x) > 300.0 and signf(r.velocity.x) == float(dir) and main.rng.randf() > float(lv["safety"]):
 				cmd["distracted"] = true
 				r.fall_reason = "distraído"
 				return cmd   # bot fácil às vezes se distrai
