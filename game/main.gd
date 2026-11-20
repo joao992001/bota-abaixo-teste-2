@@ -567,7 +567,8 @@ func load_arena(id: String) -> void:
 ## Tom do fundo: o Canteiro aceita o tom do mapa ("fundo:" no .lvl); os temas usam a própria imagem.
 func bg_tint() -> Color:
 	var tint: String = level.prop("fundo", "")
-	return Color(tint) if tint != "" and level.theme == "canteiro" else Color.WHITE
+	var own_bg: bool = Data.tex("temas/%s/fundo" % level.theme) != null
+	return Color(tint) if tint != "" and not own_bg else Color.WHITE
 
 ## Cor do Amassômetro: branco → amarelo → laranja → vermelho.
 func dmg_color(d: float) -> Color:

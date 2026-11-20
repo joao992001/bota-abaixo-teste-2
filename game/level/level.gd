@@ -28,6 +28,13 @@ const THEMES := {
 	"fabrica": {"crack": "#2f3640", "rope": "#5a6370"},
 	"porto": {"crack": "#232a35", "rope": "#8a6a47"},
 	"cidade": {"crack": "#3a1c14", "rope": "#3e3f5a"},
+	"demolicao": {"crack": "#4a3a34", "rope": "#6a5a52"},
+	"viaduto": {"crack": "#3a3550", "rope": "#5a5470"},
+	"pantano": {"crack": "#2e3a1c", "rope": "#6b5a3a"},
+	"mina": {"crack": "#2a1e18", "rope": "#8a6a47"},
+	"serraria": {"crack": "#4a2c14", "rope": "#8a6a47"},
+	"ferro_velho": {"crack": "#3a2418", "rope": "#5a5048"},
+	"fundicao": {"crack": "#2a1a14", "rope": "#4b4048"},
 }
 var theme := "canteiro"
 var traps := {}             # alçapões 'a' (fechado) / 'A' (aberto): Vector2i -> CollisionShape2D
@@ -454,11 +461,8 @@ func _draw_scaffolds() -> void:
 
 ## Textura do tema (ou a do Canteiro, se o tema não tiver essa peça).
 func ttex(name: String, legacy: String) -> Texture2D:
-	if theme != "canteiro":
-		var t := Data.tex("temas/%s/%s" % [theme, name])
-		if t != null:
-			return t
-	return Data.tex(legacy)
+	var t := Data.tex("temas/%s/%s" % [theme, name])
+	return t if t != null else Data.tex(legacy)
 
 ## Autotile: cada bloco escolhe a variante pelas faces expostas (topo, direita, esquerda, base, canto).
 func block_tex(c: Vector2i) -> String:
