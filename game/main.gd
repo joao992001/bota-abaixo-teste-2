@@ -23,10 +23,10 @@ const PIECE_SCRIPTS := {
 const T := 64
 const MILESTONE := 1
 
-enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS, SUBMODOS, AJUSTES, EVENTOS, CONTROLES, INTRO }
+enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS, SUBMODOS, AJUSTES, EVENTOS, CONTROLES, INTRO, CONFIGPAD }
 var state := S.INTRO   # abre com a intro animada (os testes pulam direto para a entrada)
 var paused := false
-const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.SUBMODOS, S.AJUSTES, S.EVENTOS, S.CONTROLES, S.INTRO]
+const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.SUBMODOS, S.AJUSTES, S.EVENTOS, S.CONTROLES, S.INTRO, S.CONFIGPAD]
 var sandbox := false          # OFICINA: ambiente de testes (respawn infinito, rodada sem fim)
 var oficina: Node = null
 var perf_acc := {}             # tempo gasto por parte (medição --perf)

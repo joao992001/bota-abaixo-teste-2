@@ -133,6 +133,8 @@ func update(dt: float) -> void:
 			main.events.menu_update(self)
 		S.CONTROLES:
 			_update_pads()
+		S.CONFIGPAD:
+			_update_config(dt)
 		S.ARENAS:
 			var n := arena_list().size()
 			arena_sel = posmod(arena_sel + move_h(), n)
@@ -145,7 +147,7 @@ func update(dt: float) -> void:
 			elif pressed("back"):
 				main.state = S.SUBMODOS
 		S.OPTIONS:
-			opt_sel = posmod(opt_sel + move_v(), 8)
+			opt_sel = posmod(opt_sel + move_v(), 9)
 			var h := move_h()
 			var c := confirm()
 			if opt_sel == 0 and (h != 0 or c):
@@ -168,6 +170,8 @@ func update(dt: float) -> void:
 				main.state = S.CONTROLES
 				pad_prev.clear()
 			elif opt_sel == 7 and c:
+				start_config()
+			elif opt_sel == 8 and c:
 				main.state = S.MENU
 			if h != 0 or c:
 				main.save_options()
@@ -203,6 +207,7 @@ func draw(ci: CanvasItem) -> void:
 		S.EVENTOS: main.events.menu_draw(ci, self)
 		S.CONTROLES: _draw_pads(ci)
 		S.INTRO: _draw_intro(ci)
+		S.CONFIGPAD: _draw_config(ci)
 	if main.paused:
 		if main.sandbox and main.oficina.open:
 			main.oficina.draw(ci)
@@ -441,10 +446,11 @@ func _draw_options(ci: CanvasItem) -> void:
 		"EFEITOS:  ◄ %s ►" % _bar(Audio.sfx_vol),
 		"VIBRAÇÃO:  %s" % ("SIM" if PlayerInput.vibration else "NÃO"),
 		"TESTAR CONTROLES  ▸",
+		"CONFIGURAR CONTROLE  ▸",
 		"VOLTAR",
 	]
 	for i in items.size():
-		_button(ci, Rect2(560, 205 + i * 104, 800, 84), items[i], opt_sel == i)
+		_button(ci, Rect2(560, 190 + i * 92, 800, 76), items[i], opt_sel == i)
 	Kit.text(ci, Vector2(0, 1056), "▲▼ escolher  ·  ◄► ou PULAR muda", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
 
 func _bar(v: int) -> String:
@@ -515,7 +521,8 @@ func _draw_pads(ci: CanvasItem) -> void:
 		var x0 := 960.0 - (n * cw + (n - 1) * 20.0) / 2.0
 		for k in n:
 			_draw_pad_card(ci, pads[k], Rect2(x0 + k * (cw + 20.0), 180, cw, 780), k)
-	Kit.text(ci, Vector2(0, 1020), "relatório dos controles: " + ProjectSettings.globalize_path("user://controles.txt"), 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
+	Kit.text(ci, Vector2(0, 990), "Botões trocados ou o robô não responde?  OPÇÕES ▸ CONFIGURAR CONTROLE", 24, Color("#fff4c8"), HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
+	Kit.text(ci, Vector2(0, 1022), "relatório dos controles: " + ProjectSettings.globalize_path("user://controles.txt"), 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
 	Kit.text(ci, Vector2(0, 1056), "Aperte os botões para ver acender  ·  PULAR vibra  ·  SELECT ou ESC volta", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
 
 func _draw_pad_card(ci: CanvasItem, j: int, r: Rect2, k: int) -> void:
@@ -538,6 +545,9 @@ func _draw_pad_card(ci: CanvasItem, j: int, r: Rect2, k: int) -> void:
 	Kit.text(ci, Vector2(r.position.x, r.end.y - 40), ("mapeamento reconhecido" if known else "mapeamento DESCONHECIDO (botões podem vir trocados)"), 19,
 		Color("#3c9a46") if known else Color("#a01528"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	Kit.text(ci, Vector2(r.position.x, r.end.y - 14), "último sinal: %s" % String(PlayerInput.last_raw.get(j, "—")), 19, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	Kit.text(ci, Vector2(r.position.x + 10, r.end.y - 66), PlayerInput.raw_now(j), 18, Color("#1f3a40"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 20)
+	if PlayerInput.custom.has(Input.get_joy_guid(j)):
+		Kit.text(ci, Vector2(r.position.x, r.end.y - 92), "usando a SUA configuração", 19, Color("#3c9a46"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	# corpo do controle
 	var c := Vector2(r.get_center().x, r.position.y + 360)
 	var body := Rect2(c - Vector2(180, 95), Vector2(360, 190))
@@ -681,3 +691,150 @@ func _draw_intro(ci: CanvasItem) -> void:
 	if k > 1.0 and k < 1.8:
 		var a := clampf((k - 1.0) / 0.3, 0.0, 1.0) * (0.6 + 0.4 * sin(k * 6.0))
 		Kit.text(ci, Vector2(0, 1030), "aperte qualquer botão", 30, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, 1920, 6, Color(0.12, 0.3, 0.33, a))
+
+# ---------------------------------------------------------------- configurar controle (aprende os sinais do controle)
+const LEARN_NAMES := {"jump": "PULAR", "hammer": "MARRETA", "item": "ITEM", "start": "START (começar / pausar)", "back": "VOLTAR (nos menus)",
+	"left": "ESQUERDA (analógico ou direcional)", "right": "DIREITA", "up": "CIMA", "down": "BAIXO"}
+var cfg_step := -1          # -1 = esperando escolher o controle; 0..8 = ação; 9 = pronto
+var cfg_joy := -1
+var cfg_map := {}
+var cfg_base := {}          # estado cru no início do passo (ignora botão/eixo que já estava "preso")
+var cfg_wait := 0.0         # pausa entre passos (e espera soltar)
+var cfg_msg := ""
+
+func start_config() -> void:
+	main.state = main.S.CONFIGPAD
+	cfg_step = -1
+	cfg_joy = -1
+	cfg_map = {}
+	cfg_wait = 0.3
+	cfg_msg = ""
+	_cfg_snapshot()
+
+func _cfg_joys() -> Array:
+	var js: Array = Input.get_connected_joypads().duplicate()
+	for j in PlayerInput.fake_joys:
+		if not j in js:
+			js.append(j)
+	return js
+
+func _cfg_snapshot() -> void:
+	cfg_base = {}
+	for j in _cfg_joys():
+		var st := {}
+		for b in 32:
+			st["b%d" % b] = PlayerInput.jbtn(j, b)
+		for a in 10:
+			st["a%d" % a] = PlayerInput.jaxis(j, a)
+		cfg_base[j] = st
+
+## Primeiro sinal novo (botão apertado ou eixo empurrado) desde o começo do passo: [joy, spec] ou [].
+func _cfg_detect() -> Array:
+	for j in _cfg_joys():
+		if cfg_joy >= 0 and j != cfg_joy:
+			continue
+		var base: Dictionary = cfg_base.get(j, {})
+		for b in 32:
+			if PlayerInput.jbtn(j, b) and not base.get("b%d" % b, false):
+				return [j, ["b", b, 1]]
+		for a in 10:
+			var v := PlayerInput.jaxis(j, a)
+			if absf(v) > 0.7 and absf(float(base.get("a%d" % a, 0.0))) < 0.4:
+				return [j, ["a", a, signf(v)]]
+	return []
+
+func _cfg_idle(j: int) -> bool:
+	var base: Dictionary = cfg_base.get(j, {})
+	for b in 32:
+		if PlayerInput.jbtn(j, b) and not base.get("b%d" % b, false):
+			return false
+	for a in 10:
+		if absf(PlayerInput.jaxis(j, a)) > 0.4 and absf(float(base.get("a%d" % a, 0.0))) < 0.4:
+			return false
+	return true
+
+func _update_config(dt: float) -> void:
+	if PlayerInput.dev_pressed("kb_a", "back") or PlayerInput.dev_pressed("kb_b", "back"):
+		main.state = main.S.OPTIONS   # Esc / Backspace cancela
+		Audio.play("menu_voltar")
+		return
+	if cfg_step >= PlayerInput.LEARN_ACTIONS.size():
+		return
+	if cfg_wait > 0.0:
+		cfg_wait -= dt
+		if cfg_wait <= 0.0 and cfg_joy >= 0 and not _cfg_idle(cfg_joy):
+			cfg_wait = 0.05   # espera soltar antes do próximo passo
+		if cfg_wait <= 0.0:
+			_cfg_snapshot()
+		return
+	if Input.is_key_pressed(KEY_TAB) and cfg_step >= 0:
+		cfg_step += 1   # Tab pula esta ação (fica a padrão)
+		cfg_wait = 0.3
+		_cfg_finish_if_done()
+		return
+	var hit := _cfg_detect()
+	if hit.is_empty():
+		return
+	if cfg_step < 0:
+		cfg_joy = hit[0]   # este é o controle que vai ser configurado
+		cfg_step = 0
+		cfg_msg = "Configurando: %s" % Input.get_joy_name(cfg_joy)
+		Audio.play("menu_ok")
+		cfg_wait = 0.4
+		return
+	var spec: Array = hit[1]
+	cfg_map[PlayerInput.LEARN_ACTIONS[cfg_step]] = spec
+	Audio.play("item", 1.0 + cfg_step * 0.06)
+	cfg_step += 1
+	cfg_wait = 0.35
+	_cfg_finish_if_done()
+
+func _cfg_finish_if_done() -> void:
+	if cfg_step >= PlayerInput.LEARN_ACTIONS.size():
+		if cfg_joy >= 0 and not cfg_map.is_empty():
+			PlayerInput.save_custom(Input.get_joy_guid(cfg_joy), cfg_map)
+		Audio.play("rodada_vence")
+		await get_tree().create_timer(1.2).timeout
+		if main.state == main.S.CONFIGPAD:
+			main.state = main.S.CONTROLES
+			pad_prev.clear()
+
+func _draw_config(ci: CanvasItem) -> void:
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.45))
+	Kit.ribbon(ci, Rect2(510, 20, 900, 128), "CONFIGURAR CONTROLE", 54)
+	var r := Rect2(260, 180, 1400, 800)
+	Kit.paper(ci, r)
+	var dark := Color("#1f3a40")
+	var acts: Array = PlayerInput.LEARN_ACTIONS
+	if cfg_step < 0:
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 200), "Aperte QUALQUER botão no controle", 54, dark, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 260), "que você quer configurar", 40, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, r.end.y - 90), "Se NADA acontecer ao apertar: feche a Steam (ou desligue o Steam Input),", 24, Color("#8a5a10"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, r.end.y - 56), "desconecte e conecte o controle de novo, e abra esta tela outra vez.", 24, Color("#8a5a10"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, r.end.y - 20), "ESC cancela", 22, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		if _cfg_joys().is_empty():
+			Kit.text(ci, Vector2(r.position.x, r.position.y + 380), "Nenhum controle detectado pelo Windows.", 34, Color("#a01528"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		else:
+			var y := r.position.y + 380
+			for j in _cfg_joys():
+				Kit.text(ci, Vector2(r.position.x, y), "controle %d: %s" % [j + 1, Input.get_joy_name(j)], 26, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+				y += 40
+	elif cfg_step < acts.size():
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 70), cfg_msg, 26, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		var a: String = acts[cfg_step]
+		var verb := "Mova para" if a in ["left", "right", "up", "down"] else "Aperte o botão de"
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 230), verb, 40, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		var pulse := 1.0 + 0.05 * sin(t * 6.0)
+		ci.draw_set_transform(Vector2(960, r.position.y + 320), 0.0, Vector2(pulse, pulse))
+		Kit.text(ci, Vector2(-700, 0), LEARN_NAMES[a], 64, Color("#d42035") if cfg_wait <= 0.0 else Color("#3c9a46"), HORIZONTAL_ALIGNMENT_CENTER, 1400)
+		ci.draw_set_transform(Vector2.ZERO)
+		# progresso
+		for i in acts.size():
+			var c := Vector2(960 - (acts.size() - 1) * 40 + i * 80, r.position.y + 470)
+			ci.draw_circle(c, 20, Color("#5cc45c") if i < cfg_step else (Color("#f2c84b") if i == cfg_step else Color(0.8, 0.78, 0.72)))
+		if cfg_joy >= 0:
+			Kit.text(ci, Vector2(r.position.x, r.position.y + 580), "sinais agora: " + PlayerInput.raw_now(cfg_joy), 24, dark, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, r.end.y - 40), "TAB (teclado) pula esta ação  ·  ESC cancela", 24, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	else:
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 330), "PRONTO! Controle configurado.", 56, Color("#3c9a46"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 400), "Agora teste na tela de TESTAR CONTROLES.", 32, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)

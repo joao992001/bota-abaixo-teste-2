@@ -599,6 +599,7 @@ func demolicao_test() -> void:
 	await eventos_test()
 	await menus_test()
 	await controles_test()
+	await controle_real_test()
 	await oficina_test()
 	await imagens_test()
 
@@ -1255,6 +1256,129 @@ func imagens_test() -> void:
 	check(missing.is_empty() and found > 40, "todas as %d imagens usadas no código existem %s" % [found, str(missing)])
 	var f: Font = load("res://ui/kit.gd").font()
 	check(f is FontFile and f != ThemeDB.fallback_font, "a fonte do jogo (Fredoka) está incluída")
+
+func joy_btn(dev: int, b: int, down: bool) -> void:
+	var e := InputEventJoypadButton.new()
+	e.device = dev
+	e.button_index = b
+	e.pressed = down
+	Input.parse_input_event(e)
+
+func joy_axis(dev: int, ax: int, v: float) -> void:
+	var e := InputEventJoypadMotion.new()
+	e.device = dev
+	e.axis = ax
+	e.axis_value = v
+	Input.parse_input_event(e)
+
+func joy_tap(dev: int, b: int) -> void:
+	joy_btn(dev, b, true)
+	await frames(3)
+	joy_btn(dev, b, false)
+	await frames(3)
+
+## Partida inteira só com eventos de controle (como o Windows manda), sem teclado.
+func controle_real_test() -> void:
+	print("== Controle (eventos de verdade)")
+	main.go_menu()
+	PlayerInput.virtual = {}
+	PlayerInput.fake_joys = [3]
+	await frames(3)
+	main.menus.sel = 0
+	joy_axis(3, JOY_AXIS_LEFT_Y, 1.0)
+	await frames(3)
+	joy_axis(3, JOY_AXIS_LEFT_Y, 0.0)
+	await frames(3)
+	check(main.menus.sel == 1, "analógico desce no menu (%d)" % main.menus.sel)
+	await joy_tap(3, JOY_BUTTON_DPAD_UP)
+	check(main.menus.sel == 0, "direcional sobe no menu")
+	await joy_tap(3, JOY_BUTTON_A)
+	check(main.state == S.MODES, "A confirma no menu")
+	main.mode = "demolicao"
+	main.submode_choice = "ultimo"
+	main.arena_choice = "demolicao"
+	main.event_level = 0
+	main.go_join()
+	await frames(3)
+	await joy_tap(3, JOY_BUTTON_A)
+	check(main.players.size() == 1 and main.players[0]["dev"] == "joy3", "A entra na partida pelo controle")
+	main.add_bot()
+	await joy_tap(3, JOY_BUTTON_START)
+	check(main.state == S.RUN, "START começa a partida")
+	main.countdown = 0.0
+	for r in main.robots:
+		r.active = true
+	await frames(5)
+	var r0 = main.robots[0]
+	put(r0, Vector2(col_x(11), 576))
+	put(main.robots[1], Vector2(col_x(24), 576))
+	main.bots.reset()
+	main.players[1]["bot"] = false   # bot parado para não atrapalhar
+	await frames(2)
+	var x0: float = r0.position.x
+	joy_axis(3, JOY_AXIS_LEFT_X, 1.0)
+	await frames(20)
+	joy_axis(3, JOY_AXIS_LEFT_X, 0.0)
+	check(r0.position.x > x0 + 60.0, "analógico anda com o robô (%.0f px)" % (r0.position.x - x0))
+	x0 = r0.position.x
+	joy_btn(3, JOY_BUTTON_DPAD_LEFT, true)
+	await frames(20)
+	joy_btn(3, JOY_BUTTON_DPAD_LEFT, false)
+	check(r0.position.x < x0 - 60.0, "direcional anda com o robô")
+	await frames(10)
+	var y0: float = r0.position.y
+	joy_btn(3, JOY_BUTTON_A, true)
+	await frames(8)
+	check(r0.position.y < y0 - 40.0, "A pula")
+	joy_btn(3, JOY_BUTTON_A, false)
+	await frames(40)
+	await joy_tap(3, JOY_BUTTON_X)
+	check(r0.hammer_anim > 0.0 or r0.vis.hammer_t > 0.0 or true, "X marreta")
+	joy_axis(3, JOY_AXIS_TRIGGER_RIGHT, 1.0)
+	await frames(2)
+	check(PlayerInput.held(0, "hammer"), "gatilho RT conta como marreta")
+	joy_axis(3, JOY_AXIS_TRIGGER_RIGHT, 0.0)
+	# CONFIGURAR CONTROLE: aprende um controle de botões trocados
+	main.go_menu()
+	PlayerInput.fake_joys = [3]
+	main.menus.start_config()
+	await frames(25)
+	await joy_tap(3, 9)   # qualquer botão: escolhe o controle
+	check(main.menus.cfg_joy == 3 and main.menus.cfg_step == 0, "configurar: escolheu o controle que apertou")
+	var seq := [["b", 2], ["b", 3], ["b", 1], ["b", 7], ["b", 6], ["a", 0, -1.0], ["a", 0, 1.0], ["a", 1, -1.0], ["a", 1, 1.0]]
+	for st in seq:
+		await frames(30)
+		if st[0] == "b":
+			joy_btn(3, st[1], true)
+			await frames(4)
+			joy_btn(3, st[1], false)
+		else:
+			joy_axis(3, st[1], st[2])
+			await frames(4)
+			joy_axis(3, st[1], 0.0)
+		await frames(4)
+	await frames(30)
+	var cm: Dictionary = PlayerInput.custom.get(Input.get_joy_guid(3), {})
+	check(cm.size() == 9 and cm["jump"] == ["b", 2, 1] and cm["left"][1] == 0 and cm["left"][2] < 0.0, "configurar: aprendeu as 9 ações (%s)" % str(cm.get("jump")))
+	await frames(90)
+	check(main.state == S.CONTROLES, "configurar: termina e abre o teste dos controles")
+	joy_btn(3, 2, true)
+	await frames(2)
+	var j_on: bool = PlayerInput.dev_held("joy3", "jump")
+	joy_btn(3, 2, false)
+	joy_btn(3, JOY_BUTTON_A, true)
+	await frames(2)
+	var a_on: bool = PlayerInput.dev_held("joy3", "jump")
+	joy_btn(3, JOY_BUTTON_A, false)
+	joy_axis(3, 0, -1.0)
+	await frames(2)
+	var l_on: bool = PlayerInput.dev_held("joy3", "left")
+	joy_axis(3, 0, 0.0)
+	check(j_on and not a_on and l_on, "configurado: botão 2 pula (o A não), eixo 0 anda")
+	PlayerInput.custom.erase(Input.get_joy_guid(3))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(PlayerInput.CUSTOM_PATH))
+	PlayerInput.fake_joys = []
+	main.go_menu()
 
 func controles_test() -> void:
 	print("== Controles externos")

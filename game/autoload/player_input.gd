@@ -26,12 +26,56 @@ const TWIN_FRAMES := 2
 var _jb := {}           # controle -> {botão: apertado}, pelos eventos (além da leitura direta)
 var _ja := {}           # controle -> {eixo: valor}, pelos eventos
 var last_raw := {}      # controle -> último botão/eixo cru recebido (tela TESTAR CONTROLES)
+var custom := {}        # mapeamento aprendido em CONFIGURAR CONTROLE: guid -> {ação: [tipo "b"/"a", índice, sinal]}
+const CUSTOM_PATH := "user://controles.cfg"
+const LEARN_ACTIONS := ["jump", "hammer", "item", "start", "back", "left", "right", "up", "down"]
 var toasts: Array = []  # avisos de controle conectado/desconectado: {text, t, ok}
 var vibration := true   # OPÇÕES: vibração dos controles
 signal pad_changed(dev: String, connected: bool)
 
 func _ready() -> void:
 	Input.joy_connection_changed.connect(_on_joy)
+	load_custom()
+
+## Mapeamentos aprendidos (CONFIGURAR CONTROLE), por GUID do controle.
+func load_custom() -> void:
+	custom.clear()
+	var cf := ConfigFile.new()
+	if cf.load(CUSTOM_PATH) != OK:
+		return
+	for guid in cf.get_sections():
+		var m := {}
+		for a in cf.get_section_keys(guid):
+			m[a] = cf.get_value(guid, a)
+		custom[guid] = m
+
+func save_custom(guid: String, m: Dictionary) -> void:
+	custom[guid] = m
+	var cf := ConfigFile.new()
+	cf.load(CUSTOM_PATH)
+	if cf.has_section(guid):
+		cf.erase_section(guid)
+	for a in m:
+		cf.set_value(guid, a, m[a])
+	cf.save(CUSTOM_PATH)
+
+func _custom_on(j: int, spec: Array) -> bool:
+	if spec[0] == "b":
+		return jbtn(j, int(spec[1]))
+	return jaxis(j, int(spec[1])) * float(spec[2]) > 0.5
+
+## Sinais crus que estão chegando agora deste controle (diagnóstico): botões e eixos, pela leitura direta e por evento.
+func raw_now(j: int) -> String:
+	var bs := []
+	for b in 32:
+		if jbtn(j, b):
+			bs.append(str(b))
+	var ax := []
+	for a in 10:
+		var v := jaxis(j, a)
+		if absf(v) > 0.3:
+			ax.append("%d:%+.1f" % [a, v])
+	return "botões [%s]  eixos [%s]" % [", ".join(bs), ", ".join(ax)]
 
 func _on_joy(j: int, connected: bool) -> void:
 	var dev := "joy%d" % j
@@ -108,10 +152,15 @@ func _physics_process(_dt: float) -> void:
 		if dev_pressed(dev, "jump"):
 			jump_frame[dev] = Engine.get_physics_frames()
 
+var fake_joys: Array = []   # testes: controles "conectados" de mentira (recebem eventos de verdade)
+
 func all_devices() -> Array:
 	var list: Array = ["kb_a", "kb_b"]
 	for j in Input.get_connected_joypads():
 		list.append("joy%d" % j)
+	for j in fake_joys:
+		if not ("joy%d" % j) in list:
+			list.append("joy%d" % j)
 	list.append_array(virtual.keys())
 	return list
 
@@ -139,6 +188,11 @@ func _read(dev: String) -> Dictionary:
 		s["item"] = jbtn(j, JOY_BUTTON_Y) or jbtn(j, JOY_BUTTON_B) or jbtn(j, JOY_BUTTON_LEFT_SHOULDER) or jaxis(j, JOY_AXIS_TRIGGER_LEFT) > 0.5
 		s["start"] = jbtn(j, JOY_BUTTON_START)
 		s["back"] = jbtn(j, JOY_BUTTON_BACK) or jbtn(j, JOY_BUTTON_B)
+		var cm: Dictionary = custom.get(Input.get_joy_guid(j), {})
+		if not cm.is_empty():
+			# mapeamento aprendido: substitui o padrão nas ações configuradas
+			for a in cm:
+				s[a] = _custom_on(j, cm[a])
 	return s
 
 var _keys := {}   # "tecla:posição" -> apertada (posição separa Ctrl/Shift esquerdo e direito)
