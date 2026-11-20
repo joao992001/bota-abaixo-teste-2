@@ -6,9 +6,12 @@ Backup: GitHub privado `joao992001/bota-abaixo` (ramo `main`).
 ## O que é hoje
 Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controles), com bots. Modo principal **Demolição**
 (o modo antigo de peças/construção ainda existe como "Clássico", mas o GDD.md ainda descreve só ele — desatualizado).
-- **Submodos:** Último em Pé, Vidas, Placar, Batata-Dinamite. Fluxo: Modo → Submodo → Arena → Ajustes → Entrada.
-- **11 arenas** (`levels/*.lvl`): Canteiro, Esteiras, Guindastes, Maré de Lama, Bola, Paiol, Torre (câmera sobe),
-  Ponte (câmera avança), Gangorras, Prensa, Fornalha — e `oficina.lvl` (ambiente de testes).
+- **4 modos (sem submodos; o Clássico de peças foi removido):** fluxo Modo → Arena do modo → Ajustes do modo → Entrada.
+  - **Derruba** (vidas 1–5, dano %): Canteiro, Guindastes, Gangorras, Esteiras, Prensa, Fornalha.
+  - **Batata-Dinamite** (pavio curto/normal/longo; encostar ou marretar passa): Paiol, Galpão de Cargas, Andaime do Elevador (fechados, sem poço).
+  - **Rei da Obra** (capacete de ouro no `K`; 20/30/45 s; golpe derruba; 1,2 s de proteção): Bola de Demolição, Laje do Prédio, Pirâmide de Caixotes.
+  - **Fuga** (tela/lama persegue; cair só atrasa; pego pela tela sai; elevador `E` vence): Torre, Ponte, Maré de Lama.
+  - Regras e listas em `data/modos.json` (`demolicao.modos`); bots sabem cada modo (`modes/bots.gd`, `_climb`).
 - **12 itens:** TNT, furadeira, cola, teletransporte, raio laser, bomba de vórtice, soprador, raio congelante (botão ITEM) ·
   martelão, ímã, botas de mola, bota-foguete (automáticos). Ferramentas aparecem na mão ao usar.
 - **9 eventos** configuráveis; Amassômetro (dano % aumenta o empurrão); aderência limitada na parede/borda com medidor.
@@ -24,9 +27,9 @@ Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controle
 - **Arte:** estilo papel e giz (gerada por código em `art/src`, cópias em `game/assets`). **Som:** `tools/sfxforge.py`.
 
 ## Como rodar e testar
-- Jogar: `godot --path game` · bateria de testes: `godot --headless --path game --fixed-fps 60 -- --autotest` (213 verificações, 0 falhas).
+- Jogar: `godot --path game` · bateria de testes: `godot --headless --path game --fixed-fps 60 -- --autotest` (199 verificações, 0 falhas).
 - Só uma parte: `-- --autotest --so=itens_novos,parede,controle_real` · ritmo com bots: `-- --stats=4`.
-- Capturas: `-- --menus=DIR`, `--itens=DIR`, `--parede=DIR`, `--intro=DIR`, `--oficina=DIR` (com xvfb-run e `--rendering-driver opengl3`).
+- Capturas: `-- --espiar=DIR,arena,modo,segundos` (bots, foto a cada 10 s), `-- --menus=DIR`, `--itens=DIR`, `--parede=DIR`, `--intro=DIR`, `--oficina=DIR` (com xvfb-run e `--rendering-driver opengl3`).
 
 ## Como gerar o executável (IMPORTANTE)
 - Exportar com a **mesma versão da Godot do editor do usuário: 4.7.1**. Exportado na 4.3, o controle DualShock/DualSense

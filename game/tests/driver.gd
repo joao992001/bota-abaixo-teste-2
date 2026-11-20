@@ -1028,6 +1028,11 @@ func submodos_test() -> void:
 	check(main.demo.king_time.get(0, 0.0) > 0.3 and r0.speed_k < 1.0, "Rei: o rei soma segundos e fica mais lento")
 	r0.take_hit(1, "marretada", 1)
 	await frames(3)
+	check(main.demo.king == 0, "Rei: logo depois de pegar, o rei fica protegido um instante")
+	main.demo.king_grace = 0.0
+	r0.invuln = 0.0
+	r0.take_hit(1, "marretada", 1)
+	await frames(3)
 	check(main.demo.king == -1 and r0.speed_k == 1.0, "Rei: golpe derruba o capacete")
 	main.demo.crown_cd.clear()
 	main.demo.king = 1
@@ -1634,7 +1639,7 @@ func espiar(arg: String) -> void:
 	for k in range(1, secs / 10 + 1):
 		await frames(600)
 		await snap(dir, "%s_%s_%02ds" % [p[1], p[2], k * 10])
-		print("t=%d rei=%d tempos=%s estado=%d" % [k * 10, main.demo.king, str(main.demo.king_time), main.state])
+		print("t=%d rei=%d capacete=%s tempos=%s estado=%d robôs=%s" % [k * 10, main.demo.king, str(main.demo.crown_pos), str(main.demo.king_time), main.state, str(main.robots.map(func(r): return Vector2i(r.position)))])
 
 ## Material para as propostas de interface: cenários sem HUD e robôs com fundo transparente.
 func maquete_frames(dir: String) -> void:
@@ -2282,7 +2287,8 @@ func stats_run(rounds_per_arena: int) -> void:
 					first_death = main.demo.t
 				if main.state != S.RUN:
 					break
-			out.append({"arena": a["id"], "dur": main.demo.t, "first": first_death, "winner": main.demo.round_winner})
+			out.append({"arena": a["id"], "dur": main.demo.t, "first": first_death, "winner": main.demo.round_winner,
+				"chegou": main.robots.filter(func(x): return x.finished).size()})
 			main.timer = 0.0
 			await get_tree().physics_frame
 			await get_tree().physics_frame

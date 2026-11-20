@@ -46,6 +46,7 @@ var king_time := {}          # pid -> segundos com o capacete
 var crown_cd := {}           # pid -> espera para pegar de novo depois de perder
 var king_hit := {}           # pid -> last_hit do quadro anterior (para perceber o golpe)
 var king_setting := 0        # AJUSTES: 0 = 20 s, 1 = 30 s, 2 = 45 s
+var king_grace := 0.0        # o rei acabou de pegar: protegido por um instante (a coroa não fica pulando de mão)
 const KING_GOALS := [20, 30, 45]
 var bomb_holder := -1        # Batata: quem está com a dinamite
 var bomb_fuse := 0.0
@@ -253,7 +254,7 @@ func update(dt: float) -> void:
 				break_reason = ""
 	# terremoto depois de um tempo: garante que a rodada acaba
 	var quake_at := float(main.level.prop("terremoto", str(c("quake_start_s"))))
-	if rule() in ["batata", "rei"] or main.sandbox:
+	if rule() in ["batata", "rei", "fuga"] or main.sandbox:
 		quake_at = 0.0   # a dinamite / o relógio do rei já garantem o fim da rodada
 	if quake_at > 0.0 and t >= quake_at:
 		if not quaking:
@@ -639,6 +640,9 @@ func respawn(r) -> void:
 					if o != r and o.alive:
 						dmin = minf(dmin, o.position.distance_to(p))
 				dmin += main.rng.randf_range(0, 200)
+				if rule() == "fuga":
+					# Fuga: volta no ponto mais atrasado da tela (perde terreno, mas não sai)
+					dmin = (-p.x if lv.cols > lv.rows * 2 else p.y) + main.rng.randf_range(0, 40)
 				if dmin > best_d:
 					best_d = dmin
 					best = c
@@ -694,7 +698,11 @@ func intercept_kill(r) -> bool:
 		r.dmg = 0.0
 		respawn(r)
 		return true   # na Oficina ninguém sai
-	if rule() == "rei":
+	if rule() == "fuga":
+		if r.caught:
+			return false   # a tela (ou a lama) pegou: está fora
+		main.float_text(r.position + Vector2(0, -90), "VOLTOU LÁ ATRÁS!", main.player_color(r.pid))
+	elif rule() == "rei":
 		if r.pid == king:
 			_drop_crown(Vector2.ZERO, true)   # caiu com o capacete: ele volta para o trono
 	elif rule() != "derruba":
@@ -750,8 +758,9 @@ func _update_king(dt: float, alive: Array) -> int:
 		if not kr.alive:
 			_drop_crown(Vector2.ZERO, true)
 			return -1
+		king_grace = maxf(king_grace - dt, 0.0)
 		# levou golpe (marretada, pisão, explosão): o capacete voa para longe do golpe
-		if kr.last_hit < float(king_hit.get(king, 99.0)) and kr.last_hit < 0.1:
+		if king_grace <= 0.0 and kr.last_hit < float(king_hit.get(king, 99.0)) and kr.last_hit < 0.1:
 			var away: float = -1.0 if kr.velocity.x < 0.0 else 1.0
 			_drop_crown(Vector2(away * 260.0, -620.0))
 			main.float_text(kr.position + Vector2(0, -110), "PERDEU A COROA!", main.player_color(kr.pid))
@@ -786,6 +795,7 @@ func _update_king(dt: float, alive: Array) -> int:
 		if crown_cd.get(r.pid, 0.0) <= 0.0 and r.rect().grow(10).has_point(crown_pos):
 			king = r.pid
 			king_hit[king] = r.last_hit
+			king_grace = float(sub.get("protecao_s", 1.2))
 			banner = "P%d  É O REI DA OBRA!" % (r.pid + 1)
 			banner_t = 1.4
 			Audio.play("item")

@@ -213,6 +213,7 @@ func update(dt: float, running: bool) -> void:
 			if r.alive and r.position.y - 20.0 > goo_y:
 				r.last_hit = 0.0
 				r.last_cause = "lama"
+				r.caught = true
 				main.kill(r, -1, null)
 		for cell in level.blocks.keys():
 			if cell.y * T > goo_y + T:
@@ -263,6 +264,7 @@ func _update_scroll(dt: float) -> void:
 				r.position.x = view.end.x - 28.0
 				r.own_vx = minf(r.own_vx, 0.0)
 		if behind:
+			r.caught = true
 			if r.last_hit > 2.5:
 				r.last_cause = "ficou para trás"
 				r.last_hit = 0.0

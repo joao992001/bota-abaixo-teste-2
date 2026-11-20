@@ -29,6 +29,7 @@ var stun_t := 0.0            # atordoado: ignora o controle (pisão na cabeça, 
 var item := ""               # item guardado (dinamite), usado com o botão de item
 var fx_t := {"martelao": 0.0, "mola": 0.0, "ima": 0.0, "foguete": 0.0}   # efeitos com tempo
 var glue_t := 0.0             # pisou na cola: lento
+var caught := false           # Fuga: foi pego pela tela ou pela lama (esse sai de vez)
 var speed_k := 1.0            # multiplicador da corrida (Rei da Obra: o rei anda mais devagar)
 var forced_t := 0.0           # movimento forçado (investida da furadeira, carga do laser, teletransporte)
 var forced_vel := Vector2.ZERO

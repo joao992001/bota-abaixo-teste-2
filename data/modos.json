@@ -451,7 +451,8 @@
           "piramide"
         ],
         "itens": true,
-        "lento": 0.85
+        "lento": 0.9,
+        "protecao_s": 1.2
       },
       {
         "id": "fuga",

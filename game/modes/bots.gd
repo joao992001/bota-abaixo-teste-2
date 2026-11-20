@@ -215,13 +215,15 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 			return _climb(r, kr.position, lv)   # o rei está lá em cima: sobe degrau por degrau
 	# 2c) Fuga: corre para o elevador; só briga com quem estiver colado
 	if demo.rule() == "fuga" and L.elevator_cell != Vector2i(-1, -1):
-		var close := false
+		var g: Rect2 = L.goal_rect
+		var run := _climb(r, Vector2(g.get_center().x, g.end.y), lv)
 		for o in main.robots:
-			if o != r and o.alive and absf(o.position.x - pos.x) < 80.0 and absf(o.position.y - pos.y) < 50.0:
-				close = true
-		if not close:
-			var g: Rect2 = L.goal_rect
-			return _climb(r, Vector2(g.get_center().x, g.end.y), lv)
+			if o != r and o.alive and absf(o.position.x - pos.x) < 78.0 and absf(o.position.y - pos.y) < 50.0 \
+					and signi(int(o.position.x - pos.x)) == r.facing and st.get("hammer_cd", 0.0) <= 0.0 \
+					and main.rng.randf() < float(lv["hammer_acc"]) * 0.5:
+				run["hammer"] = true   # marretada de passagem, sem parar de correr
+				st["hammer_cd"] = float(lv["hammer_cooldown_s"]) * 1.5
+		return run
 	# alvo: rival mais perto (na Batata, ninguém vai atrás de quem está com a bomba; no Rei, todos vão no rei)
 	var target = null
 	var td := 1e9
@@ -294,7 +296,7 @@ func _climb(r, goal: Vector2, lv: Dictionary) -> Dictionary:
 		var bs := 1e9
 		for dy in range(1, 4):
 			var y := row - dy
-			for x in range(col - 7, col + 8):
+			for x in range(col - 5, col + 6):
 				var c := Vector2i(x, y)
 				var standable: bool = (L.is_solid(c) or L.ch_at(c) == "=") and L.ch_at(c) != "I" \
 					and not L.is_solid(c + Vector2i.UP) and not L.is_solid(c + Vector2i(0, -2))
@@ -315,7 +317,14 @@ func _climb(r, goal: Vector2, lv: Dictionary) -> Dictionary:
 			if r.is_on_floor() and absf(dx) < (140.0 if solid_step else 110.0):
 				cmd["jump"] = true
 				cmd["jump_frames"] = 18
-			return _safe(r, cmd, lv)
+			var want: int = cmd["dir"]
+			var res := _safe(r, cmd, lv)
+			if want != 0 and res.get("dir", 0) == 0 and r.is_on_floor() and absf(dx) < 300.0:
+				# a segurança parou na beirada, mas o degrau está em cima e perto: pula para ele
+				res["dir"] = want
+				res["jump"] = true
+				res["jump_frames"] = 18
+			return res
 	var gx := tx - pos.x
 	if absf(gx) > 16.0:
 		cmd["dir"] = signi(int(gx))
