@@ -112,6 +112,27 @@ func autotest() -> void:
 	await tap("v0", "right")
 	check(main.players[0]["color"] == 2, "P1 troca de cor pulando a cor ocupada (azul→rosa)")
 	await tap("v0", "left")
+	print("== Controle duplicado (Windows) e sair")
+	PlayerInput.virtual["padA"] = {}
+	PlayerInput.virtual["padB"] = {}
+	await frames(2)
+	vset("padA", "jump", true)
+	vset("padB", "jump", true)
+	await frames(2)
+	vset("padA", "jump", false)
+	vset("padB", "jump", false)
+	await frames(2)
+	check(main.players.size() == 3, "mesmo controle visto 2x entra como 1 jogador (%d)" % main.players.size())
+	var acc_before: int = main.players[0]["acc"]
+	vset("padA", "hammer", true)
+	vset("padB", "hammer", true)
+	await frames(2)
+	vset("padA", "hammer", false)
+	vset("padB", "hammer", false)
+	await frames(2)
+	check(main.players[2]["acc"] == 1 and main.players[0]["acc"] == acc_before, "trocar chapéu muda só o jogador do controle")
+	await tap("padA", "back")
+	check(main.players.size() == 2, "botão de sair remove o jogador")
 	await tap("v0", "start")
 	check(main.state == S.PICK, "Start com 2 jogadores vai para ESCOLHA")
 

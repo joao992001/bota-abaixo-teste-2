@@ -202,10 +202,23 @@ func to_screen(p: Vector2) -> Vector2:
 # ---------------------------------------------------------------- entrada
 func _join_update() -> void:
 	for dev in PlayerInput.all_devices():
-		if dev in PlayerInput.slots:
+		if dev in PlayerInput.slots or not PlayerInput.dev_pressed(dev, "jump"):
 			continue
-		if PlayerInput.dev_pressed(dev, "jump") and players.size() < 4:
+		if PlayerInput.aliases.has(dev):
+			# gêmeo apertou sozinho: era um controle de verdade, libera para entrar no próximo aperto
+			if PlayerInput.twin_of(dev) == "":
+				PlayerInput.aliases.erase(dev)
+			continue
+		var twin := PlayerInput.twin_of(dev)
+		if twin != "":
+			PlayerInput.aliases[dev] = twin
+			continue
+		if players.size() < 4:
 			add_player(dev)
+	for i in range(players.size() - 1, -1, -1):
+		if PlayerInput.pressed(i, "back"):
+			players.remove_at(i)
+			PlayerInput.slots.remove_at(i)
 	for i in players.size():
 		if PlayerInput.pressed(i, "left"):
 			_cycle_color(i, -1)

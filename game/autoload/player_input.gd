@@ -3,23 +3,28 @@ extends Node
 ## Teclado A: WASD + Espaço (pular) + Shift/F (marreta). Teclado B: setas + Ctrl/L/Num0 (pular) + Enter num./K (marreta).
 ## Controle: analógico/direcional + A (pular) + X/B/RB (marreta) + Start. Enter/Start começa a partida.
 
-const ACTIONS := ["left", "right", "up", "down", "jump", "hammer", "start"]
+const ACTIONS := ["left", "right", "up", "down", "jump", "hammer", "start", "back"]
 const KEYMAP := {
 	"kb_a": {"left": [KEY_A], "right": [KEY_D], "up": [KEY_W], "down": [KEY_S],
-		"jump": [KEY_SPACE], "hammer": [KEY_SHIFT, KEY_F], "start": [KEY_ENTER]},
+		"jump": [KEY_SPACE], "hammer": [KEY_SHIFT, KEY_F], "start": [KEY_ENTER], "back": [KEY_BACKSPACE]},
 	"kb_b": {"left": [KEY_LEFT], "right": [KEY_RIGHT], "up": [KEY_UP], "down": [KEY_DOWN],
-		"jump": [KEY_CTRL, KEY_KP_0, KEY_L], "hammer": [KEY_KP_ENTER, KEY_K], "start": [KEY_ENTER]},
+		"jump": [KEY_CTRL, KEY_KP_0, KEY_L], "hammer": [KEY_KP_ENTER, KEY_K], "start": [KEY_ENTER], "back": [KEY_DELETE]},
 }
 
 var slots: Array = []   # dispositivo de cada jogador (índice = jogador)
 var virtual := {}       # dispositivos simulados (testes): nome -> {ação: bool}
 var _cur := {}
 var _prev := {}
+var jump_frame := {}    # dispositivo -> quadro de física em que PULAR foi apertado
+var aliases := {}       # dispositivo "gêmeo" ignorado -> dispositivo real (mesmo controle visto 2x no Windows)
+const TWIN_FRAMES := 2
 
 func _physics_process(_dt: float) -> void:
 	for dev in all_devices():
 		_prev[dev] = _cur.get(dev, {})
 		_cur[dev] = _read(dev)
+		if dev_pressed(dev, "jump"):
+			jump_frame[dev] = Engine.get_physics_frames()
 
 func all_devices() -> Array:
 	var list: Array = ["kb_a", "kb_b"]
@@ -51,7 +56,30 @@ func _read(dev: String) -> Dictionary:
 		s["hammer"] = Input.is_joy_button_pressed(j, JOY_BUTTON_X) or Input.is_joy_button_pressed(j, JOY_BUTTON_B) \
 			or Input.is_joy_button_pressed(j, JOY_BUTTON_RIGHT_SHOULDER)
 		s["start"] = Input.is_joy_button_pressed(j, JOY_BUTTON_START)
+		s["back"] = Input.is_joy_button_pressed(j, JOY_BUTTON_BACK)
 	return s
+
+func is_keyboard(dev: String) -> bool:
+	return KEYMAP.has(dev)
+
+## Outro controle já em uso que apertou PULAR no mesmo instante (é o mesmo controle físico aparecendo 2x).
+func twin_of(dev: String) -> String:
+	if is_keyboard(dev) or not jump_frame.has(dev):
+		return ""
+	for other in slots:
+		if other != dev and not is_keyboard(other) and jump_frame.has(other):
+			if absi(int(jump_frame[other]) - int(jump_frame[dev])) <= TWIN_FRAMES:
+				return other
+	return ""
+
+func label(dev: String) -> String:
+	match dev:
+		"kb_a": return "teclado A"
+		"kb_b": return "teclado B"
+	if dev.begins_with("joy"):
+		var nm := Input.get_joy_name(int(dev.substr(3)))
+		return "controle %d: %s" % [int(dev.substr(3)) + 1, nm.substr(0, 22)]
+	return dev
 
 func dev_held(dev: String, a: String) -> bool:
 	return _cur.get(dev, {}).get(a, false)
