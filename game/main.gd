@@ -115,7 +115,7 @@ func _ready() -> void:
 	PlayerInput.pad_changed.connect(_on_pad_changed)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens") or a.begins_with("--oficina") or a.begins_with("--parede") or a.begins_with("--intro") or a.begins_with("--skins") or a.begins_with("--maquete"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens") or a.begins_with("--oficina") or a.begins_with("--parede") or a.begins_with("--intro") or a.begins_with("--skins") or a.begins_with("--maquete") or a.begins_with("--espiar"):
 			state = S.JOIN   # testes e capturas começam direto na entrada de jogadores
 			var scr: GDScript = load("res://tests/driver.gd")
 			if scr == null or not scr.can_instantiate():

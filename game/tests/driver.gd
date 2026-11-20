@@ -40,6 +40,10 @@ func _run() -> void:
 			await parede_frames(a.substr(9))
 			get_tree().quit(0)
 			return
+		if a.begins_with("--espiar="):
+			await espiar(a.trim_prefix("--espiar="))
+			get_tree().quit()
+			return
 		if a.begins_with("--maquete="):
 			await maquete_frames(a.trim_prefix("--maquete="))
 			get_tree().quit()
@@ -1608,6 +1612,29 @@ func shots(dir: String) -> void:
 	layer.add_child(sheet)
 	await frames(3)
 	await snap(dir, "prancha_robos")
+
+## Espia uma arena num modo com 4 bots: --espiar=DIR,arena,modo,segundos (uma foto a cada 10 s).
+func espiar(arg: String) -> void:
+	var p := arg.split(",")
+	var dir := p[0]
+	DirAccess.make_dir_recursive_absolute(dir)
+	get_window().size = Vector2i(1920, 1080)
+	PlayerInput.virtual = {}
+	main.bot_level = 1
+	for k in 4:
+		main.add_bot()
+	main.arena_choice = p[1]
+	main.game_mode = p[2]
+	main.demo.cfg["rounds_to_win"] = 99
+	main.start_match()
+	main.countdown = 0.0
+	for r in main.robots:
+		r.active = true
+	var secs := int(p[3]) if p.size() > 3 else 40
+	for k in range(1, secs / 10 + 1):
+		await frames(600)
+		await snap(dir, "%s_%s_%02ds" % [p[1], p[2], k * 10])
+		print("t=%d rei=%d tempos=%s estado=%d" % [k * 10, main.demo.king, str(main.demo.king_time), main.state])
 
 ## Material para as propostas de interface: cenários sem HUD e robôs com fundo transparente.
 func maquete_frames(dir: String) -> void:

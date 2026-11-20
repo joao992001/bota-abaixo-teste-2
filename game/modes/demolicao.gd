@@ -229,7 +229,7 @@ func update(dt: float) -> void:
 	# caixote racha e cai se alguém fica parado em cima
 	var stood := {}
 	for r in alive:
-		if r.is_on_floor():
+		if r.is_on_floor() and rule() != "rei":   # no Rei da Obra o chão não racha por ficar parado (rodada longa)
 			var cell := Vector2i(int(r.position.x / 64.0), int((r.position.y + 2.0) / 64.0))
 			if lv.blocks.has(cell):
 				stood[cell] = true
@@ -643,6 +643,13 @@ func respawn(r) -> void:
 					best_d = dmin
 					best = c
 	if best.x < 0:
+		# não sobrou chão para voltar: volta no trono (Rei) ou no ponto de nascer, invulnerável
+		var spot: Vector2 = crown_home if rule() == "rei" else lv.spawns.get(r.pid % 4 + 1, Vector2(lv.cols * 32.0, 128.0))
+		r.position = spot + Vector2(0, -8)
+		r.reset_physics_interpolation()
+		r.velocity = Vector2.ZERO
+		r.own_vx = 0.0
+		r.invuln = float(cfg["recuperacao"]["invuln_volta_s"])
 		return
 	r.position = Vector2(best.x * 64 + 32, best.y * 64 - 220)
 	r.reset_physics_interpolation()
