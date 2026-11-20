@@ -315,6 +315,7 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 	var stun := minf(float(am["stun_base"]) + dmg * float(am["stun_por"]), float(am["stun_max"]))
 	main.float_text(position + Vector2(0, -100), "+%d%%" % int(k["dano"]), main.dmg_color(dmg))
 	_apply_knock(dir, kx, ky, stun)
+	PlayerInput.vibrate(pid, 0.35 + dmg / 300.0, 0.15 + dmg / 250.0, 0.12 + minf(dmg, 150.0) / 1000.0)
 	return true
 
 ## Empurrão direto (modo Clássico e mecânicas antigas).
@@ -391,6 +392,7 @@ func launch(tiles: float) -> void:
 
 ## Eliminado: o robô desmonta em peças (main.break_robot) e some.
 func eliminate() -> void:
+	PlayerInput.vibrate(pid, 0.8, 1.0, 0.45)
 	Audio.play("eliminado", _pitch())
 	alive = false
 	active = false

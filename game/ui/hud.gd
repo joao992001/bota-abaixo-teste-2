@@ -36,6 +36,7 @@ func _draw() -> void:
 	var S = main.S
 	if main.state in main.MENU_STATES:
 		main.menus.draw(self)
+		_draw_toasts()
 		return
 	match main.state:
 		S.JOIN: _draw_join()
@@ -54,6 +55,7 @@ func _draw() -> void:
 		Kit.text(self, p, fl["text"], 40, c, HORIZONTAL_ALIGNMENT_CENTER, 200, 10, Color(1, 0.98, 0.94, c.a))
 	if main.paused:
 		main.menus.draw(self)
+	_draw_toasts()
 	if main.debug:
 		var ids: Array = main.implemented_ids()
 		text(Vector2(20, 1060), "DEBUG  F2 pula fase · F3 peça: %s · F4 dono: P%d · clique coloca/remove · F6 lento" % [PIECE_NAMES[ids[main.debug_piece]], main.debug_owner + 1], 22, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT, -1, 6)
@@ -175,6 +177,21 @@ func _draw_event_note() -> void:
 		var k: float = clampf(ev.phase_t / float(ev.current.get("dur", 1)), 0.0, 1.0)
 		draw_rect(Rect2(r.position.x + 30, 60, (r.size.x - 60) * k, 8), Color("#f2c84b"))
 
+## Avisos de controle conectado/desconectado (canto de baixo, à esquerda).
+func _draw_toasts() -> void:
+	var y := 140.0
+	for i in range(PlayerInput.toasts.size() - 1, -1, -1):
+		var tt: Dictionary = PlayerInput.toasts[i]
+		var a := clampf((4.0 - float(tt["t"])) / 0.4, 0.0, 1.0)
+		var slide := (1.0 - clampf(float(tt["t"]) / 0.18, 0.0, 1.0)) * -720.0
+		var tw: float = Kit.font().get_string_size(String(tt["text"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 26).x
+		var r := Rect2(24 + slide, y, tw + 110.0, 64)
+		panel(r, Color(1, 1, 1, a) if tt["ok"] else Color(1, 0.86, 0.82, a))
+		var dev: String = tt.get("dev", "")
+		Kit.pad_btn(self, r.position + Vector2(44, 32), 18, "baixo", PlayerInput.pad_type(dev) if tt["ok"] else "generico")
+		Kit.text(self, Vector2(r.position.x + 76, r.position.y + 42), String(tt["text"]), 26, Color(0.17, 0.29, 0.32, a) if tt["ok"] else Color(0.63, 0.08, 0.16, a))
+		y += 76.0
+
 ## Faixa de aviso que "salta" quando o texto muda.
 func _ribbon_pop(txt: String, y: float, w: float, size: int, alpha := 1.0) -> void:
 	if txt != _banner:
@@ -217,14 +234,22 @@ func _draw_join() -> void:
 		else:
 			panel(lr, Color(1, 1, 1, 0.55))
 			draw_set_transform(Vector2.ZERO)
-			Kit.text(self, Vector2(r.position.x, r.get_center().y), "aperte PULAR", 36, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-			Kit.text(self, Vector2(r.position.x, r.get_center().y + 40), "ou B para bot", 26, Color("#6a7a80"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-	var w := Rect2(160, 800, 1600, 230)
+			var pst: String = PlayerInput.main_pad_type()
+			Kit.text(self, Vector2(r.position.x, r.get_center().y - 30), "para entrar:", 30, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+			Kit.pad_hint(self, r.get_center().x, r.get_center().y + 20, [["baixo"], " no controle"], 30, Color("#4a5a60"), pst)
+			Kit.text(self, Vector2(r.position.x, r.get_center().y + 66), "Espaço / Ctrl dir. no teclado", 22, Color("#6a7a80"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	var w := Rect2(160, 790, 1600, 250)
 	panel(w)
-	Kit.text(self, Vector2(w.position.x, 850), "ENTER / START começa (2+)  ·  MARRETA troca o chapéu  ·  BACKSPACE / ESC sai", 32, DARK, HORIZONTAL_ALIGNMENT_CENTER, w.size.x)
-	Kit.text(self, Vector2(w.position.x, 900), "Teclado A: WASD · Espaço pula · F marreta · G item      Teclado B: setas · Ctrl dir. pula · ponto marreta · vírgula item", 24, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, w.size.x)
-	Kit.text(self, Vector2(w.position.x, 940), "Controle: A pula · X marreta · Y item · Select sai      BOTS: B adiciona · N remove · M dificuldade (%s)" % main.bots.LEVEL_NAMES[main.bot_level], 24, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, w.size.x)
-	Kit.text(self, Vector2(w.position.x, 990), "F11 tela cheia", 20, Color("#6a7a80"), HORIZONTAL_ALIGNMENT_CENTER, w.size.x)
+	var st: String = PlayerInput.main_pad_type()
+	var g := Color("#4a5a60")
+	Kit.pad_hint(self, 960, 838, [["start"], " começa (2+)   ·   ", ["esquerda"], " troca o chapéu   ·   ◄► cor  ▲▼ robô   ·   ", ["cima"], " + bot   ·   ", ["direita"], " sai"], 30, DARK, st)
+	Kit.pad_hint(self, 960, 892, ["No jogo:  ", ["baixo"], " pula   ", ["esquerda"], " ou ", ["rb"], " marreta   ", ["cima"], " ou ", ["lb"], " item   ", ["start"], " pausa"], 26, g, st)
+	Kit.text(self, Vector2(w.position.x, 940), "Teclado A: WASD · Espaço pula · F marreta · G item (+bot)     Teclado B: setas · Ctrl dir. pula · ponto marreta · vírgula item", 22, g, HORIZONTAL_ALIGNMENT_CENTER, w.size.x)
+	var pads: Array = Input.get_connected_joypads()
+	var pl := "Nenhum controle detectado — conecte por USB ou Bluetooth (OPÇÕES ▸ TESTAR CONTROLES)" if pads.is_empty() \
+		else "Controles: " + "  ·  ".join(pads.map(func(j): return "%d) %s" % [j + 1, PlayerInput.pad_name("joy%d" % j)]))
+	Kit.text(self, Vector2(w.position.x + 20, 980), pl, 22, Color("#a01528") if pads.is_empty() else Color("#3c9a46"), HORIZONTAL_ALIGNMENT_CENTER, w.size.x - 40)
+	Kit.text(self, Vector2(w.position.x, 1018), "teclado: B/N/M bots e dificuldade (%s)  ·  F11 tela cheia" % main.bots.LEVEL_NAMES[main.bot_level], 19, Color("#6a7a80"), HORIZONTAL_ALIGNMENT_CENTER, w.size.x)
 
 # ---------------------------------------------------------------- clássico: escolha e construção
 func _draw_pick() -> void:

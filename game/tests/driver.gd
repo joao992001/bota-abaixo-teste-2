@@ -549,6 +549,7 @@ func demolicao_test() -> void:
 	await submodos_test()
 	await eventos_test()
 	await menus_test()
+	await controles_test()
 
 func menus_test() -> void:
 	print("== Menus e pausa")
@@ -912,6 +913,48 @@ func eventos_test() -> void:
 	await frames(60 * 20)
 	check(ev.phase == "", "eventos DESLIGADOS: nada acontece")
 
+func controles_test() -> void:
+	print("== Controles externos")
+	var PI_ = PlayerInput
+	check(PI_.type_from_name("Xbox Wireless Controller") == "xbox" and PI_.type_from_name("XInput Controller") == "xbox"
+		and PI_.type_from_name("DualSense Wireless Controller") == "ps" and PI_.type_from_name("PS4 Controller") == "ps"
+		and PI_.type_from_name("Nintendo Switch Pro Controller") == "nintendo" and PI_.type_from_name("8BitDo SN30 Pro") == "generico",
+		"reconhece Xbox, PlayStation, Nintendo e genérico pelo nome")
+	# entrada: ITEM adiciona bot, VOLTAR sai
+	main.go_menu()
+	main.mode = "demolicao"
+	main.state = S.JOIN
+	PlayerInput.virtual = {"v0": {}, "v1": {}, "v9": {}}
+	await frames(2)
+	await tap("v0", "jump")
+	await tap("v0", "item")
+	check(main.players.size() == 2 and main.players[1].get("bot", false), "na entrada, ITEM (Y/△) adiciona bot")
+	await tap("v1", "jump")
+	check(main.players.size() == 3, "outro controle entra")
+	# controle cai no meio da partida: pausa; outro controle livre assume com START
+	main.start_match()
+	main.countdown = 0.0
+	for r in main.robots:
+		r.active = true
+	await frames(3)
+	var dev_p3: String = PlayerInput.slots[2]
+	main._on_pad_changed(dev_p3, false)
+	await frames(2)
+	check(main.paused and main.lost_pads == [2], "controle desconectado na partida: pausa e avisa (P3)")
+	await tap("v9", "start")
+	await frames(2)
+	check(PlayerInput.slots[2] == "v9" and main.players[2]["dev"] == "v9" and main.lost_pads.is_empty(), "outro controle assume P3 com START")
+	await tap("v0", "start")
+	check(not main.paused, "continua a partida")
+	# tela de teste de controles abre e fecha com ESC
+	main.go_menu()
+	main.state = S.CONTROLES
+	await frames(3)
+	await key_event(KEY_ESCAPE, true)
+	await frames(2)
+	await key_event(KEY_ESCAPE, false)
+	check(main.state == S.OPTIONS, "TESTAR CONTROLES abre e ESC volta às opções")
+
 func itens_test() -> void:
 	print("== Itens")
 	main.mode = "demolicao"
@@ -1255,6 +1298,10 @@ func menus_frames(dir: String) -> void:
 	main.state = S.OPTIONS
 	await frames(10)
 	await snap(dir, "m4_opcoes")
+	main.state = S.CONTROLES
+	PlayerInput.toasts.append({"text": "Conectado: Xbox (Xbox Wireless Controller)", "t": 1.0, "ok": true, "dev": ""})
+	await frames(10)
+	await snap(dir, "m4c_controles")
 	main.state = S.ARENAS
 	await frames(10)
 	await snap(dir, "m4b_arenas")

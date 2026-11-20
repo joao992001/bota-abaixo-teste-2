@@ -121,6 +121,8 @@ func update(dt: float) -> void:
 				main.state = S.ARENAS
 		S.EVENTOS:
 			main.events.menu_update(self)
+		S.CONTROLES:
+			_update_pads()
 		S.ARENAS:
 			var n := arena_list().size()
 			arena_sel = posmod(arena_sel + move_h(), n)
@@ -133,7 +135,7 @@ func update(dt: float) -> void:
 			elif pressed("back"):
 				main.state = S.SUBMODOS
 		S.OPTIONS:
-			opt_sel = posmod(opt_sel + move_v(), 6)
+			opt_sel = posmod(opt_sel + move_v(), 8)
 			var h := move_h()
 			var c := confirm()
 			if opt_sel == 0 and (h != 0 or c):
@@ -147,7 +149,15 @@ func update(dt: float) -> void:
 			elif opt_sel == 4 and h != 0:
 				Audio.set_volumes(Audio.music_vol, Audio.sfx_vol + h)
 				Audio.play("caixote_pancada")
-			elif opt_sel == 5 and c:
+			elif opt_sel == 5 and (h != 0 or c):
+				PlayerInput.vibration = not PlayerInput.vibration
+				if PlayerInput.vibration:
+					for j in Input.get_connected_joypads():
+						Input.start_joy_vibration(j, 0.5, 0.5, 0.25)
+			elif opt_sel == 6 and c:
+				main.state = S.CONTROLES
+				pad_prev.clear()
+			elif opt_sel == 7 and c:
 				main.state = S.MENU
 			if h != 0 or c:
 				main.save_options()
@@ -181,6 +191,7 @@ func draw(ci: CanvasItem) -> void:
 		S.SUBMODOS: _draw_submodes(ci)
 		S.AJUSTES: _draw_adjust(ci)
 		S.EVENTOS: main.events.menu_draw(ci, self)
+		S.CONTROLES: _draw_pads(ci)
 	if main.paused:
 		_draw_pause(ci)
 
@@ -405,10 +416,12 @@ func _draw_options(ci: CanvasItem) -> void:
 		"BOTS:  %s" % main.bots.LEVEL_NAMES[main.bot_level].to_upper(),
 		"MÚSICA:  ◄ %s ►" % _bar(Audio.music_vol),
 		"EFEITOS:  ◄ %s ►" % _bar(Audio.sfx_vol),
+		"VIBRAÇÃO:  %s" % ("SIM" if PlayerInput.vibration else "NÃO"),
+		"TESTAR CONTROLES  ▸",
 		"VOLTAR",
 	]
 	for i in items.size():
-		_button(ci, Rect2(560, 230 + i * 125, 800, 96), items[i], opt_sel == i)
+		_button(ci, Rect2(560, 205 + i * 104, 800, 84), items[i], opt_sel == i)
 	Kit.text(ci, Vector2(0, 1056), "▲▼ escolher  ·  ◄► ou PULAR muda", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
 
 func _bar(v: int) -> String:
@@ -417,5 +430,121 @@ func _bar(v: int) -> String:
 func _draw_pause(ci: CanvasItem) -> void:
 	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.25, 0.3, 0.55))
 	Kit.ribbon(ci, Rect2(610, 180, 700, 128), "PAUSA", 64)
+	if not main.lost_pads.is_empty():
+		var r := Rect2(460, 40, 1000, 120)
+		Kit.paper(ci, r, Color(1, 0.86, 0.82))
+		var who := ", ".join(main.lost_pads.map(func(i): return "P%d" % (i + 1)))
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 52), "CONTROLE DESCONECTADO: %s" % who, 38, Color("#a01528"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 94), "Reconecte (USB ou Bluetooth) ou aperte START em outro controle", 24, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	for i in PAUSE_ITEMS.size():
 		_button(ci, Rect2(610, 380 + i * 140, 700, 100), PAUSE_ITEMS[i], pause_sel == i)
+
+# ---------------------------------------------------------------- testar controles
+var pad_prev := {}   # joy -> {botão: bool} (bordas para vibrar e sair)
+
+func _pad_edge(j: int, b: int) -> bool:
+	var now := Input.is_joy_button_pressed(j, b)
+	var key := "%d:%d" % [j, b]
+	var was: bool = pad_prev.get(key, false)
+	pad_prev[key] = now
+	return now and not was
+
+func _update_pads() -> void:
+	# sai com Esc/Backspace ou SELECT (B não sai: aqui ele é testado)
+	if PlayerInput.dev_pressed("kb_a", "back") or PlayerInput.dev_pressed("kb_b", "back"):
+		main.state = main.S.OPTIONS
+		Audio.play("menu_voltar")
+		return
+	for j in Input.get_connected_joypads():
+		if _pad_edge(j, JOY_BUTTON_BACK):
+			main.state = main.S.OPTIONS
+			Audio.play("menu_voltar")
+			return
+		if _pad_edge(j, JOY_BUTTON_A):
+			Input.start_joy_vibration(j, 0.6, 0.6, 0.2)   # PULAR vibra: testa o motor
+			Audio.play("pulo")
+		if _pad_edge(j, JOY_BUTTON_X):
+			Audio.play("marreta_vento")
+		if _pad_edge(j, JOY_BUTTON_Y) or _pad_edge(j, JOY_BUTTON_B):
+			Audio.play("item")
+
+func _draw_pads(ci: CanvasItem) -> void:
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.45))
+	Kit.ribbon(ci, Rect2(560, 20, 800, 128), "TESTAR CONTROLES", 54)
+	var pads: Array = Input.get_connected_joypads()
+	if pads.is_empty():
+		var r := Rect2(260, 190, 1400, 760)
+		Kit.paper(ci, r)
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 90), "NENHUM CONTROLE DETECTADO", 50, Color("#a01528"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		var tips := [
+			"USB: ligue o cabo — aparece aqui na hora.",
+			"Xbox (Bluetooth): Windows ▸ Bluetooth ▸ Adicionar dispositivo; segure o botão de parear do controle.",
+			"PlayStation (DualSense/DualShock 4): segure CREATE/SHARE + PS até a luz piscar e pareie no Bluetooth.",
+			"Switch Pro / 8BitDo: modo X-input (Xbox) funciona melhor; pareie pelo Bluetooth do Windows.",
+			"Steam aberta pode esconder ou duplicar o controle (Steam Input): feche a Steam se algo estranho acontecer.",
+			"Rodando dentro do editor: clique na janela do jogo para ela ter o foco.",
+		]
+		for i in tips.size():
+			Kit.text(ci, Vector2(r.position.x + 70, r.position.y + 190 + i * 88), "•  " + tips[i], 27, Color("#2c4a52"))
+	else:
+		var n: int = mini(pads.size(), 4)
+		var cw := 430.0
+		var x0 := 960.0 - (n * cw + (n - 1) * 20.0) / 2.0
+		for k in n:
+			_draw_pad_card(ci, pads[k], Rect2(x0 + k * (cw + 20.0), 180, cw, 780), k)
+	Kit.text(ci, Vector2(0, 1056), "Aperte os botões para ver acender  ·  PULAR vibra  ·  SELECT ou ESC volta", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
+
+func _draw_pad_card(ci: CanvasItem, j: int, r: Rect2, k: int) -> void:
+	Kit.paper(ci, r)
+	var dev := "joy%d" % j
+	var st: String = PlayerInput.pad_type(dev)
+	var dark := Color("#1f3a40")
+	Kit.text(ci, Vector2(r.position.x, r.position.y + 60), "CONTROLE %d" % (j + 1), 40, dark, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	var nm := Input.get_joy_name(j)
+	Kit.text(ci, Vector2(r.position.x + 20, r.position.y + 96), nm.substr(0, 30), 22, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 40)
+	var tname := {"xbox": "tipo Xbox", "ps": "tipo PlayStation", "nintendo": "tipo Nintendo", "generico": "genérico (botões como Xbox)"}
+	Kit.text(ci, Vector2(r.position.x, r.position.y + 128), tname.get(st, ""), 22, Color("#3c9a46"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	var used: int = PlayerInput.slots.find(dev)
+	if used >= 0:
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 158), "jogando como P%d" % (used + 1), 22, Data.TEXT_COLORS[main.players[used]["color"]] if used < main.players.size() else dark, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	# corpo do controle
+	var c := Vector2(r.get_center().x, r.position.y + 360)
+	var body := Rect2(c - Vector2(180, 95), Vector2(360, 190))
+	ci.draw_rect(body, Color("#d5dbe1"))
+	ci.draw_circle(body.position + Vector2(40, 150), 70, Color("#d5dbe1"))
+	ci.draw_circle(body.end - Vector2(40, 40), 70, Color("#d5dbe1"))
+	# gatilhos e ombros
+	var lt := Input.get_joy_axis(j, JOY_AXIS_TRIGGER_LEFT)
+	var rt := Input.get_joy_axis(j, JOY_AXIS_TRIGGER_RIGHT)
+	for side in [-1, 1]:
+		var tr := Rect2(c + Vector2(side * 125 - 40, -165), Vector2(80, 26))
+		ci.draw_rect(tr, Color("#9aa4ae"))
+		var v: float = rt if side > 0 else lt
+		ci.draw_rect(Rect2(tr.position, Vector2(tr.size.x * clampf(v, 0.0, 1.0), tr.size.y)), Color("#f2c84b"))
+		Kit.text(ci, Vector2(tr.position.x, tr.position.y - 6), ("RT" if side > 0 else "LT") if st != "ps" else ("R2" if side > 0 else "L2"), 18, dark, HORIZONTAL_ALIGNMENT_CENTER, tr.size.x)
+		Kit.pad_btn(ci, c + Vector2(side * 125, -112), 18, "rb" if side > 0 else "lb", st, Input.is_joy_button_pressed(j, JOY_BUTTON_RIGHT_SHOULDER if side > 0 else JOY_BUTTON_LEFT_SHOULDER))
+	# analógicos
+	for stick in [[JOY_AXIS_LEFT_X, JOY_AXIS_LEFT_Y, Vector2(-120, -20), JOY_BUTTON_LEFT_STICK], [JOY_AXIS_RIGHT_X, JOY_AXIS_RIGHT_Y, Vector2(60, 50), JOY_BUTTON_RIGHT_STICK]]:
+		var sc: Vector2 = c + stick[2]
+		ci.draw_circle(sc, 36, Color("#5a6370"))
+		var ax := Vector2(Input.get_joy_axis(j, stick[0]), Input.get_joy_axis(j, stick[1]))
+		ci.draw_circle(sc + ax * 22.0, 22, Color("#f2c84b") if Input.is_joy_button_pressed(j, stick[3]) else Color("#2f3640"))
+	# direcional
+	var dc := c + Vector2(-60, 50)
+	for d in [[JOY_BUTTON_DPAD_UP, Vector2(0, -22)], [JOY_BUTTON_DPAD_DOWN, Vector2(0, 22)], [JOY_BUTTON_DPAD_LEFT, Vector2(-22, 0)], [JOY_BUTTON_DPAD_RIGHT, Vector2(22, 0)]]:
+		ci.draw_rect(Rect2(dc + d[1] - Vector2(12, 12), Vector2(24, 24)), Color("#f2c84b") if Input.is_joy_button_pressed(j, d[0]) else Color("#2f3640"))
+	ci.draw_rect(Rect2(dc - Vector2(12, 12), Vector2(24, 24)), Color("#2f3640"))
+	# botões de ação
+	var fc := c + Vector2(120, -20)
+	for b in [["baixo", Vector2(0, 30), JOY_BUTTON_A], ["direita", Vector2(30, 0), JOY_BUTTON_B], ["esquerda", Vector2(-30, 0), JOY_BUTTON_X], ["cima", Vector2(0, -30), JOY_BUTTON_Y]]:
+		Kit.pad_btn(ci, fc + b[1], 16, b[0], st, Input.is_joy_button_pressed(j, b[2]))
+	Kit.pad_btn(ci, c + Vector2(-34, -40), 12, "select", st, Input.is_joy_button_pressed(j, JOY_BUTTON_BACK))
+	Kit.pad_btn(ci, c + Vector2(34, -40), 12, "start", st, Input.is_joy_button_pressed(j, JOY_BUTTON_START))
+	# o que faz cada botão no jogo
+	var y := r.position.y + 520
+	for line in [[["baixo"], " pula"], [["esquerda"], " ", ["rb"], " marreta"], [["cima"], " ", ["lb"], " item"], [["start"], " pausa / começa"], [["direita"], " volta nos menus"]]:
+		var parts: Array = []
+		for e in line:
+			parts.append(e)
+		Kit.pad_hint(ci, r.get_center().x, y, parts, 26, dark, st)
+		y += 48

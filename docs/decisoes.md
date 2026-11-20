@@ -30,3 +30,4 @@
 - 2026-11-20 · 5 arenas novas com arquitetura própria: Torre (vertical, câmera sobe), Ponte (horizontal, câmera avança), Gangorras, Prensa, Fornalha. Máquinas: ventilador, chama, pistão, serra em trilho, barril, alavanca/alçapão, gangorra.
 - 2026-11-20 · 8 itens novos (gancho, ímã, tábua, furadeira, cola, bota-foguete, chave-bumerangue, mola portátil). Bota-foguete: segurar PULAR depois do ápice. Ímã empurra como esteira (a frenagem anulava força direta).
 - 2026-11-20 · Som: 18 efeitos novos, músicas por família de arena (fábrica, altura, caos), "locutor" de bipes nas faixas, música acelera 10% na tensão.
+- 2026-11-20 · Controles externos: B/○ volta nos menus, gatilhos valem como marreta/item, dicas desenhadas no estilo do controle conectado (Xbox/PS/Nintendo), aviso de conexão, pausa automática se o controle cair (outro controle assume com START), vibração (opção), Y/△ adiciona bot na entrada, tela TESTAR CONTROLES.

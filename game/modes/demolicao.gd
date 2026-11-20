@@ -190,6 +190,8 @@ func update(dt: float) -> void:
 				if not b.absorb():
 					b.dmg += float(cfg["amassometro"]["pisao"]["dano"])
 					b.stun_t = c("stun_stomp_s")
+					PlayerInput.vibrate(b.pid, 0.6, 0.3, 0.18)
+					PlayerInput.vibrate(a.pid, 0.25, 0.0, 0.06)
 					Audio.voice("voz_ai", b.vis.model)
 					Audio.play("tonto", 1.0, -4.0)
 					b.vis.sq = Vector2(1.5, 0.55)
@@ -674,6 +676,7 @@ func hammer(r) -> void:
 	for o in main.robots:
 		if o != r and o.alive and hit.intersects(o.rect()):
 			o.take_hit(r.facing, "martelao" if big else "marretada", r.pid)
+			PlayerInput.vibrate(r.pid, 0.3, 0.0, 0.07)   # quem acertou sente o golpe
 			pass_bomb(r.pid, o.pid)
 			Audio.play("bonk", 1.0 / mult)
 			main.spark(o.rect().get_center(), 6)

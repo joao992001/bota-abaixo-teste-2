@@ -3,7 +3,10 @@ extends Node
 ## Teclado A: WASD + Espaço (pular) + F/E (marreta). Teclado B: setas + Ctrl direito/Num0/L (pular) + . / Enter num./K (marreta).
 ## Sem Shift: no Windows, com NumLock ligado, as setas mandam um Shift "fantasma" (era a marreta sozinha).
 ## Teclas lidas por evento (_input), para separar Ctrl esquerdo/direito; "ctrl_r" = só o Ctrl direito.
-## Controle: analógico/direcional + A (pular) + X/B/RB (marreta) + Start. Enter/Start começa a partida.
+## Controle (Xbox, PlayStation, Nintendo, genéricos — mapeamento SDL da Godot, por posição do botão):
+##   analógico/direcional anda · botão de baixo (A / ✕) pula · esquerda (X / □), RB ou RT marreta ·
+##   cima (Y / △), direita (B / ○), LB ou LT item · Start pausa/começa · B / ○ ou Select volta nos menus.
+## Conectar/desconectar a qualquer hora: aviso na tela; se cair no meio da partida, o jogo pausa.
 
 const ACTIONS := ["left", "right", "up", "down", "jump", "hammer", "item", "start", "back"]
 const KEYMAP := {
@@ -20,6 +23,77 @@ var _prev := {}
 var jump_frame := {}    # dispositivo -> quadro de física em que PULAR foi apertado
 var aliases := {}       # dispositivo "gêmeo" ignorado -> dispositivo real (mesmo controle visto 2x no Windows)
 const TWIN_FRAMES := 2
+var toasts: Array = []  # avisos de controle conectado/desconectado: {text, t, ok}
+var vibration := true   # OPÇÕES: vibração dos controles
+signal pad_changed(dev: String, connected: bool)
+
+func _ready() -> void:
+	Input.joy_connection_changed.connect(_on_joy)
+
+func _on_joy(j: int, connected: bool) -> void:
+	var dev := "joy%d" % j
+	var nm := pad_name(dev) if connected else "controle %d" % (j + 1)
+	toasts.append({"text": ("Conectado: %s" if connected else "Desconectado: %s") % nm, "t": 0.0, "ok": connected, "dev": dev})
+	if not connected:
+		_cur.erase(dev)
+		_prev.erase(dev)
+		aliases.erase(dev)
+	pad_changed.emit(dev, connected)
+
+func _process(dt: float) -> void:
+	for tt in toasts:
+		tt["t"] += dt
+	toasts = toasts.filter(func(tt): return tt["t"] < 4.0)
+
+## Nome amigável do controle (o que a Godot/SDL informa, encurtado).
+func pad_name(dev: String) -> String:
+	if not dev.begins_with("joy"):
+		return label(dev)
+	var nm := Input.get_joy_name(int(dev.substr(3))).strip_edges()
+	var fam: String = {"ps": "PlayStation", "nintendo": "Nintendo", "xbox": "Xbox"}.get(pad_type(dev), "")
+	if nm == "":
+		return fam if fam != "" else "controle %d" % (int(dev.substr(3)) + 1)
+	if fam != "" and not (fam.to_lower() in nm.to_lower()):
+		nm = "%s (%s)" % [fam, nm]   # ex.: "PlayStation (Wireless Controller)"
+	return nm.substr(0, 34)
+
+## Família do controle, pelo nome: muda só os desenhos dos botões (a posição é a mesma).
+func pad_type(dev: String) -> String:
+	if not dev.begins_with("joy"):
+		return ""
+	return type_from_name(Input.get_joy_name(int(dev.substr(3))))
+
+static func type_from_name(nm: String) -> String:
+	var n := nm.to_lower().strip_edges()
+	for k in ["xbox", "xinput", "x-box", "microsoft"]:
+		if k in n:
+			return "xbox"
+	if n == "wireless controller":
+		return "ps"   # DualShock 4 no Windows aparece só assim
+	for k in ["dualsense", "dualshock", "ps5", "ps4", "ps3", "playstation", "sony"]:
+		if k in n:
+			return "ps"
+	for k in ["nintendo", "switch", "pro controller", "joy-con", "joycon"]:
+		if k in n:
+			return "nintendo"
+	for k in ["xbox", "xinput", "x-box", "microsoft"]:
+		if k in n:
+			return "xbox"
+	return "generico"
+
+## Família que aparece nas dicas da tela: a do primeiro controle conectado (Xbox se não houver).
+func main_pad_type() -> String:
+	for j in Input.get_connected_joypads():
+		return type_from_name(Input.get_joy_name(j))
+	return "xbox"
+
+## Vibra o controle do jogador (se for controle e a opção estiver ligada).
+func vibrate(p: int, weak: float, strong: float, dur: float) -> void:
+	if not vibration or p < 0 or p >= slots.size():
+		return
+	var dev: String = slots[p]
+	if dev.begins_with("joy"):
+		Input.start_joy_vibration(int(dev.substr(3)), clampf(weak, 0.0, 1.0), clampf(strong, 0.0, 1.0), dur)
 
 func _physics_process(_dt: float) -> void:
 	for dev in all_devices():
@@ -55,11 +129,12 @@ func _read(dev: String) -> Dictionary:
 		s["up"] = y < -0.45 or Input.is_joy_button_pressed(j, JOY_BUTTON_DPAD_UP)
 		s["down"] = y > 0.45 or Input.is_joy_button_pressed(j, JOY_BUTTON_DPAD_DOWN)
 		s["jump"] = Input.is_joy_button_pressed(j, JOY_BUTTON_A)
-		s["hammer"] = Input.is_joy_button_pressed(j, JOY_BUTTON_X) or Input.is_joy_button_pressed(j, JOY_BUTTON_RIGHT_SHOULDER)
+		s["hammer"] = Input.is_joy_button_pressed(j, JOY_BUTTON_X) or Input.is_joy_button_pressed(j, JOY_BUTTON_RIGHT_SHOULDER) \
+			or Input.get_joy_axis(j, JOY_AXIS_TRIGGER_RIGHT) > 0.5
 		s["item"] = Input.is_joy_button_pressed(j, JOY_BUTTON_Y) or Input.is_joy_button_pressed(j, JOY_BUTTON_B) \
-			or Input.is_joy_button_pressed(j, JOY_BUTTON_LEFT_SHOULDER)
+			or Input.is_joy_button_pressed(j, JOY_BUTTON_LEFT_SHOULDER) or Input.get_joy_axis(j, JOY_AXIS_TRIGGER_LEFT) > 0.5
 		s["start"] = Input.is_joy_button_pressed(j, JOY_BUTTON_START)
-		s["back"] = Input.is_joy_button_pressed(j, JOY_BUTTON_BACK)
+		s["back"] = Input.is_joy_button_pressed(j, JOY_BUTTON_BACK) or Input.is_joy_button_pressed(j, JOY_BUTTON_B)
 	return s
 
 var _keys := {}   # "tecla:posição" -> apertada (posição separa Ctrl/Shift esquerdo e direito)
@@ -105,6 +180,8 @@ func label(dev: String) -> String:
 	if dev.begins_with("joy"):
 		var nm := Input.get_joy_name(int(dev.substr(3)))
 		return "controle %d: %s" % [int(dev.substr(3)) + 1, nm.substr(0, 22)]
+	if dev.begins_with("v"):
+		return "controle virtual"
 	return dev
 
 func dev_held(dev: String, a: String) -> bool:

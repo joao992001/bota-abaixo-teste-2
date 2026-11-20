@@ -22,10 +22,11 @@ const PIECE_SCRIPTS := {
 const T := 64
 const MILESTONE := 1
 
-enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS, SUBMODOS, AJUSTES, EVENTOS }
+enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS, SUBMODOS, AJUSTES, EVENTOS, CONTROLES }
 var state := S.MENU
 var paused := false
-const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.SUBMODOS, S.AJUSTES, S.EVENTOS]
+const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.SUBMODOS, S.AJUSTES, S.EVENTOS, S.CONTROLES]
+var lost_pads: Array = []      # jogadores cujo controle desconectou no meio da partida (índices)
 var timer := 0.0
 var round_no := 0
 var players: Array = []      # {dev, color, score, piece, sel, unlock, cursor, ghost, placed, rep}
@@ -126,6 +127,7 @@ func _ready() -> void:
 	menus = Menus.new()
 	menus.setup(self)
 	add_child(menus)
+	PlayerInput.pad_changed.connect(_on_pad_changed)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
 		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats"):
@@ -139,6 +141,42 @@ func _ready() -> void:
 		load_options()
 
 ## Opções salvas no computador (user://opcoes.cfg).
+## Controle conectou/desconectou. Na entrada, quem perdeu o controle sai; na partida, o jogo pausa
+## até o controle voltar (o mesmo, ou qualquer outro livre apertando START/PULAR).
+func _on_pad_changed(dev: String, connected: bool) -> void:
+	var i: int = PlayerInput.slots.find(dev)
+	if connected:
+		if i >= 0:
+			lost_pads.erase(i)
+		return
+	if i < 0:
+		return
+	if state == S.JOIN:
+		players.remove_at(i)
+		PlayerInput.slots.remove_at(i)
+	elif state in [S.PICK, S.BUILD, S.RUN, S.SCORE, S.WIN]:
+		if not (i in lost_pads):
+			lost_pads.append(i)
+		if state != S.WIN:
+			paused = true
+			menus.pause_sel = 0
+
+## Enquanto falta controle: um controle livre que apertar START ou PULAR assume o jogador.
+func _reassign_lost_pads() -> bool:
+	if lost_pads.is_empty():
+		return false
+	for dev in PlayerInput.all_devices():
+		if dev in PlayerInput.slots or PlayerInput.is_keyboard(dev) or dev.begins_with("bot") or PlayerInput.aliases.has(dev):
+			continue
+		if PlayerInput.dev_pressed(dev, "start") or PlayerInput.dev_pressed(dev, "jump"):
+			var i: int = lost_pads.pop_front()
+			PlayerInput.slots[i] = dev
+			players[i]["dev"] = dev
+			PlayerInput.toasts.append({"text": "P%d agora joga com %s" % [i + 1, PlayerInput.pad_name(dev)], "t": 0.0, "ok": true, "dev": dev})
+			Audio.play("menu_ok")
+			return true
+	return false
+
 func save_options() -> void:
 	var cf := ConfigFile.new()
 	var full := DisplayServer.window_get_mode() in [DisplayServer.WINDOW_MODE_FULLSCREEN, DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN]
@@ -147,6 +185,7 @@ func save_options() -> void:
 	cf.set_value("opcoes", "bots", bot_level)
 	cf.set_value("opcoes", "musica", Audio.music_vol)
 	cf.set_value("opcoes", "efeitos", Audio.sfx_vol)
+	cf.set_value("opcoes", "vibracao", PlayerInput.vibration)
 	cf.save("user://opcoes.cfg")
 
 func load_options() -> void:
@@ -155,6 +194,7 @@ func load_options() -> void:
 		return
 	shake_on = cf.get_value("opcoes", "tremor", true)
 	bot_level = cf.get_value("opcoes", "bots", 1)
+	PlayerInput.vibration = cf.get_value("opcoes", "vibracao", true)
 	Audio.set_volumes(cf.get_value("opcoes", "musica", 6), cf.get_value("opcoes", "efeitos", 8))
 	if not cf.get_value("opcoes", "tela_cheia", true):
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
@@ -162,6 +202,7 @@ func load_options() -> void:
 ## Volta ao menu principal: sem jogadores, arena da Demolição ao fundo.
 func go_menu() -> void:
 	paused = false
+	lost_pads.clear()
 	events.reset_round()
 	_clear_robots()
 	for pc in pieces:
@@ -209,6 +250,8 @@ func _update_music() -> void:
 
 func _physics_process(dt: float) -> void:
 	_update_music()
+	if _reassign_lost_pads():
+		return   # o START que assumiu o controle não conta como "continuar"
 	if paused:
 		menus.update_pause()
 		hud.queue_redraw()
@@ -369,6 +412,14 @@ func _join_update() -> void:
 			players[i]["model"] = posmod(players[i]["model"] + 1, Data.MODELS.size())
 		if PlayerInput.pressed(i, "hammer"):
 			players[i]["acc"] = posmod(players[i]["acc"] + 1, Data.ACCS.size())
+		if PlayerInput.pressed(i, "item") and not PlayerInput.held(i, "back") and not players[i].get("bot", false):
+			# ITEM: adiciona bot; com a mesa cheia, tira os bots
+			if players.size() < 4:
+				add_bot()
+			else:
+				while players.size() > 0 and players[-1].get("bot", false):
+					remove_last_bot()
+			break
 	if players.size() >= 2:
 		for i in players.size():
 			if PlayerInput.pressed(i, "start"):
@@ -411,6 +462,7 @@ func dmg_color(d: float) -> Color:
 	return Color("#f08a3d").lerp(Color("#d42035"), clampf((d - 100.0) / 60.0, 0.0, 1.0))
 
 func start_match() -> void:
+	lost_pads.clear()
 	for p in players:
 		p["score"] = 0
 		p["stats"] = {"derrubadas": 0, "caixotes": 0, "quedas": 0}
