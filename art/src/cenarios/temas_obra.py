@@ -256,8 +256,11 @@ def dem_fundo():
     b.append(f'<rect x="120" y="830" width="260" height="90" rx="20" fill="{cr}"/><rect x="170" y="760" width="120" height="80" fill="{cr}"/>'
              f'<rect x="186" y="774" width="50" height="40" fill="#e9e0d4"/>')
     b.append(lattice(260, 800, 640, 210, 18, cr, 34))
-    b.append(f'<path d="M640,210 Q660,330 620,460" stroke="#c4b6ac" stroke-width="4" fill="none"/>'
-             f'<circle cx="612" cy="510" r="52" fill="#c2b3aa"/><circle cx="596" cy="494" r="14" fill="#d8ccc3"/>')
+    # garra de demolição (não uma bola: a arena Bola tem a bola de verdade e o fundo não pode imitar perigo)
+    b.append(f'<path d="M640,210 V430" stroke="#c4b6ac" stroke-width="4" fill="none"/>'
+             f'<rect x="618" y="428" width="44" height="26" rx="6" fill="#c2b3aa"/>'
+             f'<path d="M622,450 L588,500 L604,548 L618,540 L608,506 L634,456 Z" fill="#c2b3aa"/>'
+             f'<path d="M658,450 L692,500 L676,548 L662,540 L672,506 L646,456 Z" fill="#c2b3aa"/>')
     # prédio velho meio desmoronado (direita): fachada + cômodos expostos com papel de parede
     fx, fw, top = 900, 760, 260
     facade = (f"M{fx},1080 V{top} H{fx + 330} L{fx + 380},{top + 70} L{fx + 430},{top + 40} L{fx + 470},{top + 170} "

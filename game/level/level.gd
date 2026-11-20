@@ -30,9 +30,9 @@ const THEMES := {
 	"cidade": {"crack": "#3a1c14", "rope": "#3e3f5a"},
 	"demolicao": {"crack": "#3e2c2a", "rope": "#6e625c"},
 	"viaduto": {"crack": "#363a4c", "rope": "#4f4a5e"},
-	"pantano": {"crack": "#2e3a1c", "rope": "#6b5a3a"},
-	"mina": {"crack": "#2a1e18", "rope": "#8a6a47"},
-	"serraria": {"crack": "#4a2c14", "rope": "#8a6a47"},
+	"pantano": {"crack": "#3a2a1e", "rope": "#d1b67c"},
+	"mina": {"crack": "#2e2428", "rope": "#b88d5c"},
+	"serraria": {"crack": "#4a2c1c", "rope": "#9a6b3c"},
 	"ferro_velho": {"crack": "#3a2a2c", "rope": "#5c4a3e"},
 	"fundicao": {"crack": "#241c2a", "rope": "#8c8496"},
 }

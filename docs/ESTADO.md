@@ -12,7 +12,10 @@ Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controle
 - **12 itens:** TNT, furadeira, cola, teletransporte, raio laser, bomba de vórtice, soprador, raio congelante (botão ITEM) ·
   martelão, ímã, botas de mola, bota-foguete (automáticos). Ferramentas aparecem na mão ao usar.
 - **9 eventos** configuráveis; Amassômetro (dano % aumenta o empurrão); aderência limitada na parede/borda com medidor.
-- **Temas de arena:** Canteiro, Fábrica, Porto e Cidade à noite (blocos, tábuas e fundo animado por tema; `tema:` no .lvl).
+- **Temas de arena (um por arena, sem caixote padrão):** Canteiro→canteiro, Demolição→canteiro, Bola→demolicao,
+  Ponte→viaduto, Maré→pantano, Paiol→mina, Gangorras→serraria, Prensa→ferro_velho, Fornalha→fundicao, Esteiras→fabrica,
+  Guindastes→porto, Torre→cidade. Arte em `art/src/cenarios/temas*.py`; ambiente animado em `game/level/background.gd`.
+  Miniaturas da escolha de arena: `-- --arenas=DIR` e copiar `arena_*.png` para `game/assets/ui/`.
 - **Garagem (personalização):** 8 robôs salvos em `user://garagem.cfg` — modelo, cor livre (16), cor 2, padrão (5),
   chapéu (16), rosto (6), ferramenta (6), comemoração (4). Na entrada, ▲▼ passa pelos 4 robôs de fábrica e pelos da Garagem.
   A cor do jogador só identifica (setinha "P1" acima da cabeça, placar). Bots sorteiam um robô. Prancha: `-- --skins=DIR`.
