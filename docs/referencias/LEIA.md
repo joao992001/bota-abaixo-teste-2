@@ -6,3 +6,5 @@ Imagens enviadas pelo usuário como referência de **estilo** (uso interno). Cop
 | ref2_cartoon_gelo_explosao.png | captura enviada (cartoon com gelo e explosão) | blocos de vidro/gelo, explosões, mapa Cais Noturno |
 | ref3_heave_ho.png | Heave Ho | céu pastel, nuvens, pilares pintados, espinhos, mapa Andaimes |
 | ref4_ultimate_chicken_horse.png | Ultimate Chicken Horse | carisma dos personagens, acessórios, tons de fundo |
+| ref5_usuario_cenario.png | enviada pelo usuário (2026-11-20) | **estilo final do Canteiro**: céu pastel, caixotes com X, andaime, tábua pendurada, peças |
+| ref6_usuario_robos.png | enviada pelo usuário (2026-11-20) | **estilo final dos robôs**: 4 modelos (Lata, TV, Baixinho, Pescoção), giz, sem contorno |

@@ -1,7 +1,10 @@
 extends Node
 ## Dados do jogo lidos de ../data/*.json e ../levels/*.lvl (nunca números fixos no código).
 
-const COLORS := [Color("#2f8ff0"), Color("#5fd35f"), Color("#ff6fb5"), Color("#ffd23f")]
+const COLORS := [Color("#4f86d9"), Color("#5cc45c"), Color("#f06aa8"), Color("#f2c84b")]
+const TEXT_COLORS := [Color("#3a6cc0"), Color("#3c9a46"), Color("#e0508f"), Color("#d9a521")]  # placar sobre fundo claro
+const MODELS := ["lata", "tv", "baixinho", "pescocao"]
+const MODEL_NAMES := ["Lata", "TV", "Baixinho", "Pescoção"]
 const COLOR_NAMES := ["Azul", "Verde", "Rosa", "Amarelo"]
 const DANGER := Color("#d42035")
 const INK := Color("#2a1a2e")
@@ -14,11 +17,14 @@ var ctrl: Dictionary
 var scoring: Dictionary
 var pieces := {}
 var root_dir := ""
+var robot_meta := {}   # art/out/game/robo/modelos.json: quadris, ombros, mãos, chapéu por modelo
 
 func _ready() -> void:
 	root_dir = ProjectSettings.globalize_path("res://").path_join("..").simplify_path()
 	ctrl = read_json("data/controller.json")
 	scoring = read_json("data/scoring.json")
+	if FileAccess.file_exists("res://assets/robo/modelos.json"):
+		robot_meta = JSON.parse_string(FileAccess.get_file_as_string("res://assets/robo/modelos.json"))
 	for p in read_json("data/pieces.json")["pecas"]:
 		pieces[p["id"]] = p
 

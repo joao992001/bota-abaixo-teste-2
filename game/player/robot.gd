@@ -26,7 +26,7 @@ var was_on_floor := true
 var spin := 0.0
 var vis: Node2D
 
-func setup(p: int, col_idx: int, m: Node, acc := 0) -> void:
+func setup(p: int, col_idx: int, m: Node, acc := 0, model := 0) -> void:
 	pid = p
 	color_idx = col_idx
 	main = m
@@ -43,7 +43,7 @@ func setup(p: int, col_idx: int, m: Node, acc := 0) -> void:
 	add_child(cs)
 	floor_snap_length = 6.0
 	vis = Vis.new()
-	vis.setup(col_idx, acc)
+	vis.setup(col_idx, acc, model)
 	add_child(vis)
 
 func rect() -> Rect2:

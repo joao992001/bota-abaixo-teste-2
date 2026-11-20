@@ -13,3 +13,4 @@
 - 2026-11-20 · Peças sem dono na esteira de escolha aparecem em cinza neutro — sessão principal.
 - 2026-11-20 · Arte do Marco 1 feita na sessão principal (artistas interrompidos), gerada por script SVG→PNG em art/src/ — sessão principal.
 - 2026-11-20 · Estilo v2 após feedback: traço de mão, tinta, blocos em massa (autotile), robôs com membros finos, arte em 3–4x renderizada pelo Chromium (tools/render_svg.js) e câmera que aproxima até 1,6x na corrida — usuário + sessão principal.
+- 2026-11-20 · **Estilo final = imagens do usuário** (docs/referencias/ref5_usuario_cenario.png e ref6_usuario_robos.png): papel recortado sem contorno, textura de giz, céu pastel, caixotes com X; 4 modelos de robô (Lata, TV, Baixinho, Pescoção) escolhidos na entrada; cores P1–P4 = #4f86d9 #5cc45c #f06aa8 #f2c84b; espinhos e serra sem vermelho (como na referência); sem plateia; câmera até 1,9x — usuário.

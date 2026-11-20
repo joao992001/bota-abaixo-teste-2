@@ -38,7 +38,8 @@ func load_level(level_id: String) -> void:
 				elevator_cell = c
 				goal_rect = Rect2(x * T + 8, (y - 1) * T, T - 16, 2 * T)
 			elif ch == "^":
-				hazard_rects.append(Rect2(x * T + 6, y * T + 26, T - 12, T - 26))
+				# espinhos altos (1,5 tile), em pé no fundo do poço
+				hazard_rects.append(Rect2(x * T + 4, y * T + T - 100, T - 8, 100))
 	_build_colliders()
 	queue_redraw()
 
@@ -48,7 +49,7 @@ func ch_at(c: Vector2i) -> String:
 	return String(grid[c.y])[c.x]
 
 func is_solid(c: Vector2i) -> bool:
-	return ch_at(c) in ["#", "o"]
+	return ch_at(c) in ["#", "o", "I"]
 
 func can_build(c: Vector2i) -> bool:
 	return ch_at(c) == "."
@@ -66,7 +67,7 @@ func _build_colliders() -> void:
 		var x := 0
 		while x < cols:
 			var ch := ch_at(Vector2i(x, y))
-			if ch == "o":
+			if ch == "o" or ch == "I":
 				ch = "#"
 			if ch != "#" and ch != "=":
 				x += 1
@@ -90,7 +91,7 @@ func _build_colliders() -> void:
 
 # ---------- formas simples (substituídas pela arte quando existir) ----------
 func _draw() -> void:
-	if Data.tex("cenario/oneway") != null:
+	if Data.tex("cenario/tabua") != null:
 		_draw_art()
 		return
 	for y in rows:
@@ -124,20 +125,75 @@ func _draw() -> void:
 
 func _draw_art() -> void:
 	var tile := Vector2(T, T)
+	_draw_ropes_and_planks()
+	_draw_scaffolds()
 	for y in rows:
 		for x in cols:
 			var c := Vector2i(x, y)
 			var pos := Vector2(x * T, y * T)
 			match ch_at(c):
-				"#", "o":
-					draw_texture_rect(Data.tex(block_tex(c)), Rect2(pos, tile), false)
-				"=":
-					draw_texture_rect(Data.tex("cenario/oneway"), Rect2(pos, tile), false)
+				"#":
+					draw_texture_rect(Data.tex("cenario/caixote_%d" % ((x * 7 + y * 3) % 3)), Rect2(pos, tile), false)
 				"^":
-					draw_texture_rect(Data.tex("cenario/lama"), Rect2(pos, tile), false)
-					draw_texture_rect(Data.tex("cenario/espinho"), Rect2(pos + Vector2(0, 4), tile), false)
+					draw_texture_rect(Data.tex("cenario/espinho_%d" % ((x * 5 + y) % 3)), Rect2(pos + Vector2(0, T - 128), Vector2(T, 128)), false)
 	if elevator_cell.x >= 0:
 		draw_texture_rect(Data.tex("cenario/elevador"), Rect2(elevator_cell.x * T - 32, (elevator_cell.y - 2) * T, 128, 192), false)
+
+## Tábuas one-way penduradas por cordas que sobem até fora da tela.
+func _draw_ropes_and_planks() -> void:
+	var rope := Color("#8a6a47")
+	for y in rows:
+		var x := 0
+		while x < cols:
+			if ch_at(Vector2i(x, y)) != "=":
+				x += 1
+				continue
+			var x0 := x
+			while x < cols and ch_at(Vector2i(x, y)) == "=":
+				x += 1
+			for rx in [x0 * T + 48.0, x * T - 48.0]:
+				var pts := PackedVector2Array()
+				for k in 25:
+					var yy := lerpf(-200.0, y * T + 6.0, k / 24.0)
+					pts.append(Vector2(rx + sin(k * 1.7 + rx) * 1.2, yy))
+				draw_polyline(pts, rope, 3.5, true)
+			for xx in range(x0, x):
+				draw_texture_rect(Data.tex("cenario/tabua"), Rect2(xx * T, y * T, T, 16), false)
+
+## Andaime de aço (células 'o'): postes, travessas e X, com tábua no topo.
+func _draw_scaffolds() -> void:
+	var seen := {}
+	var steel := Color("#7f8f9a")
+	var lite := Color("#9aa8b2")
+	for y in rows:
+		for x in cols:
+			var c := Vector2i(x, y)
+			if ch_at(c) != "o" or seen.has(c):
+				continue
+			var x1 := x
+			while ch_at(Vector2i(x1 + 1, y)) == "o":
+				x1 += 1
+			var y1 := y
+			while ch_at(Vector2i(x, y1 + 1)) == "o":
+				y1 += 1
+			for yy in range(y, y1 + 1):
+				for xx in range(x, x1 + 1):
+					seen[Vector2i(xx, yy)] = true
+			var r := Rect2(x * T + 6, y * T + 14, (x1 - x + 1) * T - 12, (y1 - y + 1) * T + 40)
+			var step := 100.0
+			var yy0 := r.position.y
+			while yy0 < r.end.y:
+				var yy1 := minf(yy0 + step, r.end.y)
+				draw_line(Vector2(r.position.x, yy0), Vector2(r.end.x, yy1), steel, 5.0, true)
+				draw_line(Vector2(r.end.x, yy0), Vector2(r.position.x, yy1), steel, 5.0, true)
+				draw_line(Vector2(r.position.x - 4, yy1), Vector2(r.end.x + 4, yy1), steel, 5.0, true)
+				draw_line(Vector2(r.position.x, yy0 + 2), Vector2(r.end.x, yy1 + 2), lite, 1.2, true)
+				yy0 = yy1
+			for px in [r.position.x, r.end.x]:
+				draw_line(Vector2(px, r.position.y), Vector2(px, r.end.y), steel, 6.0, true)
+				draw_line(Vector2(px - 1.5, r.position.y), Vector2(px - 1.5, r.end.y), lite, 1.2, true)
+			for xx in range(x, x1 + 1):
+				draw_texture_rect(Data.tex("cenario/tabua"), Rect2(xx * T, y * T, T, 22), false)
 
 ## Autotile: cada bloco escolhe a variante pelas faces expostas (topo, direita, esquerda, base, canto).
 func block_tex(c: Vector2i) -> String:

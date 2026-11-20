@@ -299,8 +299,8 @@ func shots(dir: String) -> void:
 	await frames(3)
 	# peças de exemplo já na obra
 	place("P01", 2, Vector2i(9, 9))
-	place("P03", 1, Vector2i(17, 11))
-	place("P02", 3, Vector2i(11, 11))
+	place("P03", 1, Vector2i(19, 11))
+	place("P02", 3, Vector2i(8, 11))
 	place("P04", 0, Vector2i(21, 11))
 	for k in 4:
 		main.players[k]["cursor"] = [Vector2i(14, 6), Vector2i(19, 4), Vector2i(6, 6), Vector2i(23, 8)][k]
@@ -315,7 +315,7 @@ func shots(dir: String) -> void:
 	await steer(["v0", "v1", "v2", "v3"], 50)
 	await snap(dir, "4_corrida")
 	# prancha: 4 robôs espalhados pela obra (posições escolhidas, sem física)
-	var spots := [Vector2(560, 768), Vector2(930, 520), Vector2(680, 576), Vector2(1190, 768)]
+	var spots := [Vector2(560, 768), Vector2(930, 520), Vector2(680, 576), Vector2(1335, 768)]
 	for k in 4:
 		var r = main.robots[k]
 		r.active = false
@@ -347,13 +347,14 @@ func shots(dir: String) -> void:
 	sheet.draw.connect(func():
 		sheet.draw_texture_rect(Data.tex("cenario/fundo_canteiro"), Rect2(0, 0, 1920, 1080), false)
 		var Vis = load("res://player/robot_visual.gd")
+		sheet.draw_rect(Rect2(0, 0, 1920, 1080), Color("#9fe3ee"))
 		var ex := ["normal", "esforco", "susto", "vitoria", "eliminado"]
+		for k in 4:  # os 4 modelos em azul, como em versoes.png
+			Vis.draw_robot(sheet, 0, "normal", 0.0, 0.0, false, 0, false, Transform2D(0.0, Vector2(4.2, 4.2), 0.0, Vector2(230 + k * 480, 520)), k)
+		for k in 4:  # cores, chapéus e expressões
+			Vis.draw_robot(sheet, k, ex[k + 1], 0.0, 0.0, false, (k + 1) % 4, false, Transform2D(0.0, Vector2(2.2, 2.2), 0.0, Vector2(200 + k * 250, 1010)), (k + 1) % 4)
 		for k in 4:
-			Vis.draw_robot(sheet, k, "normal", 0.0, 0.0, false, (k + 1) % 4, false, Transform2D(0.0, Vector2(3.4, 3.4), 0.0, Vector2(250 + k * 470, 470)))
-		for k in 5:
-			Vis.draw_robot(sheet, (k + 1) % 4, ex[k], 0.0, 0.0, false, 0, false, Transform2D(0.0, Vector2(2.2, 2.2), 0.0, Vector2(200 + k * 380, 820)))
-		for k in 4:
-			Vis.draw_robot(sheet, k, "normal", 0.0, 1.0 + k, true, k % 4, false, Transform2D(0.0, Vector2(1, 1), 0.0, Vector2(780 + k * 110, 1040)))
+			Vis.draw_robot(sheet, k, "normal", 0.0, 1.0 + k, true, 0, false, Transform2D(0.0, Vector2(1, 1), 0.0, Vector2(1260 + k * 150, 1000)), k)
 	)
 	layer.add_child(sheet)
 	await frames(3)

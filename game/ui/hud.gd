@@ -11,22 +11,27 @@ const PIECE_HINT := {
 	"P04": "a favor do dono",
 }
 
+const OUTLINE := Color("#1f4f5a")
+const DIM := Color(0.12, 0.35, 0.4, 0.45)
 var main: Node
 var font: Font
 
 func _ready() -> void:
-	font = ThemeDB.fallback_font
+	var fv := FontVariation.new()
+	fv.base_font = ThemeDB.fallback_font
+	fv.variation_embolden = 0.7
+	font = fv
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	size = Vector2(1920, 1080)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func text(pos: Vector2, s: String, sz: int, col: Color, align := HORIZONTAL_ALIGNMENT_LEFT, w := -1.0, outline := 0) -> void:
 	if outline > 0:
-		draw_string_outline(font, pos, s, align, w, sz, outline, Data.INK)
+		draw_string_outline(font, pos, s, align, w, sz, outline, OUTLINE)
 	draw_string(font, pos, s, align, w, sz, col)
 
-func panel(r: Rect2, col := Color("#2a1a2e")) -> void:
-	draw_rect(r.grow(6), Data.INK)
+func panel(r: Rect2, col := Color("#2f7f8c")) -> void:
+	draw_rect(r.grow(5), Color(1, 1, 1, 0.35))
 	draw_rect(r, col)
 
 func _draw() -> void:
@@ -49,46 +54,32 @@ func _draw() -> void:
 		text(Vector2(20, 1060), "DEBUG  F2 pula fase · F3 peça: %s · F4 dono: P%d · clique coloca/remove · F6 lento" % [PIECE_NAMES[ids[main.debug_piece]], main.debug_owner + 1], 22, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT, -1, 6)
 
 func _draw_strip() -> void:
-	draw_rect(Rect2(0, 0, 1920, 56), Color("#22152a"))
-	draw_rect(Rect2(0, 52, 1920, 4), Data.INK)
+	draw_rect(Rect2(0, 0, 1920, 56), Color(0.79, 0.94, 0.96, 0.9))
 	var S = main.S
 	for i in main.players.size():
 		var p: Dictionary = main.players[i]
-		var x = 30 + i * 260
-		var col: Color = Data.COLORS[p["color"]]
-		draw_circle(Vector2(x + 20, 27), 19, Data.INK)
-		draw_circle(Vector2(x + 20, 27), 15, col)
-		Piece.draw_symbol(self, p["color"], Vector2(x + 20, 27), 8, Data.INK)
-		text(Vector2(x + 48, 40), "P%d  %d" % [i + 1, p["score"]], 30, col)
-		if main.state == S.RUN and i < main.robots.size():
-			var r = main.robots[i]
-			if r.hammer_left > 0:
-				draw_rect(Rect2(x + 170, 16, 26, 14), Color("#9aa3af"))
-				draw_rect(Rect2(x + 181, 30, 5, 14), Color("#c98b4e"))
-			if r.finished:
-				text(Vector2(x + 205, 40), "✓", 30, Color.WHITE)
-			elif not r.alive:
-				text(Vector2(x + 205, 40), "✗", 30, Color("#9aa3af"))
+		text(Vector2(40 + i * 260, 42), "P%d %d" % [i + 1, p["score"]], 34, Data.TEXT_COLORS[p["color"]])
 	var names := {S.JOIN: "ENTRADA", S.PICK: "ESCOLHA", S.BUILD: "CONSTRUÇÃO", S.RUN: "CORRIDA", S.SCORE: "PLACAR", S.WIN: "VITÓRIA"}
 	var label: String = names[main.state]
 	if main.state in [S.PICK, S.BUILD, S.RUN, S.SCORE]:
 		label = "RODADA %d · %s · %d" % [main.round_no, label, ceili(maxf(main.timer, 0.0))]
-	text(Vector2(1200, 40), label, 30, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT, 690)
+	text(Vector2(1200, 42), label, 34, Color("#2c5f6b"), HORIZONTAL_ALIGNMENT_RIGHT, 700)
 
 func _draw_join() -> void:
-	draw_rect(Rect2(0, 56, 1920, 1024), Color(0.1, 0.05, 0.12, 0.55))
+	draw_rect(Rect2(0, 56, 1920, 1024), DIM)
 	text(Vector2(0, 250), "BOTA-ABAIXO", 120, Color("#ffd23f"), HORIZONTAL_ALIGNMENT_CENTER, 1920, 28)
-	text(Vector2(0, 320), "Aperte PULAR para entrar  ·  ◄ ► cor  ·  ▲ ▼ chapéu  ·  ENTER / START começa (2+)", 32, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 8)
+	text(Vector2(0, 320), "Aperte PULAR para entrar  ·  ◄ ► cor  ·  ▲ ▼ modelo  ·  MARRETA chapéu  ·  ENTER / START começa (2+)", 32, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 8)
 	for i in 4:
 		var r := Rect2(240 + i * 370, 400, 330, 420)
-		panel(r, Color("#3b2a46"))
+		panel(r)
 		if i < main.players.size():
 			var p: Dictionary = main.players[i]
 			var col: Color = Data.COLORS[p["color"]]
-			RobotVis.draw_robot(self, p["color"], "normal", 0.0, Time.get_ticks_msec() / 400.0, false, p["acc"], false, Transform2D(0.0, Vector2(2.3, 2.3), 0.0, r.get_center() + Vector2(-14, 140)))
+			RobotVis.draw_robot(self, p["color"], "normal", 0.0, Time.get_ticks_msec() / 400.0, false, p["acc"], false, Transform2D(0.0, Vector2(2.6, 2.6), 0.0, r.get_center() + Vector2(-10, 150)), p["model"])
 			draw_set_transform(Vector2.ZERO)
 			text(r.position + Vector2(0, 52), "P%d" % (i + 1), 46, col, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 10)
-			text(r.position + Vector2(0, 390), "◄ %s ►  ▲▼ %s" % [Data.COLOR_NAMES[p["color"]], Data.ACC_NAMES[p["acc"]]], 22, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+			text(r.position + Vector2(0, 382), "◄ %s ►   ▲▼ %s" % [Data.COLOR_NAMES[p["color"]], Data.MODEL_NAMES[p["model"]]], 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 6)
+			text(r.position + Vector2(0, 412), "marreta: %s" % Data.ACC_NAMES[p["acc"]], 20, Color("#d9f3f6"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		else:
 			text(r.position + Vector2(0, 220), "livre", 40, Color(1, 1, 1, 0.4), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	text(Vector2(0, 900), "Teclado A: WASD + Espaço + Shift   ·   Teclado B: setas + Ctrl + Enter num.   ·   Controle: A pula, X marreta", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
@@ -100,7 +91,7 @@ func _dev_name(dev: String) -> String:
 	return "controle" if dev.begins_with("joy") else dev
 
 func _draw_pick() -> void:
-	draw_rect(Rect2(0, 56, 1920, 1024), Color(0.1, 0.05, 0.12, 0.45))
+	draw_rect(Rect2(0, 56, 1920, 1024), DIM)
 	text(Vector2(0, 300), "ESCOLHA SUA PEÇA", 72, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 16)
 	text(Vector2(0, 360), "quem tem menos pontos escolhe primeiro  ·  ◄ ► e PULAR", 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 8)
 	var n: int = main.conveyor.size()
@@ -140,7 +131,7 @@ func _draw_run() -> void:
 		text(Vector2(0, 520), s, 130, Color("#ffd23f"), HORIZONTAL_ALIGNMENT_CENTER, 1920, 28)
 
 func _draw_score() -> void:
-	draw_rect(Rect2(0, 56, 1920, 1024), Color(0.1, 0.05, 0.12, 0.55))
+	draw_rect(Rect2(0, 56, 1920, 1024), DIM)
 	var target := int(Data.scoring["target_points"])
 	text(Vector2(0, 230), "PLACAR · meta %d" % target, 72, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 16)
 	if main.round_points.size() > 0 and main.round_points[0]["all_finished"]:
@@ -154,8 +145,8 @@ func _draw_score() -> void:
 		var col = main.player_color(i)
 		text(Vector2(260, y + 60), "P%d" % (i + 1), 56, col, HORIZONTAL_ALIGNMENT_LEFT, -1, 10)
 		var bar := Rect2(380, y + 10, 1000, 60)
-		draw_rect(bar.grow(5), Data.INK)
-		draw_rect(bar, Color("#3b2a46"))
+		draw_rect(bar.grow(4), Color(1, 1, 1, 0.5))
+		draw_rect(bar, Color("#2f7f8c"))
 		var prev: int = p["score"] - int(b.get("total", 0))
 		draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(float(p["score"]) / target, 0, 1), bar.size.y)), col.darkened(0.35))
 		draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(float(prev) / target, 0, 1), bar.size.y)), col)
@@ -168,10 +159,10 @@ func _draw_score() -> void:
 		text(Vector2(380, y + 110), "  ".join(parts) if parts.size() > 0 else "+0", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT, -1, 6)
 
 func _draw_win() -> void:
-	draw_rect(Rect2(0, 56, 1920, 1024), Color(0.1, 0.05, 0.12, 0.6))
+	draw_rect(Rect2(0, 56, 1920, 1024), DIM)
 	var w: int = main.winner
 	var col = main.player_color(w)
-	RobotVis.draw_robot(self, main.players[w]["color"], "vitoria", 0.0, Time.get_ticks_msec() / 300.0, true, main.players[w]["acc"], false, Transform2D(0.0, Vector2(4, 4), 0.0, Vector2(960, 800)))
+	RobotVis.draw_robot(self, main.players[w]["color"], "vitoria", 0.0, Time.get_ticks_msec() / 300.0, true, main.players[w]["acc"], false, Transform2D(0.0, Vector2(4, 4), 0.0, Vector2(960, 820)), main.players[w]["model"])
 	draw_set_transform(Vector2.ZERO)
 	text(Vector2(0, 330), "P%d VENCEU!" % (w + 1), 140, col, HORIZONTAL_ALIGNMENT_CENTER, 1920, 30)
 	text(Vector2(0, 900), "PULAR ou START para jogar de novo", 36, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 8)

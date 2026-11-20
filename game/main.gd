@@ -53,7 +53,7 @@ var hud: Hud
 var rng := RandomNumberGenerator.new()
 var cam_zoom := 1.0
 var cam_center := Vector2(960, 512)
-const CAM_MAX := 1.6
+const CAM_MAX := 1.9
 
 func _ready() -> void:
 	rng.randomize()
@@ -79,14 +79,6 @@ func _ready() -> void:
 	overlay = Node2D.new()
 	overlay.draw.connect(_draw_overlay)
 	world.add_child(overlay)
-	var crowd := Sprite2D.new()
-	crowd.texture = Data.tex("cenario/plateia")
-	crowd.centered = false
-	crowd.position = Vector2(0, 1080 - 160)
-	crowd.scale = Vector2(0.5, 0.5)
-	var crowd_layer := CanvasLayer.new()
-	add_child(crowd_layer)
-	crowd_layer.add_child(crowd)
 	var hud_layer := CanvasLayer.new()
 	add_child(hud_layer)
 	hud = Hud.new()
@@ -195,8 +187,10 @@ func _join_update() -> void:
 		if PlayerInput.pressed(i, "right"):
 			_cycle_color(i, 1)
 		if PlayerInput.pressed(i, "up"):
-			players[i]["acc"] = posmod(players[i]["acc"] - 1, Data.ACCS.size())
+			players[i]["model"] = posmod(players[i]["model"] - 1, Data.MODELS.size())
 		if PlayerInput.pressed(i, "down"):
+			players[i]["model"] = posmod(players[i]["model"] + 1, Data.MODELS.size())
+		if PlayerInput.pressed(i, "hammer"):
 			players[i]["acc"] = posmod(players[i]["acc"] + 1, Data.ACCS.size())
 	if players.size() >= 2:
 		for i in players.size():
@@ -209,7 +203,7 @@ func add_player(dev: String) -> void:
 	var col := 0
 	while col in used:
 		col += 1
-	players.append({"dev": dev, "color": col, "acc": (players.size() + 1) % Data.ACCS.size(), "score": 0})
+	players.append({"dev": dev, "color": col, "acc": 0, "model": players.size() % Data.MODELS.size(), "score": 0})
 	PlayerInput.slots.append(dev)
 
 func _cycle_color(i: int, d: int) -> void:
@@ -390,7 +384,7 @@ func start_run() -> void:
 	round_hammer = {}
 	for i in players.size():
 		var r: CharacterBody2D = Robot.new()
-		r.setup(i, players[i]["color"], self, players[i]["acc"])
+		r.setup(i, players[i]["color"], self, players[i]["acc"], players[i]["model"])
 		r.position = level.spawns.get(i + 1, level.spawns[1])
 		robots_root.add_child(r)
 		robots.append(r)
