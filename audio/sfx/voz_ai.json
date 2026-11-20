@@ -1,0 +1,17 @@
+{
+ "wave": "square",
+ "duty": 0.25,
+ "freq_start": 950,
+ "freq_end": 520,
+ "duration": 0.12,
+ "attack": 0.002,
+ "decay": 0.04,
+ "sustain": 0.6,
+ "release": 0.05,
+ "vibrato_depth": 1.2,
+ "vibrato_rate": 30,
+ "lowpass": 0.5,
+ "volume": 0.22,
+ "variations": 3,
+ "pitch_jitter": 0.06
+}

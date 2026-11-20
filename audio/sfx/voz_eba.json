@@ -1,0 +1,23 @@
+{
+ "wave": "square",
+ "duty": 0.25,
+ "freq_start": 650,
+ "duration": 0.24,
+ "arpeggio": [
+  0,
+  4,
+  7,
+  12
+ ],
+ "arp_speed": 0.06,
+ "attack": 0.002,
+ "decay": 0.04,
+ "sustain": 0.6,
+ "release": 0.08,
+ "vibrato_depth": 0.3,
+ "vibrato_rate": 14,
+ "lowpass": 0.55,
+ "volume": 0.25,
+ "variations": 2,
+ "pitch_jitter": 0.04
+}

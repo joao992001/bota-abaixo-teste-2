@@ -47,6 +47,12 @@ func move_h() -> int:
 
 func update(dt: float) -> void:
 	t += dt
+	if move_v() != 0 or move_h() != 0:
+		Audio.play("menu_mover")
+	if pressed("back"):
+		Audio.play("menu_voltar")
+	elif confirm():
+		Audio.play("menu_ok")
 	shake_card = maxf(shake_card - dt, 0.0)
 	var S = main.S
 	match main.state:
@@ -72,6 +78,7 @@ func update(dt: float) -> void:
 						main.go_join()
 				else:
 					shake_card = 0.35
+					Audio.play("menu_negado")
 			elif pressed("back"):
 				main.state = S.MENU
 		S.HOWTO:
@@ -89,7 +96,7 @@ func update(dt: float) -> void:
 			elif pressed("back"):
 				main.state = S.MODES
 		S.OPTIONS:
-			opt_sel = posmod(opt_sel + move_v(), 4)
+			opt_sel = posmod(opt_sel + move_v(), 6)
 			var h := move_h()
 			var c := confirm()
 			if opt_sel == 0 and (h != 0 or c):
@@ -98,8 +105,15 @@ func update(dt: float) -> void:
 				main.shake_on = not main.shake_on
 			elif opt_sel == 2 and (h != 0 or c):
 				main.bot_level = posmod(main.bot_level + (h if h != 0 else 1), 3)
-			elif opt_sel == 3 and c:
+			elif opt_sel == 3 and h != 0:
+				Audio.set_volumes(Audio.music_vol + h, Audio.sfx_vol)
+			elif opt_sel == 4 and h != 0:
+				Audio.set_volumes(Audio.music_vol, Audio.sfx_vol + h)
+				Audio.play("caixote_pancada")
+			elif opt_sel == 5 and c:
 				main.state = S.MENU
+			if h != 0 or c:
+				main.save_options()
 			if pressed("back"):
 				main.state = S.MENU
 
@@ -294,11 +308,16 @@ func _draw_options(ci: CanvasItem) -> void:
 		"TELA CHEIA:  %s" % ("SIM" if full else "NÃO"),
 		"TREMOR DA TELA:  %s" % ("SIM" if main.shake_on else "NÃO"),
 		"BOTS:  %s" % main.bots.LEVEL_NAMES[main.bot_level].to_upper(),
+		"MÚSICA:  ◄ %s ►" % _bar(Audio.music_vol),
+		"EFEITOS:  ◄ %s ►" % _bar(Audio.sfx_vol),
 		"VOLTAR",
 	]
 	for i in items.size():
-		_button(ci, Rect2(560, 280 + i * 150, 800, 100), items[i], opt_sel == i)
+		_button(ci, Rect2(560, 230 + i * 125, 800, 96), items[i], opt_sel == i)
 	Kit.text(ci, Vector2(0, 1056), "▲▼ escolher  ·  ◄► ou PULAR muda", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
+
+func _bar(v: int) -> String:
+	return "■".repeat(v) + "□".repeat(10 - v)
 
 func _draw_pause(ci: CanvasItem) -> void:
 	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.25, 0.3, 0.55))

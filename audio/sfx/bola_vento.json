@@ -1,0 +1,12 @@
+{
+ "wave": "noise",
+ "freq_start": 900,
+ "freq_end": 350,
+ "duration": 0.45,
+ "attack": 0.12,
+ "decay": 0.2,
+ "sustain": 0.5,
+ "release": 0.15,
+ "lowpass": 0.15,
+ "volume": 0.35
+}

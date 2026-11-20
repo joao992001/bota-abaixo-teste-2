@@ -16,6 +16,7 @@ var goo_on := false
 var ball := {}             # {pivot, len, amp, period, pos, vel}
 var flip_every := 0.0
 var flip_t := 0.0
+var bubble_t := 0.5
 
 func setup(m: Node, lv: Node) -> void:
 	main = m
@@ -86,6 +87,8 @@ func update(dt: float, running: bool) -> void:
 	# esteiras invertem
 	if flip_every > 0.0:
 		flip_t -= dt
+		if flip_t < 1.2 and not level.belt_warn:
+			Audio.play("alarme")
 		level.belt_warn = flip_t < 1.2
 		if flip_t <= 0.0:
 			flip_t = flip_every
@@ -96,6 +99,10 @@ func update(dt: float, running: bool) -> void:
 	if goo_on and main.demo.t >= float(level.prop("mare_inicio", "6")):
 		var top := float(level.prop("mare_topo", "2")) * T
 		goo_y = maxf(goo_y - float(level.prop("mare_vel", "0.25")) * T * dt, top)
+		bubble_t -= dt
+		if bubble_t <= 0.0:
+			bubble_t = randf_range(0.35, 0.9)
+			Audio.play("lama", 1.0, -6.0)
 		for r in main.robots:
 			if r.alive and r.position.y - 20.0 > goo_y:
 				r.last_hit = 0.0
@@ -105,7 +112,10 @@ func update(dt: float, running: bool) -> void:
 				level.break_block(cell)
 	# bola de demolição
 	if not ball.is_empty():
+		var before_x: float = ball["pos"].x - ball["pivot"].x
 		_ball_step(dt)
+		if signf(before_x) != signf(ball["pos"].x - ball["pivot"].x):
+			Audio.play("bola_vento")
 		var bp: Vector2 = ball["pos"]
 		for r in main.robots:
 			if r.alive and r.rect().grow(4).intersects(Rect2(bp - Vector2(46, 46), Vector2(92, 92))) and r.stun_t <= 0.2:

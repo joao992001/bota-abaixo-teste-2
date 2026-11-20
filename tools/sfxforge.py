@@ -27,7 +27,8 @@ Formato de efeito (audio/sfx/*.json) — todos os campos são opcionais:
     "highpass": 0.0,         0..1
     "volume": 0.5,
     "variations": 3,         gera nome_1.wav .. nome_3.wav com leve variação
-    "pitch_jitter": 0.04     variação de tom entre variações (fração)
+    "pitch_jitter": 0.04,    variação de tom entre variações (fração)
+    "layers": [ {...}, ... ] camadas extras (mesmos campos + "delay" em s), misturadas ao som principal
   }
 
 Formato de música (audio/music/*.json):
@@ -155,6 +156,19 @@ def synth(p, rng=None, pitch_mul=1.0):
     return sig * p.get("volume", 0.5)
 
 
+def synth_layers(p, rng=None, pitch_mul=1.0):
+    """Som principal + camadas ("layers", cada uma com "delay" opcional), misturados."""
+    parts = [(0.0, synth(p, rng, pitch_mul))]
+    for lay in p.get("layers", []):
+        parts.append((float(lay.get("delay", 0.0)), synth(lay, rng, pitch_mul)))
+    n = max(int(d * SR) + len(x) for d, x in parts)
+    mix = np.zeros(n)
+    for d, x in parts:
+        i = int(d * SR)
+        mix[i:i + len(x)] += x
+    return mix
+
+
 def write_wav(path, sig):
     path.parent.mkdir(parents=True, exist_ok=True)
     peak = np.max(np.abs(sig)) if len(sig) else 0
@@ -261,12 +275,12 @@ def cmd_build(args):
         jit = p.get("pitch_jitter", 0.0)
         rng = np.random.default_rng(zlib.crc32(f.stem.encode()))
         if nvar <= 1:
-            write_wav(OUT / "sfx" / f"{f.stem}.wav", synth(p, rng))
+            write_wav(OUT / "sfx" / f"{f.stem}.wav", synth_layers(p, rng))
             count += 1
         else:
             for i in range(1, nvar + 1):
                 mul = 1 + rng.uniform(-jit, jit)
-                write_wav(OUT / "sfx" / f"{f.stem}_{i}.wav", synth(p, rng, mul))
+                write_wav(OUT / "sfx" / f"{f.stem}_{i}.wav", synth_layers(p, rng, mul))
                 count += 1
     for f in sorted((AUDIO / "music").glob("*.json")):
         m = json.loads(f.read_text(encoding="utf-8"))

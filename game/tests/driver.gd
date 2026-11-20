@@ -124,6 +124,22 @@ func steer(devs: Array, frames_max: int, trace := false) -> void:
 
 # ---------------------------------------------------------------- teste
 func autotest() -> void:
+	seed(20261120)            # sorteios repetíveis: o teste não oscila
+	main.rng.seed = 20261120
+	print("== Áudio")
+	var missing := []
+	for k in Audio._index.keys():
+		var n: int = int(Audio._index[k])
+		var path := "res://assets/audio/sfx/%s.wav" % k if n == 0 else "res://assets/audio/sfx/%s_1.wav" % k
+		if Audio._stream(path) == null:
+			missing.append(k)
+	check(Audio._index.size() >= 30 and missing.is_empty(), "%d sons carregam (faltando: %s)" % [Audio._index.size(), str(missing)])
+	Audio.music("partida")
+	await frames(30)
+	var ms: AudioStream = Audio._music.stream
+	check(ms is AudioStreamWAV and ms.loop_mode == AudioStreamWAV.LOOP_FORWARD, "música da partida em loop")
+	Audio.play("bonk")
+	Audio.voice("voz_ai", 2)
 	print("== Teclado (Windows: Shift fantasma nas setas, Ctrl esquerdo x direito)")
 	await key_event(KEY_SHIFT, true, KEY_LOCATION_LEFT)
 	await key_event(KEY_RIGHT, true)

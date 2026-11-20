@@ -1,3 +1,4 @@
 game/.godot/
 *.import
 *.zip
+out/

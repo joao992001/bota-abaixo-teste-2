@@ -1,0 +1,20 @@
+{
+ "wave": "saw",
+ "freq_start": 523,
+ "duration": 0.7,
+ "arpeggio": [
+  0,
+  4,
+  7,
+  12,
+  7,
+  12
+ ],
+ "arp_speed": 0.1,
+ "attack": 0.002,
+ "decay": 0.05,
+ "sustain": 0.7,
+ "release": 0.2,
+ "lowpass": 0.45,
+ "volume": 0.32
+}

@@ -1,0 +1,12 @@
+{
+ "wave": "square",
+ "duty": 0.5,
+ "freq_start": 523,
+ "duration": 0.1,
+ "attack": 0.001,
+ "decay": 0.03,
+ "sustain": 0.6,
+ "release": 0.05,
+ "lowpass": 0.5,
+ "volume": 0.25
+}

@@ -129,6 +129,28 @@ func _ready() -> void:
 			break
 	if state == S.MENU:
 		load_arena("demolicao")
+		load_options()
+
+## Opções salvas no computador (user://opcoes.cfg).
+func save_options() -> void:
+	var cf := ConfigFile.new()
+	var full := DisplayServer.window_get_mode() in [DisplayServer.WINDOW_MODE_FULLSCREEN, DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN]
+	cf.set_value("opcoes", "tela_cheia", full)
+	cf.set_value("opcoes", "tremor", shake_on)
+	cf.set_value("opcoes", "bots", bot_level)
+	cf.set_value("opcoes", "musica", Audio.music_vol)
+	cf.set_value("opcoes", "efeitos", Audio.sfx_vol)
+	cf.save("user://opcoes.cfg")
+
+func load_options() -> void:
+	var cf := ConfigFile.new()
+	if cf.load("user://opcoes.cfg") != OK:
+		return
+	shake_on = cf.get_value("opcoes", "tremor", true)
+	bot_level = cf.get_value("opcoes", "bots", 1)
+	Audio.set_volumes(cf.get_value("opcoes", "musica", 6), cf.get_value("opcoes", "efeitos", 8))
+	if not cf.get_value("opcoes", "tela_cheia", true):
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 
 ## Volta ao menu principal: sem jogadores, arena da Demolição ao fundo.
 func go_menu() -> void:
@@ -161,7 +183,15 @@ func timers(key: String) -> float:
 	return float(Data.scoring["timers"][key])
 
 # ---------------------------------------------------------------- loop
+## Música de cada tela.
+func _update_music() -> void:
+	match state:
+		S.WIN: Audio.music("vitoria", false)
+		S.PICK, S.BUILD, S.RUN, S.SCORE: Audio.music("partida")
+		_: Audio.music("menu")
+
 func _physics_process(dt: float) -> void:
+	_update_music()
 	if paused:
 		menus.update_pause()
 		hud.queue_redraw()
@@ -172,6 +202,7 @@ func _physics_process(dt: float) -> void:
 			if not players[i].get("bot", false) and PlayerInput.pressed(i, "start"):
 				paused = true
 				menus.pause_sel = 0
+				Audio.play("menu_ok")
 				return
 	if state in MENU_STATES:
 		menus.update(dt)
@@ -312,6 +343,7 @@ func add_player(dev: String) -> void:
 	while col in used:
 		col += 1
 	players.append({"dev": dev, "color": col, "acc": 0, "model": players.size() % Data.MODELS.size(), "score": 0})
+	Audio.voice("voz_oi", players[-1]["model"])
 	PlayerInput.slots.append(dev)
 
 func _cycle_color(i: int, d: int) -> void:

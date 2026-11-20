@@ -1,0 +1,40 @@
+{
+ "wave": "noise",
+ "freq_start": 3200,
+ "freq_end": 260,
+ "duration": 0.16,
+ "attack": 0.001,
+ "decay": 0.12,
+ "sustain": 0.1,
+ "release": 0.08,
+ "lowpass": 0.45,
+ "volume": 0.55,
+ "variations": 3,
+ "pitch_jitter": 0.07,
+ "layers": [
+  {
+   "wave": "triangle",
+   "freq_start": 240,
+   "freq_end": 70,
+   "duration": 0.12,
+   "attack": 0.001,
+   "decay": 0.1,
+   "sustain": 0.0,
+   "release": 0.05,
+   "volume": 0.45
+  },
+  {
+   "wave": "noise",
+   "freq_start": 1800,
+   "freq_end": 900,
+   "duration": 0.03,
+   "attack": 0.001,
+   "decay": 0.03,
+   "sustain": 0,
+   "release": 0.02,
+   "lowpass": 0.5,
+   "volume": 0.3,
+   "delay": 0.09
+  }
+ ]
+}

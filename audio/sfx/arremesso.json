@@ -1,0 +1,26 @@
+{
+ "wave": "noise",
+ "freq_start": 1500,
+ "freq_end": 3500,
+ "duration": 0.18,
+ "attack": 0.02,
+ "decay": 0.1,
+ "sustain": 0.3,
+ "release": 0.06,
+ "lowpass": 0.3,
+ "volume": 0.3,
+ "layers": [
+  {
+   "wave": "noise",
+   "freq_start": 7000,
+   "duration": 0.5,
+   "attack": 0.01,
+   "decay": 0.1,
+   "sustain": 0.5,
+   "release": 0.1,
+   "lowpass": 0.9,
+   "highpass": 0.4,
+   "volume": 0.08
+  }
+ ]
+}

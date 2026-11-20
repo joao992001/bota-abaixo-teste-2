@@ -21,3 +21,4 @@ Godot 4 estável, Python 3 com Pillow. Ajudam, se houver: `rsvg-convert`, Inksca
 - Jogar: `godot --path game` (Godot 4.3+). Teclado A: WASD, Espaço pula, F marreta, G item · Teclado B: setas, Ctrl direito pula, ponto (.) marreta, vírgula item · Controle: A pula, X marreta, Y item · Enter começa. Abre no menu principal (▲▼ + Pular). Na entrada: B adiciona bot, N remove, M dificuldade, F11 tela cheia. Enter/Start pausa a partida.
 - Teste automático: `godot --headless --path game --fixed-fps 60 -- --autotest`
 - Regerar arte: `python3 art/src/robos/robos.py && python3 art/src/cenarios/canteiro.py && cp -r art/out/game/* game/assets/` (usa Node + Playwright/Chromium)
+- Sons e música: edite `audio/sfx/*.json` e `audio/music/*.json`, depois `python3 tools/sfxforge.py build && cp out/audio/sfx/*.wav game/assets/audio/sfx/ && cp out/audio/music/*.wav game/assets/audio/music/` (sons novos: atualize `game/assets/audio/sons.json`).

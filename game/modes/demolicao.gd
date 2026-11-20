@@ -23,7 +23,8 @@ const ArenaFx := preload("res://modes/arena_fx.gd")
 var fx: Node2D = null        # mecânicas da arena (plataformas, lama, bola, esteiras)
 var arena := {}              # {id, nome, dica} da rodada atual
 var last_arena := ""
-var tnt_queue: Array = []    # TNT quebrado explode logo depois: {pos, t}
+var tnt_queue: Array = []
+var go_played := false    # TNT quebrado explode logo depois: {pos, t}
 
 func setup(m: Node) -> void:
 	main = m
@@ -76,6 +77,8 @@ func start_round() -> void:
 	item_t = 4.0
 	banner = String(arena["nome"]).to_upper()
 	banner_t = 2.2
+	go_played = false
+	Audio.play("contagem")
 	var n: int = main.players.size()
 	var spots: Array = cfg["spawns_by_players"].get(str(n), [1, 2, 3, 4])
 	main.start_run_at(spots)
@@ -88,6 +91,9 @@ func update(dt: float) -> void:
 	_update_fx(dt)
 	if fx != null and is_instance_valid(fx):
 		fx.update(dt, main.countdown <= 0.0)
+	if not go_played and main.countdown <= 0.6:
+		go_played = true
+		Audio.play("vai")
 	if main.countdown > 0.0:
 		return
 	for q in tnt_queue:
@@ -111,6 +117,7 @@ func update(dt: float) -> void:
 			if absf(a.position.y - head) < 16.0 and absf(a.position.x - b.position.x) < 38.0:
 				a.velocity.y = -c("stomp_bounce")
 				a.var_jump = 0.0
+				Audio.play("pisao")
 				var side := signf(a.position.x - b.position.x)
 				if side == 0.0:
 					side = float(a.facing)
@@ -120,6 +127,8 @@ func update(dt: float) -> void:
 				b.last_hit = 0.0
 				if not b.absorb():
 					b.stun_t = c("stun_stomp_s")
+					Audio.voice("voz_ai", b.vis.model)
+					Audio.play("tonto", 1.0, -4.0)
 					b.vis.sq = Vector2(1.5, 0.55)
 					main.float_text(b.position + Vector2(0, -110), "PISÃO!", main.player_color(a.pid))
 				main.spark(b.position + Vector2(0, -70), 6)
@@ -156,6 +165,7 @@ func update(dt: float) -> void:
 			quaking = true
 			banner = "TERREMOTO!"
 			banner_t = 1.6
+			Audio.play("terremoto")
 			main.shake(10.0)
 		quake_t -= dt
 		if quake_t <= 0.0 and lv.blocks.size() > 0:
@@ -173,8 +183,11 @@ func update(dt: float) -> void:
 		main.end_delay = 1.4
 		if round_winner >= 0:
 			alive[0].vis.expression = "vitoria"
+			Audio.play("rodada_vence")
+			Audio.voice("voz_eba", alive[0].vis.model)
 			banner = "P%d  VENCEU A RODADA!" % (round_winner + 1)
 		else:
+			Audio.play("menu_negado")
 			banner = "EMPATE!"
 		banner_t = 3.0
 
@@ -237,6 +250,7 @@ func give(r, kind: String) -> void:
 		"martelao": r.fx_t["martelao"] = float(item_cfg("martelao")["duration_s"])
 		"mola": r.fx_t["mola"] = float(item_cfg("mola")["duration_s"])
 		"capacete": r.shield = int(item_cfg("capacete")["hits"])
+	Audio.play("martelao" if kind == "martelao" else "item")
 	var names := {"dinamite": "DINAMITE!", "martelao": "MARTELÃO!", "mola": "BOTAS DE MOLA!", "capacete": "CAPACETE!"}
 	main.float_text(r.position + Vector2(0, -110), names[kind], main.player_color(r.pid))
 	main.spark(r.rect().get_center(), 5)
@@ -245,6 +259,7 @@ func give(r, kind: String) -> void:
 func use_item(r) -> void:
 	if r.item == "dinamite":
 		r.item = ""
+		Audio.play("arremesso")
 		var th: Array = item_cfg("dinamite")["throw"]
 		dynamites.append({"pos": r.rect().get_center() + Vector2(r.facing * 20, -20),
 			"vel": Vector2(r.facing * float(th[0]) + r.velocity.x * 0.3, -float(th[1])), "t": 0.0, "owner": r.pid})
@@ -282,6 +297,7 @@ func explode(pos: Vector2, rad := -1.0) -> void:
 			var dir := 1 if r.rect().get_center().x >= pos.x else -1
 			r.knock(dir, float(dc["knock_x"]), float(dc["knock_y"]), float(dc["stun_s"]))
 	booms.append({"pos": pos, "t": 0.0})
+	Audio.play("explosao")
 	main.spark(pos, 10)
 	main.dust(pos, 1.6)
 	main.shake(12.0)
@@ -336,6 +352,7 @@ func hammer(r) -> void:
 	for o in main.robots:
 		if o != r and o.alive and hit.intersects(o.rect()):
 			o.knock(r.facing, c("knock_x") * mult, c("knock_y") * mult, c("stun_hit_s"))
+			Audio.play("bonk", 1.0 / mult)
 			main.spark(o.rect().get_center(), 6)
 			main.shake(5.0 * mult)
 			hit_robot = true
@@ -356,11 +373,13 @@ func hammer(r) -> void:
 			var center := Vector2(cell * 64) + Vector2(32, 32)
 			main.spark(center, 4)
 			main.dust(center, 0.8)
+			Audio.play("caixote_pancada", 0.85 if big else 1.0)
 			lv.damage(cell, int(item_cfg("martelao")["block_damage"]) if big else 1)
 			return
 
 func _on_block_broken(cell: Vector2i, kind: String) -> void:
 	var center := Vector2(cell * 64) + Vector2(32, 32)
+	Audio.play("caixote_quebra")
 	if kind == "tnt":
 		tnt_queue.append({"pos": center, "t": 0.18})   # explode logo depois (dá para ver a reação em cadeia)
 	# quem estava em cima caiu por golpe/explosão/terremoto (não "sozinho"), a não ser que tenha ficado parado

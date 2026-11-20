@@ -132,10 +132,12 @@ func _physics_process(dt: float) -> void:
 		if wall_dust <= 0.0:
 			wall_dust = 0.08
 			main.dust(position + Vector2(wall_dir * 24, -40), 0.5)
+			Audio.play("parede", _pitch(), -4.0)
 	velocity.y = minf(velocity.y, max_fall)
 	# marreta (não trava o movimento)
 	if _pressed("hammer") and hammer_anim <= 0.0:
 		hammer_anim = f("hammer_time")
+		Audio.play("marreta_vento", _pitch())
 		main.try_hammer(self)
 	# mover
 	velocity.x = own_vx + ext_vx
@@ -157,6 +159,7 @@ func _physics_process(dt: float) -> void:
 	var landed := is_on_floor() and not was_on_floor
 	was_on_floor = is_on_floor()
 	if landed:
+		Audio.play("aterrissa", _pitch(), -2.0)
 		vis.land()
 		main.dust(position)
 	if floor_piece != null and is_instance_valid(floor_piece):
@@ -184,6 +187,7 @@ func absorb() -> bool:
 	if shield <= 0:
 		return false
 	shield -= 1
+	Audio.play("capacete")
 	main.spark(rect().get_center() + Vector2(0, -30), 8)
 	main.float_text(position + Vector2(0, -110), "BLOQUEOU!", Color.WHITE)
 	vis.land()
@@ -199,11 +203,17 @@ func knock(dir: int, vx: float, vy: float, stun: float) -> void:
 		return
 	own_vx = dir * vx
 	velocity.y = -vy
+	Audio.voice("voz_ai", vis.model)
 	var_jump = 0.0
 	stun_t = maxf(stun_t, stun)
 	vis.stretch()
 
+## Tom dos sons do robô por jogador (P1 mais grave → P4 mais agudo).
+func _pitch() -> float:
+	return 0.92 + pid * 0.08
+
 func _jump(ix: float) -> void:
+	Audio.play("pulo_mola" if fx_t["mola"] > 0.0 else "pulo", _pitch())
 	velocity.y = -_jump_speed()
 	own_vx += ix * f("jump_h_boost")
 	var_jump = f("var_jump_time")
@@ -213,6 +223,7 @@ func _jump(ix: float) -> void:
 	main.dust(position)
 
 func _wall_jump(wd: int) -> void:
+	Audio.play("pulo", _pitch() * 1.08)
 	velocity.y = -_jump_speed()
 	own_vx = -wd * f("wall_jump_h_speed")
 	facing = -wd
@@ -242,6 +253,7 @@ func _corner_correction(dt: float) -> void:
 				return
 
 func launch(tiles: float) -> void:
+	Audio.play("pulo_mola", _pitch())
 	# + g·dt/2 compensa a integração por passos (altura final = tiles)
 	velocity.y = -sqrt(2.0 * f("gravity") * tiles * 64.0) - f("gravity") / (2.0 * Engine.physics_ticks_per_second)
 	spring = true
@@ -252,6 +264,7 @@ func launch(tiles: float) -> void:
 
 ## Eliminado: o robô desmonta em peças (main.break_robot) e some.
 func eliminate() -> void:
+	Audio.play("eliminado", _pitch())
 	alive = false
 	active = false
 	collision_mask = 0
@@ -266,6 +279,8 @@ func finish() -> void:
 	finished = true
 	active = false
 	vis.expression = "vitoria"
+	Audio.play("elevador")
+	Audio.voice("voz_eba", vis.model)
 	var g: Rect2 = main.level.goal_rect
 	var floor_pos := Vector2(g.get_center().x, g.end.y)
 	facing = 1 if floor_pos.x >= position.x else -1

@@ -1,0 +1,15 @@
+{
+ "wave": "triangle",
+ "freq_start": 170,
+ "freq_end": 1000,
+ "duration": 0.22,
+ "attack": 0.002,
+ "decay": 0.05,
+ "sustain": 0.7,
+ "release": 0.1,
+ "vibrato_depth": 0.8,
+ "vibrato_rate": 28,
+ "volume": 0.45,
+ "variations": 2,
+ "pitch_jitter": 0.04
+}

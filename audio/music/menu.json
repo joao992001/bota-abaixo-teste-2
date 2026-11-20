@@ -1,0 +1,28 @@
+{
+ "bpm": 104,
+ "steps_per_beat": 4,
+ "loops": 2,
+ "tracks": [
+  {
+   "wave": "triangle",
+   "volume": 0.32,
+   "notes": "C2 . . . C3 . . . C2 . . . C3 . . . | A2 . . . A3 . . . A2 . . . A3 . . . | F2 . . . F3 . . . F2 . . . F3 . . . | G2 . . . G3 . . . G2 . . . G3 . . . | C2 . . . C3 . . . C2 . . . C3 . . . | A2 . . . A3 . . . A2 . . . A3 . . . | F2 . . . F3 . . . G2 . . . G3 . . . | C2 . . . C3 . . . C2 . . . C3 . . ."
+  },
+  {
+   "wave": "square",
+   "duty": 0.25,
+   "volume": 0.14,
+   "release": 0.06,
+   "lowpass": 0.6,
+   "notes": "E4 . G4 . C5 . G4 . E4 . . . D4 . E4 . | C4 . E4 . A4 . E4 . C4 . . . B3 . C4 . | A3 . C4 . F4 . A4 . G4 . F4 . E4 . D4 . | B3 . D4 . G4 . B4 . D5 - - - . . . . | E4 . G4 . C5 . E5 . D5 . C5 . G4 . E4 . | C5 . B4 . A4 . E4 . C4 . E4 . A4 . . . | F4 . A4 . C5 . A4 . G4 . B4 . D5 . B4 . | C5 - - - G4 . E4 . C4 - - - . . . ."
+  },
+  {
+   "wave": "noise",
+   "volume": 0.05,
+   "decay": 0.03,
+   "sustain": 0,
+   "freq_start": 8000,
+   "notes": "x . . . x . . . x . . . x . x . | x . . . x . . . x . . . x . x . | x . . . x . . . x . . . x . x . | x . . . x . . . x . . . x . x . | x . . . x . . . x . . . x . x . | x . . . x . . . x . . . x . x . | x . . . x . . . x . . . x . x . | x . . . x . . . x . . . x . x ."
+  }
+ ]
+}

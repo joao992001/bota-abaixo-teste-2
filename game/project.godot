@@ -9,6 +9,7 @@ config/features=PackedStringArray("4.3", "GL Compatibility")
 [autoload]
 Data="*res://autoload/data.gd"
 PlayerInput="*res://autoload/player_input.gd"
+Audio="*res://autoload/audio.gd"
 
 [display]
 window/size/viewport_width=1920

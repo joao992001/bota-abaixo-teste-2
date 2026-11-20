@@ -1,0 +1,32 @@
+{
+ "bpm": 150,
+ "steps_per_beat": 4,
+ "loops": 1,
+ "tracks": [
+  {
+   "wave": "saw",
+   "volume": 0.2,
+   "lowpass": 0.45,
+   "notes": "C5 . E5 . G5 . C6 - - - . . G5 . C6 - | - - - - - - - - . . . . . . . ."
+  },
+  {
+   "wave": "square",
+   "duty": 0.25,
+   "volume": 0.12,
+   "notes": "E4 . G4 . C5 . E5 - - - . . C5 . E5 - | - - - - - - - - . . . . . . . ."
+  },
+  {
+   "wave": "triangle",
+   "volume": 0.35,
+   "notes": "C3 . . . C3 . . . G2 . . . C3 - - - | - - - - - - - - . . . . . . . ."
+  },
+  {
+   "wave": "noise",
+   "volume": 0.1,
+   "decay": 0.04,
+   "sustain": 0,
+   "freq_start": 5000,
+   "notes": "x . x . x . x . x . x . x . x . | x . . . . . . . . . . . . . . ."
+  }
+ ]
+}

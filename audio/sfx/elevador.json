@@ -1,0 +1,23 @@
+{
+ "wave": "sine",
+ "freq_start": 1318,
+ "duration": 0.5,
+ "attack": 0.001,
+ "decay": 0.4,
+ "sustain": 0.2,
+ "release": 0.2,
+ "volume": 0.35,
+ "layers": [
+  {
+   "wave": "sine",
+   "freq_start": 1046,
+   "duration": 0.6,
+   "attack": 0.001,
+   "decay": 0.5,
+   "sustain": 0.2,
+   "release": 0.2,
+   "volume": 0.35,
+   "delay": 0.14
+  }
+ ]
+}
