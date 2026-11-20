@@ -10,6 +10,7 @@ var spawns := {}            # número do spawn (1-4) -> posição dos pés
 var elevator_cell := Vector2i(-1, -1)
 var goal_rect := Rect2()
 var hazard_rects: Array = []
+var water_rects: Array = []   # água: não mata (volta do alto com dano)
 var skin: Node = null       # arte do mapa (opcional); sem ela, formas simples
 var door_open := 0.0        # 0 fechado .. 1 aberto (main anima)
 var blocks := {}            # caixotes destrutíveis 'd': Vector2i -> {hp, body, load, warn}
@@ -50,6 +51,8 @@ func load_level(level_id: String) -> void:
 			elif ch == "E":
 				elevator_cell = c
 				goal_rect = Rect2(x * T + 4, (y - 2) * T + 20, T - 8, 3 * T - 20)  # elevador inteiro (3 tiles)
+			elif ch == "w":
+				water_rects.append(Rect2(x * T, y * T + 20, T, T - 20))
 			elif ch == "^":
 				# espinhos altos (1,5 tile), em pé no fundo do poço
 				hazard_rects.append(Rect2(x * T + 4, y * T + T - 100, T - 8, 100))
@@ -65,6 +68,12 @@ func is_solid(c: Vector2i) -> bool:
 	if ch_at(c) in ["#", "o", "I", "d", "T", "<", ">"]:
 		return true
 	return extra_solid.is_valid() and extra_solid.call(c)
+
+## Troca um caractere do mapa (rede rasgada, alçapão aberto...).
+func set_cell_char(c: Vector2i, ch: String) -> void:
+	var row := String(grid[c.y])
+	grid[c.y] = row.substr(0, c.x) + ch + row.substr(c.x + 1)
+	queue_redraw()
 
 func prop(key: String, default = null):
 	return props.get(key, default)
@@ -220,6 +229,21 @@ func _draw_art() -> void:
 					_draw_block_d(c, pos)
 				"<", ">":
 					draw_texture_rect(Data.tex("cenario/esteira_piso"), Rect2(pos, tile), false)
+				"w":
+					var wv := sin(anim_t * 2.0 + x * 0.9) * 4.0
+					draw_rect(Rect2(pos + Vector2(0, 24 + wv), Vector2(T, T - 24 - wv)), Color("#6fc3dc"))
+					draw_rect(Rect2(pos + Vector2(0, 24 + wv), Vector2(T, 5)), Color("#c8eef6"))
+					draw_rect(Rect2(pos + Vector2(0, 44), Vector2(T, T - 44)), Color("#58afcb"))
+				"n":
+					var nc := Color("#c9a26a")
+					draw_line(pos + Vector2(0, 14), pos + Vector2(T, 14), nc, 3.0, true)
+					for k in 4:
+						draw_line(pos + Vector2(k * 16, 14), pos + Vector2(k * 16 + 16, 30), nc, 2.0, true)
+						draw_line(pos + Vector2(k * 16 + 16, 14), pos + Vector2(k * 16, 30), nc, 2.0, true)
+					if ch_at(c + Vector2i.LEFT) != "n":
+						draw_rect(Rect2(pos + Vector2(-4, 4), Vector2(8, 40)), Color("#8a6a47"))
+					if ch_at(c + Vector2i.RIGHT) != "n":
+						draw_rect(Rect2(pos + Vector2(T - 4, 4), Vector2(8, 40)), Color("#8a6a47"))
 				"^":
 					draw_texture_rect(Data.tex("cenario/espinho_%d" % ((x * 5 + y) % 3)), Rect2(pos + Vector2(0, T - 128), Vector2(T, 128)), false)
 	for b in belts:
@@ -247,7 +271,7 @@ func _draw_art() -> void:
 
 func _process(dt: float) -> void:
 	anim_t += dt
-	if belts.size() > 0:
+	if belts.size() > 0 or water_rects.size() > 0:
 		queue_redraw()
 	if door_open > 0.0 or _was_open:
 		queue_redraw()

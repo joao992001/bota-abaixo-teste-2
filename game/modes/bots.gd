@@ -99,6 +99,7 @@ func update(dt: float) -> void:
 		if st["pulse_item"] and not prev.get("item", false):
 			inp["item"] = true
 			st["pulse_item"] = false
+		_recover(r, st, inp, prev, dt)
 		PlayerInput.virtual[dev] = inp
 
 func _robot_of(dev: String):
@@ -247,3 +248,42 @@ func _landing(col: int, row: int, dir: int) -> Vector2i:
 				if not (L.blocks.has(Vector2i(c, r2)) and L.blocks[Vector2i(c, r2)]["warn"] > 0.0):
 					return Vector2i(c, r2)
 	return Vector2i(-1, -1)
+
+## Recuperação: pendurado na borda → sobe; caindo sobre o vazio → vai para o chão mais próximo e usa o pulo duplo.
+func _recover(r, st: Dictionary, inp: Dictionary, prev: Dictionary, dt: float) -> void:
+	if r.hanging:
+		st["hang_t"] = st.get("hang_t", 0.0) + dt
+		inp.erase("left")
+		inp.erase("right")
+		inp["right" if r.hang_dir > 0 else "left"] = true
+		if st["hang_t"] > 0.25:
+			inp["jump"] = not prev.get("jump", false)
+		return
+	st["hang_t"] = 0.0
+	if r.is_on_floor() or r.velocity.y < 60.0 or r.stun_t > 0.0:
+		return
+	var L = main.level
+	var col := int(r.position.x / 64.0)
+	var row := int((r.position.y + 2.0) / 64.0)
+	for k in range(0, 7):
+		if L.is_solid(Vector2i(col, row + k)) and L.ch_at(Vector2i(col, row + k)) != "I":
+			return   # tem chão embaixo
+	var best := Vector2i(-1, -1)
+	var bd := 1e9
+	for dc in range(-7, 8):
+		for dr in range(-3, 5):
+			var c := Vector2i(col + dc, row + dr)
+			if L.is_solid(c) and L.ch_at(c) != "I" and not L.is_solid(c + Vector2i.UP):
+				var d := absf(dc) * 1.0 + maxf(dr, 0) * 0.3
+				if d < bd:
+					bd = d
+					best = c
+	if best.x < 0:
+		return
+	var gx: float = best.x * 64 + 32 - r.position.x
+	inp.erase("left")
+	inp.erase("right")
+	if absf(gx) > 12.0:
+		inp["right" if gx > 0 else "left"] = true
+	if r.air_jumps > 0 and best.y <= row + 1:
+		inp["jump"] = not prev.get("jump", false)

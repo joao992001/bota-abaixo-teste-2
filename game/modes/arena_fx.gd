@@ -123,9 +123,7 @@ func update(dt: float, running: bool) -> void:
 		for r in main.robots:
 			if r.alive and r.rect().grow(4).intersects(Rect2(bp - Vector2(46, 46), Vector2(92, 92))) and r.stun_t <= 0.2:
 				var dir := 1 if ball["vel"].x >= 0.0 else -1
-				r.knock(dir, 1250.0, 700.0, 0.6)
-				r.last_cause = "bola"
-				r.last_attacker = -1
+				r.take_hit(dir, "bola", -1)
 				main.spark(r.rect().get_center(), 8)
 				main.shake(9.0)
 		for cell in level.blocks.keys():

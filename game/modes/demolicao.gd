@@ -27,7 +27,9 @@ var tnt_queue: Array = []
 var go_played := false
 var break_reason := ""       # por que o caixote que está quebrando agora quebrou (para a causa da queda)
 var break_by := -1
-var death_log: Array = []    # {arena, t, victim, cause, by, round}    # TNT quebrado explode logo depois: {pos, t}
+var death_log: Array = []
+var feed: Array = []         # avisos na tela: "P3 derrubou P1"
+var net_hp := {}             # rede: Vector2i -> quedas que ainda aguenta    # {arena, t, victim, cause, by, round}    # TNT quebrado explode logo depois: {pos, t}
 
 func setup(m: Node) -> void:
 	main = m
@@ -97,6 +99,8 @@ func update(dt: float) -> void:
 	if not go_played and main.countdown <= 0.6:
 		go_played = true
 		Audio.play("vai")
+		for r in main.robots:
+			r.invuln = float(cfg["recuperacao"]["invuln_inicio_s"])
 	if main.countdown > 0.0:
 		return
 	for q in tnt_queue:
@@ -114,7 +118,7 @@ func update(dt: float) -> void:
 		if a.velocity.y <= 120.0 or a.stun_t > 0.0:
 			continue
 		for b in alive:
-			if a == b or b.stomp_immune > 0.0:
+			if a == b or b.stomp_immune > 0.0 or b.invuln > 0.0:
 				continue
 			var head: float = b.rect().position.y
 			if absf(a.position.y - head) < 16.0 and absf(a.position.x - b.position.x) < 38.0:
@@ -130,7 +134,9 @@ func update(dt: float) -> void:
 				b.last_hit = 0.0
 				b.last_cause = "pisão"
 				b.last_attacker = a.pid
+				b.hanging = false
 				if not b.absorb():
+					b.dmg += float(cfg["amassometro"]["pisao"]["dano"])
 					b.stun_t = c("stun_stomp_s")
 					Audio.voice("voz_ai", b.vis.model)
 					Audio.play("tonto", 1.0, -4.0)
@@ -184,6 +190,10 @@ func update(dt: float) -> void:
 				main.shake(2.0)
 	_update_items(dt, alive)
 	_update_dynamites(dt, alive)
+	_update_water_and_nets(dt, alive)
+	for f in feed:
+		f["t"] += dt
+	feed = feed.filter(func(f): return f["t"] < 4.5)
 	# fim da rodada: sobrou 1 (ou ninguém)
 	if main.end_delay < 0.0 and alive.size() <= 1 and main.robots.size() >= 2:
 		round_winner = alive[0].pid if alive.size() == 1 else -1
@@ -304,9 +314,7 @@ func explode(pos: Vector2, rad := -1.0) -> void:
 	for r in main.robots:
 		if r.alive and r.rect().get_center().distance_to(pos) < rad + 30.0:
 			var dir := 1 if r.rect().get_center().x >= pos.x else -1
-			r.knock(dir, float(dc["knock_x"]), float(dc["knock_y"]), float(dc["stun_s"]))
-			r.last_cause = "explosão"
-			r.last_attacker = -1
+			r.take_hit(dir, "explosao", -1)
 	booms.append({"pos": pos, "t": 0.0})
 	Audio.play("explosao")
 	main.spark(pos, 10)
@@ -362,9 +370,7 @@ func hammer(r) -> void:
 	var hit_robot := false
 	for o in main.robots:
 		if o != r and o.alive and hit.intersects(o.rect()):
-			o.knock(r.facing, c("knock_x") * mult, c("knock_y") * mult, c("stun_hit_s"))
-			o.last_cause = "marretada"
-			o.last_attacker = r.pid
+			o.take_hit(r.facing, "martelao" if big else "marretada", r.pid)
 			Audio.play("bonk", 1.0 / mult)
 			main.spark(o.rect().get_center(), 6)
 			main.shake(5.0 * mult)
@@ -394,8 +400,67 @@ func hammer(r) -> void:
 			break_by = -1
 			return
 
+## Água: não mata; volta do alto com dano extra. Rede: quica e rasga depois de algumas quedas.
+func _update_water_and_nets(dt: float, alive: Array) -> void:
+	var lv = main.level
+	for r in alive:
+		for w in lv.water_rects:
+			if w.has_point(r.position + Vector2(0, -10)):
+				r.dmg += float(cfg["amassometro"]["agua"]["dano"])
+				Audio.play("lama", 0.6)
+				main.dust(r.position, 1.4)
+				main.float_text(r.position + Vector2(0, -80), "TCHIBUM! +%d%%" % int(cfg["amassometro"]["agua"]["dano"]), Color("#4f86d9"))
+				respawn(r)
+				break
+		if r.velocity.y > 150.0:
+			var cell := Vector2i(int(r.position.x / 64.0), int((r.position.y - 4.0) / 64.0))
+			if lv.ch_at(cell) == "n" and r.position.y >= cell.y * 64.0 + 8.0 and r.position.y - r.velocity.y * dt <= cell.y * 64.0 + 14.0:
+				r.velocity.y = -minf(r.velocity.y * 0.85 + 300.0, float(cfg["rede"]["quica"]))
+				r.air_jumps = 1
+				Audio.play("pulo_mola", 0.8)
+				var hp: int = net_hp.get(cell, int(cfg["rede"]["aguenta"])) - 1
+				net_hp[cell] = hp
+				if hp <= 0:
+					for dx in range(-1, 2):
+						var nc := cell + Vector2i(dx, 0)
+						if lv.ch_at(nc) == "n":
+							lv.set_cell_char(nc, ".")
+					main.dust(r.position, 1.2)
+					main.float_text(r.position + Vector2(0, -80), "RASGOU!", Color.WHITE)
+
+## Volta pendurado no guindaste num lugar livre longe dos outros, invulnerável por um tempo.
+func respawn(r) -> void:
+	var lv = main.level
+	var best := Vector2i(-1, -1)
+	var best_d := -1.0
+	for y in range(3, lv.rows - 1):
+		for x in range(1, lv.cols - 1):
+			var c := Vector2i(x, y)
+			if lv.is_solid(c) and lv.ch_at(c) != "I" and not lv.is_solid(c + Vector2i.UP) and not lv.is_solid(c + Vector2i(0, -2)):
+				var p := Vector2(x * 64 + 32, y * 64)
+				var dmin := 1e9
+				for o in main.robots:
+					if o != r and o.alive:
+						dmin = minf(dmin, o.position.distance_to(p))
+				dmin += main.rng.randf_range(0, 200)
+				if dmin > best_d:
+					best_d = dmin
+					best = c
+	if best.x < 0:
+		return
+	r.position = Vector2(best.x * 64 + 32, best.y * 64 - 220)
+	r.reset_physics_interpolation()
+	r.velocity = Vector2.ZERO
+	r.own_vx = 0.0
+	r.stun_t = 0.0
+	r.hanging = false
+	r.invuln = float(cfg["recuperacao"]["invuln_volta_s"])
+	r.drop_t = 1.0
+
 func _on_block_broken(cell: Vector2i, kind: String) -> void:
 	var center := Vector2(cell * 64) + Vector2(32, 32)
+	if break_by >= 0 and break_by < main.players.size():
+		main.players[break_by]["stats"]["caixotes"] += 1
 	Audio.play("caixote_quebra")
 	if kind == "tnt":
 		tnt_queue.append({"pos": center, "t": 0.18})   # explode logo depois (dá para ver a reação em cadeia)
@@ -411,6 +476,10 @@ func _on_block_broken(cell: Vector2i, kind: String) -> void:
 				r.last_attacker = break_by
 	main.dust(center)
 	main.break_crate(center)
+
+## Alguém caiu (by = quem derrubou, -1 se ninguém). Os submodos usam isto.
+func on_knockout(_by: int, _victim: int) -> void:
+	pass
 
 ## Fim da rodada: estrela para o vencedor; partida acaba em rounds_to_win.
 func end_round() -> bool:

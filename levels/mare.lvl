@@ -1,6 +1,6 @@
 id: mare
-mare_inicio: 6
-mare_vel: 0.24
+mare_inicio: 12
+mare_vel: 0.2
 mare_topo: 2.6
 terremoto: 0
 fundo: #f1d9e6

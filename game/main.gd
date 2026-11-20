@@ -342,7 +342,8 @@ func add_player(dev: String) -> void:
 	var col := 0
 	while col in used:
 		col += 1
-	players.append({"dev": dev, "color": col, "acc": 0, "model": players.size() % Data.MODELS.size(), "score": 0})
+	players.append({"dev": dev, "color": col, "acc": 0, "model": players.size() % Data.MODELS.size(), "score": 0,
+		"stats": {"derrubadas": 0, "caixotes": 0, "quedas": 0}})
 	Audio.voice("voz_oi", players[-1]["model"])
 	PlayerInput.slots.append(dev)
 
@@ -363,9 +364,18 @@ func load_arena(id: String) -> void:
 	world.move_child(level, 0)
 	level.load_level(id)
 
+## Cor do Amassômetro: branco → amarelo → laranja → vermelho.
+func dmg_color(d: float) -> Color:
+	if d < 50.0:
+		return Color("#ffffff").lerp(Color("#f2c84b"), d / 50.0)
+	if d < 100.0:
+		return Color("#f2c84b").lerp(Color("#f08a3d"), (d - 50.0) / 50.0)
+	return Color("#f08a3d").lerp(Color("#d42035"), clampf((d - 100.0) / 60.0, 0.0, 1.0))
+
 func start_match() -> void:
 	for p in players:
 		p["score"] = 0
+		p["stats"] = {"derrubadas": 0, "caixotes": 0, "quedas": 0}
 	match_over = false
 	if mode == "demolicao":
 		for pc in pieces:
@@ -628,8 +638,17 @@ func kill(r: CharacterBody2D, owner: int, pc: Node2D) -> void:
 		var cause: String = r.last_cause if r.last_hit <= 2.5 or r.last_cause == "ficou parado" or r.last_cause == "lama" else "caiu sozinho"
 		if cause == "":
 			cause = "caiu sozinho"
+		var by: int = r.last_attacker if r.last_hit <= 2.5 else -1
 		demo.death_log.append({"arena": demo.arena.get("id", ""), "t": demo.t, "victim": r.pid, "cause": cause,
-			"by": r.last_attacker if r.last_hit <= 2.5 else -1, "round": round_no})
+			"by": by, "round": round_no})
+		if by >= 0 and by != r.pid and by < players.size():
+			players[by]["stats"]["derrubadas"] += 1
+			demo.feed.append({"text": "P%d derrubou P%d" % [by + 1, r.pid + 1], "col": by, "t": 0.0})
+			demo.on_knockout(by, r.pid)
+		else:
+			players[r.pid]["stats"]["quedas"] += 1
+			demo.feed.append({"text": "P%d %s" % [r.pid + 1, "caiu sozinho" if cause == "caiu sozinho" else "caiu (%s)" % cause], "col": r.pid, "t": 0.0})
+			demo.on_knockout(-1, r.pid)
 	r.eliminate()
 	if owner >= 0 and owner != r.pid:
 		round_kills[owner] = round_kills.get(owner, 0) + 1
@@ -822,6 +841,12 @@ func _draw_overlay() -> void:
 					pose["expr"] = "esforco"
 			RobotVis.draw_robot(overlay, {"color": k, "model": k, "acc": 0}, pose, Transform2D(0.0, Vector2(1.0 if k != 1 else -1.0, 1.0), 0.0, Vector2(1060 + k * 72, 576)))
 		overlay.draw_set_transform(Vector2.ZERO)
+	for r in robots:
+		if r.alive and r.visible and r.drop_t > 0.0:
+			# voltando pendurado no guindaste
+			var hk: Vector2 = r.position + Vector2(0, -96)
+			overlay.draw_line(Vector2(hk.x, -400), hk, Color("#5a6370"), 3.0, true)
+			overlay.draw_arc(hk + Vector2(0, 8), 9, 0, PI, 10, Color("#5a6370"), 4.0, true)
 	for r in robots:
 		if r.alive and r.visible and r.stun_t > 0.0:
 			var hc: Vector2 = r.rect().position + Vector2(24, -10)

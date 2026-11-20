@@ -36,6 +36,8 @@ var hit_done := false
 var prev_vel := Vector2.ZERO
 var step_side := 0
 var robot = null
+var hanging := false
+var smoke_t := 0.0
 
 func setup(col_idx: int, accessory: int, mdl := 0) -> void:
 	color_idx = col_idx
@@ -115,6 +117,19 @@ func tick(r, dt: float) -> void:
 			expression = "piscar" if blink_t < 0.0 else "normal"
 	var fx := shown_facing if absf(shown_facing) > 0.2 else 0.2 * signf(shown_facing + 0.0001)
 	scale = Vector2(sq.x * fx, sq.y)
+	hanging = r.hanging
+	if r.hanging:
+		expression = "esforco"
+	# piscando enquanto invulnerável
+	modulate.a = 0.45 if r.invuln > 0.0 and fmod(t, 0.16) < 0.08 else 1.0
+	# muito amassado: solta fumaça (e faísca acima de 120%)
+	if r.dmg >= 80.0 and r.alive:
+		smoke_t -= dt
+		if smoke_t <= 0.0:
+			smoke_t = 0.5 if r.dmg < 120.0 else 0.25
+			r.main.dust(r.position + Vector2(randf_range(-10, 10), -78), 0.55)
+			if r.dmg >= 120.0:
+				r.main.spark(r.position + Vector2(0, -70), 1)
 	queue_redraw()
 
 static func _hammer_lean(k: float) -> float:
@@ -152,6 +167,13 @@ func current_pose() -> Dictionary:
 			knee[i] = knee[i].lerp(Vector2(6.0, 0) * up + Vector2(1.0, 0) * down, a)
 		hb = hb.lerp(Vector2(-3, -12) * up + Vector2(sin(t * 22.0) * 5.0, -15.0 + cos(t * 22.0) * 4.0) * down, a)
 		hf = hf.lerp(Vector2(0, -6) * up + Vector2(cos(t * 20.0) * 3.0, -6.0) * down, a)
+	# pendurado na borda: mãos para cima segurando a quina, pernas soltas
+	if hanging:
+		hb = Vector2(14, -52)
+		hf = Vector2(18, -56)
+		for i in 2:
+			feet[i] = Vector2(-2.0 + i * 3.0, 4.0 + sin(t * 3.0 + i) * 2.0)
+			knee[i] = Vector2(-2, 0)
 	# parede: mão e pés apoiados
 	if wall_k > 0.0:
 		hf += Vector2(10, -14) * wall_k

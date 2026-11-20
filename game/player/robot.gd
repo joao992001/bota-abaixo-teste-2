@@ -32,6 +32,13 @@ var shield := 0              # capacete de aço: golpes que ainda aguenta
 var fall_reason := ""
 var last_hit := 99.0
 var stomp_immune := 0.0
+var dmg := 0.0                # Amassômetro (%): quanto mais amassado, mais longe cada golpe arremessa
+var invuln := 0.0             # invulnerável (começo da rodada, voltando da água/vida)
+var air_jumps := 1            # pulo duplo do propulsor (recarrega no chão, na parede e na borda)
+var drop_t := 0.0             # descendo pendurado no guindaste (desenho do cabo)
+var hanging := false          # agarrado na borda de um caixote
+var hang_dir := 0
+var hang_t := 0.0
 var last_cause := ""          # o que atingiu este robô por último (marretada, pisão, explosão, bola, chão quebrado...)
 var last_attacker := -1       # quem causou (jogador), -1 = cenário      # depois de levar pisão, um tempo sem poder levar outro         # segundos desde o último golpe (para saber se caiu sozinho)
 var wall_dust := 0.0
@@ -76,7 +83,13 @@ func _physics_process(dt: float) -> void:
 	var ix := _ix()
 	var on_floor := is_on_floor()
 	stun_t = maxf(stun_t - dt, 0.0)
+	invuln = maxf(invuln - dt, 0.0)
+	drop_t = maxf(drop_t - dt, 0.0) if not is_on_floor() else 0.0
 	last_hit += dt
+	if hanging:
+		_hang_update(dt)
+		vis.tick(self, dt)
+		return
 	for k in fx_t:
 		fx_t[k] = maxf(fx_t[k] - dt, 0.0)
 	if _pressed("item") and item != "":
@@ -106,11 +119,15 @@ func _physics_process(dt: float) -> void:
 		own_vx = move_toward(own_vx, ix * f("max_run"), a * dt)
 	# pulo / parede
 	var wall_dir := 0 if on_floor else _wall_dir()
+	if on_floor:
+		air_jumps = 1
 	if buffer > 0.0 and not spring:
 		if on_floor or coyote > 0.0:
 			_jump(ix)
 		elif wall_dir != 0:
 			_wall_jump(wall_dir)
+		elif air_jumps > 0 and stun_t <= 0.0 and main.mode == "demolicao":
+			_air_jump(ix)
 	# sustain: velocidade de subida mantida enquanto segura, até var_jump_time
 	if var_jump > 0.0:
 		if _held("jump"):
@@ -129,6 +146,7 @@ func _physics_process(dt: float) -> void:
 	var max_fall := f("fast_max_fall") if _held("down") else f("max_fall")
 	wall_sliding = wall_dir != 0 and int(signf(ix)) == wall_dir and velocity.y > 0.0
 	if wall_sliding:
+		air_jumps = 1
 		max_fall = f("wall_slide_speed")
 		wall_dust -= dt
 		if wall_dust <= 0.0:
@@ -158,6 +176,8 @@ func _physics_process(dt: float) -> void:
 		var o := col.get_collider()
 		if o != null and o.has_meta("piece") and col.get_normal().y < -0.7:
 			floor_piece = o.get_meta("piece")
+	if not is_on_floor() and main.mode == "demolicao":
+		_try_grab(ix)
 	var landed := is_on_floor() and not was_on_floor
 	was_on_floor = is_on_floor()
 	if landed:
@@ -198,11 +218,91 @@ func absorb() -> bool:
 func fx_flags() -> Dictionary:
 	return {"martelao": fx_t["martelao"] > 0.0, "mola": fx_t["mola"] > 0.0, "capacete": shield > 0, "item": item}
 
-## Empurrão (marretada, explosão): sai voando para o lado e fica atordoado. O capacete bloqueia.
-func knock(dir: int, vx: float, vy: float, stun: float) -> void:
+## Pulo duplo do propulsor (um no ar; recarrega no chão, na parede e na borda).
+func _air_jump(ix: float) -> void:
+	air_jumps -= 1
+	Audio.play("pulo", _pitch() * 1.25)
+	velocity.y = -_jump_speed() * float(main.demo.cfg["recuperacao"]["pulo_duplo"])
+	own_vx = maxf(absf(own_vx), absf(ix) * f("max_run") * 0.8) * (signf(ix) if ix != 0.0 else signf(own_vx))
+	var_jump = f("var_jump_time") * 0.6
+	buffer = 0.0
+	vis.stretch()
+	main.dust(position + Vector2(0, -6), 0.7)
+
+## Agarra a quina de um caixote: caindo, segurando na direção dela, com as mãos na altura do topo.
+func _try_grab(ix: float) -> void:
+	if velocity.y < -40.0 or stun_t > 0.0 or ix == 0.0 or PlayerInput.held(pid, "down"):
+		return
+	var dir := int(signf(ix))
+	var lv = main.level
+	var cell := Vector2i(int(floor((position.x + dir * 32.0) / 64.0)), int(floor((position.y - 66.0) / 64.0)))
+	if not lv.is_solid(cell) or lv.is_solid(cell + Vector2i.UP) or lv.ch_at(cell) == "I":
+		return
+	var top := cell.y * 64.0
+	var head := position.y - 72.0
+	if head < top - 26.0 or head > top + 16.0:
+		return
+	hanging = true
+	hang_dir = dir
+	hang_t = 0.0
+	facing = dir
+	air_jumps = 1
+	velocity = Vector2.ZERO
+	own_vx = 0.0
+	position = Vector2(cell.x * 64.0 + (-24.0 if dir > 0 else 64.0 + 24.0), top + 58.0)
+	Audio.play("parede", _pitch())
+
+func _hang_update(dt: float) -> void:
+	hang_t += dt
+	velocity = Vector2.ZERO
+	var lv = main.level
+	var cell := Vector2i(int(floor((position.x + hang_dir * 32.0) / 64.0)), int(floor((position.y - 58.0) / 64.0)))
+	var max_t := float(main.demo.cfg["recuperacao"]["borda_max_s"])
+	if not lv.is_solid(cell) or hang_t > max_t or PlayerInput.pressed(pid, "down") or PlayerInput.axis_x(pid) == -hang_dir:
+		hanging = false   # caixote quebrou, cansou ou soltou
+		return
+	if PlayerInput.pressed(pid, "jump"):
+		# escalada: sobe e fica em cima do caixote
+		hanging = false
+		position = Vector2(cell.x * 64.0 + 32.0 - hang_dir * 8.0, cell.y * 64.0 - 1.0)
+		velocity = Vector2(0, -260)
+		own_vx = hang_dir * 120.0
+		Audio.play("pulo", _pitch())
+		vis.stretch()
+		main.dust(position, 0.6)
+
+## Golpe com o Amassômetro: soma dano e o empurrão cresce com ele. kind = chave em demolicao.amassometro.
+## Retorna false se não pegou (invulnerável ou capacete).
+func take_hit(dir: int, kind: String, by := -1) -> bool:
+	if invuln > 0.0:
+		return false
 	last_hit = 0.0
+	last_cause = {"marretada": "marretada", "martelao": "marretada", "explosao": "explosão", "bola": "bola"}.get(kind, kind)
+	last_attacker = by
+	hanging = false
+	if absorb():
+		return false
+	var am: Dictionary = main.demo.cfg["amassometro"]
+	var k: Dictionary = am[kind]
+	dmg += float(k["dano"])
+	var kx := minf(float(k["kx"]) + dmg * float(k["kx_por"]), float(am["max_kx"]))
+	var ky := float(k["ky"]) + dmg * float(k["ky_por"])
+	var stun := minf(float(am["stun_base"]) + dmg * float(am["stun_por"]), float(am["stun_max"]))
+	main.float_text(position + Vector2(0, -100), "+%d%%" % int(k["dano"]), main.dmg_color(dmg))
+	_apply_knock(dir, kx, ky, stun)
+	return true
+
+## Empurrão direto (modo Clássico e mecânicas antigas).
+func knock(dir: int, vx: float, vy: float, stun: float) -> void:
+	if invuln > 0.0:
+		return
+	last_hit = 0.0
+	hanging = false
 	if absorb():
 		return
+	_apply_knock(dir, vx, vy, stun)
+
+func _apply_knock(dir: int, vx: float, vy: float, stun: float) -> void:
 	own_vx = dir * vx
 	velocity.y = -vy
 	Audio.voice("voz_ai", vis.model)

@@ -103,7 +103,58 @@
         "nome": "Paiol de TNT",
         "dica": "TNT explode em cadeia!"
       }
-    ]
+    ],
+    "amassometro": {
+      "nota": "empurrão = base + dano% × por; atordoamento = stun_base + dano% × stun_por (máx stun_max)",
+      "marretada": {
+        "dano": 12,
+        "kx": 240,
+        "kx_por": 6.0,
+        "ky": 200,
+        "ky_por": 2.6
+      },
+      "martelao": {
+        "dano": 20,
+        "kx": 300,
+        "kx_por": 7.5,
+        "ky": 240,
+        "ky_por": 3.0
+      },
+      "explosao": {
+        "dano": 24,
+        "kx": 420,
+        "kx_por": 7.0,
+        "ky": 420,
+        "ky_por": 3.0
+      },
+      "bola": {
+        "dano": 20,
+        "kx": 380,
+        "kx_por": 7.5,
+        "ky": 420,
+        "ky_por": 3.0
+      },
+      "pisao": {
+        "dano": 8
+      },
+      "agua": {
+        "dano": 25
+      },
+      "max_kx": 1800,
+      "stun_base": 0.12,
+      "stun_por": 0.0028,
+      "stun_max": 0.6
+    },
+    "recuperacao": {
+      "pulo_duplo": 0.82,
+      "borda_max_s": 2.0,
+      "invuln_inicio_s": 3.0,
+      "invuln_volta_s": 2.0
+    },
+    "rede": {
+      "quica": 1050,
+      "aguenta": 2
+    }
   },
   "bots": {
     "nota": "react_s = tempo de reação; hammer_acc = chance de marretar quando dá; safety = chance de checar buraco antes de andar",

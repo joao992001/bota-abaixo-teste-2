@@ -83,12 +83,15 @@ func _draw_tags() -> void:
 		draw_set_transform(Vector2.ZERO)
 		Kit.text(self, Vector2(x + 92, 40), "P%d" % (i + 1), 30, Data.TEXT_COLORS[p["color"]])
 		if main.mode == "demolicao":
-			var sz := minf(26.0, 150.0 / goal)
+			var sz := minf(22.0, 96.0 / goal)
 			for k in goal:
-				Kit.star(self, Vector2(x + 106 + k * sz, 62), sz, k < int(p["score"]))
+				Kit.star(self, Vector2(x + 102 + k * sz, 64), sz, k < int(p["score"]))
+			if robot != null and robot.alive:
+				var dc: Color = main.dmg_color(robot.dmg)
+				Kit.text(self, Vector2(x + 140, 70), "%d%%" % int(robot.dmg), 34, dc, HORIZONTAL_ALIGNMENT_RIGHT, 104, 8, DARK)
 			if robot != null and main.state == S.RUN and robot.alive:
 				var fx: Dictionary = robot.fx_flags()
-				var ix: float = x + 150.0
+				var ix: float = x + 132.0
 				for k in ["item", "martelao", "capacete", "mola"]:
 					var on = fx[k] != "" if k == "item" else fx[k]
 					if on:
@@ -100,6 +103,16 @@ func _draw_tags() -> void:
 		if out:
 			draw_rect(r, Color(0.95, 0.93, 0.88, 0.45))
 			Kit.text(self, Vector2(x + 150, 66), "FORA", 26, Color("#8a5a5a"))
+	# avisos de derrubada (à direita, embaixo da placa)
+	if main.mode == "demolicao":
+		var fy := 100.0
+		for f in main.demo.feed:
+			var a: float = clampf((4.5 - f["t"]) / 0.5, 0.0, 1.0)
+			var fr := Rect2(1560, fy, 346, 40)
+			panel(fr, Color(1, 1, 1, a))
+			var p2: Dictionary = main.players[f["col"]] if f["col"] < main.players.size() else {"color": 0}
+			Kit.text(self, Vector2(fr.position.x, fy + 29), f["text"], 24, Color(Data.TEXT_COLORS[p2["color"]], a), HORIZONTAL_ALIGNMENT_CENTER, fr.size.x)
+			fy += 46.0
 	# placa de madeira da rodada
 	var sign := Rect2(1520, 6, 386, 78)
 	Kit.wood(self, sign)

@@ -375,6 +375,8 @@ func demo_round() -> void:
 	for r in main.robots:
 		r.active = true
 	await frames(3)
+	for r in main.robots:
+		r.invuln = 0.0   # testes de golpe sem a proteção do começo
 
 func demolicao_test() -> void:
 	print("== Demolição")
@@ -424,9 +426,63 @@ func demolicao_test() -> void:
 	await frames(3)
 	var x1: float = r1.position.x
 	await tap("v0", "hammer")
-	check(r1.stun_t > 0.0, "marretada atordoa o rival")
-	await frames(20)
-	check(r1.position.x - x1 > 120.0, "marretada empurra o rival (%.0f px)" % (r1.position.x - x1))
+	check(r1.stun_t > 0.0 and absf(r1.dmg - 12.0) < 0.1, "marretada atordoa e soma 12%% no Amassômetro (%.0f%%)" % r1.dmg)
+	await frames(30)
+	var push_low: float = r1.position.x - x1
+	put(r1, Vector2(col_x(11) + 60, 576))
+	r1.dmg = 120.0
+	await frames(16)
+	x1 = r1.position.x
+	await tap("v0", "hammer")
+	await frames(30)
+	var push_high: float = r1.position.x - x1
+	check(push_low > 20.0 and push_low < 200.0 and push_high > push_low * 3.0, "amassado voa mais longe: 12%% → %.0f px, 120%% → %.0f px" % [push_low, push_high])
+	# invulnerável não sofre golpe
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(11) + 60, 576))
+	r0.facing = 1
+	r1.invuln = 2.0
+	await frames(3)
+	await tap("v0", "hammer")
+	check(r1.dmg == 0.0 and r1.stun_t == 0.0, "invulnerável (começo da rodada) não leva golpe")
+	# pulo duplo do propulsor
+	await demo_round()
+	r0 = main.robots[0]
+	put(r0, Vector2(col_x(12), 576))
+	await frames(3)
+	var y_ground: float = r0.position.y
+	vset("v0", "jump", true)
+	await frames(24)
+	vset("v0", "jump", false)
+	await frames(2)
+	vset("v0", "jump", true)
+	var top_y := 9999.0
+	for i in 40:
+		await frames(1)
+		top_y = minf(top_y, r0.position.y)
+	vset("v0", "jump", false)
+	check(y_ground - top_y > 4.6 * 64.0 and r0.air_jumps == 0, "pulo duplo do propulsor (altura %.1f tiles)" % ((y_ground - top_y) / 64.0))
+	await frames(60)
+	# agarrar a borda: cai ao lado da plataforma segurando na direção dela
+	await demo_round()
+	r0 = main.robots[0]
+	put(r0, Vector2(col_x(9) - 4, 600))
+	r0.air_jumps = 0
+	vset("v0", "right", true)
+	var grabbed := false
+	for i in 30:
+		await frames(1)
+		if r0.hanging:
+			grabbed = true
+			break
+	vset("v0", "right", false)
+	check(grabbed, "agarra a borda do caixote")
+	await tap("v0", "jump")
+	await frames(30)
+	check(r0.alive and r0.is_on_floor() and r0.position.y <= 577.0, "da borda, PULAR sobe na plataforma")
 	await demo_round()
 	r0 = main.robots[0]
 	r1 = main.robots[1]
@@ -438,7 +494,7 @@ func demolicao_test() -> void:
 		if r1.stun_t > 0.0:
 			stomped = true
 			break
-	check(stomped and r0.velocity.y < 0.0, "pular na cabeça atordoa e quica")
+	check(stomped and r0.velocity.y < 0.0 and r1.dmg > 0.0, "pular na cabeça atordoa, amassa e quica")
 	var stomps := 1
 	var was_stunned := true
 	for i in 90:
@@ -572,6 +628,7 @@ func itens_test() -> void:
 	r0.facing = 1
 	main.demo.give(r1, "capacete")
 	await frames(2)
+	r1.invuln = 0.0
 	await tap("v0", "hammer")
 	check(r1.stun_t == 0.0 and r1.shield == 0, "capacete de aço bloqueia 1 marretada")
 	await frames(16)
@@ -620,12 +677,12 @@ func bots_test() -> void:
 		r.active = true
 	var human = main.robots[0]
 	var won := false
-	for i in 60 * 45:
+	for i in 60 * 90:
 		await frames(1)
 		if main.state != S.RUN:
 			won = main.demo.round_winner == 1
 			break
-	check(won, "bot difícil derruba um jogador parado em até 45 s")
+	check(won, "bot difícil derruba um jogador parado em até 90 s")
 	main.demo.cfg["quake_start_s"] = 30.0
 	# 3 bots entre si: a rodada termina e nenhum cai sozinho nos primeiros 4 s
 	main.state = S.JOIN
