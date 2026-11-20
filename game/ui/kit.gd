@@ -75,6 +75,8 @@ static func sticker(ci: CanvasItem, pos: Vector2, s: String, size: int, col: Col
 
 ## Estrela desenhada (cheia: amarela com contorno; vazia: sombra translúcida).
 static func star(ci: CanvasItem, c: Vector2, size: float, filled: bool) -> void:
+	if size < 3.0:
+		return   # pequena demais: o polígono degenera (erro de triangulação a cada quadro)
 	var pts := PackedVector2Array()
 	for k in 10:
 		var a := -PI / 2.0 + k * PI / 5.0

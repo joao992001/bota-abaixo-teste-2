@@ -984,6 +984,17 @@ func submodos_test() -> void:
 	check(h >= 0, "Batata: alguém pegou a dinamite (P%d)" % (h + 1))
 	var hr = main.robots[h]
 	var other = main.robots[1 - h]
+	hr.invuln = 0.0
+	other.invuln = 0.0
+	put(hr, Vector2(col_x(12), 576))
+	put(other, Vector2(col_x(12) + 20, 576))
+	await frames(3)
+	check(main.demo.bomb_holder == 1 - h, "Batata: encostar no rival passa a dinamite")
+	await frames(55)
+	put(hr, Vector2(col_x(12) + 20, 576))
+	await frames(3)
+	check(main.demo.bomb_holder == h, "Batata: e ele pode devolver encostando")
+	await frames(55)
 	put(hr, Vector2(col_x(12), 576))
 	put(other, Vector2(col_x(12) + 50, 576))
 	hr.facing = 1

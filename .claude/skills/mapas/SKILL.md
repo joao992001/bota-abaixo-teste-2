@@ -1,17 +1,23 @@
 ---
 name: mapas
-description: "Desenho dos mapas de Bota-Abaixo (Canteiro, Andaimes, Cais Noturno) em levels/*.lvl: rota sem peças fácil, pontos quentes de conflito, zonas proibidas, espaço para construir, variedade entre mapas. Use ao criar ou ajustar mapas."
+description: "Desenho das arenas de Bota-Abaixo em levels/*.lvl, por modo (Derruba, Batata-Dinamite, Rei da Obra, Fuga): pontos quentes, bordas e poços, justiça entre spawns, faixa reservada ao HUD, variedade. Use ao criar ou ajustar mapas."
 ---
 
 # Mapas
 
-**O mapa vazio não é o desafio; o desafio é o que os jogadores constroem.** O mapa é um palco para sabotagem.
+Cada arena pertence a um modo (`data/modos.json` → `demolicao.modos[].arenas`). O mapa tem que servir à regra do modo.
 
-1. **Rota sem peças fácil:** todos chegam na primeira rodada. Vãos e alturas com folga (≈ 80% do pulo máximo: até ~4 tiles de vão correndo, ~2,5 tiles de altura).
-2. **2–3 pontos quentes** por mapa: lugares por onde todos passam (borda de poço, gargalo, teto baixo). É ali que a diversão acontece.
-3. **Sempre há resposta:** nenhuma peça sozinha pode bloquear todas as rotas sem que a marreta, a dinamite ou outra rota resolvam.
-4. **Zona `x`:** 2 tiles em volta dos spawns e do elevador. Elevador visível de todos os spawns.
-5. **Espaço para construir:** pelo menos ~30 células úteis para 8 rodadas de peças.
-6. **Variedade:** Canteiro horizontal (→), Andaimes vertical (↑), Cais Noturno com duas rotas que se cruzam.
+## Regras gerais
+1. **Spawns justos:** espelhados (ou equivalentes) e longe de perigo; ninguém nasce já na borda.
+2. **2–3 pontos quentes:** lugares por onde todos passam (centro, ponte estreita, topo). É ali que a briga acontece.
+3. **Faixa do HUD:** as linhas 14–15 (y ≥ 952 px na tela) ficam embaixo dos cartões dos jogadores. Só poço, espinho, lama ou água ali; nada jogável.
+4. **Nada mata "do nada":** perigo sempre visível e com aviso (ciclo de máquina, faísca, alavanca).
+5. **Variedade:** cada arena com uma ideia própria (algo que se move, que empurra, que cai…).
 
-Formato: `levels/README.md`. Depois de editar, rode o jogo e percorra o mapa com 2 jogadores; teste 2–3 sabotagens óbvias nos pontos quentes.
+## Por modo
+- **Derruba** (vidas, dano %): plataformas abertas com bordas e poços dos lados; dá para voltar pulando (pulo duplo) se não apanhou muito. Caixotes que quebram mudam o palco ao longo da rodada.
+- **Batata-Dinamite:** fechada, SEM poço (só a bomba elimina); voltas e atalhos para fugir em círculo.
+- **Rei da Obra:** um "trono" no alto e vários caminhos até ele; quem está lá fica exposto.
+- **Fuga:** mapa maior que a tela com `rolagem:`; rota clara para frente/cima e obstáculos que separam os jogadores.
+
+Formato: `levels/README.md`. Depois de editar, rode partidas de bots (`-- --stats=N --sub=<modo> --so-arenas=<ids>`) e veja duração, quedas sozinho × derrubadas; capture com `-- --arenas=DIR`.

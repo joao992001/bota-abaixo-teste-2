@@ -156,6 +156,10 @@ func _card(i: int, r: Rect2) -> void:
 	if main.mode == "demolicao":
 		var goal := int(main.demo.cfg["rounds_to_win"])
 		var sz := minf(28.0, 150.0 / goal)
+		if goal > 10:   # metas enormes (testes): número em vez de estrelas
+			Kit.star(self, Vector2(r.position.x + 160, r.position.y + 96), 26, true)
+			Kit.text(self, Vector2(r.position.x + 178, r.position.y + 106), "%d" % int(p["score"]), 26, tc, HORIZONTAL_ALIGNMENT_LEFT, -1, 7)
+			goal = 0
 		for k in goal:
 			var sc := Vector2(r.position.x + 156 + k * sz, r.position.y + 96)
 			if k < int(p["score"]):
@@ -360,7 +364,7 @@ func _draw_demo_score() -> void:
 		if pname(i) != "P%d" % (i + 1):
 			fit_text(Vector2(lr.position.x + 150, lr.position.y + 106), pname(i), 34, DARK, 290)
 		var sz := minf(66.0, 560.0 / goal)
-		for s2 in goal:
+		for s2 in mini(goal, 10):
 			Kit.star(self, Vector2(lr.position.x + 490 + s2 * sz, 0), sz * 0.95, s2 < int(p["score"]))
 		draw_set_transform(Vector2.ZERO)
 		_head(i, r.position + Vector2(76, rowh / 2.0), 54, Kit.INK, Color.WHITE, "vitoria" if win else "normal")
@@ -387,7 +391,7 @@ func _draw_win() -> void:
 	var pw: Dictionary = main.players[w]
 	Kit.burst(self, Vector2(960, 640), 330, t * 0.15, 8.0)
 	_ribbon_pop("%s VENCEU!" % pname(w).to_upper(), 100, 1600, 86)
-	var goal := int(main.demo.cfg["rounds_to_win"]) if main.mode == "demolicao" else 0
+	var goal := mini(int(main.demo.cfg["rounds_to_win"]), 10)
 	var sw := 46.0 * goal
 	var px := 960.0 - (90.0 + sw) / 2.0
 	Kit.text(self, Vector2(px, 222), "P%d" % (w + 1), 44, Data.COLORS[pw["color"]], HORIZONTAL_ALIGNMENT_LEFT, -1, 10)

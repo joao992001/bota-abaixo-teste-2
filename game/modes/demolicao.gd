@@ -687,6 +687,13 @@ func _update_bomb(dt: float, alive: Array) -> void:
 		bomb_holder = -1
 		bomb_next = 1.5
 		return
+	# encostar no rival também passa a dinamite (com uma folguinha para não voltar na hora)
+	if bomb_pass_cd <= 0.0:
+		var hr: Rect2 = holder.rect()
+		for o in alive:
+			if o != holder and o.invuln <= 0.0 and hr.intersects(o.rect()):
+				pass_bomb(holder.pid, o.pid)
+				break
 	bomb_fuse -= dt
 	bomb_beep -= dt
 	if bomb_beep <= 0.0:
@@ -707,7 +714,7 @@ func pass_bomb(from_pid: int, to_pid: int) -> void:
 	if rule() != "batata" or from_pid != bomb_holder or bomb_pass_cd > 0.0:
 		return
 	bomb_holder = to_pid
-	bomb_pass_cd = 0.6
+	bomb_pass_cd = 0.8
 	main.float_text(main.robots[to_pid].position + Vector2(0, -110), "TOMA!", main.player_color(from_pid))
 	Audio.play("arremesso", 1.3)
 
