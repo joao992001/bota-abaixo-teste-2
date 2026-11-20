@@ -1,0 +1,37 @@
+{
+  "target_points": 60,
+  "timers": {
+    "pick_seconds": 10,
+    "build_seconds": 20,
+    "run_seconds": 60,
+    "score_seconds": 5
+  },
+  "conveyor_extra_pieces": 2,
+  "pick_order": "lowest_score_first",
+  "points": {
+    "finish": 10,
+    "first_bonus": 5,
+    "kill_by_owned_piece": 3,
+    "kill_cap_per_round": 6,
+    "hammer_smash": 1
+  },
+  "rules": {
+    "too_easy": {
+      "enabled": true,
+      "zero_finish_points": true,
+      "keeps_first_bonus": true
+    },
+    "embargo": {
+      "enabled": true,
+      "embargo_after_rounds": 2,
+      "demolish": "peça com mais eliminações acumuladas; empate: a mais antiga"
+    }
+  },
+  "hammer": {
+    "uses_per_round": 1,
+    "can_smash_own": false,
+    "affects_map_fixed": false
+  },
+  "owned_pieces_enabled": true,
+  "notes": "Hipótese inicial. Ajuste pelos playtests."
+}

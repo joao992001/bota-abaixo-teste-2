@@ -1,0 +1,27 @@
+{
+  "nota": "Valores iniciais para tile de 64 px a 1920x1080 (60 ticks). Ajuste jogando; registre mudanças grandes em docs/decisoes.md.",
+  "jump_model": "sustain (velocidade de subida mantida enquanto o botão está segurado, até var_jump_time)",
+  "max_run": 576,
+  "accel_ground": 6400,
+  "decel_ground": 4800,
+  "air_mult": 0.75,
+  "gravity": 6000,
+  "half_grav_threshold": 240,
+  "max_fall": 1200,
+  "fast_max_fall": 1680,
+  "jump_speed": 840,
+  "var_jump_time": 0.18,
+  "jump_h_boost": 120,
+  "coyote_time": 0.1,
+  "jump_buffer_time": 0.1,
+  "wall_slide_speed": 280,
+  "wall_jump_h_speed": 680,
+  "wall_jump_lock_time": 0.14,
+  "hammer_time": 0.25,
+  "hammer_reach_px": 48,
+  "corner_correction_px": 16,
+  "hitbox": [
+    48,
+    72
+  ]
+}

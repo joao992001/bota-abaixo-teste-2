@@ -1,0 +1,233 @@
+{
+  "nota": "Valores iniciais (hipóteses). Ajuste jogando. Grade de 64 px por tile.",
+  "pecas": [
+    {
+      "id": "P01",
+      "nome": "Viga",
+      "categoria": "plataforma",
+      "tamanho_tiles": [
+        3,
+        1
+      ],
+      "tem_dono": true,
+      "para_o_dono": "one-way para o dono: atravessa por baixo e pisa por cima (atalho)",
+      "para_rivais": "bloco sólido em todas as direções",
+      "aviso_visual": "faixa do dono no topo; setas de one-way acendem quando o dono está a ≤ 3 tiles",
+      "marreta": "destruída por 1 marretada rival",
+      "params": {},
+      "marco": 1
+    },
+    {
+      "id": "P02",
+      "nome": "Mola de obra",
+      "categoria": "movimento",
+      "tamanho_tiles": [
+        1,
+        1
+      ],
+      "tem_dono": true,
+      "para_o_dono": "lança o dono a 5 tiles de altura",
+      "para_rivais": "lança o rival a 3 tiles de altura",
+      "aviso_visual": "seta da mola na cor do dono; mola comprime 4 frames antes de lançar",
+      "marreta": "destruída por 1 marretada rival",
+      "params": {
+        "owner_launch_tiles": 5,
+        "rival_launch_tiles": 3
+      },
+      "marco": 1
+    },
+    {
+      "id": "P03",
+      "nome": "Serra circular",
+      "categoria": "perigo",
+      "tamanho_tiles": [
+        1,
+        1
+      ],
+      "tem_dono": true,
+      "para_o_dono": "parada, dentes recolhidos, atravessável pelo dono",
+      "para_rivais": "gira e elimina ao toque (hitbox 10x10 centrada)",
+      "aviso_visual": "zumbido e faísca 0,5 s antes da corrida começar; dentes vermelhos expostos para rivais",
+      "marreta": "destruída por 1 marretada rival (o rival precisa encostar no lado sem dentes: costas da serra)",
+      "params": {
+        "hazard_hitbox_px": 40
+      },
+      "marco": 1
+    },
+    {
+      "id": "P04",
+      "nome": "Esteira",
+      "categoria": "movimento",
+      "tamanho_tiles": [
+        3,
+        1
+      ],
+      "tem_dono": true,
+      "para_o_dono": "sempre a favor do movimento do dono (soma 4 tiles/s na direção em que ele anda; parado, não move)",
+      "para_rivais": "empurra a 4 tiles/s na direção marcada no momento da colocação",
+      "aviso_visual": "setas animadas na direção para rivais; setas da cor do dono para o dono",
+      "marreta": "destruída por 1 marretada rival",
+      "params": {
+        "speed_tiles_s": 4
+      },
+      "marco": 1
+    },
+    {
+      "id": "P05",
+      "nome": "Compensado frágil",
+      "categoria": "plataforma",
+      "tamanho_tiles": [
+        2,
+        1
+      ],
+      "tem_dono": true,
+      "para_o_dono": "firme para o dono",
+      "para_rivais": "quebra 0,5 s depois que um rival pisa; reaparece na próxima rodada",
+      "aviso_visual": "rachaduras e estalo assim que o rival pisa",
+      "marreta": "destruída por 1 marretada rival",
+      "params": {
+        "break_delay_s": 0.5,
+        "respawn": "next_round"
+      },
+      "marco": 2
+    },
+    {
+      "id": "P06",
+      "nome": "Bate-estaca",
+      "categoria": "perigo",
+      "tamanho_tiles": [
+        1,
+        2
+      ],
+      "tem_dono": true,
+      "para_o_dono": "empurra o dono 1 tile para o lado sem eliminar",
+      "para_rivais": "esmaga (elimina) na descida do ciclo",
+      "aviso_visual": "sobe devagar e treme 0,4 s antes de descer; sombra no chão cresce",
+      "marreta": "destruída por 1 marretada rival (fora da fase de descida)",
+      "params": {
+        "cycle_s": 2.0,
+        "warn_s": 0.4,
+        "push_tiles_owner": 1
+      },
+      "marco": 2
+    },
+    {
+      "id": "P07",
+      "nome": "Gancho de guindaste",
+      "categoria": "controle",
+      "tamanho_tiles": [
+        1,
+        1
+      ],
+      "tem_dono": true,
+      "para_o_dono": "agarra (segurar pulo encostado) e balança; soltar no ponto alto lança para a frente",
+      "para_rivais": "agarra, mas escorrega após 0,3 s",
+      "aviso_visual": "gancho com trava na cor do dono; para rivais, gancho engordurado pingando",
+      "marreta": "destruída por 1 marretada rival",
+      "params": {
+        "rival_slip_s": 0.3,
+        "swing_period_s": 1.2
+      },
+      "marco": 2
+    },
+    {
+      "id": "P08",
+      "nome": "Andaime",
+      "categoria": "plataforma",
+      "tamanho_tiles": [
+        1,
+        3
+      ],
+      "tem_dono": true,
+      "para_o_dono": "escada: dono sobe a 6 tiles/s",
+      "para_rivais": "escada: rival sobe a 3 tiles/s",
+      "aviso_visual": "degraus na cor do dono; para rivais, degraus tortos",
+      "marreta": "destruída por 1 marretada rival",
+      "params": {
+        "owner_climb_tiles_s": 6,
+        "rival_climb_tiles_s": 3
+      },
+      "marco": 2
+    },
+    {
+      "id": "P09",
+      "nome": "Cone de sinalização",
+      "categoria": "controle",
+      "tamanho_tiles": [
+        1,
+        1
+      ],
+      "tem_dono": true,
+      "para_o_dono": "atravessável pelo dono",
+      "para_rivais": "sólido; empurra o rival 1 tile para trás ao encostar correndo",
+      "aviso_visual": "cone com faixa reflexiva na cor do dono",
+      "marreta": "destruída por 1 marretada rival",
+      "params": {
+        "push_back_tiles": 1
+      },
+      "marco": 2
+    },
+    {
+      "id": "P10",
+      "nome": "Bola de demolição",
+      "categoria": "perigo",
+      "tamanho_tiles": [
+        1,
+        1
+      ],
+      "tem_dono": true,
+      "para_o_dono": "atravessa o dono sem efeito",
+      "para_rivais": "elimina ao toque",
+      "aviso_visual": "pêndulo visível (raio 3 tiles) com corrente; rastro de movimento; ruído de corrente",
+      "marreta": "a bola não pode ser marretada; marretar o pivô (1×1) destrói a peça",
+      "params": {
+        "radius_tiles": 3,
+        "period_s": 2.4,
+        "hazard_hitbox_px": 56
+      },
+      "marco": 2
+    },
+    {
+      "id": "P11",
+      "nome": "Ventilador industrial",
+      "categoria": "movimento",
+      "tamanho_tiles": [
+        1,
+        1
+      ],
+      "tem_dono": true,
+      "para_o_dono": "zona de 4 tiles empurra o dono a favor do movimento (+3 tiles/s)",
+      "para_rivais": "zona de 4 tiles empurra o rival na direção do sopro (3 tiles/s)",
+      "aviso_visual": "partículas de vento na direção do sopro; hélice com faixa do dono",
+      "marreta": "destruída por 1 marretada rival",
+      "params": {
+        "zone_tiles": 4,
+        "push_tiles_s": 3
+      },
+      "marco": 2
+    },
+    {
+      "id": "P12",
+      "nome": "Dinamite",
+      "categoria": "demolicao",
+      "tamanho_tiles": [
+        1,
+        1
+      ],
+      "tem_dono": false,
+      "para_o_dono": "sem dono: ao ser colocada, explode e remove peças e blocos marcados como destrutíveis no raio de 1 tile",
+      "para_rivais": "igual para todos",
+      "aviso_visual": "pavio aceso 1 s durante a construção; anel de alcance",
+      "marreta": "não se aplica (consumida ao ser colocada)",
+      "params": {
+        "radius_tiles": 1,
+        "fuse_s": 1.0,
+        "destroys": [
+          "peças",
+          "blocos destrutíveis do mapa (char 'd', se o arquiteto usar)"
+        ]
+      },
+      "marco": 2
+    }
+  ]
+}

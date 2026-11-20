@@ -1,0 +1,9 @@
+# Decisões (uma linha cada)
+
+- 2026-11-19 · Gênero, tema, 2–4 jogadores locais, peças com dono, Claude Code + Godot 4 — usuário.
+- 2026-11-19 · Marreta (1 vez por rodada) para conter quem sai na frente — hipótese do Configurador.
+- 2026-11-19 · Vermelho de perigo `#d42035` escolhido por distinguir das 4 cores de jogador também em cinza e para daltônicos — Configurador (v1).
+- 2026-11-19 · **v2:** estilo muda de pixel art 32 bits para **cartoon vetorial** muito próximo das referências enviadas (BattleBlock Theater, Heave Ho, Ultimate Chicken Horse, referência de gelo/explosões) — usuário.
+- 2026-11-19 · **v2:** processo simplificado (4 marcos, 3 agentes, 10 skills, sem ferramentas antecipadas) por custo e demora — usuário.
+- 2026-11-19 · v2: robôs inteiros na cor do jogador + acessórios cosméticos; cada mapa com o visual de uma referência; mapa 3 vira "Cais Noturno" para casar com a referência de gelo/água — Configurador.
+- 2026-11-19 · v2: resolução 1920×1080, grade de 64 px; valores de movimento multiplicados por 4 em relação à v1 — Configurador.
