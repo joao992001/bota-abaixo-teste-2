@@ -405,7 +405,7 @@
       {
         "id": "batata",
         "nome": "BATATA-DINAMITE",
-        "dica": "Passe a dinamite com a marreta\nantes que ela exploda!",
+        "dica": "Passe a dinamite\nantes que ela exploda!",
         "ok": true,
         "arenas": [
           "paiol",
@@ -427,7 +427,7 @@
       {
         "id": "fuga",
         "nome": "FUGA",
-        "dica": "A obra desaba atrás de você:\ncorra e não fique para trás!",
+        "dica": "A obra desaba atrás:\nnão fique para trás!",
         "ok": false,
         "arenas": [
           "torre",
