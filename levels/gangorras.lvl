@@ -1,10 +1,8 @@
 id: gangorras
 gangorras: 6,10,6; 14.5,7,7; 23,10,6
-ventilador_ciclo: 4, 1.5
-ventilador_alcance: 9
 terremoto: 70
 fundo: #fff4d0
-legend: "d caixote, F ventilador, # pilar, ^ espinho, 1-4 spawn (gangorras no cabeçalho)"
+legend: "d caixote, # pilar, ^ espinho, 1-4 spawn (gangorras no cabeçalho)"
 size: 30x16
 spawns: 1,2,3,4
 === map
@@ -20,7 +18,7 @@ I......2......##......3......I
 I.............##.............I
 I.............##.............I
 I.....#.......##.......#.....I
+Idddd.#.......##.......#.ddddI
 I.....#.......##.......#.....I
 I.....#.......##.......#.....I
-I.F...#.......##.......#...F.I
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
