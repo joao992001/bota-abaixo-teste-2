@@ -644,6 +644,7 @@ func _input(e: InputEvent) -> void:
 					PlayerInput.virtual["parado%d" % players.size()] = {}
 					add_player("parado%d" % players.size())
 			KEY_F6: Engine.time_scale = 0.3 if Engine.time_scale == 1.0 else 1.0
+			KEY_F11: toggle_fullscreen()
 	elif e is InputEventMouseButton and e.pressed and state != S.JOIN:
 		var c := Vector2i((world.get_local_mouse_position() / T).floor())
 		if e.button_index == MOUSE_BUTTON_LEFT:
@@ -661,6 +662,13 @@ func _input(e: InputEvent) -> void:
 				if c in pc.cells():
 					remove_piece(pc)
 					break
+
+## F11: tela cheia <-> janela (o jogo abre em tela cheia: display/window/size/mode=3).
+func toggle_fullscreen() -> void:
+	if DisplayServer.window_get_mode() in [DisplayServer.WINDOW_MODE_FULLSCREEN, DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN]:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 func skip_phase() -> void:
 	match state:
