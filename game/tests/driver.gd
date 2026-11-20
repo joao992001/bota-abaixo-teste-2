@@ -682,6 +682,35 @@ func parede_test() -> void:
 	await frames(2)
 	check(r0.velocity.y < -300.0 and r0.own_vx < 0.0, "pulo de parede empurra para longe")
 	vset("v0", "right", false)
+	# os dois lados: o desenho vira de costas para a parede (direita e esquerda), pendurado olha para a parede
+	for side in [1, -1]:
+		await demo_round()
+		r0 = main.robots[0]
+		lv = main.level
+		put(main.robots[1], Vector2(col_x(24), 576))
+		for y in [3, 4, 5, 6, 7]:
+			lv.add_block(Vector2i(10, y))
+		var x := 10 * 64.0 - 25.0 if side > 0 else 11 * 64.0 + 25.0
+		put(r0, Vector2(x, 400))
+		vset("v0", "right" if side > 0 else "left", true)
+		await frames(14)
+		var sx: float = r0.vis.scale.x
+		check(r0.wall_sliding and signf(sx) == -side, "parede à %s: desenho de costas para ela (escala %.2f)" % ["direita" if side > 0 else "esquerda", sx])
+		vset("v0", "right" if side > 0 else "left", false)
+		# pendurado na quina do topo (linha 3)
+		put(r0, Vector2(x + (-5.0 * side), 3 * 64.0 + 40.0))
+		r0.velocity.y = 100.0
+		r0.grip = 1.0
+		vset("v0", "right" if side > 0 else "left", true)
+		var hung := false
+		for i in 30:
+			await frames(1)
+			if r0.hanging:
+				hung = true
+				break
+		await frames(8)
+		check(hung and signf(r0.vis.scale.x) == side, "borda à %s: pendurado olhando para a parede (escala %.2f)" % ["direita" if side > 0 else "esquerda", r0.vis.scale.x])
+		vset("v0", "right" if side > 0 else "left", false)
 	# aderência acaba: solta da parede e cai (o medidor mostra isso)
 	await demo_round()
 	r0 = main.robots[0]
@@ -1874,7 +1903,7 @@ func itens_frames(dir: String) -> void:
 	main.event_level = 0
 	main.arena_choice = "demolicao"
 	main.start_match()
-	var plan := [["teletransporte", 12], ["laser", 16], ["laser_tiro", 30], ["vortice", 60], ["soprador", 20], ["congelador", 22],
+	var plan := [["teletransporte", 12], ["laser", 16], ["laser_tiro", 30], ["vortice", 60], ["soprador", 20], ["congelador", 9],
 		["furadeira", 8], ["cola", 14], ["foguete", 50], ["mola", 60], ["ima", 70], ["dinamite", 60], ["bolhas", 50], ["parede", 30], ["borda", 50]]
 	for pl in plan:
 		var kind: String = pl[0]

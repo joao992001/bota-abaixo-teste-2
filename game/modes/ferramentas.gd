@@ -24,6 +24,8 @@ var blowers: Array = []      # {owner, t}
 var ice_shots: Array = []    # {pos, vel, owner, trail}
 var parts: Array = []        # partículas: {pos, vel, t, life, kind, col, size, rot, spin}
 var pops: Array = []         # pegou item: {pos, kind, t}
+var anims := {}              # pid -> {kind, t, dur, fire}: o robô segura/arremessa o item (pose no desenho)
+const HELD_TOOLS := ["furadeira", "laser", "soprador", "congelador"]
 
 func setup(m: Node, d: Node) -> void:
 	main = m
@@ -32,6 +34,21 @@ func setup(m: Node, d: Node) -> void:
 func clear() -> void:
 	for arr in [glue_shots, puddles, drills, teles, lasers, vortex_shots, vortexes, blowers, ice_shots, parts, pops]:
 		arr.clear()
+	anims.clear()
+
+## Pose de uso: {kind, k (0..1), fire (s desde o disparo, -1 antes)} ou {} se não está usando nada.
+func using(pid: int) -> Dictionary:
+	if not anims.has(pid):
+		return {}
+	var a: Dictionary = anims[pid]
+	return {"kind": a["kind"], "k": clampf(a["t"] / a["dur"], 0.0, 1.0), "fire": a["t"] - a["fire"] if a["fire"] >= 0.0 else -1.0}
+
+func _anim(pid: int, kind: String, dur: float, fire := -1.0) -> void:
+	anims[pid] = {"kind": kind, "t": 0.0, "dur": dur, "fire": fire}
+
+## Bico da ferramenta na mão (mundo): de onde sai o raio, o vento e o tiro de gelo.
+func muzzle(r) -> Vector2:
+	return r.position + Vector2(r.facing * 54.0, -44.0)
 
 func cfgi(kind: String) -> Dictionary:
 	return demo.item_cfg(kind)
@@ -45,6 +62,7 @@ func use(r, kind: String) -> bool:
 	var ci := cfgi(kind)
 	match kind:
 		"furadeira":
+			_anim(r.pid, kind, float(ci["dash_s"]) + 0.1, 0.0)
 			drills.append({"owner": r.pid, "t": 0.0, "hit": []})
 			r.forced_t = float(ci["dash_s"])
 			r.forced_vel = Vector2(r.facing * float(ci["vel"]), 0)
@@ -53,6 +71,7 @@ func use(r, kind: String) -> bool:
 			main.shake(4.0)
 		"cola":
 			var th: Array = ci["throw"]
+			_anim(r.pid, "arremesso", 0.28)
 			glue_shots.append({"pos": c + Vector2(r.facing * 20, -16), "vel": Vector2(r.facing * float(th[0]) + r.velocity.x * 0.3, -float(th[1])),
 				"owner": r.pid, "trail": []})
 			Audio.play("arremesso", 0.9)
@@ -69,6 +88,7 @@ func use(r, kind: String) -> bool:
 			if best == null:
 				return false
 			teles.append({"a": r.pid, "b": best.pid, "t": 0.0})
+			_anim(r.pid, "aponta", float(ci["demora_s"]) + 0.1)
 			for rr in [r, best]:
 				rr.forced_t = float(ci["demora_s"])
 				rr.forced_vel = Vector2.ZERO
@@ -76,11 +96,13 @@ func use(r, kind: String) -> bool:
 			Audio.play("teleporte")
 		"laser":
 			lasers.append({"owner": r.pid, "t": 0.0, "dir": r.facing, "fired": false, "hit": []})
+			_anim(r.pid, kind, float(ci["carga_s"]) + float(ci["raio_s"]) + 0.15, float(ci["carga_s"]))
 			r.forced_t = float(ci["carga_s"]) + float(ci["raio_s"])
 			r.forced_vel = Vector2.ZERO
 			Audio.play("laser_carga")
 		"vortice":
 			var th: Array = ci["throw"]
+			_anim(r.pid, "arremesso", 0.28)
 			vortex_shots.append({"pos": c + Vector2(r.facing * 20, -20), "vel": Vector2(r.facing * float(th[0]) + r.velocity.x * 0.3, -float(th[1])),
 				"owner": r.pid, "rot": 0.0})
 			Audio.play("arremesso", 0.8)
@@ -88,9 +110,11 @@ func use(r, kind: String) -> bool:
 		"soprador":
 			blowers = blowers.filter(func(b): return b["owner"] != r.pid)
 			blowers.append({"owner": r.pid, "t": 0.0})
+			_anim(r.pid, kind, float(ci["duracao_s"]), 0.0)
 			Audio.play("soprador")
 		"congelador":
-			ice_shots.append({"pos": c + Vector2(r.facing * 30, -8), "vel": Vector2(r.facing * float(ci["vel"]), 0), "owner": r.pid, "trail": []})
+			_anim(r.pid, kind, 0.45, 0.12)
+			ice_shots.append({"pos": muzzle(r), "vel": Vector2(r.facing * float(ci["vel"]), 0), "owner": r.pid, "trail": [], "wait": 0.12})
 			Audio.play("gelo", 1.3)
 			r.own_vx = -r.facing * 160.0
 	return true
@@ -118,6 +142,10 @@ func update(dt: float, alive: Array) -> void:
 	_update_vortex(dt, alive)
 	_update_blowers(dt, alive)
 	_update_ice(dt, alive)
+	for pid in anims.keys():
+		anims[pid]["t"] += dt
+		if anims[pid]["t"] >= anims[pid]["dur"]:
+			anims.erase(pid)
 	# ímã: puxa os rivais por perto
 	for r in alive:
 		if r.fx_t["ima"] > 0.0:
@@ -270,8 +298,8 @@ func _update_lasers(dt: float, alive: Array) -> void:
 			l["dead"] = true
 			continue
 		var dir: int = l["dir"]
-		var y: float = r.position.y - 38.0
-		var x0: float = r.position.x + dir * 30.0
+		var y: float = r.position.y - 44.0
+		var x0: float = r.position.x + dir * 54.0
 		var x := x0
 		while x > 0.0 and x < lv.cols * T:
 			var cell := Vector2i(int(floor(x / T)), int(floor(y / T)))
@@ -355,7 +383,7 @@ func _update_blowers(dt: float, alive: Array) -> void:
 		if r == null or not r.alive or b["t"] >= float(sc["duracao_s"]):
 			b["dead"] = true
 			continue
-		var c: Vector2 = r.rect().get_center()
+		var c: Vector2 = muzzle(r)
 		var reach := float(sc["alcance_px"])
 		for o in alive:
 			if o == r:
@@ -370,7 +398,7 @@ func _update_blowers(dt: float, alive: Array) -> void:
 				o.last_hit = minf(o.last_hit, 1.0)
 				o.last_cause = "soprador"
 		if Engine.get_physics_frames() % 2 == 0:
-			_part(c + Vector2(r.facing * 40.0, randf_range(-20, 20)), Vector2(r.facing * randf_range(700, 1000), randf_range(-120, 120)), 0.4, "vento", Color(1, 1, 1, 0.8), 3.0)
+			_part(c + Vector2(r.facing * 6.0, randf_range(-12, 12)), Vector2(r.facing * randf_range(700, 1000), randf_range(-120, 120)), 0.4, "vento", Color(1, 1, 1, 0.8), 3.0)
 		if Engine.get_physics_frames() % 24 == 0:
 			Audio.play("soprador", 1.0, -6.0)
 	blowers = blowers.filter(func(b): return not b.get("dead", false))
@@ -386,6 +414,14 @@ func _update_ice(dt: float, alive: Array) -> void:
 	var cc := cfgi("congelador")
 	var lv = main.level
 	for s in ice_shots:
+		if s.get("wait", 0.0) > 0.0:
+			s["wait"] -= dt
+			var o0 = _robot(s["owner"])
+			if o0 != null:
+				s["pos"] = muzzle(o0)
+			if s["wait"] > 0.0:
+				continue
+			main.spark(s["pos"], 4)
 		s["pos"] += s["vel"] * dt
 		s["trail"].push_front(s["pos"])
 		if s["trail"].size() > 7:
@@ -536,46 +572,24 @@ func _draw() -> void:
 		var r = _robot(b["owner"])
 		if r == null:
 			continue
-		var c: Vector2 = r.rect().get_center()
+		var c: Vector2 = muzzle(r)
 		var reach := float(sc["alcance_px"])
 		var wid := float(sc["largura_px"])
-		var cone := PackedVector2Array([c + Vector2(r.facing * 30.0, -8), c + Vector2(r.facing * reach, -wid), c + Vector2(r.facing * reach, wid), c + Vector2(r.facing * 30.0, 8)])
+		var cone := PackedVector2Array([c + Vector2(0, -8), c + Vector2(r.facing * reach, -wid), c + Vector2(r.facing * reach, wid), c + Vector2(0, 8)])
 		draw_colored_polygon(cone, Color(1, 1, 1, 0.12))
 		for i in 6:
 			var u := fposmod(now * 2.5 + i / 6.0, 1.0)
-			var x: float = c.x + r.facing * (40.0 + u * reach)
+			var x: float = c.x + r.facing * (10.0 + u * reach)
 			var hh := 10.0 + u * wid * 0.9
 			draw_arc(Vector2(x, c.y), hh, -0.9 if r.facing > 0 else PI - 0.9, 0.9 if r.facing > 0 else PI + 0.9, 10, Color(1, 1, 1, 0.6 * (1.0 - u)), 3.0, true)
-		draw_set_transform(c + Vector2(r.facing * 36.0, 0), 0.0, Vector2(r.facing, 1.0))
-		draw_texture_rect(Data.tex("itens/soprador"), Rect2(-24, -24, 48, 48), false)
-		draw_set_transform(Vector2.ZERO)
-	# furadeira em ação: broca girando à frente do robô
+	# furadeira em ação: linhas de velocidade atrás do robô (a furadeira está na mão dele)
 	for d in drills:
 		var r = _robot(d["owner"])
 		if r == null:
 			continue
-		var tip: Vector2 = r.position + Vector2(r.facing * 44.0, -40.0)
-		draw_set_transform(tip, 0.0, Vector2(r.facing, 1.0) * 1.3)
-		draw_texture_rect(Data.tex("itens/furadeira"), Rect2(-34, -22, 52, 48), false)
-		var spin := now * 60.0
-		draw_colored_polygon(PackedVector2Array([Vector2(18, -10), Vector2(52, 0), Vector2(18, 10)]), Color("#c9d1d8"))
-		for k in 4:
-			var u := fposmod(spin * 0.1 + k * 0.25, 1.0)
-			var x := lerpf(18.0, 50.0, u)
-			var hh := lerpf(10.0, 1.0, u)
-			draw_line(Vector2(x, -hh), Vector2(x + 6.0, hh), Color("#6a7682"), 2.0, true)
-		draw_set_transform(Vector2.ZERO)
 		for k in 3:
 			var yy: float = r.position.y - 60.0 + k * 22.0
 			draw_line(Vector2(r.position.x - r.facing * 40.0, yy), Vector2(r.position.x - r.facing * (80.0 + k * 20.0), yy), Color(1, 1, 1, 0.6), 3.0, true)
-	# laser na mão durante a carga
-	for l in lasers:
-		var r = _robot(l["owner"])
-		if r == null:
-			continue
-		draw_set_transform(r.rect().get_center() + Vector2(r.facing * 30.0, -2), 0.0, Vector2(r.facing, 1.0))
-		draw_texture_rect(Data.tex("itens/laser"), Rect2(-24, -24, 48, 48), false)
-		draw_set_transform(Vector2.ZERO)
 	_draw_parts()
 	# pegou item: ícone cresce, gira um pouco e some, com anel
 	for p in pops:

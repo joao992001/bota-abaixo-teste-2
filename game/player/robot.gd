@@ -289,7 +289,8 @@ func absorb() -> bool:
 func fx_flags() -> Dictionary:
 	return {"martelao": fx_t["martelao"] > 0.0, "mola": fx_t["mola"] > 0.0, "capacete": shield > 0, "item": item,
 		"ima": fx_t["ima"] > 0.0, "foguete": fx_t["foguete"] > 0.0, "foguete_on": thrusting, "cola": glue_t > 0.0,
-		"furando": main.demo.tools != null and main.demo.tools.drilling(pid) if main.mode == "demolicao" else false}
+		"furando": main.demo.tools != null and main.demo.tools.drilling(pid) if main.mode == "demolicao" else false,
+		"usando": main.demo.tools.using(pid) if main.mode == "demolicao" and main.demo.tools != null else {}}
 
 ## Pulo duplo do propulsor (um no ar; recarrega no chão, na parede e na borda).
 func _air_jump(ix: float) -> void:
@@ -322,6 +323,8 @@ func _try_grab(ix: float) -> void:
 			if lv.is_solid(Vector2i(int(floor(xx / 64.0)), int(floor(yy / 64.0)))):
 				return   # a posição de pendurar está ocupada
 	hanging = true
+	wall_sliding = false   # não está mais escorregando: o desenho vira para a parede
+	wall_side = 0
 	hang_dir = dir
 	hang_t = 0.0
 	hang_from = position
