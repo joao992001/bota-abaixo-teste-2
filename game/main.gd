@@ -9,6 +9,7 @@ const Robot := preload("res://player/robot.gd")
 const Hud := preload("res://ui/hud.gd")
 const Debris := preload("res://fx/debris.gd")
 const RobotVis := preload("res://player/robot_visual.gd")
+const Demolicao := preload("res://modes/demolicao.gd")
 const PIECE_SCRIPTS := {
 	"P01": preload("res://pieces/viga.gd"),
 	"P02": preload("res://pieces/mola.gd"),
@@ -45,6 +46,9 @@ var sparks: Array = []       # estrelinhas {pos, vel, t, rot}
 var shake_amt := 0.0
 const SHAKE_ON := true
 var door_open := 0.0
+var mode := "demolicao"      # Modo Festa: "demolicao" · modo antigo de peças: "construcao" (F7 na entrada)
+var demo: Node
+var match_over := false
 var cam_lock: Array = []      # [zoom, centro] fixa a câmera (capturas de animação)
 
 var world: Node2D
@@ -96,9 +100,12 @@ func _ready() -> void:
 	add_child(conv_layer)
 	conveyor_root = Node2D.new()
 	conv_layer.add_child(conveyor_root)
+	demo = Demolicao.new()
+	demo.setup(self)
+	add_child(demo)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo"):
 			var drv: Node = load("res://tests/driver.gd").new()
 			drv.main = self
 			add_child(drv)
@@ -121,7 +128,10 @@ func _physics_process(dt: float) -> void:
 		S.JOIN: _join_update()
 		S.PICK: _pick_update(dt)
 		S.BUILD: _build_update(dt)
-		S.RUN: _run_update(dt)
+		S.RUN:
+			if mode == "demolicao":
+				demo.update(dt)
+			_run_update(dt)
 		S.SCORE:
 			timer -= dt
 			if timer <= 0.0:
@@ -253,9 +263,28 @@ func _cycle_color(i: int, d: int) -> void:
 			players[i]["color"] = col
 			return
 
+## Troca a fase em jogo (arena nova, caixotes inteiros).
+func load_arena(id: String) -> void:
+	level.queue_free()
+	level = Level.new()
+	world.add_child(level)
+	world.move_child(level, 0)
+	level.load_level(id)
+
 func start_match() -> void:
 	for p in players:
 		p["score"] = 0
+	match_over = false
+	if mode == "demolicao":
+		for pc in pieces:
+			pc.queue_free()
+		pieces.clear()
+		round_no = 0
+		winner = -1
+		_demo_next_round()
+		return
+	if level.id != "canteiro":
+		load_arena("canteiro")
 	for pc in pieces:
 		pc.queue_free()
 	pieces.clear()
@@ -406,12 +435,34 @@ func place_piece(pc: Node2D) -> void:
 	pieces.append(pc)
 
 # ---------------------------------------------------------------- corrida
+## Caixote quebrado: tábuas e lascas voando.
+func break_crate(center: Vector2) -> void:
+	var parts := []
+	var plank := Data.tex("cenario/tabua")
+	var crate := Data.tex("cenario/caixote_0")
+	for k in 4:
+		parts.append({"tex": [plank], "rect": Rect2(Vector2(-16 + (k % 2) * 16, -16 + (k / 2) * 20), Vector2(28, 8)), "mod": Color.WHITE})
+	for k in 2:
+		parts.append({"tex": [crate], "rect": Rect2(Vector2(-12 + k * 14, -6), Vector2(18, 18)), "mod": Color.WHITE})
+	var d: Node2D = Debris.new()
+	d.setup(parts, center, 1, Vector2.ZERO)
+	world.add_child(d)
+
 func _clear_robots() -> void:
 	for r in robots:
 		r.queue_free()
 	robots.clear()
 
+func _demo_next_round() -> void:
+	round_no += 1
+	_clear_robots()
+	demo.start_round()
+
 func start_run() -> void:
+	start_run_at([1, 2, 3, 4])
+
+## Corrida/rodada com os robôs nos spawns indicados (um por jogador, na ordem).
+func start_run_at(spots: Array) -> void:
 	_clear_robots()
 	state = S.RUN
 	timer = timers("run_seconds")
@@ -423,7 +474,7 @@ func start_run() -> void:
 	for i in players.size():
 		var r: CharacterBody2D = Robot.new()
 		r.setup(i, players[i]["color"], self, players[i]["acc"], players[i]["model"])
-		r.position = level.spawns.get(i + 1, level.spawns[1])
+		r.position = level.spawns.get(int(spots[i]) if i < spots.size() else i + 1, level.spawns[1])
 		robots_root.add_child(r)
 		robots.append(r)
 
@@ -437,7 +488,14 @@ func _run_update(dt: float) -> void:
 	if end_delay >= 0.0:
 		end_delay -= dt
 		if end_delay < 0.0:
-			start_score()
+			if mode == "demolicao":
+				state = S.SCORE
+				timer = float(demo.cfg["score_seconds"])
+				match_over = demo.end_round()
+			else:
+				start_score()
+		return
+	if mode == "demolicao":
 		return
 	timer -= dt
 	if timer <= 0.0:
@@ -480,6 +538,9 @@ func finish(r: CharacterBody2D) -> void:
 	float_text(r.position + Vector2(0, -100), "1º!" if finish_order.size() == 1 else "%dº" % finish_order.size(), player_color(r.pid))
 
 func try_hammer(r: CharacterBody2D) -> void:
+	if mode == "demolicao":
+		demo.hammer(r)
+		return
 	if r.hammer_left <= 0:
 		return
 	var reach := float(Data.ctrl["hammer_reach_px"])
@@ -554,6 +615,14 @@ func start_score() -> void:
 		no_finish_streak = 0
 
 func _after_score() -> void:
+	if mode == "demolicao":
+		if match_over:
+			winner = demo.round_winner
+			state = S.WIN
+			_clear_robots()
+		else:
+			_demo_next_round()
+		return
 	var target := int(Data.scoring["target_points"])
 	var best := -1
 	for i in players.size():
@@ -607,6 +676,12 @@ func _draw_overlay() -> void:
 		overlay.draw_set_transform(sp["pos"], sp["rot"] + k * 3.0)
 		overlay.draw_texture_rect(star, Rect2(-sz / 2, -sz / 2, sz, sz), false, Color(1, 1, 1, 1.0 - k))
 	overlay.draw_set_transform(Vector2.ZERO)
+	for r in robots:
+		if r.alive and r.visible and r.stun_t > 0.0:
+			var hc: Vector2 = r.rect().position + Vector2(24, -10)
+			for k in 3:
+				var ang := Time.get_ticks_msec() / 160.0 + k * TAU / 3.0
+				overlay.draw_texture_rect(star, Rect2(hc + Vector2(cos(ang) * 22, sin(ang) * 7) - Vector2(7, 7), Vector2(14, 14)), false)
 	if state == S.BUILD:
 		for i in players.size():
 			var p: Dictionary = players[i]
@@ -645,6 +720,9 @@ func _input(e: InputEvent) -> void:
 					add_player("parado%d" % players.size())
 			KEY_F6: Engine.time_scale = 0.3 if Engine.time_scale == 1.0 else 1.0
 			KEY_F11: toggle_fullscreen()
+			KEY_F7:
+				if state == S.JOIN:
+					mode = "construcao" if mode == "demolicao" else "demolicao"
 	elif e is InputEventMouseButton and e.pressed and state != S.JOIN:
 		var c := Vector2i((world.get_local_mouse_position() / T).floor())
 		if e.button_index == MOUSE_BUTTON_LEFT:
@@ -679,6 +757,9 @@ func skip_phase() -> void:
 			start_match()
 		S.PICK, S.BUILD, S.SCORE: timer = 0.0
 		S.RUN:
+			if mode == "demolicao":
+				demo.round_winner = -1
+				end_delay = 0.01
 			countdown = 0.0
 			timer = 0.0
 			for r in robots:

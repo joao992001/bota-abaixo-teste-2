@@ -12,6 +12,9 @@ var goal_rect := Rect2()
 var hazard_rects: Array = []
 var skin: Node = null       # arte do mapa (opcional); sem ela, formas simples
 var door_open := 0.0        # 0 fechado .. 1 aberto (main anima)
+var blocks := {}            # caixotes destrutíveis 'd': Vector2i -> {hp, body, load, warn}
+var block_hp := 2
+signal block_broken(cell: Vector2i)
 
 func load_level(level_id: String) -> void:
 	id = level_id
@@ -50,7 +53,28 @@ func ch_at(c: Vector2i) -> String:
 	return String(grid[c.y])[c.x]
 
 func is_solid(c: Vector2i) -> bool:
-	return ch_at(c) in ["#", "o", "I"]
+	return ch_at(c) in ["#", "o", "I", "d"]
+
+## Caixote destrutível: perde vida; quebra em 0. Retorna true se quebrou.
+func damage(c: Vector2i, amount := 1) -> bool:
+	if not blocks.has(c):
+		return false
+	blocks[c]["hp"] -= amount
+	queue_redraw()
+	if blocks[c]["hp"] <= 0:
+		break_block(c)
+		return true
+	return false
+
+func break_block(c: Vector2i) -> void:
+	if not blocks.has(c):
+		return
+	blocks[c]["body"].queue_free()
+	blocks.erase(c)
+	var row := String(grid[c.y])
+	grid[c.y] = row.substr(0, c.x) + "." + row.substr(c.x + 1)
+	queue_redraw()
+	block_broken.emit(c)
 
 func can_build(c: Vector2i) -> bool:
 	return ch_at(c) == "."
@@ -70,11 +94,26 @@ func _build_colliders() -> void:
 			var ch := ch_at(Vector2i(x, y))
 			if ch == "o" or ch == "I":
 				ch = "#"
+			if ch == "d":
+				# caixote destrutível: corpo próprio para poder sumir sozinho
+				var body := StaticBody2D.new()
+				body.collision_layer = 1
+				body.collision_mask = 0
+				var bs := CollisionShape2D.new()
+				var br := RectangleShape2D.new()
+				br.size = Vector2(T, T)
+				bs.shape = br
+				bs.position = Vector2(x * T + T / 2.0, y * T + T / 2.0)
+				body.add_child(bs)
+				add_child(body)
+				blocks[Vector2i(x, y)] = {"hp": block_hp, "body": body, "load": 0.0, "warn": 0.0}
+				x += 1
+				continue
 			if ch != "#" and ch != "=":
 				x += 1
 				continue
 			var x0 := x
-			while x < cols and (ch_at(Vector2i(x, y)) == ch or (ch == "#" and is_solid(Vector2i(x, y)))):
+			while x < cols and (ch_at(Vector2i(x, y)) == ch or (ch == "#" and is_solid(Vector2i(x, y)) and ch_at(Vector2i(x, y)) != "d")):
 				x += 1
 			var cs := CollisionShape2D.new()
 			var r := RectangleShape2D.new()
@@ -135,6 +174,8 @@ func _draw_art() -> void:
 			match ch_at(c):
 				"#":
 					draw_texture_rect(Data.tex("cenario/caixote_%d" % ((x * 7 + y * 3) % 3)), Rect2(pos, tile), false)
+				"d":
+					_draw_block_d(c, pos)
 				"^":
 					draw_texture_rect(Data.tex("cenario/espinho_%d" % ((x * 5 + y) % 3)), Rect2(pos + Vector2(0, T - 128), Vector2(T, 128)), false)
 	if elevator_cell.x >= 0:
@@ -153,9 +194,30 @@ func _draw_art() -> void:
 func _process(_dt: float) -> void:
 	if door_open > 0.0 or _was_open:
 		queue_redraw()
+	for b in blocks.values():
+		if b["warn"] > 0.0:
+			queue_redraw()
+			break
 	_was_open = door_open > 0.0
 
 var _was_open := false
+
+## Caixote destrutível: rachaduras conforme o dano e tremor antes de cair.
+func _draw_block_d(c: Vector2i, pos: Vector2) -> void:
+	var b: Dictionary = blocks.get(c, {})
+	var off := Vector2.ZERO
+	if b.get("warn", 0.0) > 0.0:
+		off = Vector2(randf_range(-3, 3), randf_range(-2, 2))
+	draw_texture_rect(Data.tex("cenario/caixote_%d" % ((c.x * 7 + c.y * 3) % 3)), Rect2(pos + off, Vector2(T, T)), false)
+	var dmg := block_hp - int(b.get("hp", block_hp))
+	var crack := Color("#5a3a1c")
+	if dmg >= 1 or b.get("load", 0.0) > 0.0:
+		var p := pos + off
+		var k := 1.0 if dmg >= 1 else 0.6
+		draw_polyline(PackedVector2Array([p + Vector2(12, 4), p + Vector2(24, 20), p + Vector2(19, 30), p + Vector2(34, 44)]), crack, 2.5 * k, true)
+		draw_polyline(PackedVector2Array([p + Vector2(24, 20), p + Vector2(40, 16), p + Vector2(52, 6)]), crack, 2.0 * k, true)
+	if dmg >= 1 and b.get("load", 0.0) > 0.0:
+		draw_polyline(PackedVector2Array([pos + off + Vector2(8, 56), pos + off + Vector2(26, 46), pos + off + Vector2(44, 58)]), crack, 2.5, true)
 
 ## Tábuas one-way penduradas por cordas que sobem até fora da tela.
 func _draw_ropes_and_planks() -> void:

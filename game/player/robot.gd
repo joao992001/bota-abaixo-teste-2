@@ -25,6 +25,7 @@ var floor_piece = null
 var was_on_floor := true
 var spin := 0.0
 var wall_sliding := false
+var stun_t := 0.0            # atordoado: ignora o controle (pisão na cabeça, marretada)
 var wall_dust := 0.0
 var vis: Node2D
 
@@ -62,14 +63,15 @@ func _physics_process(dt: float) -> void:
 	if not active or finished:
 		vis.tick(self, dt)
 		return
-	var ix := PlayerInput.axis_x(pid)
+	var ix := _ix()
 	var on_floor := is_on_floor()
+	stun_t = maxf(stun_t - dt, 0.0)
 	# timers
 	coyote = maxf(coyote - dt, 0.0)
 	buffer = maxf(buffer - dt, 0.0)
 	wall_lock = maxf(wall_lock - dt, 0.0)
 	hammer_anim = maxf(hammer_anim - dt, 0.0)
-	if PlayerInput.pressed(pid, "jump"):
+	if _pressed("jump"):
 		buffer = f("jump_buffer_time")
 	if on_floor and not spring:
 		coyote = f("coyote_time")
@@ -84,6 +86,8 @@ func _physics_process(dt: float) -> void:
 		var a := f("accel_ground") if ix != 0.0 else f("decel_ground")
 		if not on_floor:
 			a *= f("air_mult")
+		if stun_t > 0.0:
+			a *= 0.25   # empurrado: desliza longe
 		own_vx = move_toward(own_vx, ix * f("max_run"), a * dt)
 	# pulo / parede
 	var wall_dir := 0 if on_floor else _wall_dir()
@@ -94,7 +98,7 @@ func _physics_process(dt: float) -> void:
 			_wall_jump(wall_dir)
 	# sustain: velocidade de subida mantida enquanto segura, até var_jump_time
 	if var_jump > 0.0:
-		if PlayerInput.held(pid, "jump"):
+		if _held("jump"):
 			velocity.y = minf(velocity.y, -f("jump_speed"))
 			var_jump -= dt
 		else:
@@ -102,12 +106,12 @@ func _physics_process(dt: float) -> void:
 	# gravidade
 	if var_jump <= 0.0:
 		var g := f("gravity")
-		if not spring and PlayerInput.held(pid, "jump") and absf(velocity.y) < f("half_grav_threshold"):
+		if not spring and _held("jump") and absf(velocity.y) < f("half_grav_threshold"):
 			g *= 0.5
 		velocity.y += g * dt
 	if spring and velocity.y >= 0.0:
 		spring = false
-	var max_fall := f("fast_max_fall") if PlayerInput.held(pid, "down") else f("max_fall")
+	var max_fall := f("fast_max_fall") if _held("down") else f("max_fall")
 	wall_sliding = wall_dir != 0 and int(signf(ix)) == wall_dir and velocity.y > 0.0
 	if wall_sliding:
 		max_fall = f("wall_slide_speed")
@@ -117,7 +121,7 @@ func _physics_process(dt: float) -> void:
 			main.dust(position + Vector2(wall_dir * 24, -40), 0.5)
 	velocity.y = minf(velocity.y, max_fall)
 	# marreta (não trava o movimento)
-	if PlayerInput.pressed(pid, "hammer") and hammer_anim <= 0.0:
+	if _pressed("hammer") and hammer_anim <= 0.0:
 		hammer_anim = f("hammer_time")
 		main.try_hammer(self)
 	# mover
@@ -146,6 +150,23 @@ func _physics_process(dt: float) -> void:
 		floor_piece.on_stand(self)
 	main.check_contacts(self)
 	vis.tick(self, dt)
+
+func _held(a: String) -> bool:
+	return stun_t <= 0.0 and PlayerInput.held(pid, a)
+
+func _pressed(a: String) -> bool:
+	return stun_t <= 0.0 and PlayerInput.pressed(pid, a)
+
+func _ix() -> float:
+	return 0.0 if stun_t > 0.0 else PlayerInput.axis_x(pid)
+
+## Empurrão (marretada): sai voando para o lado e fica atordoado.
+func knock(dir: int, vx: float, vy: float, stun: float) -> void:
+	own_vx = dir * vx
+	velocity.y = -vy
+	var_jump = 0.0
+	stun_t = maxf(stun_t, stun)
+	vis.stretch()
 
 func _jump(ix: float) -> void:
 	velocity.y = -f("jump_speed")

@@ -1,0 +1,20 @@
+{
+  "nota": "Modo Festa. Valores iniciais do protótipo (hipóteses). Ajuste jogando.",
+  "demolicao": {
+    "rounds_to_win": 5,
+    "block_hp": 2,
+    "hammer_reach_px": 56,
+    "knock_x": 900,
+    "knock_y": 420,
+    "stun_hit_s": 0.45,
+    "stun_stomp_s": 0.9,
+    "stomp_bounce": 760,
+    "crumble_crack_s": 1.2,
+    "crumble_break_s": 2.2,
+    "quake_start_s": 25,
+    "quake_every_s": 0.7,
+    "quake_warn_s": 0.6,
+    "score_seconds": 3,
+    "spawns_by_players": {"2": [2, 3], "3": [1, 2, 4], "4": [1, 2, 3, 4]}
+  }
+}

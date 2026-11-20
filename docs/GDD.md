@@ -46,3 +46,11 @@ Online, campanha solo, bots jogáveis, desbloqueios, editor de mapas, mais de 4 
 
 ## Hipóteses para testar jogando
 Peças com dono deixam a construção mais estratégica (teste com e sem dono) · a marreta ajuda quem está atrás · partida de 8–12 min com meta de 60 pontos.
+
+## Mudança de rumo (2026-11-20): Modo Festa
+Playtest do usuário: colocar armadilhas e correr ficou confuso e curto. Novo núcleo: **Modo Festa**, rodadas curtas
+com desafios diferentes na mesma obra, mesmos robôs e marreta; pontos (⭐) acumulam até a meta.
+1. **Demolição** (protótipo jogável): caixotes sobre espinhos; marreta quebra caixote (2 golpes) e empurra robô;
+   pular na cabeça atordoa; caixote racha se alguém fica parado; terremoto aos 25 s; último em pé ganha ⭐; 5 ⭐ vence.
+2. Rei da Obra · 3. Corrida Sabotada · 4. Torre Maluca — depois que a Demolição for aprovada jogando.
+O modo antigo (peças com dono) continua acessível com F7 na entrada, para comparar. Números em `data/modos.json`.

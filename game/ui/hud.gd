@@ -58,15 +58,21 @@ func _draw_strip() -> void:
 	for i in main.players.size():
 		var p: Dictionary = main.players[i]
 		text(Vector2(40 + i * 260, 42), "P%d %d" % [i + 1, p["score"]], 34, Data.TEXT_COLORS[p["color"]])
+		if main.mode == "demolicao":
+			star(Vector2(40 + i * 260 + 112, 29), 13, Data.TEXT_COLORS[p["color"]])
 	var names := {S.JOIN: "ENTRADA", S.PICK: "ESCOLHA", S.BUILD: "CONSTRUÇÃO", S.RUN: "CORRIDA", S.SCORE: "PLACAR", S.WIN: "VITÓRIA"}
 	var label: String = names[main.state]
-	if main.state in [S.PICK, S.BUILD, S.RUN, S.SCORE]:
+	if main.mode == "demolicao" and main.state in [S.RUN, S.SCORE]:
+		label = "DEMOLIÇÃO · RODADA %d · primeiro a %d ★" % [main.round_no, int(main.demo.cfg["rounds_to_win"])]
+	elif main.state in [S.PICK, S.BUILD, S.RUN, S.SCORE]:
 		label = "RODADA %d · %s · %d" % [main.round_no, label, ceili(maxf(main.timer, 0.0))]
 	text(Vector2(1200, 42), label, 34, Color("#2c5f6b"), HORIZONTAL_ALIGNMENT_RIGHT, 700)
 
 func _draw_join() -> void:
 	draw_rect(Rect2(0, 56, 1920, 1024), DIM)
 	text(Vector2(0, 250), "BOTA-ABAIXO", 120, Color("#ffd23f"), HORIZONTAL_ALIGNMENT_CENTER, 1920, 28)
+	var mname := "DEMOLIÇÃO: derrube os outros, o último em pé leva ★" if main.mode == "demolicao" else "CONSTRUÇÃO (modo antigo): monte armadilhas e corra"
+	text(Vector2(0, 372), "MODO  %s   (F7 troca)" % mname, 26, Color("#fff4c8"), HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
 	text(Vector2(0, 320), "Aperte PULAR para entrar  ·  ◄ ► cor  ·  ▲ ▼ modelo  ·  MARRETA chapéu  ·  ENTER / START começa (2+)", 32, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 8)
 	for i in 4:
 		var r := Rect2(240 + i * 370, 400, 330, 420)
@@ -127,11 +133,45 @@ func _draw_build() -> void:
 	text(Vector2(0, 110), "CONSTRUA!  setas/analógico movem · MARRETA gira · PULAR coloca", 32, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 8)
 
 func _draw_run() -> void:
+	if main.mode == "demolicao" and main.demo.banner_t > 0.0:
+		var a := clampf(main.demo.banner_t / 0.4, 0.0, 1.0)
+		text(Vector2(0, 330), main.demo.banner, 96, Color(1, 0.86, 0.3, a), HORIZONTAL_ALIGNMENT_CENTER, 1920, 24)
+		if main.countdown > 0.0:
+			text(Vector2(0, 395), "MARRETA quebra caixote e empurra  ·  PULE na cabeça para atordoar  ·  ▼ + MARRETA quebra o chão embaixo", 28, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
 	if main.countdown > 0.0:
 		var s := "PRONTOS..." if main.countdown > 0.6 else "VAI!"
-		text(Vector2(0, 520), s, 130, Color("#ffd23f"), HORIZONTAL_ALIGNMENT_CENTER, 1920, 28)
+		text(Vector2(0, 560), s, 130, Color("#ffd23f"), HORIZONTAL_ALIGNMENT_CENTER, 1920, 28)
+
+func star(c: Vector2, r: float, col: Color, filled := true) -> void:
+	var pts := PackedVector2Array()
+	for k in 10:
+		var a := -PI / 2 + k * PI / 5
+		pts.append(c + Vector2.from_angle(a) * (r if k % 2 == 0 else r * 0.45))
+	if filled:
+		draw_colored_polygon(pts, col)
+	pts.append(pts[0])
+	draw_polyline(pts, OUTLINE if filled else Color(1, 1, 1, 0.6), 2.0, true)
+
+func _draw_demo_score() -> void:
+	draw_rect(Rect2(0, 56, 1920, 1024), DIM)
+	text(Vector2(0, 250), main.demo.banner, 80, Color("#ffd23f"), HORIZONTAL_ALIGNMENT_CENTER, 1920, 18)
+	var goal := int(main.demo.cfg["rounds_to_win"])
+	for i in main.players.size():
+		var p: Dictionary = main.players[i]
+		var y: float = 420 + i * 130
+		var col: Color = Data.COLORS[p["color"]]
+		RobotVis.draw_robot(self, {"color": p["color"], "model": p["model"], "acc": p["acc"]},
+			RobotVis.victory_pose(Time.get_ticks_msec() / 1000.0) if i == main.demo.round_winner else RobotVis.idle_pose(Time.get_ticks_msec() / 1000.0 + i),
+			Transform2D(0.0, Vector2(1.5, 1.5), 0.0, Vector2(560, y + 55)))
+		draw_set_transform(Vector2.ZERO)
+		text(Vector2(640, y + 20), "P%d" % (i + 1), 52, col, HORIZONTAL_ALIGNMENT_LEFT, -1, 10)
+		for k in goal:
+			star(Vector2(800 + k * 90, y), 34, Color("#ffd23f"), k < int(p["score"]))
 
 func _draw_score() -> void:
+	if main.mode == "demolicao":
+		_draw_demo_score()
+		return
 	draw_rect(Rect2(0, 56, 1920, 1024), DIM)
 	var target := int(Data.scoring["target_points"])
 	text(Vector2(0, 230), "PLACAR · meta %d" % target, 72, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 16)

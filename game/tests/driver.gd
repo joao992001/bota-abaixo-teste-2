@@ -18,6 +18,10 @@ func _run() -> void:
 			shot = a.substr(7)
 		if a.begins_with("--anim="):
 			anim = a.substr(7)
+		if a.begins_with("--demo="):
+			await demo_frames(a.substr(7))
+			get_tree().quit(0)
+			return
 	if anim != "":
 		await anim_frames(anim)
 		get_tree().quit(0)
@@ -131,6 +135,7 @@ func autotest() -> void:
 	PlayerInput.slots.clear()
 
 	print("== Entrada")
+	main.mode = "construcao"   # testes do modo antigo de peças; a Demolição é testada no fim
 	PlayerInput.virtual = {"v0": {}, "v1": {}}
 	await frames(2)
 	await tap("v0", "jump")
@@ -328,6 +333,85 @@ func autotest() -> void:
 	check(main.state == S.WIN and main.winner == 0, "60+ pontos → VITÓRIA")
 	await tap("v0", "jump")
 	check(main.state == S.PICK and main.round_no == 1, "jogar de novo zera a partida")
+	await demolicao_test()
+
+func demo_round() -> void:
+	clear_inputs()
+	main.demo.start_round()
+	main.state = S.RUN
+	main.countdown = 0.0
+	for r in main.robots:
+		r.active = true
+	await frames(3)
+
+func demolicao_test() -> void:
+	print("== Demolição")
+	main.mode = "demolicao"
+	main.start_match()
+	check(main.level.id == "demolicao" and main.level.blocks.size() > 30, "arena de caixotes carregada (%d caixotes)" % main.level.blocks.size())
+	await demo_round()
+	var r0 = main.robots[0]
+	var r1 = main.robots[1]
+	put(r0, Vector2(col_x(12), 576))
+	put(r1, Vector2(col_x(26), 576))
+	r0.facing = 1
+	await frames(3)
+	var cell := Vector2i(13, 9)
+	await tap("v0", "hammer")
+	check(main.level.blocks.has(cell) and main.level.blocks[cell]["hp"] == 1, "1ª marretada racha o caixote do chão à frente")
+	await frames(16)
+	await tap("v0", "hammer")
+	check(not main.level.blocks.has(cell), "2ª marretada quebra o caixote")
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(11) + 60, 576))
+	r0.facing = 1
+	await frames(3)
+	var x1: float = r1.position.x
+	await tap("v0", "hammer")
+	check(r1.stun_t > 0.0, "marretada atordoa o rival")
+	await frames(20)
+	check(r1.position.x - x1 > 120.0, "marretada empurra o rival (%.0f px)" % (r1.position.x - x1))
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r1, Vector2(col_x(11), 576))
+	put(r0, Vector2(col_x(11), 360))
+	var stomped := false
+	for i in 40:
+		await frames(1)
+		if r1.stun_t > 0.0:
+			stomped = true
+			break
+	check(stomped and r0.velocity.y < 0.0, "pular na cabeça atordoa e quica")
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r1, Vector2(col_x(16), 576))
+	var under := Vector2i(16, 9)
+	await frames(int(float(main.demo.cfg["crumble_break_s"]) * 60) + 10)
+	check(not main.level.blocks.has(under), "caixote cai se o robô fica parado em cima")
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	var before: int = main.players[0]["score"]
+	main.kill(r1, -1, null)
+	await frames(100)
+	check(main.state == S.SCORE and main.players[0]["score"] == before + 1, "último em pé ganha ★ (%d)" % main.players[0]["score"])
+	main.timer = 0.0
+	await frames(3)
+	check(main.state == S.RUN and main.robots.size() == 2, "placar → próxima rodada com arena nova")
+	main.players[0]["score"] = int(main.demo.cfg["rounds_to_win"]) - 1
+	main.countdown = 0.0
+	for r in main.robots:
+		r.active = true
+	main.kill(main.robots[1], -1, null)
+	await frames(100)
+	main.timer = 0.0
+	await frames(3)
+	check(main.state == S.WIN and main.winner == 0, "%d ★ vence a partida" % int(main.demo.cfg["rounds_to_win"]))
 
 # ---------------------------------------------------------------- capturas
 func snap(dir: String, name: String) -> void:
@@ -493,3 +577,52 @@ func anim_frames(dir: String) -> void:
 		await frames(1)
 		if f % 2 == 0:
 			await grab(dir, "c")
+
+# ---------------------------------------------------------------- Demolição em movimento (captura para GIF)
+## Roteiro só de captura: cada robô persegue o rival mais próximo, pula para alcançar e marreta de perto.
+func demo_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	get_window().size = Vector2i(1920, 1080)
+	PlayerInput.virtual = {"v0": {}, "v1": {}, "v2": {}, "v3": {}}
+	await frames(2)
+	for d in ["v0", "v1", "v2", "v3"]:
+		await tap(d, "jump")
+	main.demo.cfg["quake_start_s"] = 7.0
+	await tap("v0", "start")
+	_frame_no = 0
+	var cool := {}
+	for f in 720:
+		var a := {"v0": {}, "v1": {}, "v2": {}, "v3": {}}
+		for r in main.robots:
+			var d := "v%d" % r.pid
+			if not r.alive:
+				continue
+			var best = null
+			var bd := 99999.0
+			for o in main.robots:
+				if o != r and o.alive and o.position.distance_to(r.position) < bd:
+					bd = o.position.distance_to(r.position)
+					best = o
+			if best == null:
+				continue
+			var dx: float = best.position.x - r.position.x
+			var dy: float = best.position.y - r.position.y
+			if absf(dx) > 46.0:
+				a[d]["right" if dx > 0 else "left"] = true
+			var ahead := Vector2i(int((r.position.x + signf(dx) * 40.0) / 64.0), int((r.position.y + 2.0) / 64.0))
+			if r.is_on_floor() and (dy < -60.0 or not main.level.is_solid(ahead)) and (f + r.pid * 7) % 25 < 12:
+				a[d]["jump"] = true
+			if absf(dx) < 80.0 and absf(dy) < 50.0 and cool.get(d, 0) <= 0:
+				a[d]["hammer"] = true
+				cool[d] = 14 + r.pid * 3
+			cool[d] = cool.get(d, 0) - 1
+		PlayerInput.virtual = a
+		await frames(1)
+		if f % 3 == 0:
+			await grab(dir, "d")
+		if main.state != S.RUN and f > 200:
+			for k in 30:
+				await frames(1)
+				if k % 3 == 0:
+					await grab(dir, "d")
+			break
