@@ -11,8 +11,8 @@ RequestExecutionLevel user
 SetCompressor /SOLID lzma
 BrandingText "Bota-Abaixo"
 
-!define MUI_ICON "../art/out/icone.ico"
-!define MUI_UNICON "../art/out/icone.ico"
+!define MUI_ICON "icone.ico"
+!define MUI_UNICON "icone.ico"
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Bota-Abaixo.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Jogar agora"
@@ -28,7 +28,7 @@ BrandingText "Bota-Abaixo"
 Section "Bota-Abaixo"
 	SetOutPath "$INSTDIR"
 	File "../out/build/windows/Bota-Abaixo.exe"
-	File "/oname=Bota-Abaixo.ico" "../art/out/icone.ico"
+	File "/oname=Bota-Abaixo.ico" "icone.ico"
 	WriteUninstaller "$INSTDIR\Desinstalar.exe"
 	CreateDirectory "$SMPROGRAMS\Bota-Abaixo"
 	CreateShortcut "$SMPROGRAMS\Bota-Abaixo\Bota-Abaixo.lnk" "$INSTDIR\Bota-Abaixo.exe" "" "$INSTDIR\Bota-Abaixo.ico"
