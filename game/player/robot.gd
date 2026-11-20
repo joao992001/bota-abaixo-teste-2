@@ -29,9 +29,12 @@ var stun_t := 0.0            # atordoado: ignora o controle (pisão na cabeça, 
 var item := ""               # item guardado (dinamite), usado com o botão de item
 var fx_t := {"martelao": 0.0, "mola": 0.0, "ima": 0.0, "foguete": 0.0}   # efeitos com tempo
 var glue_t := 0.0             # pisou na cola: lento
-var forced_t := 0.0           # movimento forçado (gancho puxando, investida da furadeira)
+var forced_t := 0.0           # movimento forçado (investida da furadeira, carga do laser, teletransporte)
 var forced_vel := Vector2.ZERO
 var thrusting := false        # bota-foguete ligada neste quadro (desenho da chama)
+var grip := 1.0               # aderência na parede/borda (1 = cheia); gasta segurando, recarrega no chão
+var wall_side := 0            # lado da parede em que está escorregando (desenho)
+var frozen_t := 0.0           # congelado (raio congelante): indefeso, desliza
 var god := false              # Oficina: invencível (não leva golpe)
 var push_vx := 0.0            # empurrão externo deste quadro (ímã); zera a cada quadro
 var shield := 0              # capacete de aço: golpes que ainda aguenta
@@ -99,6 +102,7 @@ func _physics_process(dt: float) -> void:
 	var ix := _ix()
 	var on_floor := is_on_floor()
 	stun_t = maxf(stun_t - dt, 0.0)
+	frozen_t = maxf(frozen_t - dt, 0.0)
 	invuln = maxf(invuln - dt, 0.0)
 	drop_t = maxf(drop_t - dt, 0.0) if not is_on_floor() else 0.0
 	last_hit += dt
@@ -162,8 +166,10 @@ func _physics_process(dt: float) -> void:
 	if buffer > 0.0 and not spring:
 		if on_floor or coyote > 0.0:
 			_jump(ix)
-		elif wall_dir != 0:
+		elif wall_dir != 0 and grip > 0.05:
 			_wall_jump(wall_dir)
+			if main.mode == "demolicao":
+				grip = maxf(grip - 0.2, 0.0)   # cada pulo de parede gasta um pouco
 		elif air_jumps > 0 and stun_t <= 0.0 and main.mode == "demolicao":
 			_air_jump(ix)
 	# sustain: velocidade de subida mantida enquanto segura, até var_jump_time
@@ -200,7 +206,16 @@ func _physics_process(dt: float) -> void:
 	if spring and velocity.y >= 0.0:
 		spring = false
 	var max_fall := f("fast_max_fall") if _held("down") else f("max_fall")
-	wall_sliding = wall_dir != 0 and int(signf(ix)) == wall_dir and velocity.y > 0.0
+	wall_sliding = wall_dir != 0 and int(signf(ix)) == wall_dir and velocity.y > 0.0 and grip > 0.0
+	wall_side = wall_dir if wall_sliding else 0
+	if main.mode == "demolicao":
+		var ad: Dictionary = main.demo.cfg["aderencia"]
+		if on_floor:
+			grip = move_toward(grip, 1.0, dt / float(ad["recarga_s"]))
+		elif wall_sliding:
+			grip = maxf(grip - dt / float(ad["parede_s"]), 0.0)
+			if grip <= 0.0:
+				Audio.play("parede", _pitch() * 0.8)   # escorregou: a mão soltou
 	if wall_sliding:
 		air_jumps = 1
 		max_fall = f("wall_slide_speed")
@@ -290,7 +305,7 @@ func _air_jump(ix: float) -> void:
 ## Agarra a quina de um caixote: caindo, segurando na direção dela, com as mãos na altura do topo.
 ## Só bordas fixas do mapa (não plataforma que anda nem gangorra) e com espaço para ficar em pé em cima.
 func _try_grab(ix: float) -> void:
-	if velocity.y < -40.0 or stun_t > 0.0 or ix == 0.0 or PlayerInput.held(pid, "down"):
+	if velocity.y < -40.0 or stun_t > 0.0 or ix == 0.0 or PlayerInput.held(pid, "down") or grip < 0.15:
 		return
 	var dir := int(signf(ix))
 	var lv = main.level
@@ -334,7 +349,8 @@ func _hang_update(dt: float) -> void:
 	var lv = main.level
 	var cell := Vector2i(int(floor((position.x + hang_dir * 32.0) / 64.0)), int(floor((position.y - 58.0) / 64.0)))
 	var max_t := float(main.demo.cfg["recuperacao"]["borda_max_s"])
-	if not lv.is_solid(cell) or hang_t > max_t or PlayerInput.pressed(pid, "down") or PlayerInput.axis_x(pid) == -hang_dir:
+	grip = maxf(grip - dt / max_t, 0.0)   # segurar a borda cansa (o medidor acima da cabeça esvazia)
+	if not lv.is_solid(cell) or grip <= 0.0 or PlayerInput.pressed(pid, "down") or PlayerInput.axis_x(pid) == -hang_dir:
 		hanging = false   # caixote quebrou, cansou ou soltou
 		if PlayerInput.axis_x(pid) == -hang_dir:
 			own_vx = -hang_dir * 220.0   # soltou para trás: afasta um pouco da parede
@@ -390,6 +406,14 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 	var kx := minf(float(k["kx"]) + dmg * float(k["kx_por"]), float(am["max_kx"]))
 	var ky := float(k["ky"]) + dmg * float(k["ky_por"])
 	var stun := minf(float(am["stun_base"]) + dmg * float(am["stun_por"]), float(am["stun_max"]))
+	if frozen_t > 0.0:
+		# pancada em quem está congelado: o gelo estilhaça e o empurrão é maior
+		var mult := float(main.demo.item_cfg("congelador")["quebra_mult"])
+		kx = minf(kx * mult, float(am["max_kx"]) * 1.2)
+		ky *= mult
+		frozen_t = 0.0
+		stun_t = 0.0
+		main.demo.tools.shatter(rect().get_center())
 	main.float_text(position + Vector2(0, -100), "+%d%%" % int(k["dano"]), main.dmg_color(dmg))
 	_apply_knock(dir, kx, ky, stun)
 	PlayerInput.vibrate(pid, 0.35 + dmg / 300.0, 0.15 + dmg / 250.0, 0.12 + minf(dmg, 150.0) / 1000.0)

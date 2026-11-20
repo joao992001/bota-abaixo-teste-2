@@ -1,0 +1,27 @@
+{
+ "wave": "noise",
+ "freq_start": 6000,
+ "freq_end": 1500,
+ "duration": 0.3,
+ "attack": 0.001,
+ "decay": 0.2,
+ "sustain": 0.1,
+ "release": 0.12,
+ "highpass": 0.25,
+ "volume": 0.55,
+ "variations": 2,
+ "pitch_jitter": 0.08,
+ "layers": [
+  {
+   "wave": "triangle",
+   "freq_start": 2600,
+   "freq_end": 1800,
+   "duration": 0.12,
+   "decay": 0.1,
+   "sustain": 0,
+   "release": 0.05,
+   "volume": 0.3,
+   "delay": 0.03
+  }
+ ]
+}

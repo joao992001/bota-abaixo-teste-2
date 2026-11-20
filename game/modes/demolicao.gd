@@ -349,21 +349,25 @@ func spawn_item(kind: String, col := -1) -> void:
 		col = cols[main.rng.randi() % cols.size()]
 	items.append({"kind": kind, "pos": Vector2(col * 64 + 32, maxf(70.0, pr.position.y + 70.0)), "vy": 0.0, "t": 0.0})   # abaixo do teto invisível
 
-const ITEM_NAMES := {"dinamite": "DINAMITE!", "martelao": "MARTELÃO!", "mola": "BOTAS DE MOLA!", "capacete": "CAPACETE!",
-	"gancho": "GANCHO!", "ima": "ÍMÃ!", "tabua": "TÁBUA!", "furadeira": "FURADEIRA!", "cola": "COLA!",
-	"foguete": "BOTA-FOGUETE!", "chave": "CHAVE-BUMERANGUE!", "mola_portatil": "MOLA PORTÁTIL!"}
-const USABLE := ["dinamite", "gancho", "tabua", "furadeira", "cola", "chave", "mola_portatil"]
+const ITEM_NAMES := {"dinamite": "TNT!", "martelao": "MARTELÃO!", "mola": "BOTAS DE MOLA!", "capacete": "CAPACETE!",
+	"ima": "ÍMÃ!", "furadeira": "FURADEIRA!", "cola": "COLA!", "foguete": "BOTA-FOGUETE!",
+	"teletransporte": "TELETRANSPORTE!", "laser": "RAIO LASER!", "vortice": "BOMBA DE VÓRTICE!", "soprador": "SOPRADOR!",
+	"congelador": "RAIO CONGELANTE!"}
+const USABLE := ["dinamite", "furadeira", "cola", "teletransporte", "laser", "vortice", "soprador", "congelador"]
 const Ferramentas := preload("res://modes/ferramentas.gd")
-var tools: Node2D = null     # gancho, furadeira, tábua, cola, chave, mola portátil, ímã (modes/ferramentas.gd)
+var tools: Node2D = null     # furadeira, cola, teletransporte, laser, vórtice, soprador, congelador, ímã (modes/ferramentas.gd)
 
 func give(r, kind: String) -> void:
+	if not ITEM_NAMES.has(kind):
+		push_warning("item desconhecido: %s" % kind)
+		return
 	match kind:
 		"martelao", "mola", "ima", "foguete": r.fx_t[kind] = float(item_cfg(kind)["duration_s"])
 		"capacete": r.shield = int(item_cfg("capacete")["hits"])
 		_: r.item = kind
 	Audio.play({"martelao": "martelao", "ima": "ima", "foguete": "foguete"}.get(kind, "item"))
 	var names := ITEM_NAMES
-	main.float_text(r.position + Vector2(0, -110), names[kind], main.player_color(r.pid))
+	main.float_text(r.position + Vector2(0, -110), names.get(kind, kind), main.player_color(r.pid))
 	main.spark(r.rect().get_center(), 5)
 	tools.pickup_fx(r, kind)
 
@@ -398,12 +402,12 @@ func _update_dynamites(dt: float, alive: Array) -> void:
 			if r.pid != d["owner"] and r.rect().grow(10).has_point(d["pos"]):
 				hit = true
 		if hit:
-			explode(d["pos"])
+			explode(d["pos"], -1.0, int(d.get("owner", -1)))
 			d["t"] = 999.0
 	dynamites = dynamites.filter(func(d): return d["t"] < 999.0)
 
 ## Explosão: destrói caixotes no raio e lança os robôs para longe (TNT tem raio maior).
-func explode(pos: Vector2, rad := -1.0) -> void:
+func explode(pos: Vector2, rad := -1.0, by := -1) -> void:
 	var dc := item_cfg("dinamite")
 	if rad < 0.0:
 		rad = float(dc["radius_px"])
@@ -416,7 +420,7 @@ func explode(pos: Vector2, rad := -1.0) -> void:
 	for r in main.robots:
 		if r.alive and r.rect().get_center().distance_to(pos) < rad + 30.0:
 			var dir := 1 if r.rect().get_center().x >= pos.x else -1
-			r.take_hit(dir, "explosao", -1)
+			r.take_hit(dir, "explosao", by if by != r.pid else -1)
 	booms.append({"pos": pos, "t": 0.0})
 	Audio.play("explosao")
 	main.spark(pos, 10)

@@ -120,8 +120,8 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 	var row := int((pos.y + 2.0) / 64.0)
 	var col := int(pos.x / 64.0)
 	var cmd := {"dir": 0}
-	if r.item == "tabua" and not r.is_on_floor() and r.velocity.y > 250.0 and pos.y > 64.0 * (L.rows - 5):
-		cmd["item"] = true   # tábua de emergência caindo no buraco
+	if r.item == "teletransporte" and not r.is_on_floor() and r.velocity.y > 250.0 and pos.y > 64.0 * (L.rows - 5):
+		cmd["item"] = true   # caindo no buraco: troca de lugar com alguém
 	# 1) fugir de dinamite
 	for d in demo.dynamites:
 		if d["pos"].distance_to(center) < 220.0:
@@ -208,9 +208,11 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 	var use_ok: bool = main.rng.randf() < float(lv["use_items"])
 	var it_ok := false
 	match r.item:
-		"gancho", "chave", "cola": it_ok = absf(dy) < 100.0 and absf(dx) > 120.0 and absf(dx) < 480.0
+		"cola", "vortice": it_ok = absf(dy) < 100.0 and absf(dx) > 140.0 and absf(dx) < 480.0
+		"laser", "congelador": it_ok = absf(dy) < 40.0 and absf(dx) > 90.0 and absf(dx) < 900.0
+		"soprador": it_ok = absf(dy) < 80.0 and absf(dx) < 300.0
+		"teletransporte": it_ok = main.rng.randf() < 0.04
 		"furadeira": it_ok = absf(dy) < 60.0 and absf(dx) < 220.0
-		"mola_portatil": it_ok = r.is_on_floor() and dy < -200.0 and absf(dx) < 260.0
 	if it_ok and use_ok:
 		if signi(int(dx)) != r.facing:
 			cmd["dir"] = signi(int(dx))

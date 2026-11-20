@@ -1,0 +1,26 @@
+{
+ "wave": "sine",
+ "freq_start": 300,
+ "freq_end": 1800,
+ "duration": 0.3,
+ "attack": 0.01,
+ "sustain": 0.6,
+ "release": 0.12,
+ "vibrato_depth": 3,
+ "vibrato_rate": 30,
+ "volume": 0.4,
+ "layers": [
+  {
+   "wave": "square",
+   "duty": 0.25,
+   "freq_start": 1800,
+   "freq_end": 300,
+   "duration": 0.3,
+   "sustain": 0.4,
+   "release": 0.1,
+   "lowpass": 0.4,
+   "volume": 0.15,
+   "delay": 0.05
+  }
+ ]
+}

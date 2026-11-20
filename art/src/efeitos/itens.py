@@ -117,10 +117,59 @@ def mola_portatil():
     return wrap("".join(b), 121)
 
 
+def teletransporte():
+    b = [shape("tp", ellipse_d(32, 34, 24, 26), "#6b3fb3", 131, (6, 6, 58, 62), k=1.3, dark="#4a2a85", light="#9a6fe0"),
+         '<ellipse cx="32" cy="34" rx="15" ry="17" fill="#2a1650"/>',
+         '<path d="M32,22 C40,24 42,34 34,38 C28,41 24,36 28,32" stroke="#e7d6ff" stroke-width="3" fill="none" stroke-linecap="round"/>',
+         '<path d="M8,14 l6,4 M56,14 l-6,4 M6,52 l7,-3 M58,52 l-7,-3" stroke="#f2c84b" stroke-width="2.6" stroke-linecap="round"/>',
+         '<path d="M44,8 l4,0 l-2,4 Z M16,58 l4,0 l-2,-4 Z" fill="#e7d6ff"/>']
+    return wrap("".join(b), 131)
+
+
+def laser():
+    b = [shape("lb", "M8,24 H40 C46,24 48,30 48,32 C48,34 46,40 40,40 H8 Z", "#c9d1d8", 141, (6, 22, 50, 42), k=1.2, dark="#8a96a2", light="#ffffff"),
+         shape("lh", "M14,40 H26 L24,58 H12 Z", "#d42035", 142, (10, 38, 28, 60), k=1.2, dark="#a01528"),
+         '<rect x="48" y="28" width="8" height="8" fill="#5a6370"/>',
+         '<path d="M56,32 H63" stroke="#ff4d6a" stroke-width="4" stroke-linecap="round"/>',
+         '<circle cx="20" cy="31" r="4" fill="#ff4d6a"/><circle cx="31" cy="31" r="3" fill="#5fd6b0"/>',
+         '<path d="M10,20 L18,14 M40,20 L48,12" stroke="#5a6370" stroke-width="3" stroke-linecap="round"/>']
+    return wrap("".join(b), 141)
+
+
+def vortice():
+    b = [shape("vb", ellipse_d(30, 36, 22, 22), "#2f2a45", 151, (6, 12, 54, 60), k=1.3, dark="#1c1830", light="#5a4f80"),
+         '<path d="M30,22 C42,24 44,40 32,44 C22,46 20,34 28,32 C32,31 34,35 31,37" stroke="#b48cff" stroke-width="3" fill="none" stroke-linecap="round"/>',
+         '<rect x="26" y="8" width="10" height="7" rx="2" fill="#6a7682"/>',
+         '<path d="M36,10 C42,6 48,8 52,4" stroke="#5a4632" stroke-width="2.2" fill="none" stroke-linecap="round"/>',
+         '<circle cx="52" cy="4" r="2.6" fill="#ffffff"/>', '<circle cx="22" cy="28" r="3" fill="#ffffff" opacity="0.7"/>']
+    return wrap("".join(b), 151)
+
+
+def soprador():
+    b = [shape("sb", "M10,22 H36 C44,22 46,40 36,42 H10 Z", "#f08a3d", 161, (8, 20, 48, 44), k=1.2, dark="#c0602a", light="#ffb27a"),
+         shape("sn", "M36,26 L60,22 L60,42 L36,38 Z", "#5a6370", 162, (34, 20, 62, 44), k=1.2, dark="#3e4752"),
+         shape("sh", "M14,42 H24 L22,58 H12 Z", "#3e4752", 163, (10, 40, 26, 60), k=1.1),
+         '<circle cx="20" cy="31" r="5" fill="#2f3640"/><path d="M17,31 h6 M20,28 v6" stroke="#aab4bc" stroke-width="1.6"/>',
+         '<path d="M62,18 q-4,-6 -10,-4 M63,32 h-0 M62,46 q-4,6 -10,4" stroke="#ffffff" stroke-width="2.4" fill="none" stroke-linecap="round"/>']
+    return wrap("".join(b), 161)
+
+
+def congelador():
+    b = [shape("cb", "M8,24 H40 L50,28 V36 L40,40 H8 Z", "#8fd3f0", 171, (6, 22, 52, 42), k=1.2, dark="#4aa6d0", light="#e0f6ff"),
+         shape("ch", "M14,40 H26 L24,58 H12 Z", "#3e7fb8", 172, (10, 38, 28, 60), k=1.2),
+         '<rect x="18" y="14" width="12" height="10" rx="2" fill="#d5f1ff"/><rect x="20" y="16" width="8" height="5" fill="#8fd3f0"/>']
+    cx, cy = 56, 32
+    for a in range(0, 180, 60):
+        b.append(f'<path d="M{cx},{cy} m-7,0 h14" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" transform="rotate({a} {cx} {cy})"/>')
+    return wrap("".join(b), 171)
+
+
 def main():
     for name, fn in (("dinamite", dinamite), ("martelao", martelao), ("capacete", capacete), ("mola", mola),
                      ("gancho", gancho), ("ima", ima), ("tabua", tabua), ("furadeira", furadeira), ("cola", cola),
-                     ("foguete", foguete), ("chave", chave), ("mola_portatil", mola_portatil)):
+                     ("foguete", foguete), ("chave", chave), ("mola_portatil", mola_portatil),
+                     ("teletransporte", teletransporte), ("laser", laser), ("vortice", vortice), ("soprador", soprador),
+                     ("congelador", congelador)):
         queue(fn(), f"{SRC}/item_{name}.svg", f"{OUT}/{name}.png", 64, 64, K)
     print("itens:", render_all())
 

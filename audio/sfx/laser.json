@@ -1,0 +1,36 @@
+{
+ "wave": "square",
+ "duty": 0.5,
+ "freq_start": 1600,
+ "freq_end": 120,
+ "duration": 0.35,
+ "attack": 0.001,
+ "decay": 0.1,
+ "sustain": 0.5,
+ "release": 0.15,
+ "lowpass": 0.6,
+ "volume": 0.4,
+ "layers": [
+  {
+   "wave": "noise",
+   "freq_start": 5000,
+   "freq_end": 400,
+   "duration": 0.3,
+   "decay": 0.2,
+   "sustain": 0.2,
+   "release": 0.1,
+   "lowpass": 0.5,
+   "volume": 0.4
+  },
+  {
+   "wave": "sine",
+   "freq_start": 90,
+   "freq_end": 40,
+   "duration": 0.3,
+   "decay": 0.25,
+   "sustain": 0.1,
+   "release": 0.1,
+   "volume": 0.6
+  }
+ ]
+}

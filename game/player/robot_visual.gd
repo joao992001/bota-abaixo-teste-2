@@ -37,6 +37,10 @@ var prev_vel := Vector2.ZERO
 var step_side := 0
 var robot = null
 var hanging := false
+var grip := 1.0
+var on_wall := false
+var sweat_t := 0.0
+var drops: Array = []                  # gotas de suor quando a aderência está acabando
 var hang_snap := Vector2.ZERO          # ao agarrar a borda: o desenho começa onde o robô estava e desliza até a quina
 var smoke_t := 0.0
 
@@ -66,7 +70,10 @@ func tick(r, dt: float) -> void:
 	var on_floor: bool = r.is_on_floor()
 	var spd := absf(v.x)
 	sq = sq.lerp(Vector2.ONE, minf(dt * 11.0, 1.0))
-	shown_facing = move_toward(shown_facing, float(r.facing), dt * 16.0)
+	var face_to := float(r.facing)
+	if r.wall_sliding and r.wall_side != 0:
+		face_to = -float(r.wall_side)   # de costas para a parede, pronto para o pulo de parede
+	shown_facing = move_toward(shown_facing, face_to, dt * 16.0)
 	run_k = move_toward(run_k, clampf(spd / float(c["max_run"]), 0.0, 1.0) if on_floor else 0.0, dt * 8.0)
 	air_k = move_toward(air_k, 0.0 if on_floor else 1.0, dt * 10.0)
 	wall_k = move_toward(wall_k, 1.0 if r.wall_sliding else 0.0, dt * 12.0)
@@ -95,7 +102,7 @@ func tick(r, dt: float) -> void:
 	var target := run_k * 0.14
 	if on_floor and spd > 120.0 and signf(v.x) != float(r.facing):
 		target = -0.18
-	target -= wall_k * 0.16
+	target += wall_k * 0.12   # de costas para a parede, inclina para longe dela
 	if hammer_t > 0.0:
 		target += _hammer_lean(hk)
 	lean = lerpf(lean, target, minf(dt * 12.0, 1.0))
@@ -121,8 +128,21 @@ func tick(r, dt: float) -> void:
 	hang_snap = hang_snap.lerp(Vector2.ZERO, minf(dt * 18.0, 1.0))
 	position = hang_snap
 	hanging = r.hanging
-	if r.hanging:
+	grip = r.grip
+	on_wall = r.wall_sliding
+	if r.hanging or (r.wall_sliding and r.grip < 0.5):
 		expression = "esforco"
+	if (r.hanging or r.wall_sliding) and r.grip < 0.35:
+		expression = "susto"
+		sweat_t -= dt
+		if sweat_t <= 0.0:
+			sweat_t = 0.25
+			drops.append({"p": Vector2(randf_range(-14, 14), -86), "v": Vector2(randf_range(-40, 40), -60), "t": 0.0})
+	for d in drops:
+		d["t"] += dt
+		d["v"].y += 500.0 * dt
+		d["p"] += d["v"] * dt
+	drops = drops.filter(func(d): return d["t"] < 0.6)
 	# piscando enquanto invulnerável
 	modulate.a = 0.45 if r.invuln > 0.0 and fmod(t, 0.16) < 0.08 else 1.0
 	# muito amassado: solta fumaça (e faísca acima de 120%)
@@ -170,19 +190,31 @@ func current_pose() -> Dictionary:
 			knee[i] = knee[i].lerp(Vector2(6.0, 0) * up + Vector2(1.0, 0) * down, a)
 		hb = hb.lerp(Vector2(-3, -12) * up + Vector2(sin(t * 22.0) * 5.0, -15.0 + cos(t * 22.0) * 4.0) * down, a)
 		hf = hf.lerp(Vector2(0, -6) * up + Vector2(cos(t * 20.0) * 3.0, -6.0) * down, a)
-	# pendurado na borda: mãos para cima segurando a quina, pernas soltas
+	# pendurado na borda: as duas mãos na quina, corpo esticado embaixo, pés raspando na parede
+	var tremble := 0.0
+	if hanging or on_wall:
+		tremble = clampf((0.45 - grip) / 0.45, 0.0, 1.0)
 	if hanging:
-		hb = Vector2(14, -52)
-		hf = Vector2(18, -56)
+		var slip := clampf((0.3 - grip) / 0.3, 0.0, 1.0) * 6.0   # as mãos escorregam no fim
+		p["hb_abs"] = Vector2(14, -60 + slip) + Vector2(sin(t * 55.0), cos(t * 47.0)) * 1.5 * tremble
+		p["hf_abs"] = Vector2(23, -61 + slip) + Vector2(cos(t * 51.0), sin(t * 43.0)) * 1.5 * tremble
+		lean = lerpf(lean, 0.1, 0.5)
+		bob = 5.0 + sin(t * 3.0) * 1.0
+		var scr := 2.0 + 10.0 * tremble   # pés tentam escalar quando cansa
 		for i in 2:
-			feet[i] = Vector2(-2.0 + i * 3.0, 4.0 + sin(t * 3.0 + i) * 2.0)
-			knee[i] = Vector2(-2, 0)
-	# parede: mão e pés apoiados
-	if wall_k > 0.0:
-		hf += Vector2(10, -14) * wall_k
-		for i in 2:
-			feet[i] += Vector2(7, -3) * wall_k
-	# furadeira / sendo puxado pelo gancho: braços esticados para a frente
+			var ph := t * (6.0 + 14.0 * tremble) + i * PI
+			feet[i] = Vector2(8.0 + i * 3.0, -2.0 - maxf(sin(ph), 0.0) * scr)
+			knee[i] = Vector2(5, 0)
+		p["hammer_ang"] = -2.7   # marreta pendurada para trás, longe da parede
+	# escorregando na parede (de costas para ela): mão de trás espalmada na parede, pé de trás apoiado
+	if wall_k > 0.0 and not hanging:
+		var shake := Vector2(sin(t * 60.0), cos(t * 53.0)) * 1.6 * tremble
+		hb = hb.lerp(Vector2(-16, -18) + shake, wall_k)
+		hf = hf.lerp(Vector2(6, -16), wall_k)
+		feet[0] = feet[0].lerp(Vector2(-12, -10), wall_k)
+		feet[1] = feet[1].lerp(Vector2(4, 0), wall_k)
+		knee[0] = knee[0].lerp(Vector2(-3, 0), wall_k)
+	# furadeira / laser / teletransporte: braços esticados para a frente
 	if robot != null and robot.forced_t > 0.0:
 		hb = Vector2(16, -6)
 		hf = Vector2(20, -4)
@@ -212,12 +244,27 @@ func current_pose() -> Dictionary:
 	p["knee"] = knee
 	p["hb_off"] = hb
 	p["hf_off"] = hf
-	p["hammer_ang"] = ang
+	if not p.has("hammer_ang") or not hanging:
+		p["hammer_ang"] = ang
 	p["ant"] = ant
 	return p
 
 func _draw() -> void:
 	draw_robot(self, look(), current_pose())
+	# suor
+	for d in drops:
+		draw_circle(d["p"], 2.6, Color(0.55, 0.8, 1.0, 1.0 - d["t"] / 0.6))
+	# medidor de aderência (parede/borda): anel que esvazia acima da cabeça
+	if (hanging or on_wall or (robot != null and not robot.is_on_floor() and grip < 0.999)) and grip < 0.999 and robot != null and robot.alive:
+		var c := Vector2(0, -104)
+		var col := Color("#5cc45c").lerp(Color("#f2c84b"), clampf((0.7 - grip) / 0.35, 0.0, 1.0)).lerp(Color("#d42035"), clampf((0.35 - grip) / 0.3, 0.0, 1.0))
+		if grip < 0.3 and fmod(t, 0.2) < 0.1:
+			col = Color.WHITE
+		var sx := signf(scale.x) if scale.x != 0.0 else 1.0
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0 / maxf(absf(scale.x), 0.2) * sx, 1.0 / maxf(scale.y, 0.2)))
+		draw_circle(c, 13.0, Color(0.12, 0.18, 0.2, 0.55))
+		draw_arc(c, 10.0, -PI / 2.0, -PI / 2.0 + TAU * grip, 24, col, 5.0, true)
+		draw_set_transform(Vector2.ZERO)
 
 ## Poses prontas para telas (entrada e vitória).
 static func idle_pose(time: float) -> Dictionary:
@@ -241,6 +288,10 @@ static func victory_pose(time: float) -> Dictionary:
 
 ## Desenha o robô montado em qualquer CanvasItem. look = {color, model, acc, hammer}; pose = ver topo.
 static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base := Transform2D.IDENTITY) -> void:
+	var spring_h := 0.0
+	if lk.get("fx", {}).get("mola", false):
+		spring_h = 18.0 * float(pose.get("spring_k", 1.0))
+		base = base * Transform2D(0.0, Vector2(0, -spring_h))   # botas de mola: o robô fica em cima das molas
 	var col_idx: int = lk["color"]
 	var mname: String = Data.MODELS[lk["model"]]
 	var body := Data.tex("robo/corpo_%s_p%d" % [mname, col_idx + 1])
@@ -254,8 +305,8 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 	var pivot := (_v(hips[0]) + _v(hips[1])) / 2.0
 	var bx := Transform2D(0.0, pose["body_off"] + pivot) * Transform2D(pose["lean"], Vector2.ZERO) * Transform2D(0.0, -pivot)
 	var sh: Array = g["shoulders"]
-	var hf: Vector2 = bx * _v(g["hand_front"]) + pose["hf_off"]
-	var hb: Vector2 = bx * _v(g["hand_back"]) + pose["hb_off"]
+	var hf: Vector2 = pose["hf_abs"] if pose.has("hf_abs") else bx * _v(g["hand_front"]) + pose["hf_off"]
+	var hb: Vector2 = pose["hb_abs"] if pose.has("hb_abs") else bx * _v(g["hand_back"]) + pose["hb_off"]
 	# marreta (atrás do corpo)
 	var fx: Dictionary = lk.get("fx", {})
 	if lk.get("hammer", true):
@@ -271,17 +322,24 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 		_limb(ci, base, hip, fp, limb, pose["knee"][i])
 		var now := Time.get_ticks_msec() / 1000.0
 		if fx.get("mola", false):
-			# botas de mola: mola grossa embaixo de cada pé (estica no ar, encolhe no chão)
+			# botas de mola: mola de verdade (anéis empilhados, frente clara e trás escura) e sola verde no chão
 			ci.draw_set_transform_matrix(base)
-			var stretch_k: float = pose.get("spring_k", 1.0)
 			var cx := fp.x + s * 1.5
-			var zz := PackedVector2Array()
-			for k in 6:
-				zz.append(Vector2(cx + (-8.0 if k % 2 == 0 else 8.0), fp.y + 3.0 + k * 3.2 * stretch_k))
-			ci.draw_polyline(zz, Color("#3e4752"), 4.2, true)
-			ci.draw_polyline(zz, Color("#d5dbe1"), 2.2, true)
-			ci.draw_rect(Rect2(Vector2(cx - 10.0, fp.y + 3.0 + 16.0 * stretch_k), Vector2(20, 4)), Color("#5cc45c"))
+			var top := fp.y + 3.0
+			var bottom := spring_h + 1.0
+			var n := 4
+			for k in n:
+				var yy := lerpf(top, bottom - 4.0, (k + 0.5) / n)
+				ci.draw_arc(Vector2(cx, yy), 8.5, PI, TAU, 12, Color("#3e4752"), 3.4, true)
+			for k in n:
+				var yy := lerpf(top, bottom - 4.0, (k + 0.5) / n)
+				ci.draw_arc(Vector2(cx, yy + 0.6), 8.5, 0.0, PI, 12, Color("#2f3640"), 4.6, true)
+				ci.draw_arc(Vector2(cx, yy), 8.5, 0.15, PI - 0.15, 12, Color("#e9eef2"), 3.0, true)
+			ci.draw_rect(Rect2(Vector2(cx - 11.0, bottom - 4.0), Vector2(22, 6)), Color("#2f6b34"))
+			ci.draw_rect(Rect2(Vector2(cx - 10.0, bottom - 4.0), Vector2(20, 3)), Color("#5cc45c"))
 		var foot_col := limb
+		if fx.get("mola", false):
+			foot_col = Color("#3c9a46")   # bota verde das molas
 		if fx.get("foguete", false):
 			foot_col = Color("#d42035")   # bota-foguete vermelha
 		ci.draw_set_transform_matrix(base * Transform2D(0.0, q * (0.82 if fx.get("foguete", false) else 0.72), 0.0, fp + Vector2(s * 1.5, 0.5)))
