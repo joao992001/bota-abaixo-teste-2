@@ -1908,16 +1908,16 @@ func arenas_test() -> void:
 	check(hit, "bola de demolição arremessa o robô")
 	# paiol: quebrar 1 TNT explode os vizinhos em cadeia
 	await arena_round("paiol")
-	put(main.robots[0], Vector2(col_x(2), 576))
-	put(main.robots[1], Vector2(col_x(27), 576))
+	put(main.robots[0], Vector2(col_x(2), 768))
+	put(main.robots[1], Vector2(col_x(27), 768))
 	var before: int = main.level.blocks.size()
-	main.level.break_block(Vector2i(12, 9))
+	main.level.break_block(Vector2i(5, 7))
 	await frames(40)
 	var tnt_left := 0
-	for c in [Vector2i(14, 9), Vector2i(16, 9)]:
+	for c in [Vector2i(7, 7)]:
 		if main.level.blocks.has(c):
 			tnt_left += 1
-	check(before - main.level.blocks.size() > 6 and tnt_left == 0, "TNT explode em cadeia (%d caixotes destruídos)" % (before - main.level.blocks.size()))
+	check(before - main.level.blocks.size() >= 5 and tnt_left == 0, "TNT explode em cadeia (%d caixotes destruídos)" % (before - main.level.blocks.size()))
 
 # ---------------------------------------------------------------- miniaturas e capturas das arenas
 func arenas_frames(dir: String) -> void:

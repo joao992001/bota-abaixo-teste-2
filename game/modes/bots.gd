@@ -183,11 +183,20 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 				cmd["jump"] = true
 				cmd["jump_frames"] = 16
 			return _safe(r, cmd, lv)
-	# alvo: rival mais perto
+	# 2) Batata-Dinamite: sem a bomba, foge de quem está com ela; com ela, persegue o mais perto (encostar passa)
+	var bomb_on: bool = demo.rule() == "batata" and demo.bomb_holder >= 0 and demo.bomb_holder < main.robots.size()
+	var holder = main.robots[demo.bomb_holder] if bomb_on else null
+	if holder != null and holder != r and holder.alive and holder.position.distance_to(pos) < 380.0:
+		cmd["dir"] = 1 if pos.x >= holder.position.x else -1
+		if absf(holder.position.x - pos.x) < 170.0 and r.is_on_floor():
+			cmd["jump"] = true
+			cmd["jump_frames"] = 16
+		return _safe(r, cmd, lv)
+	# alvo: rival mais perto (na Batata, ninguém vai atrás de quem está com a bomba)
 	var target = null
 	var td := 1e9
 	for o in main.robots:
-		if o != r and o.alive and not o.finished:
+		if o != r and o.alive and not o.finished and not (holder != null and o == holder and r != holder):
 			var dd: float = o.position.distance_to(pos)
 			if dd < td:
 				td = dd

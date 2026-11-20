@@ -168,7 +168,7 @@
         "id": "paiol",
         "musica": "caos",
         "nome": "Paiol de TNT",
-        "dica": "TNT explode em cadeia!"
+        "dica": "Sala fechada: só a dinamite elimina!"
       },
       {
         "id": "torre",
@@ -199,6 +199,18 @@
         "musica": "fabrica",
         "nome": "Fornalha",
         "dica": "Chamas no chão e barris rolando!"
+      },
+      {
+        "id": "galpao",
+        "nome": "Galpão de Cargas",
+        "dica": "Dê a volta pelo túnel embaixo!",
+        "musica": "caos"
+      },
+      {
+        "id": "andaime",
+        "nome": "Andaime do Elevador",
+        "dica": "Fuja pelo elevador do meio!",
+        "musica": "altura"
       }
     ],
     "amassometro": {
@@ -398,7 +410,8 @@
           "guindastes",
           "gangorras",
           "esteiras",
-          "prensa"
+          "prensa",
+          "fornalha"
         ],
         "itens": true
       },
@@ -409,7 +422,8 @@
         "ok": true,
         "arenas": [
           "paiol",
-          "fornalha"
+          "galpao",
+          "andaime"
         ],
         "itens": false,
         "raio": 170
