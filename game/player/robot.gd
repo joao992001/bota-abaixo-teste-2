@@ -30,7 +30,8 @@ var item := ""               # item guardado (dinamite), usado com o botão de i
 var fx_t := {"martelao": 0.0, "mola": 0.0}   # efeitos com tempo
 var shield := 0              # capacete de aço: golpes que ainda aguenta
 var fall_reason := ""
-var last_hit := 99.0         # segundos desde o último golpe (para saber se caiu sozinho)
+var last_hit := 99.0
+var stomp_immune := 0.0      # depois de levar pisão, um tempo sem poder levar outro         # segundos desde o último golpe (para saber se caiu sozinho)
 var wall_dust := 0.0
 var vis: Node2D
 
@@ -266,7 +267,7 @@ func finish() -> void:
 	var g: Rect2 = main.level.goal_rect
 	var floor_pos := Vector2(g.get_center().x, g.end.y)
 	facing = 1 if floor_pos.x >= position.x else -1
-	var tw := create_tween()
+	var tw := create_tween().set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
 	# desce até o chão (se chegou pulando), pulinho de alegria no centro da porta, entra e some
 	tw.tween_property(self, "position", floor_pos, 0.22).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
 	tw.tween_property(vis, "position", Vector2(0, -16), 0.13).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)

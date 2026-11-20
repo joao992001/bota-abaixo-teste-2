@@ -20,3 +20,4 @@
 - 2026-11-20 · Jogo abre em tela cheia (display/window/size/mode=3); F11 alterna tela cheia/janela 1280x720 — usuário.
 - 2026-11-20 · **Novo núcleo: Modo Festa** (Demolição primeiro; depois Rei da Obra, Corrida Sabotada, Torre Maluca). Robôs agora se atrapalham direto (marretada empurra, pisão atordoa). Modo de peças vira F7 — usuário.
 - 2026-11-20 · Demolição: caixote com 3 de vida, racha parado em 2,5 s e cai em 4 s, terremoto aos 30 s; itens (dinamite arremessável, martelão, capacete de aço, botas de mola) caem do céu; bots (fácil/médio/difícil) liberados — usuário.
+- 2026-11-20 · Controles: interpolação de física ligada (suaviza em telas fora de 60 Hz); pulo 3,8 tiles e mais controle no ar; pisão com imunidade 1,4 s e empurrão lateral (fim do laço infinito); atordoamentos menores (marretada 0,3 s, pisão 0,6 s); bots com recarga de marreta — usuário.

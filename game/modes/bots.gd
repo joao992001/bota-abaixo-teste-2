@@ -31,6 +31,7 @@ func update(dt: float) -> void:
 		state[dev] = st
 		var lv: Dictionary = cfg[LEVELS[p.get("level", 1)]]
 		st["think"] -= dt
+		st["hammer_cd"] = st.get("hammer_cd", 0.0) - dt
 		if st["think"] <= 0.0:
 			st["think"] = float(lv["react_s"]) * main.rng.randf_range(0.8, 1.4)
 			st["cmd"] = _decide(r, lv, st)
@@ -147,8 +148,9 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 	if absf(dx) < 78.0 and absf(dy) < 50.0:
 		if signi(int(dx)) != r.facing and absf(dx) > 4.0:
 			cmd["dir"] = signi(int(dx))   # vira para o rival
-		if main.rng.randf() < float(lv["hammer_acc"]):
+		if main.rng.randf() < float(lv["hammer_acc"]) and st.get("hammer_cd", 0.0) <= 0.0:
 			cmd["hammer"] = true
+			st["hammer_cd"] = float(lv["hammer_cooldown_s"])
 		return _safe(r, cmd, lv)
 	# 4) dinamite: arremessa quando o rival está a meia distância, mais ou menos na mesma altura
 	if r.item == "dinamite" and absf(dy) < 110.0 and absf(dx) > 140.0 and absf(dx) < 430.0 and main.rng.randf() < float(lv["use_items"]):

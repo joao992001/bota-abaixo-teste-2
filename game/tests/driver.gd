@@ -205,7 +205,7 @@ func autotest() -> void:
 		miny = minf(miny, r0.position.y)
 	vset("v0", "jump", false)
 	var full := (768 - miny) / 64.0
-	check(full > 3.0 and full < 3.8, "pulo segurado = %.2f tiles (esperado ~3,5)" % full)
+	check(full > 3.5 and full < 4.3, "pulo segurado = %.2f tiles (esperado ~3,9)" % full)
 	await frames(40)
 	miny = 9999.0
 	vset("v0", "jump", true)
@@ -352,6 +352,24 @@ func demolicao_test() -> void:
 	await demo_round()
 	var r0 = main.robots[0]
 	var r1 = main.robots[1]
+	# corrida lisa sobre caixotes separados: sem tropeçar nas emendas
+	put(r1, Vector2(col_x(26), 576))
+	put(r0, Vector2(col_x(10) + 10, 576))
+	await frames(3)
+	vset("v0", "right", true)
+	var drops := 0
+	var air := 0
+	for i in 40:
+		await frames(1)
+		if i > 8 and absf(r0.velocity.x) < float(Data.ctrl["max_run"]) - 1.0:
+			drops += 1
+		if not r0.is_on_floor():
+			air += 1
+	vset("v0", "right", false)
+	check(drops == 0 and air == 0, "corre liso sobre caixotes (quedas de velocidade: %d, quadros sem chão: %d)" % [drops, air])
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
 	put(r0, Vector2(col_x(12), 576))
 	put(r1, Vector2(col_x(26), 576))
 	r0.facing = 1
@@ -388,6 +406,14 @@ func demolicao_test() -> void:
 			stomped = true
 			break
 	check(stomped and r0.velocity.y < 0.0, "pular na cabeça atordoa e quica")
+	var stomps := 1
+	var was_stunned := true
+	for i in 90:
+		await frames(1)
+		if r1.stun_t > 0.0 and not was_stunned:
+			stomps += 1
+		was_stunned = r1.stun_t > 0.0
+	check(stomps == 1, "pisão não vira laço: 1 pisão em 1,5 s (%d)" % stomps)
 	await demo_round()
 	r0 = main.robots[0]
 	r1 = main.robots[1]

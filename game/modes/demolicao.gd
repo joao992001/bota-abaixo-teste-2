@@ -67,16 +67,24 @@ func update(dt: float) -> void:
 	var lv = main.level
 	var alive: Array = main.robots.filter(func(r): return r.alive)
 	# pisão na cabeça (o capacete bloqueia)
+	for r in alive:
+		r.stomp_immune = maxf(r.stomp_immune - dt, 0.0)
 	for a in alive:
 		if a.velocity.y <= 120.0 or a.stun_t > 0.0:
 			continue
 		for b in alive:
-			if a == b:
+			if a == b or b.stomp_immune > 0.0:
 				continue
 			var head: float = b.rect().position.y
 			if absf(a.position.y - head) < 16.0 and absf(a.position.x - b.position.x) < 38.0:
 				a.velocity.y = -c("stomp_bounce")
+				a.var_jump = 0.0
+				var side := signf(a.position.x - b.position.x)
+				if side == 0.0:
+					side = float(a.facing)
+				a.own_vx = side * c("stomp_side_push")   # sai de cima, não cai de novo na mesma cabeça
 				a.vis.stretch()
+				b.stomp_immune = c("stomp_immune_s")
 				b.last_hit = 0.0
 				if not b.absorb():
 					b.stun_t = c("stun_stomp_s")

@@ -6,8 +6,8 @@
     "hammer_reach_px": 56,
     "knock_x": 900,
     "knock_y": 420,
-    "stun_hit_s": 0.45,
-    "stun_stomp_s": 0.9,
+    "stun_hit_s": 0.3,
+    "stun_stomp_s": 0.6,
     "stomp_bounce": 760,
     "crumble_crack_s": 2.5,
     "crumble_break_s": 4.0,
@@ -69,7 +69,9 @@
       "capacete": {
         "hits": 1
       }
-    }
+    },
+    "stomp_immune_s": 1.4,
+    "stomp_side_push": 320
   },
   "bots": {
     "nota": "react_s = tempo de reação; hammer_acc = chance de marretar quando dá; safety = chance de checar buraco antes de andar",
@@ -77,19 +79,22 @@
       "react_s": 0.38,
       "hammer_acc": 0.45,
       "safety": 0.85,
-      "use_items": 0.4
+      "use_items": 0.4,
+      "hammer_cooldown_s": 1.0
     },
     "medio": {
       "react_s": 0.2,
       "hammer_acc": 0.75,
       "safety": 0.97,
-      "use_items": 0.8
+      "use_items": 0.8,
+      "hammer_cooldown_s": 0.6
     },
     "dificil": {
       "react_s": 0.09,
       "hammer_acc": 0.95,
       "safety": 1.0,
-      "use_items": 1.0
+      "use_items": 1.0,
+      "hammer_cooldown_s": 0.4
     }
   }
 }
