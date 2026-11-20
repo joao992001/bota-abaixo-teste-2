@@ -18,6 +18,24 @@ func _run() -> void:
 			shot = a.substr(7)
 		if a.begins_with("--anim="):
 			anim = a.substr(7)
+		if a.begins_with("--intro="):
+			var dir: String = a.substr(8)
+			DirAccess.make_dir_recursive_absolute(dir)
+			get_window().size = Vector2i(1920, 1080)
+			main.go_menu()
+			main.state = S.INTRO
+			main.menus.intro_t = 0.0
+			main.menus.intro_frames = 0
+			main.menus.intro_hit = false
+			main.menus.intro_hi = false
+			var shots := [12, 30, 40, 60, 95, 125, 140, 165]
+			var fr := 0
+			for target in shots:
+				await frames(target - fr)
+				fr = target
+				await snap(dir, "intro_%03d" % target)
+			get_tree().quit(0)
+			return
 		if a.begins_with("--parede="):
 			await parede_frames(a.substr(9))
 			get_tree().quit(0)
@@ -186,7 +204,7 @@ func autotest() -> void:
 	Audio.music("partida")
 	await frames(30)
 	var ms: AudioStream = Audio._music.stream
-	check(ms is AudioStreamWAV and ms.loop_mode == AudioStreamWAV.LOOP_FORWARD, "música da partida em loop")
+	check(ms is AudioStreamOggVorbis and ms.loop, "música da partida em OGG e em loop")
 	Audio.play("bonk")
 	Audio.voice("voz_ai", 2)
 	print("== Teclado (Windows: Shift fantasma nas setas, Ctrl esquerdo x direito)")
@@ -1271,6 +1289,28 @@ func controles_test() -> void:
 	check(PlayerInput.slots[2] == "v9" and main.players[2]["dev"] == "v9" and main.lost_pads.is_empty(), "outro controle assume P3 com START")
 	await tap("v0", "start")
 	check(not main.paused, "continua a partida")
+	# o mesmo controle visto 2x pelo Windows: o jogador escuta as duas cópias
+	main.go_menu()
+	main.state = S.JOIN
+	PlayerInput.virtual = {"v0": {}, "v7": {}}
+	await frames(2)
+	await tap("v0", "jump")
+	PlayerInput.aliases["v7"] = "v0"
+	vset("v7", "right", true)
+	await frames(2)
+	check(PlayerInput.held(0, "right"), "controle duplicado: o botão da cópia também move o jogador")
+	vset("v7", "right", false)
+	PlayerInput.aliases.erase("v7")
+	# intro: anda sozinha até o menu, e qualquer botão pula
+	main.go_menu()
+	main.state = S.INTRO
+	main.menus.intro_t = 0.0
+	main.menus.intro_frames = 0
+	await frames(30)
+	check(main.state == S.INTRO, "intro rodando")
+	await tap("v0", "jump")
+	await frames(60)
+	check(main.state == S.MENU, "qualquer botão pula a intro e chega ao menu")
 	# tela de teste de controles abre e fecha com ESC
 	main.go_menu()
 	main.state = S.CONTROLES

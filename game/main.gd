@@ -23,10 +23,10 @@ const PIECE_SCRIPTS := {
 const T := 64
 const MILESTONE := 1
 
-enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS, SUBMODOS, AJUSTES, EVENTOS, CONTROLES }
-var state := S.MENU
+enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS, SUBMODOS, AJUSTES, EVENTOS, CONTROLES, INTRO }
+var state := S.INTRO   # abre com a intro animada (os testes pulam direto para a entrada)
 var paused := false
-const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.SUBMODOS, S.AJUSTES, S.EVENTOS, S.CONTROLES]
+const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.SUBMODOS, S.AJUSTES, S.EVENTOS, S.CONTROLES, S.INTRO]
 var sandbox := false          # OFICINA: ambiente de testes (respawn infinito, rodada sem fim)
 var oficina: Node = null
 var perf_acc := {}             # tempo gasto por parte (medição --perf)
@@ -137,7 +137,7 @@ func _ready() -> void:
 	PlayerInput.pad_changed.connect(_on_pad_changed)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens") or a.begins_with("--oficina") or a.begins_with("--parede"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens") or a.begins_with("--oficina") or a.begins_with("--parede") or a.begins_with("--intro"):
 			state = S.JOIN   # testes e capturas começam direto na entrada de jogadores
 			var scr: GDScript = load("res://tests/driver.gd")
 			if scr == null or not scr.can_instantiate():
@@ -465,7 +465,9 @@ func to_screen(p: Vector2) -> Vector2:
 
 # ---------------------------------------------------------------- entrada
 func _join_update() -> void:
-	for dev in PlayerInput.all_devices():
+	var devs: Array = PlayerInput.all_devices()
+	devs.sort_custom(func(a, b): return PlayerInput.is_known(a) and not PlayerInput.is_known(b))   # reconhecidos primeiro
+	for dev in devs:
 		if dev in PlayerInput.slots or not PlayerInput.dev_pressed(dev, "jump"):
 			continue
 		if PlayerInput.aliases.has(dev):

@@ -23,6 +23,12 @@ var goal_sel := 1
 var opt_sel := 0
 var pause_sel := 0
 var t := 0.0
+var intro_t := 0.0
+var menu_in := 1.0   # 0→1: botões do menu entram deslizando depois da intro
+var intro_frames := 0
+var intro_hit := false
+var intro_hi := false
+const INTRO_END := 2.6
 var shake_card := 0.0
 var arena_sel := 0
 var sub_sel := 0
@@ -50,6 +56,9 @@ func move_h() -> int:
 
 func update(dt: float) -> void:
 	t += dt
+	if main.state == main.S.INTRO:
+		_update_intro(dt)
+		return
 	if move_v() != 0 or move_h() != 0:
 		Audio.play("menu_mover")
 	if pressed("back"):
@@ -193,6 +202,7 @@ func draw(ci: CanvasItem) -> void:
 		S.AJUSTES: _draw_adjust(ci)
 		S.EVENTOS: main.events.menu_draw(ci, self)
 		S.CONTROLES: _draw_pads(ci)
+		S.INTRO: _draw_intro(ci)
 	if main.paused:
 		if main.sandbox and main.oficina.open:
 			main.oficina.draw(ci)
@@ -208,7 +218,7 @@ func _who_confirmed() -> String:
 
 func _logo(ci: CanvasItem, y: float, w: float) -> void:
 	var h := w * 340.0 / 1700.0
-	var bob := sin(t * 1.6) * 6.0
+	var bob := sin(t * 1.6) * 6.0 * menu_in
 	ci.draw_texture_rect(Data.tex("ui/logo"), Rect2(960 - w / 2, y + bob, w, h), false)
 
 func _button(ci: CanvasItem, r: Rect2, label: String, on: bool, rot := 0.0) -> void:
@@ -225,8 +235,10 @@ func _button(ci: CanvasItem, r: Rect2, label: String, on: bool, rot := 0.0) -> v
 
 func _draw_menu(ci: CanvasItem) -> void:
 	_logo(ci, 40, 1180)
+	menu_in = minf(menu_in + get_process_delta_time() / 0.45, 1.0)
 	for i in MENU_ITEMS.size():
-		_button(ci, Rect2(250, 440 + i * 120, 440, 90), MENU_ITEMS[i], sel == i, (-0.02 if i % 2 == 0 else 0.02))
+		var u := _ease_out_back(clampf(menu_in * 1.6 - i * 0.12, 0.0, 1.0))
+		_button(ci, Rect2(250 - 700.0 * (1.0 - u), 440 + i * 120, 440, 90), MENU_ITEMS[i], sel == i, (-0.02 if i % 2 == 0 else 0.02))
 	Kit.text(ci, Vector2(0, 1056), "▲▼ escolher  ·  PULAR / ENTER confirmar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
 
 ## Ilustração do cartão; xf = transformação do cartão (girado), para não perdê-la ao desenhar peças giradas.
@@ -503,6 +515,7 @@ func _draw_pads(ci: CanvasItem) -> void:
 		var x0 := 960.0 - (n * cw + (n - 1) * 20.0) / 2.0
 		for k in n:
 			_draw_pad_card(ci, pads[k], Rect2(x0 + k * (cw + 20.0), 180, cw, 780), k)
+	Kit.text(ci, Vector2(0, 1020), "relatório dos controles: " + ProjectSettings.globalize_path("user://controles.txt"), 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
 	Kit.text(ci, Vector2(0, 1056), "Aperte os botões para ver acender  ·  PULAR vibra  ·  SELECT ou ESC volta", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
 
 func _draw_pad_card(ci: CanvasItem, j: int, r: Rect2, k: int) -> void:
@@ -518,6 +531,13 @@ func _draw_pad_card(ci: CanvasItem, j: int, r: Rect2, k: int) -> void:
 	var used: int = PlayerInput.slots.find(dev)
 	if used >= 0:
 		Kit.text(ci, Vector2(r.position.x, r.position.y + 158), "jogando como P%d" % (used + 1), 22, Data.TEXT_COLORS[main.players[used]["color"]] if used < main.players.size() else dark, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	elif PlayerInput.aliases.has(dev):
+		Kit.text(ci, Vector2(r.position.x, r.position.y + 158), "cópia do mesmo controle (usado junto)", 20, Color("#8a5a10"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	# diagnóstico: mapeamento reconhecido e último sinal cru recebido
+	var known := Input.is_joy_known(j)
+	Kit.text(ci, Vector2(r.position.x, r.end.y - 40), ("mapeamento reconhecido" if known else "mapeamento DESCONHECIDO (botões podem vir trocados)"), 19,
+		Color("#3c9a46") if known else Color("#a01528"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	Kit.text(ci, Vector2(r.position.x, r.end.y - 14), "último sinal: %s" % String(PlayerInput.last_raw.get(j, "—")), 19, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	# corpo do controle
 	var c := Vector2(r.get_center().x, r.position.y + 360)
 	var body := Rect2(c - Vector2(180, 95), Vector2(360, 190))
@@ -559,3 +579,105 @@ func _draw_pad_card(ci: CanvasItem, j: int, r: Rect2, k: int) -> void:
 			parts.append(e)
 		Kit.pad_hint(ci, r.get_center().x, y, parts, 26, dark, st)
 		y += 48
+
+# ---------------------------------------------------------------- intro animada (abre o jogo)
+## O logo cai e quica, bate levantando poeira, os robôs entram correndo e acenam, e o logo desliza até o menu.
+func _update_intro(dt: float) -> void:
+	intro_frames += 1
+	if intro_frames < 4:
+		return   # primeiros quadros (carregando a tela): o relógio da animação só anda depois
+	intro_t += minf(dt, 1.0 / 30.0)   # sem pulos se um quadro demorar
+	if not intro_hit and intro_t >= 0.55:
+		intro_hit = true
+		Audio.play("caixote_pancada", 0.8)
+		Audio.play("pisao", 0.7)
+		main.shake(10.0)
+	if not intro_hi and intro_t >= 1.25:
+		intro_hi = true
+		Audio.voice("voz_oi", 0)
+	if intro_t < 1.8 and (confirm() or pressed("start") or pressed("back")):
+		intro_t = 1.8   # qualquer botão pula para o final da intro
+	if intro_t >= INTRO_END:
+		main.state = main.S.MENU
+		sel = 0
+		menu_in = 0.0
+
+static func _ease_out_back(x: float) -> float:
+	var c1 := 1.70158
+	var c3 := c1 + 1.0
+	return 1.0 + c3 * pow(x - 1.0, 3) + c1 * pow(x - 1.0, 2)
+
+static func _smooth(x: float) -> float:
+	x = clampf(x, 0.0, 1.0)
+	return x * x * (3.0 - 2.0 * x)
+
+func _draw_intro(ci: CanvasItem) -> void:
+	var k := intro_t
+	# fundo: céu cheio no começo, some no fim revelando o menu
+	var fade := 1.0 - _smooth((k - 1.8) / 0.7)
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.498, 0.827, 0.875, fade))
+	# raios girando atrás do logo
+	if fade > 0.0:
+		for i in 12:
+			var a := i * TAU / 12.0 + k * 0.4
+			var p0 := Vector2(960, 420)
+			ci.draw_colored_polygon(PackedVector2Array([p0, p0 + Vector2.from_angle(a - 0.12) * 1400.0, p0 + Vector2.from_angle(a + 0.12) * 1400.0]), Color(1, 1, 1, 0.10 * fade * _smooth(k / 0.6)))
+	# logo: cai com quique, amassa no impacto, respira, e desliza para o lugar do menu
+	var tex := Data.tex("ui/logo")
+	var w0 := 1500.0
+	var c0 := Vector2(960, 400)
+	var w1 := 1180.0
+	var c1 := Vector2(960, 40 + w1 * 340.0 / 1700.0 / 2.0)
+	var drop := clampf(k / 0.55, 0.0, 1.0)
+	var c := Vector2(960, lerpf(-320.0, c0.y, _ease_out_back(drop) if drop < 1.0 else 1.0))
+	var sq := Vector2.ONE
+	if k >= 0.55 and k < 0.95:
+		var u := (k - 0.55) / 0.4
+		var s := sin(u * PI * 2.0) * (1.0 - u) * 0.14
+		sq = Vector2(1.0 + s, 1.0 - s)
+	var move := _smooth((k - 1.8) / 0.7)
+	var w := lerpf(w0, w1, move)
+	c = c.lerp(c1, move)
+	c.y += sin(k * 2.2) * 6.0 * (1.0 - move) * float(k > 0.95)
+	var h := w * 340.0 / 1700.0
+	if tex != null:
+		ci.draw_set_transform(c, sin(k * 1.7) * 0.015 * (1.0 - move), sq)
+		ci.draw_texture_rect(tex, Rect2(Vector2(-w / 2.0, -h / 2.0), Vector2(w, h)), false)
+		ci.draw_set_transform(Vector2.ZERO)
+	# poeira e estrelinhas no impacto
+	if k >= 0.55 and k < 1.4:
+		var u := (k - 0.55) / 0.85
+		for i in 10:
+			var side := -1.0 if i % 2 == 0 else 1.0
+			var px := 960.0 + side * (200.0 + (i / 2) * 120.0 + u * 160.0)
+			var py := c0.y + h * 0.42 - u * 40.0 * (1.0 + (i % 3) * 0.4)
+			ci.draw_circle(Vector2(px, py), (22.0 + (i % 3) * 8.0) * (1.0 - u * 0.6), Color(0.97, 0.94, 0.86, 0.85 * (1.0 - u)))
+		for i in 8:
+			var a := i * TAU / 8.0
+			var sp := c0 + Vector2.from_angle(a) * (300.0 + u * 420.0) * Vector2(1.6, 0.6)
+			var sz := 14.0 * (1.0 - u)
+			Kit.star(ci, sp, sz * 2.0, true)
+	# os quatro robôs entram correndo e acenam (somem quando o menu aparece)
+	if k > 0.7 and k < 2.45:
+		for i in 4:
+			var side := -1.0 if i < 2 else 1.0
+			var target := Vector2(960.0 + side * (130.0 + (i % 2) * 150.0), c0.y + h * 0.5 + 230.0)
+			var u := _smooth((k - 0.7 - i * 0.08) / 0.55)
+			var pos := Vector2(lerpf(960.0 + side * 1200.0, target.x, u), target.y)
+			var out := clampf((k - 1.75 - i * 0.04) / 0.5, 0.0, 1.0)   # pulam para fora quando o menu aparece
+			pos += Vector2(side * 260.0 * out, -180.0 * sin(out * PI) + 900.0 * out * out)
+			var look := {"color": i, "model": i, "acc": 0, "hammer": true}
+			var pose: Dictionary = RobotVis.victory_pose(k * 1.3 + i) if u >= 1.0 else RobotVis.idle_pose(k + i)
+			if u < 1.0:
+				var ph := k * 22.0 + i
+				pose["feet"] = [Vector2(cos(ph) * 9.0, -maxf(sin(ph), 0.0) * 8.0), Vector2(cos(ph + PI) * 9.0, -maxf(sin(ph + PI), 0.0) * 8.0)]
+				pose["lean"] = 0.15
+			var face := -side
+			ci.draw_set_transform(Vector2.ZERO)
+			var m := Color(1, 1, 1, fade)
+			ci.draw_set_transform_matrix(Transform2D(0.0, Vector2(2.2 * face, 2.2), 0.0, pos))
+			RobotVis.draw_robot(ci, look, pose, Transform2D(0.0, Vector2(2.2 * face, 2.2), 0.0, pos))
+			ci.draw_set_transform(Vector2.ZERO)
+	if k > 1.0 and k < 1.8:
+		var a := clampf((k - 1.0) / 0.3, 0.0, 1.0) * (0.6 + 0.4 * sin(k * 6.0))
+		Kit.text(ci, Vector2(0, 1030), "aperte qualquer botão", 30, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, 1920, 6, Color(0.12, 0.3, 0.33, a))

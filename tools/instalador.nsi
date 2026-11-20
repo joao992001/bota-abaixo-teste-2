@@ -17,7 +17,9 @@ BrandingText "Bota-Abaixo"
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Bota-Abaixo.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Jogar agora"
 
+!define MUI_COMPONENTSPAGE_NODESC
 !insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -25,15 +27,13 @@ BrandingText "Bota-Abaixo"
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "PortugueseBR"
 
-Section "Bota-Abaixo"
+Section "Bota-Abaixo (o jogo)" SecJogo
+	SectionIn RO
+	SetShellVarContext current
 	SetOutPath "$INSTDIR"
 	File "../out/build/windows/Bota-Abaixo.exe"
 	File "/oname=Bota-Abaixo.ico" "icone.ico"
 	WriteUninstaller "$INSTDIR\Desinstalar.exe"
-	CreateDirectory "$SMPROGRAMS\Bota-Abaixo"
-	CreateShortcut "$SMPROGRAMS\Bota-Abaixo\Bota-Abaixo.lnk" "$INSTDIR\Bota-Abaixo.exe" "" "$INSTDIR\Bota-Abaixo.ico"
-	CreateShortcut "$SMPROGRAMS\Bota-Abaixo\Desinstalar Bota-Abaixo.lnk" "$INSTDIR\Desinstalar.exe"
-	CreateShortcut "$DESKTOP\Bota-Abaixo.lnk" "$INSTDIR\Bota-Abaixo.exe" "" "$INSTDIR\Bota-Abaixo.ico"
 	WriteRegStr HKCU "Software\Bota-Abaixo" "Pasta" "$INSTDIR"
 	WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Bota-Abaixo" "DisplayName" "Bota-Abaixo"
 	WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Bota-Abaixo" "DisplayIcon" "$INSTDIR\Bota-Abaixo.ico"
@@ -44,7 +44,20 @@ Section "Bota-Abaixo"
 	WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Bota-Abaixo" "NoRepair" 1
 SectionEnd
 
+Section "Criar atalho na área de trabalho" SecDesktop
+	SetShellVarContext current
+	CreateShortcut "$DESKTOP\Bota-Abaixo.lnk" "$INSTDIR\Bota-Abaixo.exe" "" "$INSTDIR\Bota-Abaixo.ico"
+SectionEnd
+
+Section "Criar atalho no menu Iniciar" SecMenu
+	SetShellVarContext current
+	CreateDirectory "$SMPROGRAMS\Bota-Abaixo"
+	CreateShortcut "$SMPROGRAMS\Bota-Abaixo\Bota-Abaixo.lnk" "$INSTDIR\Bota-Abaixo.exe" "" "$INSTDIR\Bota-Abaixo.ico"
+	CreateShortcut "$SMPROGRAMS\Bota-Abaixo\Desinstalar Bota-Abaixo.lnk" "$INSTDIR\Desinstalar.exe"
+SectionEnd
+
 Section "Uninstall"
+	SetShellVarContext current
 	Delete "$INSTDIR\Bota-Abaixo.exe"
 	Delete "$INSTDIR\Bota-Abaixo.ico"
 	Delete "$INSTDIR\Desinstalar.exe"

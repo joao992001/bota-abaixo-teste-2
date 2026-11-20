@@ -93,8 +93,13 @@ func music(name: String, loop := true) -> void:
 		if name == "":
 			_music.stop()
 			return
-		var st := _stream("res://assets/audio/music/%s.wav" % name)
-		if st is AudioStreamWAV:
+		var path := "res://assets/audio/music/%s.ogg" % name
+		if not ResourceLoader.exists(path):
+			path = "res://assets/audio/music/%s.wav" % name
+		var st := _stream(path)
+		if st is AudioStreamOggVorbis:
+			st.loop = loop   # músicas em OGG (10x menores que WAV)
+		elif st is AudioStreamWAV:
 			st.loop_mode = AudioStreamWAV.LOOP_FORWARD if loop else AudioStreamWAV.LOOP_DISABLED
 			st.loop_begin = 0
 			st.loop_end = int(st.get_length() * st.mix_rate)
@@ -102,7 +107,7 @@ func music(name: String, loop := true) -> void:
 		_music.volume_db = _db(music_vol)
 		_music.play()
 		if rec_log != null:
-			rec_log.append({"t": rec_time + 0.35, "path": "res://assets/audio/music/%s.wav" % name, "pitch": 1.0, "db": _music.volume_db, "music": true}))
+			rec_log.append({"t": rec_time + 0.35, "path": path, "pitch": 1.0, "db": _music.volume_db, "music": true}))
 
 ## Música mais rápida na tensão (terremoto, relógio acabando, morte súbita). 1.0 = normal.
 var _tempo := 1.0

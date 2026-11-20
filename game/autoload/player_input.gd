@@ -23,6 +23,9 @@ var _prev := {}
 var jump_frame := {}    # dispositivo -> quadro de física em que PULAR foi apertado
 var aliases := {}       # dispositivo "gêmeo" ignorado -> dispositivo real (mesmo controle visto 2x no Windows)
 const TWIN_FRAMES := 2
+var _jb := {}           # controle -> {botão: apertado}, pelos eventos (além da leitura direta)
+var _ja := {}           # controle -> {eixo: valor}, pelos eventos
+var last_raw := {}      # controle -> último botão/eixo cru recebido (tela TESTAR CONTROLES)
 var toasts: Array = []  # avisos de controle conectado/desconectado: {text, t, ok}
 var vibration := true   # OPÇÕES: vibração dos controles
 signal pad_changed(dev: String, connected: bool)
@@ -32,12 +35,15 @@ func _ready() -> void:
 
 func _on_joy(j: int, connected: bool) -> void:
 	var dev := "joy%d" % j
+	_log_pad(j, connected)
 	var nm := pad_name(dev) if connected else "controle %d" % (j + 1)
 	toasts.append({"text": ("Conectado: %s" if connected else "Desconectado: %s") % nm, "t": 0.0, "ok": connected, "dev": dev})
 	if not connected:
 		_cur.erase(dev)
 		_prev.erase(dev)
 		aliases.erase(dev)
+		_jb.erase(j)
+		_ja.erase(j)
 	pad_changed.emit(dev, connected)
 
 func _process(dt: float) -> void:
@@ -122,24 +128,53 @@ func _read(dev: String) -> Dictionary:
 					s[a] = true
 	elif dev.begins_with("joy"):
 		var j := int(dev.substr(3))
-		var x := Input.get_joy_axis(j, JOY_AXIS_LEFT_X)
-		var y := Input.get_joy_axis(j, JOY_AXIS_LEFT_Y)
-		s["left"] = x < -0.45 or Input.is_joy_button_pressed(j, JOY_BUTTON_DPAD_LEFT)
-		s["right"] = x > 0.45 or Input.is_joy_button_pressed(j, JOY_BUTTON_DPAD_RIGHT)
-		s["up"] = y < -0.45 or Input.is_joy_button_pressed(j, JOY_BUTTON_DPAD_UP)
-		s["down"] = y > 0.45 or Input.is_joy_button_pressed(j, JOY_BUTTON_DPAD_DOWN)
-		s["jump"] = Input.is_joy_button_pressed(j, JOY_BUTTON_A)
-		s["hammer"] = Input.is_joy_button_pressed(j, JOY_BUTTON_X) or Input.is_joy_button_pressed(j, JOY_BUTTON_RIGHT_SHOULDER) \
-			or Input.get_joy_axis(j, JOY_AXIS_TRIGGER_RIGHT) > 0.5
-		s["item"] = Input.is_joy_button_pressed(j, JOY_BUTTON_Y) or Input.is_joy_button_pressed(j, JOY_BUTTON_B) \
-			or Input.is_joy_button_pressed(j, JOY_BUTTON_LEFT_SHOULDER) or Input.get_joy_axis(j, JOY_AXIS_TRIGGER_LEFT) > 0.5
-		s["start"] = Input.is_joy_button_pressed(j, JOY_BUTTON_START)
-		s["back"] = Input.is_joy_button_pressed(j, JOY_BUTTON_BACK) or Input.is_joy_button_pressed(j, JOY_BUTTON_B)
+		var x := jaxis(j, JOY_AXIS_LEFT_X)
+		var y := jaxis(j, JOY_AXIS_LEFT_Y)
+		s["left"] = x < -0.45 or jbtn(j, JOY_BUTTON_DPAD_LEFT)
+		s["right"] = x > 0.45 or jbtn(j, JOY_BUTTON_DPAD_RIGHT)
+		s["up"] = y < -0.45 or jbtn(j, JOY_BUTTON_DPAD_UP)
+		s["down"] = y > 0.45 or jbtn(j, JOY_BUTTON_DPAD_DOWN)
+		s["jump"] = jbtn(j, JOY_BUTTON_A)
+		s["hammer"] = jbtn(j, JOY_BUTTON_X) or jbtn(j, JOY_BUTTON_RIGHT_SHOULDER) or jaxis(j, JOY_AXIS_TRIGGER_RIGHT) > 0.5
+		s["item"] = jbtn(j, JOY_BUTTON_Y) or jbtn(j, JOY_BUTTON_B) or jbtn(j, JOY_BUTTON_LEFT_SHOULDER) or jaxis(j, JOY_AXIS_TRIGGER_LEFT) > 0.5
+		s["start"] = jbtn(j, JOY_BUTTON_START)
+		s["back"] = jbtn(j, JOY_BUTTON_BACK) or jbtn(j, JOY_BUTTON_B)
 	return s
 
 var _keys := {}   # "tecla:posição" -> apertada (posição separa Ctrl/Shift esquerdo e direito)
 
+## Botão do controle: leitura direta OU o último evento recebido (qualquer um dos dois basta).
+func jbtn(j: int, b: int) -> bool:
+	return Input.is_joy_button_pressed(j, b) or bool(_jb.get(j, {}).get(b, false))
+
+func jaxis(j: int, a: int) -> float:
+	var p := Input.get_joy_axis(j, a)
+	var ev: float = _ja.get(j, {}).get(a, 0.0)
+	return p if absf(p) >= absf(ev) else ev
+
+## Relatório para diagnóstico (user://controles.txt): nome, GUID, se a Godot reconhece o mapeamento.
+func _log_pad(j: int, connected: bool) -> void:
+	var f := FileAccess.open("user://controles.txt", FileAccess.READ_WRITE if FileAccess.file_exists("user://controles.txt") else FileAccess.WRITE)
+	if f == null:
+		return
+	f.seek_end()
+	f.store_line("%s  controle %d %s  nome=\"%s\"  guid=%s  reconhecido=%s  info=%s" % [Time.get_datetime_string_from_system(), j,
+		"CONECTOU" if connected else "DESCONECTOU", Input.get_joy_name(j), Input.get_joy_guid(j), Input.is_joy_known(j), str(Input.get_joy_info(j))])
+	f.close()
+
 func _input(e: InputEvent) -> void:
+	if e is InputEventJoypadButton:
+		if not _jb.has(e.device):
+			_jb[e.device] = {}
+		_jb[e.device][e.button_index] = e.pressed
+		if e.pressed:
+			last_raw[e.device] = "botão %d" % e.button_index
+	elif e is InputEventJoypadMotion:
+		if not _ja.has(e.device):
+			_ja[e.device] = {}
+		_ja[e.device][e.axis] = e.axis_value if absf(e.axis_value) > 0.2 else 0.0
+		if absf(e.axis_value) > 0.5:
+			last_raw[e.device] = "eixo %d: %+.2f" % [e.axis, e.axis_value]
 	if e is InputEventKey and not e.echo:
 		var k: int = e.physical_keycode if e.physical_keycode != 0 else e.keycode
 		_keys["%d:%d" % [k, e.location]] = e.pressed
@@ -193,10 +228,28 @@ func dev_pressed(dev: String, a: String) -> bool:
 	return dev_held(dev, a) and not _prev.get(dev, {}).get(a, false)
 
 func held(p: int, a: String) -> bool:
-	return p < slots.size() and dev_held(slots[p], a)
+	if p >= slots.size():
+		return false
+	if dev_held(slots[p], a):
+		return true
+	for tw in aliases:
+		if aliases[tw] == slots[p] and dev_held(tw, a):
+			return true
+	return false
 
 func pressed(p: int, a: String) -> bool:
-	return p < slots.size() and dev_pressed(slots[p], a)
+	if p >= slots.size():
+		return false
+	if dev_pressed(slots[p], a):
+		return true
+	for tw in aliases:
+		if aliases[tw] == slots[p] and dev_pressed(tw, a):
+			return true
+	return false
+
+## Controle que a Godot reconhece (mapeamento conhecido) — preferido quando o Windows mostra o mesmo controle 2x.
+func is_known(dev: String) -> bool:
+	return dev.begins_with("joy") and Input.is_joy_known(int(dev.substr(3)))
 
 func axis_x(p: int) -> float:
 	return float(held(p, "right")) - float(held(p, "left"))
