@@ -1011,7 +1011,7 @@ func arenas_test() -> void:
 	# maré: lama sobe e elimina quem ficou embaixo
 	await arena_round("mare")
 	r0 = main.robots[0]
-	main.demo.t = 6.0
+	main.demo.t = float(main.level.prop("mare_inicio", "6"))
 	main.demo.fx.goo_y = 820.0
 	put(r0, Vector2(col_x(3), 832))
 	await frames(60)
