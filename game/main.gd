@@ -26,6 +26,7 @@ enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS
 var state := S.MENU
 var paused := false
 const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.SUBMODOS, S.AJUSTES, S.EVENTOS, S.CONTROLES]
+var perf_acc := {}             # tempo gasto por parte (medição --perf)
 var lost_pads: Array = []      # jogadores cujo controle desconectou no meio da partida (índices)
 var timer := 0.0
 var round_no := 0
@@ -130,9 +131,14 @@ func _ready() -> void:
 	PlayerInput.pad_changed.connect(_on_pad_changed)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens"):
 			state = S.JOIN   # testes e capturas começam direto na entrada de jogadores
-			var drv: Node = load("res://tests/driver.gd").new()
+			var scr: GDScript = load("res://tests/driver.gd")
+			if scr == null or not scr.can_instantiate():
+				push_error("driver de testes não compilou")
+				get_tree().quit(3)   # não fica parado esperando
+				return
+			var drv: Node = scr.new()
 			drv.main = self
 			add_child(drv)
 			break
@@ -272,8 +278,12 @@ func _physics_process(dt: float) -> void:
 		S.BUILD: _build_update(dt)
 		S.RUN:
 			if mode == "demolicao":
+				var t0 := Time.get_ticks_usec()
 				bots.update(dt)
+				var t1 := Time.get_ticks_usec()
 				demo.update(dt)
+				perf_acc["bots"] = perf_acc.get("bots", 0.0) + (t1 - t0) / 1000.0
+				perf_acc["demo"] = perf_acc.get("demo", 0.0) + (Time.get_ticks_usec() - t1) / 1000.0
 			_run_update(dt)
 		S.SCORE:
 			timer -= dt

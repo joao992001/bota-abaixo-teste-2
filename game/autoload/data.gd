@@ -27,6 +27,9 @@ func _ready() -> void:
 		robot_meta = JSON.parse_string(FileAccess.get_file_as_string("res://assets/robo/modelos.json"))
 	for p in read_json("data/pieces.json")["pecas"]:
 		pieces[p["id"]] = p
+	var t0 := Time.get_ticks_msec()
+	var n := preload_all()
+	print("Bota-Abaixo: %d imagens carregadas em %d ms" % [n, Time.get_ticks_msec() - t0])
 
 func read_text(rel: String) -> String:
 	for base in ["res://", root_dir + "/"]:
@@ -46,6 +49,26 @@ func tex(path: String) -> Texture2D:
 		var full := "res://assets/%s.png" % path
 		_tex[path] = load(full) if ResourceLoader.exists(full) else null
 	return _tex[path]
+
+## Carrega todas as imagens de assets/ de uma vez (ao abrir o jogo): sem trancos no meio da partida
+## quando aparece uma arena, item ou máquina pela primeira vez. Funciona também no jogo exportado (.import).
+func preload_all(dir := "res://assets") -> int:
+	var n := 0
+	var d := DirAccess.open(dir)
+	if d == null:
+		return 0
+	for sub in d.get_directories():
+		n += preload_all(dir.path_join(sub))
+	var seen := {}
+	for f in d.get_files():
+		var name := f.trim_suffix(".import").trim_suffix(".remap")
+		if not name.ends_with(".png") or seen.has(name):
+			continue
+		seen[name] = true
+		var rel := dir.path_join(name).trim_prefix("res://assets/").trim_suffix(".png")
+		if tex(rel) != null:
+			n += 1
+	return n
 
 func piece_ids(milestone: int, implemented: Array) -> Array:
 	var out := []

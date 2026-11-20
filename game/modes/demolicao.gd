@@ -110,11 +110,12 @@ func start_round() -> void:
 	bomb_pass_cd = 0.0
 	items.clear()
 	dynamites.clear()
-	hooks.clear()
-	wrenches.clear()
-	glue_shots.clear()
-	puddles.clear()
-	springs.clear()
+	if tools == null or not is_instance_valid(tools):
+		tools = Ferramentas.new()
+		tools.setup(main, self)
+		main.world.add_child(tools)
+	main.world.move_child(tools, -1)   # por cima dos robôs
+	tools.clear()
 	booms.clear()
 	item_t = 4.0
 	banner = String(arena["nome"]).to_upper()
@@ -246,7 +247,7 @@ func update(dt: float) -> void:
 				main.shake(2.0)
 	_update_items(dt, alive)
 	_update_dynamites(dt, alive)
-	_update_tools(dt, alive)
+	tools.update(dt, alive)
 	_update_water_and_nets(dt, alive)
 	for f in feed:
 		f["t"] += dt
@@ -305,13 +306,18 @@ func _update_items(dt: float, alive: Array) -> void:
 			it["vy"] = 0.0
 		elif lv.extra_solid.is_valid() and lv.extra_solid.call(cell):
 			it["plat"] = null
-			it["vy"] = minf(it["vy"] + 900.0 * dt, 420.0)
+			it["vy"] = minf(it["vy"] + 900.0 * dt, 260.0)   # desce de paraquedas
 			it["pos"].y += it["vy"] * dt
 		elif lv.is_solid(cell) and it["pos"].y + 26.0 >= cell.y * 64.0:
+			if it["vy"] > 0.0:
+				it["land_t"] = 0.0
+				main.dust(Vector2(it["pos"].x, cell.y * 64.0), 0.5)
+				Audio.play("item", 0.7, -14.0)
 			it["pos"].y = cell.y * 64.0 - 26.0
 			it["vy"] = 0.0
+			it["land_t"] = it.get("land_t", 9.0) + dt
 		else:
-			it["vy"] = minf(it["vy"] + 900.0 * dt, 420.0)
+			it["vy"] = minf(it["vy"] + 900.0 * dt, 260.0)   # desce de paraquedas
 			it["pos"].y += it["vy"] * dt
 		for r in alive:
 			if r.rect().grow(6).has_point(it["pos"]):
@@ -345,11 +351,8 @@ const ITEM_NAMES := {"dinamite": "DINAMITE!", "martelao": "MARTELÃO!", "mola": 
 	"gancho": "GANCHO!", "ima": "ÍMÃ!", "tabua": "TÁBUA!", "furadeira": "FURADEIRA!", "cola": "COLA!",
 	"foguete": "BOTA-FOGUETE!", "chave": "CHAVE-BUMERANGUE!", "mola_portatil": "MOLA PORTÁTIL!"}
 const USABLE := ["dinamite", "gancho", "tabua", "furadeira", "cola", "chave", "mola_portatil"]
-var hooks: Array = []        # gancho (desenho): {a, b, t}
-var wrenches: Array = []     # chave-bumerangue: {pos, vel, owner, t, hit}
-var glue_shots: Array = []   # cola voando: {pos, vel, owner}
-var puddles: Array = []      # cola no chão: {rect, t}
-var springs: Array = []      # mola portátil: {pos, t, cd}
+const Ferramentas := preload("res://modes/ferramentas.gd")
+var tools: Node2D = null     # gancho, furadeira, tábua, cola, chave, mola portátil, ímã (modes/ferramentas.gd)
 
 func give(r, kind: String) -> void:
 	match kind:
@@ -360,13 +363,16 @@ func give(r, kind: String) -> void:
 	var names := ITEM_NAMES
 	main.float_text(r.position + Vector2(0, -110), names[kind], main.player_color(r.pid))
 	main.spark(r.rect().get_center(), 5)
+	tools.pickup_fx(r, kind)
 
 ## Botão de item: usa o item guardado.
 func use_item(r) -> void:
 	var kind: String = r.item
 	if kind != "" and kind != "dinamite":
 		r.item = ""
-		_use_tool(r, kind)
+		if not tools.use(r, kind):
+			r.item = kind   # não deu para usar aqui (ex.: tábua sem espaço): continua com ele
+			Audio.play("menu_negado", 1.0, -6.0)
 		return
 	if r.item == "dinamite":
 		r.item = ""
@@ -375,203 +381,6 @@ func use_item(r) -> void:
 		dynamites.append({"pos": r.rect().get_center() + Vector2(r.facing * 20, -20),
 			"vel": Vector2(r.facing * float(th[0]) + r.velocity.x * 0.3, -float(th[1])), "t": 0.0, "owner": r.pid})
 		r.vis.stretch()
-
-func _use_tool(r, kind: String) -> void:
-	var lv = main.level
-	var c: Vector2 = r.rect().get_center()
-	var cfg_i := item_cfg(kind)
-	r.vis.stretch()
-	match kind:
-		"gancho":
-			# puxa o primeiro rival à frente, mais ou menos na mesma altura
-			var best = null
-			var bd := float(cfg_i["alcance_px"])
-			for o in main.robots:
-				if o != r and o.alive:
-					var dx: float = (o.position.x - r.position.x) * r.facing
-					if dx > 0.0 and dx < bd and absf(o.position.y - r.position.y) < 110.0:
-						bd = dx
-						best = o
-			var tip: Vector2 = c + Vector2(r.facing * float(cfg_i["alcance_px"]), 0)
-			Audio.play("gancho")
-			if best != null:
-				tip = best.rect().get_center()
-				if best.invuln <= 0.0 and not best.absorb():
-					best.last_hit = 0.0
-					best.last_cause = "gancho"
-					best.last_attacker = r.pid
-					best.hanging = false
-					best.own_vx = -r.facing * float(cfg_i["puxa"])
-					best.velocity.y = -280.0
-					best.stun_t = maxf(best.stun_t, 0.45)
-					Audio.voice("voz_ai", best.vis.model)
-					main.float_text(best.position + Vector2(0, -110), "PUXOU!", main.player_color(r.pid))
-			hooks.append({"a": c, "b": tip, "t": 0.0, "owner": r.pid})
-		"tabua":
-			# tábua de emergência embaixo dos pés (ou à frente, no chão)
-			var row := int(r.position.y / 64.0) + 1
-			var col := int(r.position.x / 64.0)
-			var w := int(cfg_i["largura"])
-			var made := 0
-			for dc in range(-(w / 2), w - w / 2):
-				if lv.add_block(Vector2i(col + dc, row)):
-					made += 1
-			Audio.play("caixote_pancada", 1.2)
-			main.dust(Vector2(col * 64 + 32, row * 64), 1.0)
-			if made == 0:
-				r.item = kind   # não coube: devolve
-		"furadeira":
-			var row := int((r.position.y - 30.0) / 64.0)
-			var col := int(r.position.x / 64.0)
-			var n := int(cfg_i["alcance"])
-			break_by = r.pid
-			break_reason = "furadeira"
-			for k in range(1, n + 1):
-				var cc := Vector2i(col + r.facing * k, row)
-				if lv.blocks.has(cc):
-					lv.break_block(cc)
-				var cc2 := Vector2i(col + r.facing * k, row + 1)
-				if lv.blocks.has(cc2) and k > 1:
-					lv.break_block(cc2)
-			break_reason = ""
-			break_by = -1
-			var zone := Rect2(r.position.x + (0.0 if r.facing > 0 else -n * 64.0), r.position.y - 80.0, n * 64.0, 80.0)
-			for o in main.robots:
-				if o != r and o.alive and zone.intersects(o.rect()):
-					o.take_hit(r.facing, "marretada", r.pid)
-			Audio.play("furadeira")
-			Audio.play("caixote_quebra", 1.4, -6.0)
-			main.shake(4.0)
-			for k in 6:
-				main.spark(c + Vector2(r.facing * (40 + k * 40), 0), 2)
-		"cola":
-			var th: Array = cfg_i["throw"]
-			glue_shots.append({"pos": c + Vector2(r.facing * 20, -16), "vel": Vector2(r.facing * float(th[0]), -float(th[1])), "owner": r.pid})
-			Audio.play("arremesso", 0.9)
-		"chave":
-			wrenches.append({"pos": c, "vel": Vector2(r.facing * float(cfg_i["vel"]), 0), "owner": r.pid, "t": 0.0, "hit": []})
-			Audio.play("chave")
-		"mola_portatil":
-			if r.is_on_floor():
-				springs.append({"pos": r.position + Vector2(r.facing * 70, 0), "t": float(cfg_i["duration_s"]), "cd": 0.0, "squash": 0.0})
-				Audio.play("pulo_mola")
-			else:
-				r.item = kind   # só no chão
-
-## Gancho, cola, chave-bumerangue, mola portátil, ímã.
-func _update_tools(dt: float, alive: Array) -> void:
-	var lv = main.level
-	for h in hooks:
-		h["t"] += dt
-	hooks = hooks.filter(func(h): return h["t"] < 0.3)
-	# ímã: puxa os rivais por perto
-	for r in alive:
-		if r.fx_t["ima"] > 0.0:
-			var ic := item_cfg("ima")
-			for o in alive:
-				if o != r:
-					var d: Vector2 = r.position - o.position
-					if d.length() < float(ic["raio_px"]) and d.length() > 40.0:
-						o.push_vx += signf(d.x) * float(ic["forca"]) * 0.16
-						o.last_attacker = r.pid
-						o.last_hit = minf(o.last_hit, 1.0)
-	# cola voando → poça no chão
-	for g in glue_shots:
-		g["vel"].y += 1800.0 * dt
-		g["pos"] += g["vel"] * dt
-		var cell := Vector2i(int(g["pos"].x / 64.0), int(g["pos"].y / 64.0))
-		var hit_r = null
-		for o in alive:
-			if o.pid != g["owner"] and o.rect().grow(8).has_point(g["pos"]):
-				hit_r = o
-		if (g["pos"].y > 0.0 and lv.is_solid(cell)) or hit_r != null:
-			g["dead"] = true
-			# acha o chão embaixo
-			var row := cell.y if hit_r == null else int((hit_r.position.y + 2.0) / 64.0)
-			var y := row
-			while y < lv.rows and not lv.is_solid(Vector2i(cell.x, y)):
-				y += 1
-			var w := float(item_cfg("cola")["largura"]) * 64.0
-			puddles.append({"rect": Rect2(cell.x * 64 + 32 - w / 2.0, y * 64 - 14, w, 18), "t": float(item_cfg("cola")["duration_s"])})
-			Audio.play("cola")
-			if hit_r != null:
-				hit_r.glue_t = 2.0
-	glue_shots = glue_shots.filter(func(g): return not g.get("dead", false) and g["pos"].y < lv.rows * 64.0 + 100.0)
-	for p in puddles:
-		p["t"] -= dt
-		for o in alive:
-			if o.rect().intersects(p["rect"]):
-				o.glue_t = 0.25
-	puddles = puddles.filter(func(p): return p["t"] > 0.0)
-	# chave-bumerangue: vai, freia e volta para o dono
-	for w in wrenches:
-		w["t"] += dt
-		var owner = main.robots[w["owner"]] if w["owner"] < main.robots.size() else null
-		var back: bool = w["t"] > float(item_cfg("chave")["volta_s"])
-		if back and owner != null and owner.alive:
-			var to: Vector2 = owner.rect().get_center() - w["pos"]
-			w["vel"] = w["vel"].lerp(to.normalized() * float(item_cfg("chave")["vel"]) * 1.1, 1.0 - exp(-dt * 6.0))
-			if to.length() < 40.0:
-				w["dead"] = true
-		w["pos"] += w["vel"] * dt
-		for o in alive:
-			if o.pid != w["owner"] and not (o.pid in w["hit"]) and o.rect().grow(10).has_point(w["pos"]):
-				w["hit"].append(o.pid)
-				o.take_hit(1 if w["vel"].x >= 0.0 else -1, "marretada", w["owner"])
-				Audio.play("bonk", 1.3)
-				main.spark(w["pos"], 4)
-		if w["t"] > 2.5:
-			w["dead"] = true
-	wrenches = wrenches.filter(func(w): return not w.get("dead", false))
-	# mola portátil: quem pisa voa
-	for sp in springs:
-		sp["t"] -= dt
-		sp["cd"] = maxf(sp["cd"] - dt, 0.0)
-		sp["squash"] = maxf(sp["squash"] - dt * 4.0, 0.0)
-		for o in alive:
-			if sp["cd"] <= 0.0 and o.velocity.y >= 0.0 and absf(o.position.x - sp["pos"].x) < 34.0 and absf(o.position.y - sp["pos"].y) < 14.0:
-				o.velocity.y = -float(item_cfg("mola_portatil")["impulso"])
-				o.var_jump = 0.0
-				o.spring = true
-				o.air_jumps = 1
-				sp["cd"] = 0.25
-				sp["squash"] = 1.0
-				Audio.play("pulo_mola", 0.9)
-	springs = springs.filter(func(sp): return sp["t"] > 0.0)
-
-func _draw_tools(now: float) -> void:
-	for p in puddles:
-		var r: Rect2 = p["rect"]
-		var a := clampf(p["t"], 0.0, 1.0)
-		canvas.draw_rect(Rect2(r.position + Vector2(0, 6), Vector2(r.size.x, 10)), Color(0.95, 0.94, 0.9, a))
-		for k in int(r.size.x / 24.0):
-			canvas.draw_circle(r.position + Vector2(12 + k * 24, 8 + sin(now * 3.0 + k) * 2.0), 7, Color(0.97, 0.96, 0.92, a))
-	for g in glue_shots:
-		canvas.draw_circle(g["pos"], 10, Color("#f5f3ea"))
-		canvas.draw_circle(g["pos"] + Vector2(-3, -3), 4, Color.WHITE)
-	for h in hooks:
-		var b: Vector2 = h["a"].lerp(h["b"], clampf(h["t"] / 0.1, 0.0, 1.0))
-		canvas.draw_line(h["a"], b, Color("#c9a26a"), 4.0, true)
-		canvas.draw_set_transform(b, 0.0 if b.x >= h["a"].x else PI)
-		canvas.draw_texture_rect(Data.tex("itens/gancho"), Rect2(-18, -18, 36, 36), false)
-		canvas.draw_set_transform(Vector2.ZERO)
-	for w in wrenches:
-		canvas.draw_set_transform(w["pos"], w["t"] * 18.0)
-		canvas.draw_texture_rect(Data.tex("itens/chave"), Rect2(-22, -22, 44, 44), false)
-		canvas.draw_set_transform(Vector2.ZERO)
-	for sp in springs:
-		var sq: float = 1.0 - 0.45 * sp["squash"]
-		var p: Vector2 = sp["pos"]
-		if sp["t"] < 2.0 and fmod(now, 0.3) < 0.12:
-			continue
-		canvas.draw_set_transform(p, 0.0, Vector2(1.0, sq))
-		canvas.draw_texture_rect(Data.tex("itens/mola_portatil"), Rect2(-28, -56, 56, 56), false)
-		canvas.draw_set_transform(Vector2.ZERO)
-	# ímã: anéis em volta de quem está com ele
-	for r in main.robots:
-		if r.alive and r.fx_t["ima"] > 0.0:
-			var rad := 60.0 + fmod(now * 160.0, 120.0)
-			canvas.draw_arc(r.rect().get_center(), rad, 0, TAU, 40, Color(0.83, 0.13, 0.21, 0.5 * (1.0 - (rad - 60.0) / 120.0)), 4.0, true)
 
 func _update_dynamites(dt: float, alive: Array) -> void:
 	var dc := item_cfg("dinamite")
@@ -625,11 +434,44 @@ func _draw_canvas() -> void:
 		var life: float = float(cfg["itens"]["lifetime_s"]) - it["t"]
 		if life < 3.0 and fmod(now, 0.3) < 0.12:
 			continue   # pisca antes de sumir
-		var p: Vector2 = it["pos"] + Vector2(0, sin(now * 4.0 + it["pos"].x) * 3.0)
-		canvas.draw_circle(p, 27, Color(1, 1, 1, 0.55))
-		canvas.draw_arc(p, 27, 0, TAU, 32, Color(1, 1, 1, 0.9), 2.5, true)
-		canvas.draw_texture_rect(Data.tex("itens/" + it["kind"]), Rect2(p - Vector2(22, 22), Vector2(44, 44)), false)
-	_draw_tools(now)
+		var falling: bool = it["vy"] > 0.0
+		var land: float = it.get("land_t", 9.0)
+		var sq := 1.0
+		if land < 0.35:   # quique ao pousar
+			sq = 1.0 + sin(land / 0.35 * PI * 2.0) * 0.18 * (1.0 - land / 0.35)
+		var p: Vector2 = it["pos"] + Vector2(0, (sin(now * 4.0 + it["pos"].x) * 4.0) if not falling else 0.0)
+		if falling:
+			# paraquedas de pano listrado
+			var sway := sin(now * 3.0 + it["pos"].x) * 0.18
+			canvas.draw_set_transform(p, sway)
+			var dome := PackedVector2Array()
+			for k in 13:
+				dome.append(Vector2(cos(PI + k * PI / 12.0) * 42.0, -78.0 + sin(PI + k * PI / 12.0) * 26.0))
+			dome.append(Vector2(42, -78))
+			canvas.draw_colored_polygon(dome, Color("#f06aa8"))
+			for k in [3, 6, 9]:
+				var x := cos(PI + k * PI / 12.0) * 42.0
+				canvas.draw_line(Vector2(x * 0.3, -104), Vector2(x, -78), Color("#fff7ee"), 6.0)
+			for x in [-40.0, 0.0, 40.0]:
+				canvas.draw_line(Vector2(x, -78), Vector2(0, -24), Color("#5a4632"), 1.6, true)
+			canvas.draw_set_transform(Vector2.ZERO)
+		# bolha com brilho, anel pulsando e estrelinha girando
+		var pulse := 0.5 + 0.5 * sin(now * 5.0 + it["pos"].x)
+		canvas.draw_set_transform(p, 0.0, Vector2(2.0 - sq, sq))
+		canvas.draw_circle(Vector2.ZERO, 30, Color(1, 1, 1, 0.5))
+		canvas.draw_arc(Vector2.ZERO, 30, 0, TAU, 32, Color(1, 1, 1, 0.95), 3.0, true)
+		canvas.draw_arc(Vector2.ZERO, 34.0 + pulse * 6.0, 0, TAU, 32, Color(1, 0.96, 0.78, 0.5 * (1.0 - pulse)), 3.0, true)
+		canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		var ic: float = 1.0 + 0.08 * sin(now * 6.0 + it["pos"].x)
+		canvas.draw_set_transform(p, sin(now * 2.5 + it["pos"].x) * 0.15, Vector2(ic * (2.0 - sq), ic * sq))
+		canvas.draw_texture_rect(Data.tex("itens/" + it["kind"]), Rect2(-24, -24, 48, 48), false)
+		canvas.draw_set_transform(Vector2.ZERO)
+		canvas.draw_arc(p + Vector2(-10, -12), 12, PI * 1.05, PI * 1.45, 8, Color(1, 1, 1, 0.9), 3.0, true)
+		var sp_ang: float = now * 2.0 + it["pos"].x
+		var sp: Vector2 = p + Vector2.from_angle(sp_ang) * 34.0
+		var s4 := 4.0 + 2.0 * sin(now * 9.0)
+		canvas.draw_line(sp - Vector2(s4, 0), sp + Vector2(s4, 0), Color("#fff4c8"), 2.0, true)
+		canvas.draw_line(sp - Vector2(0, s4), sp + Vector2(0, s4), Color("#fff4c8"), 2.0, true)
 	for d in dynamites:
 		canvas.draw_set_transform(d["pos"], d["t"] * 9.0)
 		canvas.draw_texture_rect(Data.tex("itens/dinamite"), Rect2(-16, -16, 32, 32), false)

@@ -18,6 +18,14 @@ func _run() -> void:
 			shot = a.substr(7)
 		if a.begins_with("--anim="):
 			anim = a.substr(7)
+		if a.begins_with("--itens="):
+			await itens_frames(a.substr(8))
+			get_tree().quit(0)
+			return
+		if a.begins_with("--perf"):
+			await perf_run()
+			get_tree().quit(0)
+			return
 		if a.begins_with("--stats="):
 			await stats_run(int(a.substr(8)))
 			get_tree().quit(0)
@@ -544,6 +552,7 @@ func demolicao_test() -> void:
 	await itens_test()
 	await bots_test()
 	await arenas_test()
+	await parede_test()
 	await maquinas_test()
 	await itens_novos_test()
 	await submodos_test()
@@ -619,6 +628,94 @@ func menus_test() -> void:
 	await tap("v0", "jump")
 	await tap("v0", "back")
 	check(main.state == S.MENU and main.shake_on, "voltar ao menu (tremor religado)")
+
+func parede_test() -> void:
+	print("== Parede e borda")
+	main.event_level = 0
+	main.submode_choice = "ultimo"
+	main.arena_choice = "demolicao"
+	await demo_round()
+	main.demo.item_t = 999.0
+	var lv = main.level
+	var r0 = main.robots[0]
+	put(main.robots[1], Vector2(col_x(24), 576))
+	# parede invisível da borda do mapa: não gruda
+	put(r0, Vector2(64.0 + 25.0, 300))
+	vset("v0", "left", true)
+	await frames(12)
+	var dbg := "y %.0f chão %s nível %s cel %s" % [r0.position.y, r0.is_on_floor(), main.level.id, main.level.ch_at(Vector2i(int(r0.position.x / 64.0), int((r0.position.y + 2.0) / 64.0)))]
+	check(not r0.wall_sliding and r0.velocity.y > 300.0, "não gruda na parede invisível da borda (vy %.0f; %s)" % [r0.velocity.y, dbg])
+	vset("v0", "left", false)
+	# parede de caixotes: escorrega devagar e o pulo de parede funciona
+	for y in [3, 4, 5, 6, 7]:
+		lv.add_block(Vector2i(13, y))
+	put(r0, Vector2(13 * 64.0 - 25.0, 300))
+	vset("v0", "right", true)
+	await frames(14)
+	check(r0.wall_sliding and r0.velocity.y <= float(Data.ctrl["wall_slide_speed"]) + 1.0, "escorrega na parede de caixotes (vy %.0f)" % r0.velocity.y)
+	await tap("v0", "jump")
+	await frames(2)
+	check(r0.velocity.y < -300.0 and r0.own_vx < 0.0, "pulo de parede empurra para longe")
+	vset("v0", "right", false)
+	# agarra a borda e sobe sem teletransporte, e depois anda
+	await demo_round()
+	r0 = main.robots[0]
+	lv = main.level
+	put(main.robots[1], Vector2(col_x(24), 576))
+	lv.add_block(Vector2i(11, 5))
+	put(r0, Vector2(11 * 64.0 - 30.0, 5 * 64.0 + 40.0))
+	r0.velocity.y = 100.0
+	vset("v0", "right", true)
+	var grabbed := false
+	for i in 20:
+		await frames(1)
+		if r0.hanging:
+			grabbed = true
+			break
+	check(grabbed, "agarra a quina do caixote caindo ao lado dela")
+	vset("v0", "right", false)
+	await tap("v0", "jump")
+	var mid_ok := false
+	for i in 6:
+		await frames(1)
+		if r0.climb_t > 0.0 and r0.climb_t < 1.0:
+			mid_ok = true
+	await frames(14)
+	check(mid_ok and absf(r0.position.y - 5 * 64.0) < 6.0 and r0.is_on_floor(), "sobe animado e fica em pé em cima (y %.0f)" % r0.position.y)
+	var xs: float = r0.position.x
+	vset("v0", "left", true)
+	await frames(10)
+	vset("v0", "left", false)
+	check(absf(r0.position.x - xs) > 20.0, "depois de subir, anda normalmente")
+	# sem espaço em cima (teto a 1 bloco): não agarra
+	await demo_round()
+	r0 = main.robots[0]
+	lv = main.level
+	put(main.robots[1], Vector2(col_x(24), 576))
+	lv.add_block(Vector2i(11, 5))
+	lv.add_block(Vector2i(11, 3))
+	put(r0, Vector2(11 * 64.0 - 30.0, 5 * 64.0 + 40.0))
+	r0.velocity.y = 100.0
+	vset("v0", "right", true)
+	grabbed = false
+	for i in 20:
+		await frames(1)
+		if r0.hanging:
+			grabbed = true
+	vset("v0", "right", false)
+	check(not grabbed, "não agarra borda sem espaço para subir")
+	# nenhum mapa tem vão baixo demais (o robô de 72 px entalava, ex.: alto da Maré)
+	var bad := []
+	for a in main.demo.cfg["arenas"]:
+		var L = load("res://level/level.gd").new()
+		L.load_level(a["id"])
+		for y in range(2, L.rows):
+			for x in L.cols:
+				var c := Vector2i(x, y)
+				if L.is_solid(c) and L.ch_at(c) != "I" and not L.is_solid(c + Vector2i.UP) and L.is_solid(c + Vector2i(0, -2)):
+					bad.append("%s %s" % [a["id"], str(c)])
+		L.free()
+	check(bad.is_empty(), "nenhum mapa com vão de 1 bloco onde o robô entala %s" % str(bad.slice(0, 6)))
 
 func maquinas_test() -> void:
 	print("== Máquinas e câmera que rola")
@@ -706,42 +803,71 @@ func itens_novos_test() -> void:
 	main.arena_choice = "demolicao"
 	await demo_round()
 	main.demo.item_t = 999.0
+	var tl = main.demo.tools
 	var r0 = main.robots[0]
 	var r1 = main.robots[1]
-	# gancho puxa o rival
+	# gancho fisga o rival e puxa
 	put(r0, Vector2(col_x(11), 576))
 	put(r1, Vector2(col_x(16), 576))
 	r0.facing = 1
 	main.demo.give(r0, "gancho")
-	await frames(2)
+	vset("v0", "down", true)   # ▼ mira reto
+	await frames(1)
 	main.demo.use_item(r0)
-	await frames(2)
-	check(r1.own_vx < -400.0 and r1.last_cause == "gancho", "gancho puxa o rival (%.0f)" % r1.own_vx)
+	vset("v0", "down", false)
+	var x1: float = r1.position.x
+	await frames(20)
+	check(r1.position.x < x1 - 40.0 and r1.last_cause == "gancho" and r1.last_attacker == 0, "gancho fisga o rival e puxa (%.0f px)" % (x1 - r1.position.x))
+	# gancho prende no caixote e puxa o dono até lá
+	await demo_round()
+	r0 = main.robots[0]
+	put(main.robots[1], Vector2(col_x(24), 576))
+	put(r0, Vector2(col_x(12), 576))
+	r0.facing = 1
+	var lv = main.level
+	lv.add_block(Vector2i(17, 5))
+	main.demo.give(r0, "gancho")
+	await frames(1)
+	main.demo.use_item(r0)
+	var y0: float = r0.position.y
+	var x0: float = r0.position.x
+	var zipped := false
+	for i in 50:
+		await frames(1)
+		if r0.position.x > x0 + 100.0 and r0.position.y < y0 - 60.0:
+			zipped = true
+	check(zipped, "gancho prende no caixote e puxa o robô até lá")
 	# chave-bumerangue acerta e volta
 	await demo_round()
 	r0 = main.robots[0]
 	r1 = main.robots[1]
 	put(r0, Vector2(col_x(11), 576))
-	put(r1, Vector2(col_x(16), 576))
+	put(r1, Vector2(col_x(15), 576))
 	r0.facing = 1
 	main.demo.give(r0, "chave")
 	main.demo.use_item(r0)
-	await frames(50)
-	check(r1.dmg > 0.0 and main.demo.wrenches.is_empty() or r1.dmg > 0.0, "chave-bumerangue acerta o rival (%d%%)" % int(r1.dmg))
-	# furadeira quebra caixotes à frente
+	await frames(90)
+	check(r1.dmg > 0.0 and tl.wrenches.is_empty(), "chave-bumerangue acerta o rival e volta para a mão (%d%%)" % int(r1.dmg))
+	# furadeira: investida que fura caixotes e empurra
 	await demo_round()
 	r0 = main.robots[0]
-	put(r0, Vector2(col_x(11), 576))
-	put(main.robots[1], Vector2(col_x(24), 576))
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(10), 576))
+	put(r1, Vector2(col_x(16), 576))
 	r0.facing = 1
-	var lv = main.level
+	lv = main.level
+	lv.add_block(Vector2i(12, 8))
 	lv.add_block(Vector2i(13, 8))
-	lv.add_block(Vector2i(14, 8))
 	main.demo.give(r0, "furadeira")
 	main.demo.use_item(r0)
-	await frames(2)
-	check(not lv.blocks.has(Vector2i(13, 8)) and not lv.blocks.has(Vector2i(14, 8)), "furadeira fura os caixotes à frente")
+	await frames(30)
+	check(not lv.blocks.has(Vector2i(12, 8)) and not lv.blocks.has(Vector2i(13, 8)) and r0.position.x > col_x(13), "furadeira avança furando os caixotes (x %.0f)" % r0.position.x)
+	check(r1.last_cause == "furadeira" or r1.dmg > 0.0, "furadeira empurra quem estava na frente (%d%%)" % int(r1.dmg))
 	# tábua salva da queda
+	await demo_round()
+	r0 = main.robots[0]
+	lv = main.level
+	put(main.robots[1], Vector2(col_x(24), 576))
 	put(r0, Vector2(col_x(8) + 10, 700))
 	main.demo.give(r0, "tabua")
 	var nb: int = lv.blocks.size()
@@ -753,30 +879,32 @@ func itens_novos_test() -> void:
 	r0 = main.robots[0]
 	r1 = main.robots[1]
 	put(r0, Vector2(col_x(11), 576))
-	put(r1, Vector2(col_x(16), 576))
+	put(r1, Vector2(col_x(17), 576))
 	r0.facing = 1
 	main.demo.give(r0, "cola")
 	main.demo.use_item(r0)
-	await frames(40)
-	check(main.demo.puddles.size() == 1, "cola vira poça no chão")
-	var pr: Rect2 = main.demo.puddles[0]["rect"]
-	put(r1, Vector2(pr.get_center().x, 576))
-	vset("v1", "right", true)
-	await frames(20)
-	vset("v1", "right", false)
-	check(absf(r1.velocity.x) < 250.0 and r1.glue_t > 0.0, "na cola, anda devagar (%.0f px/s)" % r1.velocity.x)
-	# mola portátil: quem pisa voa
+	await frames(50)
+	check(tl.puddles.size() == 1, "cola vira poça no chão")
+	if tl.puddles.size() > 0:
+		var pr: Rect2 = tl.puddles[0]["rect"]
+		put(r1, Vector2(pr.get_center().x, 576))
+		vset("v1", "right", true)
+		await frames(20)
+		vset("v1", "right", false)
+		check(absf(r1.velocity.x) < 250.0 and r1.glue_t > 0.0, "na cola, anda devagar (%.0f px/s)" % r1.velocity.x)
+	# mola portátil: arremessada, abre no chão e lança quem pisa
 	await demo_round()
 	r0 = main.robots[0]
+	put(main.robots[1], Vector2(col_x(24), 576))
 	put(r0, Vector2(col_x(11), 576))
 	r0.facing = 1
 	main.demo.give(r0, "mola_portatil")
 	main.demo.use_item(r0)
-	await frames(2)
-	check(main.demo.springs.size() == 1, "mola portátil no chão")
+	await frames(50)
+	check(tl.springs.size() == 1 and tl.springs[0]["state"] == "chao", "mola portátil cai e abre no chão")
 	vset("v0", "right", true)
 	var fly := false
-	for i in 30:
+	for i in 60:
 		await frames(1)
 		if r0.velocity.y < -1000.0:
 			fly = true
@@ -785,6 +913,7 @@ func itens_novos_test() -> void:
 	# bota-foguete: segurar PULAR no ar sobe
 	await demo_round()
 	r0 = main.robots[0]
+	put(main.robots[1], Vector2(col_x(24), 576))
 	put(r0, Vector2(col_x(11), 576))
 	main.demo.give(r0, "foguete")
 	r0.air_jumps = 0
@@ -800,9 +929,9 @@ func itens_novos_test() -> void:
 	put(r0, Vector2(col_x(11), 576))
 	put(r1, Vector2(col_x(15), 576))
 	main.demo.give(r0, "ima")
-	var x1: float = r1.position.x
+	var xi: float = r1.position.x
 	await frames(30)
-	check(r1.position.x < x1 - 20.0, "ímã puxa o rival (%.0f px)" % (x1 - r1.position.x))
+	check(r1.position.x < xi - 20.0, "ímã puxa o rival (%.0f px)" % (xi - r1.position.x))
 	main.demo.item_t = 4.0
 
 func submodos_test() -> void:
@@ -1510,6 +1639,114 @@ func video_frames(dir: String) -> void:
 	fa.store_string(JSON.stringify({"fps": 30, "frames": f / 2, "root": ProjectSettings.globalize_path("res://"), "log": Audio.rec_log}))
 	fa.close()
 	print("vídeo: %d quadros, %d sons" % [f / 2, Audio.rec_log.size()])
+
+# ---------------------------------------------------------------- capturas dos itens em ação (zoom no robô)
+func itens_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	get_window().size = Vector2i(1920, 1080)
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	await frames(2)
+	await tap("v0", "jump")
+	await tap("v1", "jump")
+	main.mode = "demolicao"
+	main.event_level = 0
+	main.arena_choice = "demolicao"
+	main.start_match()
+	var plan := [["gancho", 7], ["gancho_parede", 9], ["furadeira", 8], ["cola", 14], ["chave", 12], ["mola_portatil", 26], ["tabua", 6],
+		["foguete", 50], ["mola", 60], ["ima", 70], ["dinamite", 60], ["bolhas", 50]]
+	for pl in plan:
+		var kind: String = pl[0]
+		await demo_round()
+		main.demo.item_t = 999.0
+		var r0 = main.robots[0]
+		var r1 = main.robots[1]
+		put(r0, Vector2(col_x(11), 576))
+		put(r1, Vector2(col_x(16), 576))
+		r0.facing = 1
+		r1.facing = -1
+		main.cam_lock = [1.7, Vector2(col_x(13), 470)]
+		await frames(3)
+		match kind:
+			"gancho_parede":
+				put(r0, Vector2(col_x(11), 576))
+				put(r1, Vector2(col_x(20), 576))
+				main.demo.give(r0, "gancho")
+				await frames(1)
+				main.demo.use_item(r0)
+			"foguete":
+				main.demo.give(r0, "foguete")
+				await frames(2)
+				await frames(50)
+				r0.air_jumps = 0
+				put(r0, Vector2(col_x(12), 420))
+				vset("v0", "jump", true)
+				await frames(12)
+				vset("v0", "jump", false)
+				await frames(2)
+				vset("v0", "jump", true)
+			"mola", "ima":
+				main.demo.give(r0, kind)
+				await frames(55)
+				if kind == "mola":
+					vset("v0", "jump", true)
+			"bolhas":
+				main.demo.spawn_item("furadeira", 12)
+				main.demo.spawn_item("gancho", 14)
+				main.demo.give(r1, "cola")
+				main.demo.give(r0, "chave")
+			"dinamite":
+				main.demo.give(r0, "dinamite")
+				main.demo.give(r1, "capacete")
+			_:
+				main.demo.give(r0, kind)
+				await frames(1)
+				main.demo.use_item(r0)
+		await frames(int(pl[1]))
+		await snap(dir, "item_" + kind)
+		vset("v0", "jump", false)
+	main.cam_lock = []
+
+# ---------------------------------------------------------------- desempenho por arena (ms por quadro, com 4 bots)
+func perf_run() -> void:
+	get_window().size = Vector2i(1920, 1080)
+	PlayerInput.virtual = {}
+	main.mode = "demolicao"
+	main.bot_level = 1
+	main.event_level = 0
+	for k in 4:
+		main.add_bot()
+	main.demo.cfg["rounds_to_win"] = 999
+	main.start_match()
+	for a in main.demo.cfg["arenas"]:
+		main.arena_choice = a["id"]
+		main._clear_robots()
+		main.demo.start_round()
+		main.countdown = 0.0
+		for r in main.robots:
+			r.active = true
+		var ts: Array = []
+		var phys: Array = []
+		var last := Time.get_ticks_usec()
+		main.perf_acc = {}
+		for f in 240:
+			await get_tree().process_frame
+			var now := Time.get_ticks_usec()
+			if f > 20:
+				ts.append((now - last) / 1000.0)
+				phys.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0)
+			last = now
+		ts.sort()
+		phys.sort()
+		var avg: float = ts.reduce(func(x, y): return x + y, 0.0) / ts.size()
+		if OS.get_cmdline_user_args().has("--perf-longo") and a["id"] in ["mare", "demolicao", "torre"]:
+			main.event_level = 3
+			for k in 6:
+				var t0 := Time.get_ticks_usec()
+				for f2 in 300:
+					await get_tree().process_frame
+				print("   %s +%ds: nós %d  objetos %d  %.1f ms/quadro  estado %s" % [a["id"], (k + 1) * 5, Performance.get_monitor(Performance.OBJECT_NODE_COUNT), Performance.get_monitor(Performance.OBJECT_COUNT), (Time.get_ticks_usec() - t0) / 300000.0, main.state])
+			main.event_level = 0
+		print("PERF %-11s quadro med %.1f ms  p95 %.1f  máx %.1f  |  física med %.2f ms máx %.2f  |  bots %.2f  demo %.2f ms/quadro" % [a["id"], avg, ts[int(ts.size() * 0.95)], ts[-1], phys[phys.size() / 2], phys[-1], main.perf_acc.get("bots", 0.0) / 240.0, main.perf_acc.get("demo", 0.0) / 240.0])
 
 # ---------------------------------------------------------------- estatísticas de rodadas (bots), para a análise de ritmo
 func stats_run(rounds_per_arena: int) -> void:

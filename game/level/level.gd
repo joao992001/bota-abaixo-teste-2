@@ -150,6 +150,8 @@ func _build_colliders() -> void:
 	oneway.collision_layer = 2
 	oneway.collision_mask = 0
 	add_child(oneway)
+	var runs: Array = []
+	var open_runs := {}   # Vector2i(x0, x1) -> {x0, x1, y0, y1}
 	for y in rows:
 		var x := 0
 		while x < cols:
@@ -204,16 +206,31 @@ func _build_colliders() -> void:
 			var cs := CollisionShape2D.new()
 			var r := RectangleShape2D.new()
 			if ch == "#":
-				r.size = Vector2((x - x0) * T, T)
-				cs.position = Vector2(x0 * T + r.size.x / 2.0, y * T + T / 2.0)
-				cs.shape = r
-				solid.add_child(cs)
+				# trecho sólido fixo: junta com o trecho igual da linha de cima (paredes viram um bloco só,
+				# sem emendas onde o robô tropeçava ao escorregar)
+				var key := Vector2i(x0, x)
+				if open_runs.has(key) and open_runs[key]["y1"] == y:
+					open_runs[key]["y1"] = y + 1
+				else:
+					if open_runs.has(key):
+						runs.append(open_runs[key])
+					open_runs[key] = {"x0": x0, "x1": x, "y0": y, "y1": y + 1}
+				continue
 			else:
 				r.size = Vector2((x - x0) * T, 16)
 				cs.position = Vector2(x0 * T + r.size.x / 2.0, y * T + 8)
 				cs.shape = r
 				cs.one_way_collision = true
 				oneway.add_child(cs)
+	for k in open_runs:
+		runs.append(open_runs[k])
+	for rn in runs:
+		var cs2 := CollisionShape2D.new()
+		var r2 := RectangleShape2D.new()
+		r2.size = Vector2((rn["x1"] - rn["x0"]) * T, (rn["y1"] - rn["y0"]) * T)
+		cs2.position = Vector2(rn["x0"] * T, rn["y0"] * T) + r2.size / 2.0
+		cs2.shape = r2
+		solid.add_child(cs2)
 
 # ---------- formas simples (substituídas pela arte quando existir) ----------
 func _draw() -> void:
@@ -282,11 +299,6 @@ func _draw_art() -> void:
 					draw_set_transform(pos + Vector2(4, 12), PI / 2.0)
 					draw_texture_rect(Data.tex("cenario/alcapao"), Rect2(Vector2(-4, -12), Vector2(T, 24)), false)
 					draw_set_transform(Vector2.ZERO)
-				"w":
-					var wv := sin(anim_t * 2.0 + x * 0.9) * 4.0
-					draw_rect(Rect2(pos + Vector2(0, 24 + wv), Vector2(T, T - 24 - wv)), Color("#6fc3dc"))
-					draw_rect(Rect2(pos + Vector2(0, 24 + wv), Vector2(T, 5)), Color("#c8eef6"))
-					draw_rect(Rect2(pos + Vector2(0, 44), Vector2(T, T - 44)), Color("#58afcb"))
 				"n":
 					var nc := Color("#c9a26a")
 					draw_line(pos + Vector2(0, 14), pos + Vector2(T, 14), nc, 3.0, true)
@@ -299,16 +311,6 @@ func _draw_art() -> void:
 						draw_rect(Rect2(pos + Vector2(T - 4, 4), Vector2(8, 40)), Color("#8a6a47"))
 				"^":
 					draw_texture_rect(Data.tex("cenario/espinho_%d" % ((x * 5 + y) % 3)), Rect2(pos + Vector2(0, T - 128), Vector2(T, 128)), false)
-	for b in belts:
-		if belt_warn and fmod(anim_t, 0.25) < 0.12:
-			continue
-		var off := fposmod(anim_t * belt_speed * 0.5 * b["dir"], 32.0)
-		var x := float(b["x0"] * T) + off
-		while x < b["x1"] * T - 8:
-			var p := Vector2(x + 8, b["y"] * T + 9)
-			var d := float(b["dir"])
-			draw_polyline(PackedVector2Array([p + Vector2(-4 * d, -5), p + Vector2(3 * d, 0), p + Vector2(-4 * d, 5)]), Color("#fff4c8") if not belt_warn else Color("#f2c84b"), 2.6, true)
-			x += 32.0
 	if elevator_cell.x >= 0:
 		var e := Vector2(elevator_cell.x * T - 32, (elevator_cell.y - 2) * T)
 		var tx := Data.tex("cenario/elevador")
@@ -322,10 +324,38 @@ func _draw_art() -> void:
 			draw_texture_rect_region(tx, Rect2(e + Vector2(25, 47), Vector2(38 - o, 145)), Rect2(Vector2(25 + o, 47) * sc, Vector2(38 - o, 145) * sc))
 			draw_texture_rect_region(tx, Rect2(e + Vector2(65 + o, 47), Vector2(38 - o, 145)), Rect2(Vector2(65, 47) * sc, Vector2(38 - o, 145) * sc))
 
+var anim: Node2D = null   # camada só com o que mexe todo quadro (água, setas das esteiras)
+
+func _ready() -> void:
+	anim = Node2D.new()
+	anim.draw.connect(_draw_anim)
+	add_child(anim)
+
+## Desenha só o que se mexe: o resto do mapa fica parado e só é redesenhado quando muda.
+func _draw_anim() -> void:
+	for y in rows:
+		for x in cols:
+			if ch_at(Vector2i(x, y)) == "w":
+				var pos := Vector2(x * T, y * T)
+				var wv := sin(anim_t * 2.0 + x * 0.9) * 4.0
+				anim.draw_rect(Rect2(pos + Vector2(0, 24 + wv), Vector2(T, T - 24 - wv)), Color("#6fc3dc"))
+				anim.draw_rect(Rect2(pos + Vector2(0, 24 + wv), Vector2(T, 5)), Color("#c8eef6"))
+				anim.draw_rect(Rect2(pos + Vector2(0, 44), Vector2(T, T - 44)), Color("#58afcb"))
+	for b in belts:
+		if belt_warn and fmod(anim_t, 0.25) < 0.12:
+			continue
+		var off := fposmod(anim_t * belt_speed * 0.5 * b["dir"], 32.0)
+		var x := float(b["x0"] * T) + off
+		while x < b["x1"] * T - 8:
+			var p := Vector2(x + 8, b["y"] * T + 9)
+			var d := float(b["dir"])
+			anim.draw_polyline(PackedVector2Array([p + Vector2(-4 * d, -5), p + Vector2(3 * d, 0), p + Vector2(-4 * d, 5)]), Color("#fff4c8") if not belt_warn else Color("#f2c84b"), 2.6, true)
+			x += 32.0
+
 func _process(dt: float) -> void:
 	anim_t += dt
-	if belts.size() > 0 or water_rects.size() > 0:
-		queue_redraw()
+	if anim != null and (belts.size() > 0 or water_rects.size() > 0):
+		anim.queue_redraw()
 	if door_open > 0.0 or _was_open:
 		queue_redraw()
 	for b in blocks.values():

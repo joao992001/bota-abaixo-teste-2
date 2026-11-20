@@ -25,6 +25,14 @@ func _ready() -> void:
 		_pool.append(p)
 	_music = AudioStreamPlayer.new()
 	add_child(_music)
+	# carrega todos os efeitos já na abertura (o primeiro uso no meio da partida dava tranco)
+	for k in _index.keys():
+		var n: int = int(_index[k])
+		if n == 0:
+			_stream("res://assets/audio/sfx/%s.wav" % k)
+		else:
+			for i in range(1, n + 1):
+				_stream("res://assets/audio/sfx/%s_%d.wav" % [k, i])
 	# limitador no áudio principal: muitos sons juntos (explosão + marretadas) não estouram
 	var lim := AudioEffectHardLimiter.new()
 	lim.ceiling_db = -0.5

@@ -29,6 +29,9 @@ var stun_t := 0.0            # atordoado: ignora o controle (pisão na cabeça, 
 var item := ""               # item guardado (dinamite), usado com o botão de item
 var fx_t := {"martelao": 0.0, "mola": 0.0, "ima": 0.0, "foguete": 0.0}   # efeitos com tempo
 var glue_t := 0.0             # pisou na cola: lento
+var forced_t := 0.0           # movimento forçado (gancho puxando, investida da furadeira)
+var forced_vel := Vector2.ZERO
+var thrusting := false        # bota-foguete ligada neste quadro (desenho da chama)
 var push_vx := 0.0            # empurrão externo deste quadro (ímã); zera a cada quadro
 var shield := 0              # capacete de aço: golpes que ainda aguenta
 var fall_reason := ""
@@ -41,6 +44,11 @@ var drop_t := 0.0             # descendo pendurado no guindaste (desenho do cabo
 var hanging := false          # agarrado na borda de um caixote
 var hang_dir := 0
 var hang_t := 0.0
+var hang_from := Vector2.ZERO   # posição de onde o robô veio ao agarrar (desliza até a borda, sem tranco)
+var climb_t := -1.0             # subindo na borda (0..1); -1 = não está subindo
+var climb_from := Vector2.ZERO
+var climb_to := Vector2.ZERO
+const GRAB_CHARS := ["d", "T", "#", "o", "<", ">", "F", "f", "B", "P"]   # bordas que dá para agarrar (fixas no mapa)
 var last_cause := ""          # o que atingiu este robô por último (marretada, pisão, explosão, bola, chão quebrado...)
 var last_attacker := -1       # quem causou (jogador), -1 = cenário      # depois de levar pisão, um tempo sem poder levar outro         # segundos desde o último golpe (para saber se caiu sozinho)
 var wall_dust := 0.0
@@ -55,13 +63,18 @@ func setup(p: int, col_idx: int, m: Node, acc := 0, model := 0) -> void:
 	collision_layer = 0
 	collision_mask = 1 | 2 | (1 << (2 + p))
 	var hb: Array = c["hitbox"]
+	# caixa com os cantos chanfrados: desliza sobre a emenda de caixotes empilhados (o canto reto
+	# "tropeçava" na emenda e o robô ficava preso no meio da parede, como se fosse chão)
 	var cs := CollisionShape2D.new()
-	var r := RectangleShape2D.new()
-	r.size = Vector2(hb[0], hb[1])
-	cs.shape = r
-	cs.position = Vector2(0, -float(hb[1]) / 2.0)
+	var shp := ConvexPolygonShape2D.new()
+	var w := float(hb[0]) / 2.0
+	var h := float(hb[1])
+	shp.points = PackedVector2Array([Vector2(-w + 4, -h), Vector2(w - 4, -h), Vector2(w, -h + 8), Vector2(w, -8),
+		Vector2(w - 4, 0), Vector2(-w + 4, 0), Vector2(-w, -8), Vector2(-w, -h + 8)])
+	cs.shape = shp
 	add_child(cs)
 	floor_snap_length = 6.0
+	floor_block_on_wall = false   # a Godot marcava a parede como "chão" e o robô descia grudado nela
 	vis = Vis.new()
 	vis.setup(col_idx, acc, model)
 	add_child(vis)
@@ -88,6 +101,22 @@ func _physics_process(dt: float) -> void:
 	invuln = maxf(invuln - dt, 0.0)
 	drop_t = maxf(drop_t - dt, 0.0) if not is_on_floor() else 0.0
 	last_hit += dt
+	if climb_t >= 0.0:
+		_climb_update(dt)
+		vis.tick(self, dt)
+		return
+	if forced_t > 0.0:
+		forced_t -= dt
+		hanging = false
+		velocity = forced_vel
+		own_vx = forced_vel.x
+		move_and_slide()
+		if forced_t <= 0.0 and forced_vel.y < -100.0:
+			velocity.y = forced_vel.y * 0.4
+		was_on_floor = is_on_floor()
+		main.check_contacts(self)
+		vis.tick(self, dt)
+		return
 	if hanging:
 		_hang_update(dt)
 		vis.tick(self, dt)
@@ -151,7 +180,9 @@ func _physics_process(dt: float) -> void:
 		if not spring and _held("jump") and absf(velocity.y) < f("half_grav_threshold"):
 			g *= 0.5
 		velocity.y += g * dt
+	thrusting = false
 	if fx_t["foguete"] > 0.0 and not on_floor and _held("jump") and var_jump <= 0.0 and velocity.y > -300.0:
+		thrusting = true
 		var fc: Dictionary = main.demo.item_cfg("foguete")
 		if velocity.y > -float(fc["sobe_max"]):
 			velocity.y -= float(fc["empuxo"]) * dt   # bota-foguete: segura PULAR no ar
@@ -241,7 +272,8 @@ func absorb() -> bool:
 
 func fx_flags() -> Dictionary:
 	return {"martelao": fx_t["martelao"] > 0.0, "mola": fx_t["mola"] > 0.0, "capacete": shield > 0, "item": item,
-		"ima": fx_t["ima"] > 0.0, "foguete": fx_t["foguete"] > 0.0}
+		"ima": fx_t["ima"] > 0.0, "foguete": fx_t["foguete"] > 0.0, "foguete_on": thrusting, "cola": glue_t > 0.0,
+		"furando": main.demo.tools != null and main.demo.tools.drilling(pid) if main.mode == "demolicao" else false}
 
 ## Pulo duplo do propulsor (um no ar; recarrega no chão, na parede e na borda).
 func _air_jump(ix: float) -> void:
@@ -255,27 +287,45 @@ func _air_jump(ix: float) -> void:
 	main.dust(position + Vector2(0, -6), 0.7)
 
 ## Agarra a quina de um caixote: caindo, segurando na direção dela, com as mãos na altura do topo.
+## Só bordas fixas do mapa (não plataforma que anda nem gangorra) e com espaço para ficar em pé em cima.
 func _try_grab(ix: float) -> void:
 	if velocity.y < -40.0 or stun_t > 0.0 or ix == 0.0 or PlayerInput.held(pid, "down"):
 		return
 	var dir := int(signf(ix))
 	var lv = main.level
 	var cell := Vector2i(int(floor((position.x + dir * 32.0) / 64.0)), int(floor((position.y - 66.0) / 64.0)))
-	if not lv.is_solid(cell) or lv.is_solid(cell + Vector2i.UP) or lv.ch_at(cell) == "I":
+	if not (lv.ch_at(cell) in GRAB_CHARS) or not _room_above(cell):
 		return
 	var top := cell.y * 64.0
 	var head := position.y - 72.0
 	if head < top - 26.0 or head > top + 16.0:
 		return
+	var target := Vector2(cell.x * 64.0 + (-24.0 if dir > 0 else 64.0 + 24.0), top + 58.0)
+	for yy in [target.y - 70.0, target.y - 36.0, target.y - 2.0]:
+		for xx in [target.x - 22.0, target.x + 22.0]:
+			if lv.is_solid(Vector2i(int(floor(xx / 64.0)), int(floor(yy / 64.0)))):
+				return   # a posição de pendurar está ocupada
 	hanging = true
 	hang_dir = dir
 	hang_t = 0.0
+	hang_from = position
 	facing = dir
 	air_jumps = 1
 	velocity = Vector2.ZERO
 	own_vx = 0.0
-	position = Vector2(cell.x * 64.0 + (-24.0 if dir > 0 else 64.0 + 24.0), top + 58.0)
+	position = target
+	reset_physics_interpolation()
+	vis.hang_snap = hang_from - target   # o desenho desliza da posição antiga até a borda
 	Audio.play("parede", _pitch())
+
+## Em cima da célula cabe o robô inteiro (72 px = 2 células livres; fora do mapa no alto conta como livre).
+func _room_above(cell: Vector2i) -> bool:
+	var lv = main.level
+	for k in [1, 2]:
+		var c2 := cell + Vector2i(0, -k)
+		if c2.y < 0 or lv.is_solid(c2):
+			return false
+	return true
 
 func _hang_update(dt: float) -> void:
 	hang_t += dt
@@ -285,15 +335,41 @@ func _hang_update(dt: float) -> void:
 	var max_t := float(main.demo.cfg["recuperacao"]["borda_max_s"])
 	if not lv.is_solid(cell) or hang_t > max_t or PlayerInput.pressed(pid, "down") or PlayerInput.axis_x(pid) == -hang_dir:
 		hanging = false   # caixote quebrou, cansou ou soltou
+		if PlayerInput.axis_x(pid) == -hang_dir:
+			own_vx = -hang_dir * 220.0   # soltou para trás: afasta um pouco da parede
 		return
-	if PlayerInput.pressed(pid, "jump"):
-		# escalada: sobe e fica em cima do caixote
+	if PlayerInput.pressed(pid, "jump") or PlayerInput.pressed(pid, "up"):
+		if not _room_above(cell):
+			# sem espaço para subir: pula para longe da parede
+			hanging = false
+			velocity.y = -_jump_speed() * 0.8
+			own_vx = -hang_dir * f("wall_jump_h_speed") * 0.7
+			wall_lock = f("wall_jump_lock_time")
+			Audio.play("pulo", _pitch())
+			return
+		# escalada animada: sobe e passa por cima da quina (~0,16 s), sem teletransporte
 		hanging = false
-		position = Vector2(cell.x * 64.0 + 32.0 - hang_dir * 8.0, cell.y * 64.0 - 1.0)
-		velocity = Vector2(0, -260)
-		own_vx = hang_dir * 120.0
+		climb_t = 0.0
+		climb_from = position
+		climb_to = Vector2(cell.x * 64.0 + 32.0 - hang_dir * 6.0, cell.y * 64.0 - 1.0)
 		Audio.play("pulo", _pitch())
 		vis.stretch()
+
+func _climb_update(dt: float) -> void:
+	climb_t = minf(climb_t + dt / 0.16, 1.0)
+	var k := climb_t
+	# primeiro sobe (corpo passa da quina), depois avança por cima
+	var up := clampf(k / 0.6, 0.0, 1.0)
+	var fwd := clampf((k - 0.35) / 0.65, 0.0, 1.0)
+	var y := lerpf(climb_from.y, climb_to.y, 1.0 - pow(1.0 - up, 2.0))
+	var x := lerpf(climb_from.x, climb_to.x, fwd * fwd * (3.0 - 2.0 * fwd))
+	position = Vector2(x, y)
+	velocity = Vector2.ZERO
+	if climb_t >= 1.0:
+		climb_t = -1.0
+		position = climb_to
+		velocity = Vector2(0, -120)
+		own_vx = hang_dir * 160.0
 		main.dust(position, 0.6)
 
 ## Golpe com o Amassômetro: soma dano e o empurrão cresce com ele. kind = chave em demolicao.amassometro.
@@ -361,11 +437,26 @@ func _wall_jump(wd: int) -> void:
 	vis.stretch()
 
 func _wall_dir() -> int:
-	if test_move(global_transform, Vector2(2, 0)):
-		return 1
-	if test_move(global_transform, Vector2(-2, 0)):
-		return -1
+	for d in [1, -1]:
+		if test_move(global_transform, Vector2(2 * d, 0)) and _real_wall(d):
+			return d
 	return 0
+
+## Na Demolição, a parede invisível da borda do mapa não serve para escorregar/pular (parecia grudar no nada).
+func _real_wall(d: int) -> bool:
+	if main.mode != "demolicao":
+		return true
+	var lv = main.level
+	var x := int(floor((position.x + d * 27.0) / 64.0))
+	var hits := 0
+	for yy in [position.y - 60.0, position.y - 36.0, position.y - 10.0]:
+		var c := Vector2i(x, int(floor(yy / 64.0)))
+		var ch: String = lv.ch_at(c)
+		if ch == "I":
+			return false
+		if lv.is_solid(c):
+			hits += 1
+	return hits > 0 or lv.extra_solid.is_valid()   # plataforma que anda também é parede
 
 func _corner_correction(dt: float) -> void:
 	if velocity.y >= 0.0:

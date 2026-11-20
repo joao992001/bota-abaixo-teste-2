@@ -37,6 +37,7 @@ var prev_vel := Vector2.ZERO
 var step_side := 0
 var robot = null
 var hanging := false
+var hang_snap := Vector2.ZERO          # ao agarrar a borda: o desenho começa onde o robô estava e desliza até a quina
 var smoke_t := 0.0
 
 func setup(col_idx: int, accessory: int, mdl := 0) -> void:
@@ -117,6 +118,8 @@ func tick(r, dt: float) -> void:
 			expression = "piscar" if blink_t < 0.0 else "normal"
 	var fx := shown_facing if absf(shown_facing) > 0.2 else 0.2 * signf(shown_facing + 0.0001)
 	scale = Vector2(sq.x * fx, sq.y)
+	hang_snap = hang_snap.lerp(Vector2.ZERO, minf(dt * 18.0, 1.0))
+	position = hang_snap
 	hanging = r.hanging
 	if r.hanging:
 		expression = "esforco"
@@ -179,6 +182,14 @@ func current_pose() -> Dictionary:
 		hf += Vector2(10, -14) * wall_k
 		for i in 2:
 			feet[i] += Vector2(7, -3) * wall_k
+	# furadeira / sendo puxado pelo gancho: braços esticados para a frente
+	if robot != null and robot.forced_t > 0.0:
+		hb = Vector2(16, -6)
+		hf = Vector2(20, -4)
+		for i in 2:
+			feet[i] = Vector2(-6.0 + i * 4.0, -2.0)
+	# botas de mola: a mola estica no ar e encolhe ao tocar o chão
+	p["spring_k"] = 1.0 + 0.5 * air_k - 0.4 * clampf(1.0 - sq.y, 0.0, 1.0)
 	# marretada
 	var ang := HAMMER_REST
 	if hammer_t > 0.0:
@@ -258,12 +269,36 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 		var hip: Vector2 = bx * _v(hips[i])
 		var fp: Vector2 = Vector2(_v(hips[i]).x + s * 4.0, -4.0) + pose["feet"][i]
 		_limb(ci, base, hip, fp, limb, pose["knee"][i])
+		var now := Time.get_ticks_msec() / 1000.0
 		if fx.get("mola", false):
+			# botas de mola: mola grossa embaixo de cada pé (estica no ar, encolhe no chão)
 			ci.draw_set_transform_matrix(base)
-			for k in 3:
-				ci.draw_arc(fp + Vector2(s * 1.5, 4.0 + k * 3.0), 5.0, 0.0, TAU, 12, Color("#8e98a8"), 1.6, true)
-		ci.draw_set_transform_matrix(base * Transform2D(0.0, q * 0.72, 0.0, fp + Vector2(s * 1.5, 0.5)))
-		ci.draw_texture(foot, -Vector2(12, 7) * 4.0, limb)
+			var stretch_k: float = pose.get("spring_k", 1.0)
+			var cx := fp.x + s * 1.5
+			var zz := PackedVector2Array()
+			for k in 6:
+				zz.append(Vector2(cx + (-8.0 if k % 2 == 0 else 8.0), fp.y + 3.0 + k * 3.2 * stretch_k))
+			ci.draw_polyline(zz, Color("#3e4752"), 4.2, true)
+			ci.draw_polyline(zz, Color("#d5dbe1"), 2.2, true)
+			ci.draw_rect(Rect2(Vector2(cx - 10.0, fp.y + 3.0 + 16.0 * stretch_k), Vector2(20, 4)), Color("#5cc45c"))
+		var foot_col := limb
+		if fx.get("foguete", false):
+			foot_col = Color("#d42035")   # bota-foguete vermelha
+		ci.draw_set_transform_matrix(base * Transform2D(0.0, q * (0.82 if fx.get("foguete", false) else 0.72), 0.0, fp + Vector2(s * 1.5, 0.5)))
+		ci.draw_texture(foot, -Vector2(12, 7) * 4.0, foot_col)
+		if fx.get("foguete", false):
+			ci.draw_set_transform_matrix(base)
+			var noz := fp + Vector2(s * 1.5 - 3.0, 4.0)
+			ci.draw_rect(Rect2(noz - Vector2(3, 0), Vector2(8, 4)), Color("#3e4752"))
+			ci.draw_colored_polygon(PackedVector2Array([fp + Vector2(s * 1.5 - 8.0, -3.0), fp + Vector2(s * 1.5 - 12.0, 3.0), fp + Vector2(s * 1.5 - 6.0, 2.0)]), Color("#f2c84b"))
+			var fl: float = (9.0 + sin(now * 50.0 + i) * 3.0) if fx.get("foguete_on", false) else (2.5 + sin(now * 30.0 + i) * 1.0)
+			ci.draw_colored_polygon(PackedVector2Array([noz + Vector2(-3, 4), noz + Vector2(1, 4 + fl), noz + Vector2(5, 4)]), Color("#f6a23a"))
+			ci.draw_colored_polygon(PackedVector2Array([noz + Vector2(-1, 4), noz + Vector2(1, 4 + fl * 0.6), noz + Vector2(3, 4)]), Color("#fff1b8"))
+		if fx.get("cola", false):
+			ci.draw_set_transform_matrix(base)
+			ci.draw_circle(fp + Vector2(s * 1.5, 3.0), 5.5, Color(0.97, 0.96, 0.9))
+			ci.draw_circle(fp + Vector2(s * 1.5 + 4.0, 5.0), 3.0, Color(0.97, 0.96, 0.9))
+			ci.draw_rect(Rect2(fp + Vector2(s * 1.5 - 1.0, 6.0), Vector2(2, 3.0 + 2.0 * fposmod(now * 1.5 + i * 0.5, 1.0))), Color(0.97, 0.96, 0.9))
 	_limb(ci, base, bx * _v(sh[0]), hb, limb, Vector2(0, 3))
 	# corpo + rosto + antena (mola) ou chapéu
 	ci.draw_set_transform_matrix(base * bx * Transform2D(0.0, q, 0.0, -ORIGIN))
@@ -284,10 +319,25 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 		var size := 64.0 * (60.0 * float(ha[2]) / 52.0)
 		ci.draw_set_transform_matrix(base * bx)
 		ci.draw_texture_rect(Data.tex("itens/capacete"), Rect2(_v(ha) - Vector2(size / 2.0, size * 45.0 / 64.0), Vector2(size, size)), false)
-	if fx.get("item", "") == "dinamite":
-		ci.draw_set_transform_matrix(base * bx)
-		var bobd := sin(Time.get_ticks_msec() / 150.0) * 2.0
-		ci.draw_texture_rect(Data.tex("itens/dinamite"), Rect2(_v(ha) + Vector2(-11, -38 + bobd), Vector2(22, 22)), false)
+	var held: String = fx.get("item", "")
+	var tnow := Time.get_ticks_msec() / 1000.0
+	if fx.get("ima", false):
+		held = "ima"
+	if held != "" and not fx.get("furando", false):
+		# o item guardado aparece na mão de trás, balançando
+		ci.draw_set_transform_matrix(base * Transform2D(-0.3 + sin(tnow * 4.0) * 0.12, Vector2.ONE, 0.0, hb + Vector2(-2, -8)))
+		ci.draw_texture_rect(Data.tex("itens/" + held), Rect2(-16, -16, 32, 32), false)
+		if held == "dinamite" and fmod(tnow, 0.16) < 0.08:
+			ci.draw_circle(Vector2(8, -12), 2.2, Color("#fff4c8"))
+		if held == "ima":
+			for k in 2:
+				var rr := 10.0 + fposmod(tnow * 30.0 + k * 9.0, 18.0)
+				ci.draw_arc(Vector2(0, -6), rr, -2.4, -0.7, 8, Color(0.83, 0.13, 0.21, 1.0 - rr / 28.0), 1.4, true)
+	if fx.get("martelao", false) and fmod(tnow, 0.9) < 0.15:
+		ci.draw_set_transform_matrix(base)
+		var gl := hf + Vector2.from_angle(pose["hammer_ang"] - 1.2) * 14.0
+		ci.draw_line(gl - Vector2(5, 0), gl + Vector2(5, 0), Color.WHITE, 1.6, true)
+		ci.draw_line(gl - Vector2(0, 5), gl + Vector2(0, 5), Color.WHITE, 1.6, true)
 	_limb(ci, base, bx * _v(sh[1]), hf, limb, Vector2(0, 3))
 	var hand := Data.tex("robo/mao")
 	for p in [hb, hf]:
