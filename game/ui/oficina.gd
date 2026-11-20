@@ -39,7 +39,7 @@ func start(dev: String) -> void:
 	main.sandbox = true
 	main.add_player(dev)
 	main.arena_choice = "oficina"
-	main.submode_choice = "ultimo"
+	main.game_mode = "derruba"
 	main.event_level = 1
 	main.events.manual = true
 	main.demo.items_on = false

@@ -39,16 +39,73 @@
       ],
       "max_on_map": 2,
       "lifetime_s": 14,
-      "kinds": ["dinamite", "martelao", "mola", "foguete", "furadeira", "cola", "ima", "teletransporte", "laser", "vortice", "soprador", "congelador"],
-      "teletransporte": {"demora_s": 0.28},
-      "laser": {"carga_s": 0.45, "raio_s": 0.22, "altura_px": 40, "recuo": 520},
-      "vortice": {"throw": [560, 360], "duracao_s": 1.8, "raio_px": 400, "forca": 1500, "explosao_px": 150},
-      "soprador": {"duracao_s": 2.2, "alcance_px": 380, "largura_px": 150, "forca": 780},
-      "congelador": {"vel": 1100, "gelo_s": 1.7, "quebra_mult": 1.5},
-      "ima": {"duration_s": 6, "raio_px": 330, "forca": 1700},
-      "furadeira": {"dash_s": 0.34, "vel": 900},
-      "cola": {"duration_s": 6, "largura": 3, "throw": [540, 340], "vel_max": 170},
-      "foguete": {"duration_s": 7, "empuxo": 9200, "sobe_max": 640},
+      "kinds": [
+        "dinamite",
+        "martelao",
+        "mola",
+        "foguete",
+        "furadeira",
+        "cola",
+        "ima",
+        "teletransporte",
+        "laser",
+        "vortice",
+        "soprador",
+        "congelador"
+      ],
+      "teletransporte": {
+        "demora_s": 0.28
+      },
+      "laser": {
+        "carga_s": 0.45,
+        "raio_s": 0.22,
+        "altura_px": 40,
+        "recuo": 520
+      },
+      "vortice": {
+        "throw": [
+          560,
+          360
+        ],
+        "duracao_s": 1.8,
+        "raio_px": 400,
+        "forca": 1500,
+        "explosao_px": 150
+      },
+      "soprador": {
+        "duracao_s": 2.2,
+        "alcance_px": 380,
+        "largura_px": 150,
+        "forca": 780
+      },
+      "congelador": {
+        "vel": 1100,
+        "gelo_s": 1.7,
+        "quebra_mult": 1.5
+      },
+      "ima": {
+        "duration_s": 6,
+        "raio_px": 330,
+        "forca": 1700
+      },
+      "furadeira": {
+        "dash_s": 0.34,
+        "vel": 900
+      },
+      "cola": {
+        "duration_s": 6,
+        "largura": 3,
+        "throw": [
+          540,
+          340
+        ],
+        "vel_max": 170
+      },
+      "foguete": {
+        "duration_s": 7,
+        "empuxo": 9200,
+        "sobe_max": 640
+      },
       "dinamite": {
         "fuse_s": 1.4,
         "throw": [
@@ -78,69 +135,116 @@
     "stomp_side_push": 320,
     "arenas": [
       {
-        "id": "demolicao", "musica": "partida",
+        "id": "demolicao",
+        "musica": "partida",
         "nome": "Canteiro",
         "dica": "Ilhas de caixotes. Terremoto no fim!"
       },
       {
-        "id": "esteiras", "musica": "fabrica",
+        "id": "esteiras",
+        "musica": "fabrica",
         "nome": "Fábrica de Esteiras",
         "dica": "As esteiras invertem a cada 7 s!"
       },
       {
-        "id": "guindastes", "musica": "altura",
+        "id": "guindastes",
+        "musica": "altura",
         "nome": "Guindastes",
         "dica": "Plataformas que se movem!"
       },
       {
-        "id": "mare", "musica": "caos",
+        "id": "mare",
+        "musica": "caos",
         "nome": "Maré de Lama",
         "dica": "A lama sobe! Suba brigando."
       },
       {
-        "id": "bola", "musica": "caos",
+        "id": "bola",
+        "musica": "caos",
         "nome": "Bola de Demolição",
         "dica": "Cuidado com a bola gigante!"
       },
       {
-        "id": "paiol", "musica": "caos",
+        "id": "paiol",
+        "musica": "caos",
         "nome": "Paiol de TNT",
         "dica": "TNT explode em cadeia!"
       },
       {
-        "id": "torre", "musica": "altura",
+        "id": "torre",
+        "musica": "altura",
         "nome": "Torre em Ruínas",
         "dica": "A câmera sobe! Não fique para trás."
       },
       {
-        "id": "ponte", "musica": "altura",
+        "id": "ponte",
+        "musica": "altura",
         "nome": "Ponte Quebradiça",
         "dica": "A câmera avança! Barris e serra."
       },
       {
-        "id": "gangorras", "musica": "partida",
+        "id": "gangorras",
+        "musica": "partida",
         "nome": "Gangorras",
         "dica": "O peso inclina a tábua!"
       },
       {
-        "id": "prensa", "musica": "fabrica",
+        "id": "prensa",
+        "musica": "fabrica",
         "nome": "Prensa da Fábrica",
         "dica": "Pistões! Alavanca abre o alçapão."
       },
       {
-        "id": "fornalha", "musica": "fabrica",
+        "id": "fornalha",
+        "musica": "fabrica",
         "nome": "Fornalha",
         "dica": "Chamas no chão e barris rolando!"
       }
     ],
     "amassometro": {
       "nota": "empurrão = base + dano% × por; atordoamento = stun_base + dano% × stun_por (máx stun_max)",
-      "chama": {"dano": 14, "kx": 260, "kx_por": 5.0, "ky": 560, "ky_por": 2.5},
-      "prensa": {"dano": 28, "kx": 520, "kx_por": 7.0, "ky": 220, "ky_por": 2.0},
-      "serra": {"dano": 22, "kx": 380, "kx_por": 7.0, "ky": 400, "ky_por": 3.0},
-      "furadeira": {"dano": 18, "kx": 440, "kx_por": 7.0, "ky": 280, "ky_por": 2.5},
-      "laser": {"dano": 22, "kx": 560, "kx_por": 8.0, "ky": 320, "ky_por": 3.0},
-      "barril": {"dano": 14, "kx": 340, "kx_por": 6.5, "ky": 300, "ky_por": 2.5},
+      "chama": {
+        "dano": 14,
+        "kx": 260,
+        "kx_por": 5.0,
+        "ky": 560,
+        "ky_por": 2.5
+      },
+      "prensa": {
+        "dano": 28,
+        "kx": 520,
+        "kx_por": 7.0,
+        "ky": 220,
+        "ky_por": 2.0
+      },
+      "serra": {
+        "dano": 22,
+        "kx": 380,
+        "kx_por": 7.0,
+        "ky": 400,
+        "ky_por": 3.0
+      },
+      "furadeira": {
+        "dano": 18,
+        "kx": 440,
+        "kx_por": 7.0,
+        "ky": 280,
+        "ky_por": 2.5
+      },
+      "laser": {
+        "dano": 22,
+        "kx": 560,
+        "kx_por": 8.0,
+        "ky": 320,
+        "ky_por": 3.0
+      },
+      "barril": {
+        "dano": 14,
+        "kx": 340,
+        "kx_por": 6.5,
+        "ky": 300,
+        "ky_por": 2.5
+      },
       "marretada": {
         "dano": 12,
         "kx": 240,
@@ -194,7 +298,11 @@
         "ky_por": 2.5
       }
     },
-    "aderencia": {"nota": "segurar na parede/borda gasta aderência; recarrega no chão", "parede_s": 1.3, "recarga_s": 0.5},
+    "aderencia": {
+      "nota": "segurar na parede/borda gasta aderência; recarrega no chão",
+      "parede_s": 1.3,
+      "recarga_s": 0.5
+    },
     "recuperacao": {
       "pulo_duplo": 0.82,
       "borda_max_s": 2.0,
@@ -205,40 +313,6 @@
       "quica": 1050,
       "aguenta": 2
     },
-    "submodos": [
-      {
-        "id": "ultimo",
-        "nome": "Último em Pé",
-        "dica": "Derrube todos.\nO último em pé leva ★"
-      },
-      {
-        "id": "vidas",
-        "nome": "Vidas",
-        "dica": "3 vidas cada. Caiu?\nVolta pelo guindaste.",
-        "vidas": 3
-      },
-      {
-        "id": "placar",
-        "nome": "Placar de Demolição",
-        "dica": "90 s · derrubar +3\ncaixote +1 · cair −1",
-        "tempo": 90,
-        "pontos": {
-          "derrubada": 3,
-          "caixote": 1,
-          "queda": -1
-        }
-      },
-      {
-        "id": "batata",
-        "nome": "Batata-Dinamite",
-        "dica": "Passe a dinamite com a\nmarreta antes que exploda!",
-        "pavio": [
-          9,
-          15
-        ],
-        "raio": 170
-      }
-    ],
     "eventos": {
       "intervalo_s": [
         0,
@@ -312,7 +386,57 @@
           "dur": 9
         }
       ]
-    }
+    },
+    "modos": [
+      {
+        "id": "derruba",
+        "nome": "DERRUBA",
+        "dica": "Tire os rivais da plataforma.\nCada um tem 3 vidas.",
+        "ok": true,
+        "arenas": [
+          "demolicao",
+          "guindastes",
+          "gangorras",
+          "esteiras",
+          "prensa"
+        ],
+        "itens": true
+      },
+      {
+        "id": "batata",
+        "nome": "BATATA-DINAMITE",
+        "dica": "Passe a dinamite com a marreta\nantes que ela exploda!",
+        "ok": true,
+        "arenas": [
+          "paiol",
+          "fornalha"
+        ],
+        "itens": false,
+        "raio": 170
+      },
+      {
+        "id": "rei",
+        "nome": "REI DA OBRA",
+        "dica": "Segure o capacete de ouro\no máximo que puder",
+        "ok": false,
+        "arenas": [
+          "bola"
+        ],
+        "itens": true
+      },
+      {
+        "id": "fuga",
+        "nome": "FUGA",
+        "dica": "A obra desaba atrás de você:\ncorra e não fique para trás!",
+        "ok": false,
+        "arenas": [
+          "torre",
+          "ponte",
+          "mare"
+        ],
+        "itens": true
+      }
+    ]
   },
   "bots": {
     "nota": "react_s = tempo de reação; hammer_acc = chance de marretar quando dá; safety = chance de checar buraco antes de andar",

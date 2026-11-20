@@ -1,7 +1,7 @@
 extends Node2D
-## Partida: ENTRADA → ESCOLHA → CONSTRUÇÃO → CORRIDA → PLACAR → (próxima rodada | VITÓRIA).
-## Tempos e pontos em data/scoring.json; peças em data/pieces.json.
-## Debug: F1 hitboxes/info · F2 pula fase · F3 troca peça · F4 troca dono · clique esq. coloca, dir. remove · F5 jogador parado · F6 câmera lenta.
+## Partida: MENU → MODO → ARENA → AJUSTES → ENTRADA → RODADA → PLACAR → (próxima rodada | VITÓRIA).
+## Regras de cada modo em modes/demolicao.gd + data/modos.json (modos: derruba, batata, rei, fuga).
+## Debug: F1 hitboxes/info · F2 pula fase · F5 jogador parado · F6 câmera lenta.
 
 const Level := preload("res://level/level.gd")
 const Background := preload("res://level/background.gd")
@@ -15,19 +15,12 @@ const Menus := preload("res://ui/menus.gd")
 const Eventos := preload("res://modes/eventos.gd")
 const Oficina := preload("res://ui/oficina.gd")
 const Garagem := preload("res://ui/garagem.gd")
-const PIECE_SCRIPTS := {
-	"P01": preload("res://pieces/viga.gd"),
-	"P02": preload("res://pieces/mola.gd"),
-	"P03": preload("res://pieces/serra.gd"),
-	"P04": preload("res://pieces/esteira.gd"),
-}
 const T := 64
-const MILESTONE := 1
 
-enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS, SUBMODOS, AJUSTES, EVENTOS, CONTROLES, INTRO, CONFIGPAD, GARAGEM }
+enum S { JOIN, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS, AJUSTES, EVENTOS, CONTROLES, INTRO, CONFIGPAD, GARAGEM }
 var state := S.INTRO   # abre com a intro animada (os testes pulam direto para a entrada)
 var paused := false
-const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.SUBMODOS, S.AJUSTES, S.EVENTOS, S.CONTROLES, S.INTRO, S.CONFIGPAD, S.GARAGEM]
+const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.AJUSTES, S.EVENTOS, S.CONTROLES, S.INTRO, S.CONFIGPAD, S.GARAGEM]
 var sandbox := false          # OFICINA: ambiente de testes (respawn infinito, rodada sem fim)
 var oficina: Node = null
 var garagem
@@ -36,29 +29,19 @@ var lost_pads: Array = []      # jogadores cujo controle desconectou no meio da 
 var timer := 0.0
 var round_no := 0
 var players: Array = []      # {dev, color, score, piece, sel, unlock, cursor, ghost, placed, rep}
-var pieces: Array = []
-var conveyor: Array = []
-var pick_order: Array = []
 var robots: Array = []
 var finish_order: Array = []
-var round_kills := {}
-var round_hammer := {}
-var round_points: Array = []
-var no_finish_streak := 0
-var embargo_msg := ""
 var countdown := 0.0
 var end_delay := -1.0
 var winner := -1
 var debug := false
-var debug_piece := 0
-var debug_owner := 0
 var floaters: Array = []     # textos flutuantes {pos, text, color, t}
 var puffs: Array = []        # poeira {pos, t, r}
 var sparks: Array = []       # estrelinhas {pos, vel, t, rot}
 var shake_amt := 0.0
 var shake_on := true          # OPÇÕES > tremor da tela
 var door_open := 0.0
-var mode := "demolicao"      # Modo Festa: "demolicao" · modo antigo de peças: "construcao" (F7 na entrada)
+var mode := "demolicao"      # motor das partidas (o modo de jogo escolhido fica em game_mode)
 var demo: Node
 var events: Node2D = null   # eventos dinâmicos (modes/eventos.gd)
 var bots: Node
@@ -66,7 +49,7 @@ var menus: Node
 var fall_log: Array = []
 var self_falls := 0          # quedas sem ter levado golpe nos últimos 2 s (bots: deve ficar perto de 0)
 var arena_choice := "sorteio"
-var submode_choice := "ultimo"   # Demolição: ultimo, vidas, placar, batata
+var game_mode := "derruba"       # modo escolhido no menu: derruba, batata, rei, fuga (data/modos.json → modos)
 var event_level := 2             # AJUSTES: 0 desligados, 1 poucos, 2 normal, 3 caos   # arena da Demolição: "sorteio" ou o id do .lvl
 var bot_level := 1            # 0 fácil, 1 médio, 2 difícil (M na entrada)
 var match_over := false
@@ -77,10 +60,8 @@ var level: Level
 var bg: Background
 var bg_layer: CanvasLayer
 var camera: Camera2D
-var pieces_root: Node2D
 var robots_root: Node2D
 var overlay: Node2D
-var conveyor_root: Node2D
 var hud: Hud
 var rng := RandomNumberGenerator.new()
 var cam_zoom := 1.0
@@ -104,8 +85,6 @@ func _ready() -> void:
 	level = Level.new()
 	world.add_child(level)
 	level.load_level("canteiro")
-	pieces_root = Node2D.new()
-	world.add_child(pieces_root)
 	events = Eventos.new()
 	events.setup(self)
 	world.add_child(events)
@@ -119,11 +98,6 @@ func _ready() -> void:
 	hud = Hud.new()
 	hud.main = self
 	hud_layer.add_child(hud)
-	var conv_layer := CanvasLayer.new()
-	conv_layer.layer = 2
-	add_child(conv_layer)
-	conveyor_root = Node2D.new()
-	conv_layer.add_child(conveyor_root)
 	demo = Demolicao.new()
 	demo.setup(self)
 	add_child(demo)
@@ -170,7 +144,7 @@ func _on_pad_changed(dev: String, connected: bool) -> void:
 	if state == S.JOIN:
 		players.remove_at(i)
 		PlayerInput.slots.remove_at(i)
-	elif state in [S.PICK, S.BUILD, S.RUN, S.SCORE, S.WIN]:
+	elif state in [S.RUN, S.SCORE, S.WIN]:
 		if not (i in lost_pads):
 			lost_pads.append(i)
 		if state != S.WIN:
@@ -281,9 +255,6 @@ func go_menu() -> void:
 	lost_pads.clear()
 	events.reset_round()
 	_clear_robots()
-	for pc in pieces:
-		pc.queue_free()
-	pieces.clear()
 	players.clear()
 	PlayerInput.slots.clear()
 	for k in PlayerInput.virtual.keys():
@@ -296,16 +267,10 @@ func go_menu() -> void:
 func go_join() -> void:
 	state = S.JOIN
 
-func implemented_ids() -> Array:
-	return Data.piece_ids(MILESTONE, PIECE_SCRIPTS.keys())
-
 func player_color(p: int) -> Color:
 	if p >= 0 and p < players.size():
 		return Data.COLORS[players[p]["color"]]
 	return Data.COLORS[clampi(p, 0, 3)]
-
-func timers(key: String) -> float:
-	return float(Data.scoring["timers"][key])
 
 # ---------------------------------------------------------------- loop
 ## Música de cada tela.
@@ -313,12 +278,12 @@ func _update_music() -> void:
 	var tense := false
 	match state:
 		S.WIN: Audio.music("vitoria", false)
-		S.PICK, S.BUILD, S.RUN, S.SCORE:
+		S.RUN, S.SCORE:
 			var nm := "partida"
 			if mode == "demolicao" and demo.arena.has("musica"):
 				nm = String(demo.arena["musica"])   # cada família de arena tem sua música
-				tense = state == S.RUN and (demo.quaking or (demo.submode() == "placar" and demo.time_left < 15.0)
-					or (demo.submode() == "batata" and demo.bomb_holder >= 0 and demo.bomb_fuse < 3.0)
+				tense = state == S.RUN and (demo.quaking
+					or (demo.rule() == "batata" and demo.bomb_holder >= 0 and demo.bomb_fuse < 3.0)
 					or (demo.fx != null and is_instance_valid(demo.fx) and demo.fx.scroll_on and demo.t > 20.0))
 			Audio.music(nm)
 		_: Audio.music("menu")
@@ -336,7 +301,7 @@ func _physics_process(dt: float) -> void:
 		hud.queue_redraw()
 		overlay.queue_redraw()
 		return
-	if state in [S.PICK, S.BUILD, S.RUN, S.SCORE]:
+	if state in [S.RUN, S.SCORE]:
 		for i in players.size():
 			if sandbox and not players[i].get("bot", false) and PlayerInput.pressed(i, "start"):
 				oficina.toggle()   # na Oficina, START abre o painel de testes
@@ -351,19 +316,16 @@ func _physics_process(dt: float) -> void:
 	world.visible = not (state in MENU_STATES)   # nos menus aparece o cenário próprio do menu, não o mapa
 	match state:
 		S.JOIN: _join_update()
-		S.PICK: _pick_update(dt)
-		S.BUILD: _build_update(dt)
 		S.RUN:
 			if sandbox:
 				oficina.tick()
 				_sandbox_join()
-			if mode == "demolicao":
-				var t0 := Time.get_ticks_usec()
-				bots.update(dt)
-				var t1 := Time.get_ticks_usec()
-				demo.update(dt)
-				perf_acc["bots"] = perf_acc.get("bots", 0.0) + (t1 - t0) / 1000.0
-				perf_acc["demo"] = perf_acc.get("demo", 0.0) + (Time.get_ticks_usec() - t1) / 1000.0
+			var t0 := Time.get_ticks_usec()
+			bots.update(dt)
+			var t1 := Time.get_ticks_usec()
+			demo.update(dt)
+			perf_acc["bots"] = perf_acc.get("bots", 0.0) + (t1 - t0) / 1000.0
+			perf_acc["demo"] = perf_acc.get("demo", 0.0) + (Time.get_ticks_usec() - t1) / 1000.0
 			_run_update(dt)
 		S.SCORE:
 			timer -= dt
@@ -583,165 +545,12 @@ func start_match() -> void:
 		p["score"] = 0
 		p["stats"] = {"derrubadas": 0, "caixotes": 0, "quedas": 0}
 	match_over = false
-	if mode == "demolicao":
-		for pc in pieces:
-			pc.queue_free()
-		pieces.clear()
-		round_no = 0
-		winner = -1
-		_demo_next_round()
-		return
-	if level.id != "canteiro":
-		load_arena("canteiro")
-	for pc in pieces:
-		pc.queue_free()
-	pieces.clear()
 	round_no = 0
-	no_finish_streak = 0
 	winner = -1
-	start_pick()
+	_demo_next_round()
 
 # ---------------------------------------------------------------- escolha
-func start_pick() -> void:
-	_clear_robots()
-	round_no += 1
-	embargo_msg = ""
-	state = S.PICK
-	timer = timers("pick_seconds")
-	var pool := implemented_ids()
-	conveyor = []
-	for i in players.size() + int(Data.scoring["conveyor_extra_pieces"]):
-		conveyor.append(pool[rng.randi() % pool.size()])
-	var keyed := []
-	for i in players.size():
-		keyed.append([players[i]["score"], rng.randf(), i])
-	keyed.sort()
-	pick_order = keyed.map(func(k): return k[2])
-	for k in pick_order.size():
-		var p: Dictionary = players[pick_order[k]]
-		p["piece"] = ""
-		p["sel"] = k % conveyor.size()
-		p["unlock"] = k * timers("pick_seconds") * 0.12
-	_rebuild_conveyor()
-
-func _rebuild_conveyor() -> void:
-	for ch in conveyor_root.get_children():
-		ch.queue_free()
-	var n := conveyor.size()
-	for i in n:
-		if conveyor[i] == "":
-			continue
-		var pc := make_piece(conveyor[i], -1, Vector2i.ZERO)
-		var sz := Vector2(pc.size_tiles() * T)
-		pc.position = conveyor_slot(i) - sz / 2.0
-		conveyor_root.add_child(pc)
-
-func conveyor_slot(i: int) -> Vector2:
-	var n := conveyor.size()
-	return Vector2(960 + (i - (n - 1) / 2.0) * 250, 560)
-
-func _pick_update(dt: float) -> void:
-	timer -= dt
-	var elapsed := timers("pick_seconds") - timer
-	for i in pick_order:
-		var p: Dictionary = players[i]
-		if p["piece"] != "":
-			continue
-		if PlayerInput.pressed(i, "left"):
-			p["sel"] = posmod(p["sel"] - 1, conveyor.size())
-		if PlayerInput.pressed(i, "right"):
-			p["sel"] = posmod(p["sel"] + 1, conveyor.size())
-		if PlayerInput.pressed(i, "jump") and elapsed >= p["unlock"] and conveyor[p["sel"]] != "":
-			p["piece"] = conveyor[p["sel"]]
-			conveyor[p["sel"]] = ""
-			_rebuild_conveyor()
-	var all_done := players.all(func(p): return p["piece"] != "")
-	if all_done or timer <= 0.0:
-		for i in pick_order:
-			if players[i]["piece"] == "":
-				var left := conveyor.filter(func(x): return x != "")
-				players[i]["piece"] = left[rng.randi() % left.size()]
-				conveyor[conveyor.find(players[i]["piece"])] = ""
-		_rebuild_conveyor()
-		start_build()
-
 # ---------------------------------------------------------------- construção
-func start_build() -> void:
-	for ch in conveyor_root.get_children():
-		ch.queue_free()
-	state = S.BUILD
-	timer = timers("build_seconds")
-	for i in players.size():
-		var p: Dictionary = players[i]
-		p["placed"] = false
-		p["rep"] = 0.0
-		p["cursor"] = Vector2i(9 + i * 4, 5)
-		p["ghost"] = make_piece(p["piece"], i, p["cursor"])
-		p["ghost"].modulate = Color(1, 1, 1, 0.7)
-		pieces_root.add_child(p["ghost"])
-
-func make_piece(id: String, owner: int, c: Vector2i, r: int = 0) -> Node2D:
-	var pc: Node2D = PIECE_SCRIPTS[id].new()
-	pc.main = self
-	pc.setup(id, owner, players[owner]["color"] if owner >= 0 and owner < players.size() else (owner if owner >= 0 else 4), c, r)
-	return pc
-
-func can_place(pc: Node2D) -> bool:
-	for c in pc.cells():
-		if not level.can_build(c):
-			return false
-		for other in pieces:
-			if c in other.cells():
-				return false
-	return true
-
-func _build_update(dt: float) -> void:
-	timer -= dt
-	for i in players.size():
-		var p: Dictionary = players[i]
-		if p["placed"]:
-			continue
-		var g: Node2D = p["ghost"]
-		var d := Vector2i.ZERO
-		var dirs := {"left": Vector2i.LEFT, "right": Vector2i.RIGHT, "up": Vector2i.UP, "down": Vector2i.DOWN}
-		var any_held := false
-		for a in dirs:
-			if PlayerInput.pressed(i, a):
-				d += dirs[a]
-				p["rep"] = 0.22
-			elif PlayerInput.held(i, a):
-				any_held = true
-		if d == Vector2i.ZERO and any_held:
-			p["rep"] -= dt
-			if p["rep"] <= 0.0:
-				p["rep"] = 0.07
-				for a in dirs:
-					if PlayerInput.held(i, a):
-						d += dirs[a]
-		if PlayerInput.pressed(i, "hammer"):
-			g.rotate_piece()
-		var sz: Vector2i = g.size_tiles()
-		var cur: Vector2i = p["cursor"] + d
-		cur.x = clampi(cur.x, 0, level.cols - sz.x)
-		cur.y = clampi(cur.y, 0, level.rows - sz.y)
-		p["cursor"] = cur
-		g.move_to(cur)
-		if PlayerInput.pressed(i, "jump") and can_place(g):
-			place_piece(g)
-			p["placed"] = true
-	var all_done := players.all(func(p): return p["placed"])
-	if all_done or timer <= 0.0:
-		for p in players:
-			if not p["placed"]:
-				p["ghost"].queue_free()
-		start_run()
-
-func place_piece(pc: Node2D) -> void:
-	pc.activate(round_no)
-	if pc.get_parent() == null:
-		pieces_root.add_child(pc)
-	pieces.append(pc)
-
 # ---------------------------------------------------------------- corrida
 ## Caixote quebrado: tábuas e lascas voando.
 func break_crate(center: Vector2) -> void:
@@ -774,12 +583,10 @@ func start_run() -> void:
 func start_run_at(spots: Array) -> void:
 	_clear_robots()
 	state = S.RUN
-	timer = timers("run_seconds")
+	timer = 0.0
 	countdown = 1.5
 	end_delay = -1.0
 	finish_order = []
-	round_kills = {}
-	round_hammer = {}
 	for i in players.size():
 		var r: CharacterBody2D = Robot.new()
 		r.setup(i, players[i]["color"], self, players[i]["acc"], players[i]["model"])
@@ -798,30 +605,13 @@ func _run_update(dt: float) -> void:
 	if end_delay >= 0.0:
 		end_delay -= dt
 		if end_delay < 0.0:
-			if mode == "demolicao":
-				state = S.SCORE
-				timer = float(demo.cfg["score_seconds"])
-				match_over = demo.end_round()
-			else:
-				start_score()
-		return
-	if mode == "demolicao":
-		return
-	timer -= dt
-	if timer <= 0.0:
-		for r in robots:
-			if r.alive and not r.finished:
-				kill(r, -1, null)
-	if robots.all(func(r): return not r.alive or r.finished):
-		end_delay = 1.0
+			state = S.SCORE
+			timer = float(demo.cfg["score_seconds"])
+			match_over = demo.end_round()
 
 func check_contacts(r: CharacterBody2D) -> void:
 	if state != S.RUN or not r.alive or r.finished:
 		return
-	for pc in pieces:
-		pc.interact(r)
-		if not r.alive:
-			return
 	var rr: Rect2 = r.rect()
 	for h in level.hazard_rects:
 		if rr.intersects(h):
@@ -841,7 +631,7 @@ func kill(r: CharacterBody2D, owner: int, pc: Node2D) -> void:
 		fall_log.append("P%d %s %s" % [r.pid + 1, str(Vector2i(r.position / 64.0)), r.fall_reason if r.fall_reason != "" else "andou"])
 		if r.has_meta("takeoff"):
 			print("    QUEDA P%d — saiu do chão: %s" % [r.pid + 1, r.get_meta("takeoff")])
-	if mode == "demolicao":
+	if true:
 		var cause: String = r.last_cause if r.last_hit <= 2.5 or r.last_cause == "ficou parado" or r.last_cause == "lama" else "caiu sozinho"
 		if cause == "":
 			cause = "caiu sozinho"
@@ -859,11 +649,6 @@ func kill(r: CharacterBody2D, owner: int, pc: Node2D) -> void:
 		if demo.intercept_kill(r):
 			return
 	r.eliminate()
-	if owner >= 0 and owner != r.pid:
-		round_kills[owner] = round_kills.get(owner, 0) + 1
-		if pc != null:
-			pc.kills += 1
-		float_text(r.position + Vector2(0, -90), "+%d" % int(Data.scoring["points"]["kill_by_owned_piece"]), player_color(owner))
 
 func finish(r: CharacterBody2D) -> void:
 	r.finish()
@@ -871,8 +656,7 @@ func finish(r: CharacterBody2D) -> void:
 	float_text(r.position + Vector2(0, -100), "1º!" if finish_order.size() == 1 else "%dº" % finish_order.size(), player_color(r.pid))
 
 func use_item(r: CharacterBody2D) -> void:
-	if mode == "demolicao":
-		demo.use_item(r)
+	demo.use_item(r)
 
 ## Bot entra como jogador com dispositivo virtual (o cérebro em modes/bots.gd aperta os botões).
 func add_bot() -> void:
@@ -912,102 +696,23 @@ func remove_last_bot() -> void:
 			return
 
 func try_hammer(r: CharacterBody2D) -> void:
-	if mode == "demolicao":
-		demo.hammer(r)
-		return
-	if r.hammer_left <= 0:
-		return
-	var reach := float(Data.ctrl["hammer_reach_px"])
-	var rr: Rect2 = r.rect()
-	var hit := Rect2(rr.end.x if r.facing > 0 else rr.position.x - reach, rr.position.y, reach, rr.size.y)
-	var own_ok: bool = Data.scoring["hammer"]["can_smash_own"]
-	for pc in pieces:
-		if pc.owner_id < 0 or (pc.owner_id == r.pid and not own_ok):
-			continue
-		if hit.intersects(pc.world_rect()):
-			r.hammer_left -= 1
-			round_hammer[r.pid] = round_hammer.get(r.pid, 0) + 1
-			float_text(pc.world_rect().get_center(), "+%d" % int(Data.scoring["points"]["hammer_smash"]), player_color(r.pid))
-			for k in 4:
-				dust(pc.world_rect().get_center() + Vector2(rng.randf_range(-40, 40), rng.randf_range(-10, 30)))
-			remove_piece(pc)
-			return
-
-func remove_piece(pc: Node2D) -> void:
-	pieces.erase(pc)
-	pc.queue_free()
-
-func robot_near(owner: int, pos: Vector2, dist: float, is_owner: bool) -> bool:
-	for r in robots:
-		if r.alive and not r.finished and (r.pid == owner) == is_owner:
-			if r.rect().get_center().distance_to(pos) < dist:
-				return true
-	return false
+	demo.hammer(r)
 
 func danger_near(r: CharacterBody2D) -> bool:
 	var c: Vector2 = r.rect().get_center()
-	for pc in pieces:
-		if pc.is_hazard_for(r.pid) and pc.world_rect().get_center().distance_to(c) < 1.6 * T:
-			return true
 	for h in level.hazard_rects:
 		if h.get_center().distance_to(c) < 1.3 * T:
 			return true
 	return false
 
 # ---------------------------------------------------------------- placar
-func start_score() -> void:
-	state = S.SCORE
-	timer = timers("score_seconds")
-	var pts: Dictionary = Data.scoring["points"]
-	var easy: Dictionary = Data.scoring["rules"]["too_easy"]
-	var n := players.size()
-	var all_finished := finish_order.size() == n
-	round_points = []
-	for i in n:
-		var b := {"finish": 0, "first": 0, "kills": 0, "hammer": 0}
-		if i in finish_order:
-			if not (all_finished and easy["enabled"] and easy["zero_finish_points"]):
-				b["finish"] = int(pts["finish"])
-			if finish_order[0] == i and (not all_finished or not easy["enabled"] or easy["keeps_first_bonus"]):
-				b["first"] = int(pts["first_bonus"])
-		b["kills"] = mini(round_kills.get(i, 0) * int(pts["kill_by_owned_piece"]), int(pts["kill_cap_per_round"]))
-		b["hammer"] = round_hammer.get(i, 0) * int(pts["hammer_smash"])
-		b["total"] = b["finish"] + b["first"] + b["kills"] + b["hammer"]
-		b["all_finished"] = all_finished
-		players[i]["score"] += b["total"]
-		round_points.append(b)
-	# embargo: ninguém chega por N rodadas → demole a peça que mais eliminou
-	var emb: Dictionary = Data.scoring["rules"]["embargo"]
-	no_finish_streak = no_finish_streak + 1 if finish_order.is_empty() else 0
-	if emb["enabled"] and no_finish_streak >= int(emb["embargo_after_rounds"]) and not pieces.is_empty():
-		var best: Node2D = pieces[0]
-		for pc in pieces:
-			if pc.kills > best.kills or (pc.kills == best.kills and pc.placed_round < best.placed_round):
-				best = pc
-		embargo_msg = "Embargo! A peça que mais eliminou foi demolida."
-		remove_piece(best)
-		no_finish_streak = 0
-
 func _after_score() -> void:
-	if mode == "demolicao":
-		if match_over:
-			winner = demo.round_winner
-			state = S.WIN
-			_clear_robots()
-		else:
-			_demo_next_round()
-		return
-	var target := int(Data.scoring["target_points"])
-	var best := -1
-	for i in players.size():
-		if players[i]["score"] >= target and (best < 0 or players[i]["score"] > players[best]["score"]):
-			best = i
-	if best >= 0:
-		winner = best
+	if match_over:
+		winner = demo.round_winner
 		state = S.WIN
 		_clear_robots()
 	else:
-		start_pick()
+		_demo_next_round()
 
 # ---------------------------------------------------------------- efeitos
 func float_text(pos: Vector2, text: String, col: Color) -> void:
@@ -1062,26 +767,9 @@ func _draw_overlay() -> void:
 			for k in 3:
 				var ang := Time.get_ticks_msec() / 160.0 + k * TAU / 3.0
 				overlay.draw_texture_rect(star, Rect2(hc + Vector2(cos(ang) * 22, sin(ang) * 7) - Vector2(7, 7), Vector2(14, 14)), false)
-	if state == S.BUILD:
-		for i in players.size():
-			var p: Dictionary = players[i]
-			if p["placed"]:
-				continue
-			var g: Node2D = p["ghost"]
-			var r: Rect2 = g.world_rect().grow(4)
-			var col := player_color(i)
-			overlay.draw_rect(r, Data.INK, false, 8)
-			overlay.draw_rect(r, col, false, 4)
-			if not can_place(g):
-				overlay.draw_line(r.position, r.end, Color(1, 1, 1, 0.9), 6)
-				overlay.draw_line(Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y), Color(1, 1, 1, 0.9), 6)
 	if debug:
 		for r in robots:
 			overlay.draw_rect(r.rect(), Color(0, 1, 0, 0.8), false, 2)
-		for pc in pieces:
-			overlay.draw_rect(pc.world_rect(), Color(1, 1, 0, 0.8), false, 2)
-			if pc.has_method("hazard_rect"):
-				overlay.draw_rect(pc.hazard_rect(), Color(1, 0, 0, 0.9), false, 2)
 		for h in level.hazard_rects:
 			overlay.draw_rect(h, Color(1, 0, 0, 0.9), false, 2)
 		overlay.draw_rect(level.goal_rect, Color(0, 1, 1, 0.9), false, 2)
@@ -1092,8 +780,6 @@ func _input(e: InputEvent) -> void:
 		match e.keycode:
 			KEY_F1: debug = not debug
 			KEY_F2: skip_phase()
-			KEY_F3: debug_piece = (debug_piece + 1) % implemented_ids().size()
-			KEY_F4: debug_owner = (debug_owner + 1) % maxi(players.size(), 1)
 			KEY_F5:
 				if state == S.JOIN and players.size() < 4:
 					PlayerInput.virtual["parado%d" % players.size()] = {}
@@ -1103,9 +789,6 @@ func _input(e: InputEvent) -> void:
 			KEY_TAB:
 				if sandbox and state == S.RUN:
 					oficina.toggle()
-			KEY_F7:
-				if state == S.JOIN:
-					mode = "construcao" if mode == "demolicao" else "demolicao"
 			KEY_B:
 				if state == S.JOIN:
 					add_bot()
@@ -1118,24 +801,6 @@ func _input(e: InputEvent) -> void:
 					for p in players:
 						if p.get("bot", false):
 							p["level"] = bot_level
-	elif e is InputEventMouseButton and e.pressed and debug and mode == "construcao" and state in [S.BUILD, S.RUN]:
-		# ferramenta de depuração do modo clássico (só com F1 ligado): clique coloca/remove peça
-		var c := Vector2i((world.get_local_mouse_position() / T).floor())
-		if e.button_index == MOUSE_BUTTON_LEFT:
-			var pc := make_piece(implemented_ids()[debug_piece], debug_owner, c)
-			var ok := true
-			for cc in pc.cells():
-				if level.ch_at(cc) == "#":
-					ok = false
-			if ok:
-				place_piece(pc)
-			else:
-				pc.free()
-		elif e.button_index == MOUSE_BUTTON_RIGHT:
-			for pc in pieces:
-				if c in pc.cells():
-					remove_piece(pc)
-					break
 
 ## F11: tela cheia <-> janela (o jogo abre em tela cheia: display/window/size/mode=3).
 func toggle_fullscreen() -> void:
@@ -1151,11 +816,10 @@ func skip_phase() -> void:
 				PlayerInput.virtual["parado%d" % players.size()] = {}
 				add_player("parado%d" % players.size())
 			start_match()
-		S.PICK, S.BUILD, S.SCORE: timer = 0.0
+		S.SCORE: timer = 0.0
 		S.RUN:
-			if mode == "demolicao":
-				demo.round_winner = -1
-				end_delay = 0.01
+			demo.round_winner = -1
+			end_delay = 0.01
 			countdown = 0.0
 			timer = 0.0
 			for r in robots:

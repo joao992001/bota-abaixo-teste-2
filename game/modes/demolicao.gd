@@ -32,10 +32,11 @@ var death_log: Array = []
 var feed: Array = []         # avisos na tela: "P3 derrubou P1"
 var net_hp := {}             # rede: Vector2i -> quedas que ainda aguenta
 # ---- submodos (Último em Pé, Vidas, Placar de Demolição, Batata-Dinamite)
-var sub := {}                # submodo atual (data/modos.json → demolicao.submodos)
-var lives := {}              # Vidas: pid -> vidas restantes
-var points := {}             # Placar: pid -> pontos da rodada
-var time_left := 0.0         # Placar: tempo restante
+var sub := {}                # modo atual (data/modos.json → demolicao.modos): derruba, batata, rei, fuga
+var lives := {}              # Derruba: pid -> vidas restantes
+var lives_setting := 3       # AJUSTES (Derruba): vidas por rodada
+var fuse_setting := 1        # AJUSTES (Batata): 0 curto, 1 normal, 2 longo
+const FUSES := [[6, 10], [9, 15], [13, 20]]
 var bomb_holder := -1        # Batata: quem está com a dinamite
 var bomb_fuse := 0.0
 var bomb_next := 0.0
@@ -44,14 +45,24 @@ var bomb_beep := 0.0
 var items_on := true         # AJUSTES: itens ligados
 var help_losers := true      # AJUSTES: quem está em último começa com capacete
 
-func submode() -> String:
-	return String(sub.get("id", "ultimo"))
+## Modo de jogo da partida (derruba, batata, rei, fuga).
+func rule() -> String:
+	return String(sub.get("id", "derruba"))
 
-func find_submode(id: String) -> Dictionary:
-	for s in cfg["submodos"]:
-		if s["id"] == id:
-			return s
-	return cfg["submodos"][0]    # {arena, t, victim, cause, by, round}    # TNT quebrado explode logo depois: {pos, t}
+func find_mode(id: String) -> Dictionary:
+	for m in cfg["modos"]:
+		if m["id"] == id:
+			return m
+	return cfg["modos"][0]
+
+## Arenas do modo (na ordem do data/modos.json).
+func mode_arenas(id: String) -> Array:
+	var ids: Array = find_mode(id).get("arenas", [])
+	var out := []
+	for a in cfg["arenas"]:
+		if a["id"] in ids:
+			out.append(a)
+	return out    # {arena, t, victim, cause, by, round}    # TNT quebrado explode logo depois: {pos, t}
 
 func setup(m: Node) -> void:
 	main = m
@@ -65,15 +76,19 @@ func item_cfg(kind: String) -> Dictionary:
 
 ## Arena da rodada: a escolhida ou, no sorteio, uma diferente da anterior.
 func pick_arena() -> Dictionary:
-	var list: Array = cfg["arenas"]
+	var list: Array = mode_arenas(main.game_mode)
+	if list.is_empty():
+		list = cfg["arenas"]
 	var choice: String = main.arena_choice
 	if choice == "oficina":
 		return {"id": "oficina", "nome": "Oficina", "dica": "Teste à vontade: START abre o painel", "musica": "partida"}
 	if choice != "sorteio":
-		for a in list:
+		for a in cfg["arenas"]:   # arena escolhida (de qualquer modo: Oficina e testes podem pedir qualquer uma)
 			if a["id"] == choice:
 				return a
 	var opts := list.filter(func(a): return a["id"] != last_arena)
+	if opts.is_empty():
+		opts = list
 	return opts[main.rng.randi() % opts.size()]
 
 ## Nova rodada: arena nova, robôs nos spawns de acordo com o número de jogadores.
@@ -100,13 +115,10 @@ func start_round() -> void:
 	quake_t = 0.0
 	quaking = false
 	round_winner = -1
-	sub = find_submode(main.submode_choice)
+	sub = find_mode(main.game_mode)
 	lives.clear()
-	points.clear()
 	for i in main.players.size():
-		lives[i] = int(sub.get("vidas", 1))
-		points[i] = 0
-	time_left = float(sub.get("tempo", 0))
+		lives[i] = lives_setting if rule() == "derruba" else 1
 	bomb_holder = -1
 	bomb_next = 4.0
 	bomb_pass_cd = 0.0
@@ -230,8 +242,8 @@ func update(dt: float) -> void:
 				break_reason = ""
 	# terremoto depois de um tempo: garante que a rodada acaba
 	var quake_at := float(main.level.prop("terremoto", str(c("quake_start_s"))))
-	if submode() in ["placar", "batata"] or main.sandbox:
-		quake_at = 0.0   # o relógio/dinamite já garante o fim da rodada
+	if rule() == "batata" or main.sandbox:
+		quake_at = 0.0   # a dinamite já garante o fim da rodada
 	if quake_at > 0.0 and t >= quake_at:
 		if not quaking:
 			quaking = true
@@ -254,21 +266,9 @@ func update(dt: float) -> void:
 	for f in feed:
 		f["t"] += dt
 	feed = feed.filter(func(f): return f["t"] < 4.5)
-	_update_submode(dt, alive)
-	# fim da rodada: sobrou 1 (ou ninguém); no Placar, quando o tempo acaba
+	_update_bomb(dt, alive)
+	# fim da rodada: sobrou 1 (ou ninguém)
 	var over: bool = alive.size() <= 1 and main.robots.size() >= 2 and not main.sandbox
-	if submode() == "placar":
-		over = time_left <= 0.0
-	if main.end_delay < 0.0 and over and submode() == "placar":
-		var best := -1
-		var tie := false
-		for i in points:
-			if best < 0 or points[i] > points[best]:
-				best = i
-				tie = false
-			elif points[i] == points[best]:
-				tie = true
-		alive = [] if tie else [main.robots[best]]
 	if main.end_delay < 0.0 and over:
 		round_winner = alive[0].pid if alive.size() == 1 else -1
 		main.end_delay = 1.4
@@ -290,7 +290,7 @@ func _update_items(dt: float, alive: Array) -> void:
 		var span: Array = ic["spawn_every_s"]
 		item_t = main.rng.randf_range(float(span[0]), float(span[1]))
 		if items_on and items.size() < int(ic["max_on_map"]):
-			var kinds: Array = ic["kinds"].filter(func(k): return not (k == "dinamite" and submode() == "batata"))
+			var kinds: Array = ic["kinds"].filter(func(k): return not (k == "dinamite" and rule() == "batata"))
 			spawn_item(kinds[main.rng.randi() % kinds.size()])
 	var lv = main.level
 	for it in items:
@@ -498,7 +498,7 @@ func _draw_canvas() -> void:
 			canvas.draw_circle(p + Vector2.from_angle(ang) * r * 0.35, r * 0.42, Color(1.0, 0.55, 0.15, a))
 		canvas.draw_circle(p, r * 0.45, Color(1.0, 0.85, 0.25, a))
 	# Batata-Dinamite: a dinamite acesa em cima da cabeça de quem está com ela + pavio
-	if submode() == "batata" and bomb_holder >= 0 and bomb_holder < main.robots.size():
+	if rule() == "batata" and bomb_holder >= 0 and bomb_holder < main.robots.size():
 		var h = main.robots[bomb_holder]
 		if h.alive:
 			var hp: Vector2 = h.position + Vector2(0, -122 + sin(now * 10.0) * 3.0)
@@ -623,8 +623,6 @@ func _on_block_broken(cell: Vector2i, kind: String) -> void:
 	var center := Vector2(cell * 64) + Vector2(32, 32)
 	if break_by >= 0 and break_by < main.players.size():
 		main.players[break_by]["stats"]["caixotes"] += 1
-		if submode() == "placar":
-			points[break_by] = points.get(break_by, 0) + int(sub["pontos"]["caixote"])
 	Audio.play("caixote_quebra")
 	if kind == "tnt":
 		tnt_queue.append({"pos": center, "t": 0.18})   # explode logo depois (dá para ver a reação em cadeia)
@@ -641,18 +639,13 @@ func _on_block_broken(cell: Vector2i, kind: String) -> void:
 	main.dust(center)
 	main.break_crate(center)
 
-## Alguém caiu (by = quem derrubou, -1 se ninguém). Os submodos usam isto.
+## Alguém caiu (by = quem derrubou, -1 se ninguém).
 func on_knockout(by: int, victim: int) -> void:
-	if submode() == "placar":
-		var pts: Dictionary = sub["pontos"]
-		if by >= 0:
-			points[by] = points.get(by, 0) + int(pts["derrubada"])
-		points[victim] = points.get(victim, 0) + int(pts["queda"])
 	if victim == bomb_holder:
 		bomb_holder = -1
 		bomb_next = 1.5
 
-## Antes de eliminar: Vidas e Placar trazem o robô de volta pelo guindaste. true = não elimina.
+## Antes de eliminar: na Derruba, quem ainda tem vida volta pelo guindaste. true = não elimina.
 func intercept_kill(r) -> bool:
 	if main.sandbox:
 		Audio.play("eliminado", 1.2, -4.0)
@@ -660,16 +653,12 @@ func intercept_kill(r) -> bool:
 		r.dmg = 0.0
 		respawn(r)
 		return true   # na Oficina ninguém sai
-	match submode():
-		"vidas":
-			lives[r.pid] = lives.get(r.pid, 1) - 1
-			if lives[r.pid] <= 0:
-				return false
-			main.float_text(r.position + Vector2(0, -90), "-1 VIDA", main.player_color(r.pid))
-		"placar":
-			pass
-		_:
-			return false
+	if rule() != "derruba":
+		return false
+	lives[r.pid] = lives.get(r.pid, 1) - 1
+	if lives[r.pid] <= 0:
+		return false
+	main.float_text(r.position + Vector2(0, -90), "-1 VIDA", main.player_color(r.pid))
 	Audio.play("eliminado", 1.2, -4.0)
 	main.dust(r.position + Vector2(0, -30), 1.2)
 	r.dmg = 0.0
@@ -677,20 +666,16 @@ func intercept_kill(r) -> bool:
 	respawn(r)
 	return true
 
-## Placar (relógio) e Batata-Dinamite (pavio, passar com a marreta, explosão).
-func _update_submode(dt: float, alive: Array) -> void:
-	if submode() == "placar":
-		time_left = maxf(time_left - dt, 0.0)
-		if time_left <= 10.0 and int(time_left + dt) != int(time_left) and time_left > 0.0:
-			Audio.play("contagem", 1.3)
-	if submode() != "batata":
+## Batata-Dinamite (pavio, passar com a marreta, explosão).
+func _update_bomb(dt: float, alive: Array) -> void:
+	if rule() != "batata":
 		return
 	bomb_pass_cd = maxf(bomb_pass_cd - dt, 0.0)
 	if bomb_holder < 0:
 		bomb_next -= dt
 		if bomb_next <= 0.0 and alive.size() > 1:
 			var r = alive[main.rng.randi() % alive.size()]
-			var pv: Array = sub["pavio"]
+			var pv: Array = FUSES[clampi(fuse_setting, 0, FUSES.size() - 1)]
 			bomb_holder = r.pid
 			bomb_fuse = main.rng.randf_range(float(pv[0]), float(pv[1]))
 			banner = "P%d  ESTÁ COM A DINAMITE!" % (r.pid + 1)
@@ -719,7 +704,7 @@ func _update_submode(dt: float, alive: Array) -> void:
 
 ## Batata: a marretada passa a dinamite para quem levou o golpe.
 func pass_bomb(from_pid: int, to_pid: int) -> void:
-	if submode() != "batata" or from_pid != bomb_holder or bomb_pass_cd > 0.0:
+	if rule() != "batata" or from_pid != bomb_holder or bomb_pass_cd > 0.0:
 		return
 	bomb_holder = to_pid
 	bomb_pass_cd = 0.6

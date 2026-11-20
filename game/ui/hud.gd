@@ -3,11 +3,8 @@ extends Control
 ## item), título da rodada no topo, entrada de jogadores, placar da rodada e vitória. Menus em ui/menus.gd.
 
 const Kit := preload("res://ui/kit.gd")
-const Piece := preload("res://pieces/piece.gd")
 const RobotVis := preload("res://player/robot_visual.gd")
 const Retrato := preload("res://ui/retrato.gd")
-const PIECE_NAMES := {"P01": "Viga", "P02": "Mola", "P03": "Serra", "P04": "Esteira"}
-const PIECE_HINT := {"P01": "dono atravessa por baixo", "P02": "dono 5 tiles, rival 3", "P03": "elimina rivais", "P04": "a favor do dono"}
 const DIM := Color(0.16, 0.1, 0.18, 0.45)
 const DARK := Color("#2a1a2e")
 const CARD_W := 430.0
@@ -96,12 +93,10 @@ func _draw_all() -> void:
 		return
 	match main.state:
 		S.JOIN: _draw_join()
-		S.PICK: _draw_pick()
-		S.BUILD: _draw_build()
 		S.RUN: _draw_run()
 		S.SCORE: _draw_score()
 		S.WIN: _draw_win()
-	if not main.paused and (main.state in [S.PICK, S.BUILD, S.RUN] or (main.state == S.SCORE and main.mode != "demolicao")):
+	if not main.paused and main.state == S.RUN:
 		_draw_tags()
 	for fl in main.floaters:
 		var k: float = fl["t"] / 1.2
@@ -115,8 +110,7 @@ func _draw_all() -> void:
 		main.menus.draw(self)
 	_draw_toasts()
 	if main.debug:
-		var ids: Array = main.implemented_ids()
-		text(Vector2(20, 1060), "DEBUG  F2 pula fase · F3 peça: %s · F4 dono: P%d · clique coloca/remove · F6 lento" % [PIECE_NAMES[ids[main.debug_piece]], main.debug_owner + 1], 22, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT, -1, 6)
+		text(Vector2(20, 1060), "DEBUG  F2 pula fase · F5 jogador parado · F6 lento", 22, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT, -1, 6)
 
 # ---------------------------------------------------------------- cartões dos jogadores (embaixo) e topo
 func _draw_tags() -> void:
@@ -127,12 +121,6 @@ func _draw_tags() -> void:
 		_card(i, Rect2(x0 + i * (CARD_W + CARD_GAP), CARD_Y, CARD_W, 130))
 	# título da rodada (topo, na faixa do placar)
 	var label := "RODADA %d" % main.round_no
-	if main.mode == "demolicao" and main.demo.submode() == "placar" and main.state == S.RUN:
-		var tl: float = maxf(main.demo.time_left, 0.0)
-		label = "RODADA %d  ·  %d:%02d" % [main.round_no, int(tl) / 60, int(tl) % 60]
-	if main.mode != "demolicao":
-		var names := {S.PICK: "ESCOLHA", S.BUILD: "CONSTRUÇÃO", S.RUN: "CORRIDA", S.SCORE: "PLACAR"}
-		label = "R%d · %s %d" % [main.round_no, names.get(main.state, ""), ceili(maxf(main.timer, 0.0))]
 	Kit.title(self, Vector2(0, 52), label, 46)
 	if main.mode == "demolicao" and main.state == S.RUN:
 		_draw_event_note()
@@ -214,17 +202,17 @@ func _star_pts(c: Vector2, size: float) -> PackedVector2Array:
 ## Selo em cima do cartão (à direita): vidas (corações) ou pontos da rodada, conforme o submodo.
 func _draw_sub_badge(i: int, r: Rect2) -> void:
 	var d = main.demo
-	match d.submode():
-		"vidas":
+	match d.rule():
+		"derruba":
 			var n: int = int(d.lives.get(i, 0))
-			var tot: int = int(d.sub.get("vidas", 3))
+			var tot: int = d.lives_setting
+			if tot <= 1:
+				return
 			var w := 24.0 + tot * 34.0
 			var b := Rect2(r.end.x - w - 14, r.position.y - 30, w, 44)
 			Kit.chunk(self, b, Kit.CREAM, 22, 5, 0.0)
 			for k in tot:
 				_heart(Vector2(b.position.x + 29 + k * 34, b.get_center().y + 1), 13.0, k < n)
-		"placar":
-			Kit.pill(self, Rect2(r.end.x - 184, r.position.y - 30, 170, 44), Kit.CREAM, "%d pts" % int(d.points.get(i, 0)), 26)
 		"batata":
 			if d.bomb_holder == i:
 				var b2 := Rect2(r.end.x - 184, r.position.y - 30, 170, 44)
@@ -331,39 +319,6 @@ func _draw_join() -> void:
 		Kit.sticker(self, Vector2(0, 950), "nenhum controle detectado  ·  OPÇÕES ▸ TESTAR CONTROLES", 26, Color("#ff8a8a"), HORIZONTAL_ALIGNMENT_CENTER, 1920)
 	Kit.pad_hint(self, 960, 1030, [["baixo"], " entrar   ", "◄► cor   ▲▼ robô   ", ["esquerda"], " chapéu   ", ["cima"], " + bot   ", ["direita"], " sair   ", ["start"], " começar"], 30, Color.WHITE, st, 7)
 
-# ---------------------------------------------------------------- clássico: escolha e construção
-func _draw_pick() -> void:
-	draw_rect(Rect2(0, 0, 1920, 1080), DIM)
-	_ribbon_pop("ESCOLHA SUA PEÇA", 260, 860, 56)
-	Kit.sticker(self, Vector2(0, 380), "quem tem menos pontos escolhe primeiro  ·  ◄ ► e PULAR", 30, DARK, HORIZONTAL_ALIGNMENT_CENTER, 1920)
-	var n: int = main.conveyor.size()
-	var elapsed: float = main.timers("pick_seconds") - main.timer
-	for i in n:
-		var c: Vector2 = main.conveyor_slot(i)
-		var card := Rect2(c - Vector2(110, 110), Vector2(220, 220))
-		panel(card, Color.WHITE if main.conveyor[i] != "" else Color(0.7, 0.7, 0.7, 0.6))
-		for k in main.pick_order.size():
-			var pi: int = main.pick_order[k]
-			var p: Dictionary = main.players[pi]
-			if p["piece"] == "" and p["sel"] == i:
-				var col = main.player_color(pi)
-				draw_rect(card.grow(4 + k * 9), col, false, 7)
-				var waiting: bool = elapsed < p["unlock"]
-				Kit.text(self, Vector2(card.position.x + 8 + k * 54, card.end.y + 44), "P%d%s" % [pi + 1, "…" if waiting else ""], 30, col, HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Kit.CREAM)
-		var id: String = main.conveyor[i]
-		if id != "":
-			Kit.text(self, Vector2(card.position.x, card.position.y + 40), PIECE_NAMES[id], 30, DARK, HORIZONTAL_ALIGNMENT_CENTER, 220)
-			Kit.text(self, Vector2(card.position.x, card.end.y - 16), PIECE_HINT[id], 20, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, 220)
-	var y := 820
-	for i in main.players.size():
-		var p: Dictionary = main.players[i]
-		if p["piece"] != "":
-			Kit.sticker(self, Vector2(0, y), "P%d pegou %s" % [i + 1, PIECE_NAMES[p["piece"]]], 30, main.player_color(i), HORIZONTAL_ALIGNMENT_CENTER, 1920)
-			y += 44
-
-func _draw_build() -> void:
-	Kit.sticker(self, Vector2(0, 140), "CONSTRUA!  setas movem · MARRETA gira · PULAR coloca", 34, DARK, HORIZONTAL_ALIGNMENT_CENTER, 1920)
-
 # ---------------------------------------------------------------- corrida / rodada
 func _draw_run() -> void:
 	if main.mode == "demolicao" and main.demo.banner_t > 0.0:
@@ -416,36 +371,7 @@ func _draw_demo_score() -> void:
 				Kit.text(ci, bc + Vector2(-80, 18), "+1", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 160, 12))
 
 func _draw_score() -> void:
-	if main.mode == "demolicao":
-		_draw_demo_score()
-		return
-	draw_rect(Rect2(0, 0, 1920, 1080), DIM)
-	var target := int(Data.scoring["target_points"])
-	var board := Rect2(200, 200, 1520, 200 + main.players.size() * 140)
-	panel(board)
-	_ribbon_pop("PLACAR · meta %d" % target, 200, 900, 54)
-	if main.round_points.size() > 0 and main.round_points[0]["all_finished"]:
-		Kit.text(self, Vector2(board.position.x, 320), "Fácil demais! Todo mundo chegou: ninguém leva os +10.", 30, Color("#8a5a10"), HORIZONTAL_ALIGNMENT_CENTER, board.size.x)
-	if main.embargo_msg != "":
-		Kit.text(self, Vector2(board.position.x, 356), main.embargo_msg, 30, Color("#8a5a10"), HORIZONTAL_ALIGNMENT_CENTER, board.size.x)
-	for i in main.players.size():
-		var p: Dictionary = main.players[i]
-		var b: Dictionary = main.round_points[i] if i < main.round_points.size() else {}
-		var y: float = 390 + i * 140
-		var col = main.player_color(i)
-		Kit.text(self, Vector2(260, y + 60), "P%d" % (i + 1), 52, Data.TEXT_COLORS[p["color"]])
-		var bar := Rect2(380, y + 10, 1000, 60)
-		draw_rect(bar, Color(0.85, 0.8, 0.7))
-		var prev: int = p["score"] - int(b.get("total", 0))
-		draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(float(p["score"]) / target, 0, 1), bar.size.y)), col.darkened(0.25))
-		draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(float(prev) / target, 0, 1), bar.size.y)), col)
-		Kit.text(self, Vector2(1400, y + 55), "%d" % p["score"], 48, DARK)
-		var parts := []
-		if b.get("finish", 0) > 0: parts.append("+%d chegou" % b["finish"])
-		if b.get("first", 0) > 0: parts.append("+%d primeiro" % b["first"])
-		if b.get("kills", 0) > 0: parts.append("+%d eliminações" % b["kills"])
-		if b.get("hammer", 0) > 0: parts.append("+%d marreta" % b["hammer"])
-		Kit.text(self, Vector2(380, y + 110), "  ".join(parts) if parts.size() > 0 else "+0", 26, Color("#6b5a70"))
+	_draw_demo_score()
 
 # ---------------------------------------------------------------- vitória
 func _draw_win() -> void:

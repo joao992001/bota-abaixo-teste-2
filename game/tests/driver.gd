@@ -139,8 +139,12 @@ func clear_inputs() -> void:
 
 func reset_run() -> void:
 	clear_inputs()
-	for pc in main.pieces.duplicate():
-		main.remove_piece(pc)
+	if main.level.id != "canteiro":
+		if main.demo.fx != null and is_instance_valid(main.demo.fx):
+			main.demo.fx.free()   # máquinas da arena anterior apontam para o mapa velho
+		main.demo.fx = null
+		main.load_arena("canteiro")   # mapa plano de referência para medir pulo e corrida
+		await frames(1)
 	main.start_run()
 	main.countdown = 0.0
 	main.timer = 999.0
@@ -152,11 +156,6 @@ func put(r, pos: Vector2) -> void:
 	r.position = pos
 	r.velocity = Vector2.ZERO
 	r.own_vx = 0.0
-
-func place(id: String, owner: int, c: Vector2i, rot := 0) -> Node2D:
-	var pc: Node2D = main.make_piece(id, owner, c, rot)
-	main.place_piece(pc)
-	return pc
 
 func col_x(c: int) -> float:
 	return c * 64 + 32.0
@@ -234,7 +233,7 @@ func autotest() -> void:
 	PlayerInput.slots.clear()
 
 	print("== Entrada")
-	main.mode = "construcao"   # testes do modo antigo de peças; a Demolição é testada no fim
+	main.game_mode = "derruba"
 	PlayerInput.virtual = {"v0": {}, "v1": {}}
 	await frames(2)
 	await tap("v0", "jump")
@@ -265,30 +264,7 @@ func autotest() -> void:
 	await tap("padA", "back")
 	check(main.players.size() == 2, "botão de sair remove o jogador")
 	await tap("v0", "start")
-	check(main.state == S.PICK, "Start com 2 jogadores vai para ESCOLHA")
-
-	print("== Escolha")
-	check(main.conveyor.size() == 4, "esteira com jogadores + 2 peças")
-	for i in 120:
-		var d := "v0" if i % 2 == 0 else "v1"
-		vset(d, "jump", i % 4 < 2)
-		await frames(1)
-		if main.state != S.PICK:
-			break
-	clear_inputs()
-	check(main.state == S.BUILD, "todos escolheram → CONSTRUÇÃO")
-	check(main.players.all(func(p): return p["piece"] != ""), "cada jogador tem uma peça")
-
-	print("== Construção")
-	await frames(2)
-	await tap("v0", "jump")
-	await tap("v1", "jump")
-	check(main.pieces.size() == 2, "2 peças colocadas")
-	check(main.state == S.RUN, "todos colocaram → CORRIDA")
-	check(main.pieces[0].owner_id == 0 and main.pieces[1].owner_id == 1, "peças têm dono")
-	var bad: Node2D = main.make_piece("P02", 0, Vector2i(2, 11))
-	check(not main.can_place(bad), "proibido construir no spawn (x)")
-	bad.free()
+	check(main.state == S.RUN, "Start com 2 jogadores começa a rodada")
 
 	print("== Pulo")
 	await reset_run()
@@ -325,113 +301,6 @@ func autotest() -> void:
 	check(absf(r0.velocity.x - float(Data.ctrl["max_run"])) < 1.0, "velocidade máxima %.0f px/s" % r0.velocity.x)
 	vset("v0", "right", false)
 
-	print("== P01 Viga")
-	await reset_run()
-	r0 = main.robots[0]
-	r1 = main.robots[1]
-	place("P01", 0, Vector2i(21, 9))
-	put(r0, Vector2(col_x(22), 768))
-	put(r1, Vector2(col_x(22), 768))
-	await frames(3)
-	vset("v0", "jump", true)
-	vset("v1", "jump", true)
-	await frames(30)
-	clear_inputs()
-	await frames(40)
-	check(absf(r0.position.y - 576) < 2 and r0.is_on_floor(), "dono atravessou por baixo e pisou em cima (y=%.0f)" % r0.position.y)
-	check(absf(r1.position.y - 768) < 2, "rival bateu a cabeça (y=%.0f)" % r1.position.y)
-
-	print("== P02 Mola")
-	await reset_run()
-	r0 = main.robots[0]
-	r1 = main.robots[1]
-	place("P02", 0, Vector2i(22, 11))
-	put(r0, Vector2(col_x(22), 690))
-	put(r1, Vector2(col_x(22), 690))
-	var m0 := 9999.0
-	var m1 := 9999.0
-	for i in 70:
-		await frames(1)
-		m0 = minf(m0, r0.position.y)
-		m1 = minf(m1, r1.position.y)
-	check(absf((704 - m0) / 64.0 - 5.0) < 0.35, "dono lançado %.2f tiles (esperado 5)" % ((704 - m0) / 64.0))
-	check(absf((704 - m1) / 64.0 - 3.0) < 0.35, "rival lançado %.2f tiles (esperado 3)" % ((704 - m1) / 64.0))
-
-	print("== P03 Serra + pontos de eliminação")
-	await reset_run()
-	r0 = main.robots[0]
-	r1 = main.robots[1]
-	place("P03", 0, Vector2i(23, 11))
-	put(r0, Vector2(col_x(21), 768))
-	put(r1, Vector2(col_x(21), 768))
-	vset("v0", "right", true)
-	vset("v1", "right", true)
-	await frames(18)
-	clear_inputs()
-	check(r0.alive, "dono atravessa a própria serra")
-	check(not r1.alive, "rival eliminado pela serra")
-	main.start_score()
-	check(main.round_points[0]["kills"] == int(Data.scoring["points"]["kill_by_owned_piece"]), "dono ganha +3 pela eliminação")
-	main.players[0]["score"] = 0
-	main.players[1]["score"] = 0
-	main.state = S.RUN
-
-	print("== P04 Esteira")
-	await reset_run()
-	r0 = main.robots[0]
-	r1 = main.robots[1]
-	place("P04", 0, Vector2i(21, 11))
-	put(r0, Vector2(col_x(21) + 10, 704))
-	put(r1, Vector2(col_x(21) + 10, 704))
-	var x0: float = r0.position.x
-	await frames(25)
-	check(absf(r0.position.x - x0) < 3, "dono parado não se move (dx=%.0f)" % (r0.position.x - x0))
-	check(r1.position.x - x0 > 60, "rival empurrado na direção marcada (dx=%.0f)" % (r1.position.x - x0))
-	put(r0, Vector2(1500, 704))
-	vset("v0", "left", true)
-	await frames(8)
-	check(r0.velocity.x < -float(Data.ctrl["max_run"]) - 100, "dono andando contra a seta: esteira a favor (vx=%.0f)" % r0.velocity.x)
-	clear_inputs()
-
-	print("== Marreta")
-	await reset_run()
-	r0 = main.robots[0]
-	r1 = main.robots[1]
-	place("P01", 0, Vector2i(22, 11))
-	put(r0, Vector2(1370, 768))
-	put(r1, Vector2(1370, 768))
-	await frames(3)
-	await tap("v0", "hammer")
-	check(main.pieces.size() == 1, "dono não marreta a própria peça")
-	await tap("v1", "hammer")
-	check(main.pieces.size() == 0, "rival destrói a peça com a marreta")
-	check(main.round_hammer.get(1, 0) == 1 and r1.hammer_left == 0, "marreta conta +1 e só 1 uso por rodada")
-
-	print("== Rodada completa")
-	await reset_run()
-	await steer(["v0", "v1"], 900)
-	check(main.finish_order.size() == 2, "rota sem peças: os 2 chegaram ao elevador (%s)" % str(main.finish_order))
-	await frames(70)
-	check(main.state == S.SCORE, "corrida → PLACAR")
-	var first: int = main.finish_order[0] if main.finish_order.size() > 0 else 0
-	check(main.players[first]["score"] == 5 and main.players[1 - first]["score"] == 0, "todos chegaram: só o +5 do primeiro (%s)" % str(main.players.map(func(p): return p["score"])))
-	main.timer = 0.0
-	await frames(2)
-	check(main.state == S.PICK and main.round_no == 2, "placar → próxima rodada")
-
-	print("== Vitória")
-	main.players[0]["score"] = 50
-	main.players[1]["score"] = 0
-	await reset_run()
-	await steer(["v0"], 600)
-	main.timer = 0.0
-	await frames(80)
-	check(main.state == S.SCORE and main.players[0]["score"] >= 60, "P1 chegou sozinho: %d pontos" % main.players[0]["score"])
-	main.timer = 0.0
-	await frames(2)
-	check(main.state == S.WIN and main.winner == 0, "60+ pontos → VITÓRIA")
-	await tap("v0", "jump")
-	check(main.state == S.PICK and main.round_no == 1, "jogar de novo zera a partida")
 	await demolicao_test()
 
 func demo_round() -> void:
@@ -446,8 +315,10 @@ func demo_round() -> void:
 		r.invuln = 0.0   # testes de golpe sem a proteção do começo
 
 func demolicao_test() -> void:
-	print("== Demolição")
+	print("== Demolição (Derruba com 1 vida)")
 	main.mode = "demolicao"
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 1
 	main.event_level = 0   # eventos são testados à parte (eventos_test)
 	main.arena_choice = "demolicao"   # mecânicas básicas testadas no Canteiro
 	main.start_match()
@@ -621,19 +492,23 @@ func menus_test() -> void:
 	await tap("v0", "jump")
 	check(main.state == S.MODES, "JOGAR abre a seleção de modo")
 	await tap("v0", "right")
+	await tap("v0", "right")
 	await tap("v0", "jump")
 	check(main.state == S.MODES, "modo EM BREVE não abre")
 	await tap("v0", "left")
-	await tap("v0", "down")
+	await tap("v0", "left")
 	await tap("v0", "jump")
-	check(main.state == S.SUBMODOS, "Demolição abre a escolha de submodo")
-	await tap("v0", "right")
-	await tap("v0", "jump")
-	check(main.state == S.ARENAS and main.submode_choice == "vidas", "submodo Vidas escolhido → escolha de arena")
+	check(main.state == S.ARENAS and main.game_mode == "derruba", "DERRUBA escolhido → arenas do modo")
+	check(main.menus.arena_list().size() == 1 + main.demo.find_mode("derruba")["arenas"].size(), "só as arenas da Derruba (+ sorteio)")
 	await tap("v0", "right")
 	await tap("v0", "right")
 	await tap("v0", "jump")
 	check(main.state == S.AJUSTES and main.arena_choice == "esteiras", "arena Fábrica de Esteiras → AJUSTES")
+	await tap("v0", "left")
+	await tap("v0", "down")
+	var lives0: int = main.demo.lives_setting
+	await tap("v0", "right")
+	check(main.demo.lives_setting == mini(lives0 + 1, 5), "ajuste de VIDAS da Derruba (%d)" % main.demo.lives_setting)
 	await tap("v0", "left")
 	await tap("v0", "down")
 	await tap("v0", "right")
@@ -652,7 +527,8 @@ func menus_test() -> void:
 	await tap("v0", "down")
 	await tap("v0", "jump")
 	check(main.state == S.JOIN and main.mode == "demolicao" and int(main.demo.cfg["rounds_to_win"]) == 3 and lvl >= 0, "COMEÇAR → entrada; vence com 3 ★ (eventos nível %d)" % main.event_level)
-	main.submode_choice = "ultimo"
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 1
 	await tap("v0", "jump")
 	main.add_bot()
 	await tap("v0", "start")
@@ -685,7 +561,8 @@ func menus_test() -> void:
 func parede_test() -> void:
 	print("== Parede e borda")
 	main.event_level = 0
-	main.submode_choice = "ultimo"
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 1
 	main.arena_choice = "demolicao"
 	await demo_round()
 	main.demo.item_t = 999.0
@@ -842,7 +719,8 @@ func parede_test() -> void:
 func maquinas_test() -> void:
 	print("== Máquinas e câmera que rola")
 	main.event_level = 0
-	main.submode_choice = "ultimo"
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 1
 	var fx
 	# Torre: a câmera sobe; quem fica embaixo está fora
 	await arena_round("torre")
@@ -1075,46 +953,31 @@ func itens_novos_test() -> void:
 	main.demo.item_t = 4.0
 
 func submodos_test() -> void:
-	print("== Submodos")
+	print("== Modos (Derruba com vidas, Batata-Dinamite)")
 	main.mode = "demolicao"
 	main.arena_choice = "demolicao"
 	main.event_level = 0
 	# Vidas: cair tira 1 vida e volta pelo guindaste; com 0 vidas, sai
-	main.submode_choice = "vidas"
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 3
 	await demo_round()
 	var r0 = main.robots[0]
 	var lv0: int = main.demo.lives[0]
 	main.kill(r0, -1, null)
 	await frames(2)
-	check(r0.alive and main.demo.lives[0] == lv0 - 1, "Vidas: caiu, perdeu 1 vida (%d) e voltou" % main.demo.lives[0])
+	check(r0.alive and main.demo.lives[0] == lv0 - 1, "Derruba: caiu, perdeu 1 vida (%d) e voltou" % main.demo.lives[0])
 	main.demo.lives[0] = 1
 	r0.invuln = 0.0
 	main.kill(r0, -1, null)
 	await frames(2)
-	check(not r0.alive, "Vidas: sem vidas, está fora")
+	check(not r0.alive, "Derruba: sem vidas, está fora")
 	await frames(100)
-	check(main.state == S.SCORE and main.demo.round_winner == 1, "Vidas: P2 vence a rodada")
-	# Placar: derrubar dá pontos, cair tira; quem tem mais quando o tempo acaba vence
-	main.submode_choice = "placar"
+	check(main.state == S.SCORE and main.demo.round_winner == 1, "Derruba: P2 vence a rodada")
+	# Batata-Dinamite: a marretada passa a dinamite; quando o pavio acaba, explode quem está com ela
+	main.game_mode = "batata"
 	await demo_round()
 	r0 = main.robots[0]
 	var r1 = main.robots[1]
-	r1.last_attacker = 0
-	r1.last_cause = "marretada"
-	r1.last_hit = 0.0
-	main.kill(r1, -1, null)
-	await frames(2)
-	var pts: Dictionary = main.demo.sub["pontos"]
-	check(r1.alive and main.demo.points[0] == int(pts["derrubada"]) and main.demo.points[1] == int(pts["queda"]), "Placar: derrubada +%d, queda %d (%s)" % [pts["derrubada"], pts["queda"], str(main.demo.points)])
-	check(main.demo.time_left > 60.0, "Placar: relógio rodando (%.0f s)" % main.demo.time_left)
-	main.demo.time_left = 0.05
-	await frames(100)
-	check(main.state == S.SCORE and main.demo.round_winner == 0, "Placar: tempo acabou, P1 vence com mais pontos")
-	# Batata-Dinamite: a marretada passa a dinamite; quando o pavio acaba, explode quem está com ela
-	main.submode_choice = "batata"
-	await demo_round()
-	r0 = main.robots[0]
-	r1 = main.robots[1]
 	main.demo.bomb_next = 0.01
 	await frames(3)
 	var h: int = main.demo.bomb_holder
@@ -1134,13 +997,15 @@ func submodos_test() -> void:
 	check(not other.alive, "Batata: o pavio acabou e quem estava com ela explodiu")
 	await frames(100)
 	check(main.state == S.SCORE and main.demo.round_winner == h, "Batata: P%d vence a rodada" % (h + 1))
-	main.submode_choice = "ultimo"
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 1
 
 func eventos_test() -> void:
 	print("== Eventos")
 	main.mode = "demolicao"
 	main.arena_choice = "demolicao"
-	main.submode_choice = "ultimo"
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 1
 	main.event_level = 2
 	var ev = main.events
 	for e in ev.cfg["lista"]:
@@ -1347,7 +1212,8 @@ func controle_real_test() -> void:
 	await joy_tap(3, JOY_BUTTON_A)
 	check(main.state == S.MODES, "A confirma no menu")
 	main.mode = "demolicao"
-	main.submode_choice = "ultimo"
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 1
 	main.arena_choice = "demolicao"
 	main.event_level = 0
 	main.go_join()
@@ -1647,24 +1513,6 @@ func shots(dir: String) -> void:
 	await snap(dir, "1_entrada")
 	await tap("v0", "start")
 	await frames(30)
-	await tap("v2", "right")
-	await snap(dir, "2_escolha")
-	main.skip_phase()
-	await frames(3)
-	# peças de exemplo já na obra
-	place("P01", 2, Vector2i(9, 9))
-	place("P03", 1, Vector2i(19, 11))
-	place("P02", 3, Vector2i(8, 11))
-	place("P04", 0, Vector2i(21, 11))
-	for k in 4:
-		main.players[k]["cursor"] = [Vector2i(14, 6), Vector2i(19, 4), Vector2i(6, 6), Vector2i(23, 8)][k]
-	await frames(3)
-	await snap(dir, "3_construcao")
-	main.skip_phase()
-	await frames(2)
-	for pc in main.pieces.duplicate():
-		if pc.placed_round == main.round_no and pc.cell.y < 9:
-			main.remove_piece(pc)
 	main.countdown = 0.01
 	await steer(["v0", "v1", "v2", "v3"], 50)
 	await snap(dir, "4_corrida")
@@ -1858,7 +1706,6 @@ func anim_frames(dir: String) -> void:
 	_frame_no = 0
 	await reset_run()
 	main.cam_lock = [2.0, Vector2(1440, 740)]
-	place("P04", 0, Vector2i(21, 11))
 	var rs: Array = main.robots
 	put(rs[0], Vector2(-400, 768))
 	put(rs[2], Vector2(-400, 768))
@@ -2342,7 +2189,7 @@ func stats_run(rounds_per_arena: int) -> void:
 			main.demo.cfg["itens"]["spawn_every_s"] = [1.5, 2.5]
 			main.demo.cfg["itens"]["max_on_map"] = 4
 		if a.begins_with("--sub="):
-			main.submode_choice = a.substr(6)
+			main.game_mode = a.substr(6)
 		if a.begins_with("--so-arenas="):
 			main.demo.cfg["arenas"] = main.demo.cfg["arenas"].filter(func(x): return x["id"] in a.substr(12).split(","))
 	var out := []

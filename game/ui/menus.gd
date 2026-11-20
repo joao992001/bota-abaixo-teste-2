@@ -6,13 +6,6 @@ const Kit := preload("res://ui/kit.gd")
 const RobotVis := preload("res://player/robot_visual.gd")
 
 const MENU_ITEMS := ["JOGAR", "GARAGEM", "OFICINA", "COMO JOGAR", "OPÇÕES", "SAIR"]
-const MODES := [
-	{"id": "demolicao", "name": "DEMOLIÇÃO", "desc": "Quebre o chão dos outros.\nO último em pé leva ★", "ok": true},
-	{"id": "rei", "name": "REI DA OBRA", "desc": "Segure o capacete de ouro\no máximo que puder", "ok": false},
-	{"id": "corrida", "name": "CORRIDA SABOTADA", "desc": "Chegue ao elevador\nsoltando armadilhas", "ok": false},
-	{"id": "torre", "name": "TORRE MALUCA", "desc": "Empilhe a torre\nmais alta", "ok": false},
-	{"id": "construcao", "name": "CLÁSSICO", "desc": "Monte armadilhas com dono\ne corra até o elevador", "ok": true},
-]
 const PAUSE_ITEMS := ["CONTINUAR", "REINICIAR PARTIDA", "MENU PRINCIPAL"]
 const STAR_GOALS := [3, 5, 7]
 
@@ -31,7 +24,6 @@ var intro_hi := false
 const INTRO_END := 2.6
 var shake_card := 0.0
 var arena_sel := 0
-var sub_sel := 0
 var adj_sel := 0
 const EVENT_LEVELS := ["DESLIGADOS", "POUCOS", "NORMAL", "CAOS"]
 
@@ -79,15 +71,16 @@ func update(dt: float) -> void:
 					4: main.state = S.OPTIONS
 					5: main.get_tree().quit()
 		S.MODES:
-			mode_sel = posmod(mode_sel + move_h(), MODES.size())
+			var modes: Array = main.demo.cfg["modos"]
+			mode_sel = posmod(mode_sel + move_h(), modes.size())
 			if confirm():
-				var m: Dictionary = MODES[mode_sel]
+				var m: Dictionary = modes[mode_sel]
 				if m["ok"]:
-					main.mode = m["id"]
-					if m["id"] == "demolicao":
-						main.state = S.SUBMODOS
-					else:
-						main.go_join()
+					main.game_mode = m["id"]
+					main.demo.items_on = bool(m.get("itens", true))
+					arena_sel = 0
+					adj_sel = 0
+					main.state = S.ARENAS
 				else:
 					shake_card = 0.35
 					Audio.play("menu_negado")
@@ -98,35 +91,34 @@ func update(dt: float) -> void:
 		S.HOWTO:
 			if confirm() or pressed("back"):
 				main.state = S.MENU
-		S.SUBMODOS:
-			var subs: Array = main.demo.cfg["submodos"]
-			sub_sel = posmod(sub_sel + move_h(), subs.size())
-			if confirm():
-				main.submode_choice = subs[sub_sel]["id"]
-				main.state = S.ARENAS
-			elif pressed("back"):
-				main.state = S.MODES
 		S.AJUSTES:
-			adj_sel = posmod(adj_sel + move_v(), 6)
+			var rows := adjust_rows()
+			adj_sel = posmod(adj_sel + move_v(), rows.size())
 			var h2 := move_h()
 			var c2 := confirm()
-			match adj_sel:
-				0:
+			match rows[adj_sel]:
+				"estrelas":
 					if h2 != 0:
 						goal_sel = clampi(goal_sel + h2, 0, STAR_GOALS.size() - 1)
-				1:
+				"vidas":
+					if h2 != 0 or c2:
+						main.demo.lives_setting = clampi(main.demo.lives_setting + (h2 if h2 != 0 else 1), 1, 5) if h2 != 0 else posmod(main.demo.lives_setting, 5) + 1
+				"pavio":
+					if h2 != 0 or c2:
+						main.demo.fuse_setting = posmod(main.demo.fuse_setting + (h2 if h2 != 0 else 1), 3)
+				"eventos":
 					if h2 != 0 or c2:
 						main.event_level = posmod(main.event_level + (h2 if h2 != 0 else 1), 4)
-				2:
+				"escolher":
 					if c2:
 						main.state = S.EVENTOS
-				3:
+				"itens":
 					if h2 != 0 or c2:
 						main.demo.items_on = not main.demo.items_on
-				4:
+				"ajuda":
 					if h2 != 0 or c2:
 						main.demo.help_losers = not main.demo.help_losers
-				5:
+				"comecar":
 					if c2:
 						main.demo.cfg["rounds_to_win"] = STAR_GOALS[goal_sel]
 						main.go_join()
@@ -148,7 +140,7 @@ func update(dt: float) -> void:
 				main.arena_choice = arena_list()[arena_sel]["id"]
 				main.state = S.AJUSTES
 			elif pressed("back"):
-				main.state = S.SUBMODOS
+				main.state = S.MODES
 		S.OPTIONS:
 			opt_sel = posmod(opt_sel + move_v(), 9)
 			var h := move_h()
@@ -207,7 +199,6 @@ func draw(ci: CanvasItem) -> void:
 		S.HOWTO: _draw_howto(ci)
 		S.OPTIONS: _draw_options(ci)
 		S.ARENAS: _draw_arenas(ci)
-		S.SUBMODOS: _draw_submodes(ci)
 		S.AJUSTES: _draw_adjust(ci)
 		S.EVENTOS: main.events.menu_draw(ci, self)
 		S.CONTROLES: _draw_pads(ci)
@@ -259,34 +250,43 @@ func _draw_menu(ci: CanvasItem) -> void:
 ## Ilustração do cartão; xf = transformação do cartão (girado), para não perdê-la ao desenhar peças giradas.
 func _mode_art(ci: CanvasItem, id: String, c: Vector2, xf: Transform2D) -> void:
 	match id:
-		"demolicao":
+		"derruba":
 			for k in 3:
-				ci.draw_texture_rect(Data.tex("cenario/caixote_%d" % k), Rect2(c + Vector2(-96 + k * 64, 0), Vector2(64, 64)), false)
-			ci.draw_texture_rect(Data.tex("cenario/caixote_1"), Rect2(c + Vector2(-32, -64), Vector2(64, 64)), false)
-			ci.draw_set_transform_matrix(xf * Transform2D(0.9 + sin(t * 4.0) * 0.3, Vector2(0.4, 0.4), 0.0, c + Vector2(60, -40)))
-			ci.draw_texture(Data.tex("robo/marreta"), Vector2(-128, -224))
+				ci.draw_texture_rect(Data.tex("cenario/caixote_%d" % k), Rect2(c + Vector2(-96 + k * 64, 20), Vector2(64, 64)), false)
+			RobotVis.draw_robot(ci, {"color": 0, "model": 0, "acc": 0}, RobotVis.victory_pose(t), xf * Transform2D(0.0, Vector2(1.2, 1.2), 0.0, c + Vector2(-30, 20)))
+			RobotVis.draw_robot(ci, {"color": 2, "model": 2, "acc": 0}, RobotVis.idle_pose(t), xf * Transform2D(-0.6 + sin(t * 3.0) * 0.2, Vector2(1.0, 1.0), 0.0, c + Vector2(90, -40)))
 			ci.draw_set_transform_matrix(xf)
+			for k in 3:
+				_heart(ci, c + Vector2(-50 + k * 50, -120), 14.0)
+		"batata":
+			ci.draw_set_transform_matrix(xf * Transform2D(sin(t * 8.0) * 0.15, c))
+			ci.draw_texture_rect(Data.tex("itens/dinamite"), Rect2(-70, -80, 140, 140), false)
+			if fmod(t, 0.3) < 0.15:
+				ci.draw_circle(Vector2(40, -78), 9, Color("#fff4c8"))
 		"rei":
-			ci.draw_texture_rect(Data.tex("cenario/caixote_0"), Rect2(c + Vector2(-48, 0), Vector2(96, 64)), false)
-			ci.draw_texture_rect(Data.tex("itens/capacete"), Rect2(c + Vector2(-56, -100), Vector2(112, 112)), false, Color(1.0, 0.85, 0.3))
-		"corrida":
-			ci.draw_texture_rect(Data.tex("cenario/elevador"), Rect2(c + Vector2(-50, -80), Vector2(100, 150)), false)
-		"torre":
+			ci.draw_texture_rect(Data.tex("cenario/caixote_0"), Rect2(c + Vector2(-48, 20), Vector2(96, 64)), false)
+			ci.draw_texture_rect(Data.tex("itens/capacete"), Rect2(c + Vector2(-56, -84), Vector2(112, 112)), false, Color(1.0, 0.85, 0.3))
+		"fuga":
 			for k in 4:
-				ci.draw_set_transform_matrix(xf * Transform2D(sin(k * 2.1) * 0.12, c + Vector2(sin(k * 1.3) * 10.0, 40 - k * 46)))
+				ci.draw_set_transform_matrix(xf * Transform2D(sin(k * 2.1) * 0.12, c + Vector2(sin(k * 1.3) * 10.0, 60 - k * 46)))
 				ci.draw_texture_rect(Data.tex("cenario/caixote_%d" % (k % 3)), Rect2(-30, -24, 60, 48), false)
-			ci.draw_set_transform_matrix(xf)
-		"construcao":
-			ci.draw_texture_rect(Data.tex("pecas/esteira_c0"), Rect2(c + Vector2(-96, 10), Vector2(192, 64)), false)
-			ci.draw_texture_rect(Data.tex("pecas/serra_rival"), Rect2(c + Vector2(-70, -66), Vector2(64, 64)), false)
-			ci.draw_texture_rect(Data.tex("pecas/mola_c2"), Rect2(c + Vector2(10, -60), Vector2(64, 64)), false)
+	ci.draw_set_transform_matrix(xf)
+
+func _heart(ci: CanvasItem, c: Vector2, sz: float) -> void:
+	var pts := PackedVector2Array()
+	for k in 33:
+		var a := k * TAU / 32.0
+		pts.append(c + Vector2(16.0 * pow(sin(a), 3), -(13.0 * cos(a) - 5.0 * cos(2 * a) - 2.0 * cos(3 * a) - cos(4 * a))) * sz / 16.0)
+	ci.draw_colored_polygon(pts, Color("#e5484d"))
+	ci.draw_polyline(pts, Kit.INK, 3.0, true)
 
 func _draw_modes(ci: CanvasItem) -> void:
 	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.45))
 	Kit.ribbon(ci, Rect2(560, 40, 800, 128), "ESCOLHA O MODO", 60)
-	var n := MODES.size()
+	var modes: Array = main.demo.cfg["modos"]
+	var n := modes.size()
 	for i in n:
-		var m: Dictionary = MODES[i]
+		var m: Dictionary = modes[i]
 		var on := i == mode_sel
 		var cx := 960 + (i - mode_sel) * 380.0
 		var sz := Vector2(340, 470) * (1.08 if on else 0.92)
@@ -301,78 +301,53 @@ func _draw_modes(ci: CanvasItem) -> void:
 			Kit.paper(ci, r.grow(12), Color("#f2c84b"))
 		Kit.paper(ci, r, Color.WHITE if m["ok"] else Color(0.85, 0.85, 0.85))
 		_mode_art(ci, m["id"], Vector2(0, -90), xf)
-		Kit.text(ci, Vector2(r.position.x, 60), m["name"], 38 if m["name"].length() < 12 else 30, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-		var lines: PackedStringArray = m["desc"].split("\n")
+		Kit.text(ci, Vector2(r.position.x, 70), m["nome"], 38 if String(m["nome"]).length() < 12 else 30, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		var lines: PackedStringArray = String(m["dica"]).split("\n")
 		for k in lines.size():
-			Kit.text(ci, Vector2(r.position.x, 110 + k * 32), lines[k], 24, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+			Kit.text(ci, Vector2(r.position.x, 118 + k * 32), lines[k], 23, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 		if not m["ok"]:
 			ci.draw_texture_rect(Data.tex("ui/em_breve"), Rect2(-130, -150, 260, 95), false)
 		ci.draw_set_transform(Vector2.ZERO)
 	Kit.text(ci, Vector2(0, 1056), "◄► modo  ·  PULAR confirmar  ·  BACKSPACE/ESC voltar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
 
-func _sub_art(ci: CanvasItem, id: String, c: Vector2, xf: Transform2D) -> void:
-	match id:
-		"ultimo":
-			RobotVis.draw_robot(ci, {"color": 0, "model": 0, "acc": 0}, RobotVis.victory_pose(t), xf * Transform2D(0.0, Vector2(1.5, 1.5), 0.0, c + Vector2(0, 70)))
-		"vidas":
-			for k in 3:
-				RobotVis.draw_robot(ci, {"color": 1, "model": 2, "acc": 0}, RobotVis.idle_pose(t + k), xf * Transform2D(0.0, Vector2(0.9, 0.9), 0.0, c + Vector2(-80 + k * 80, 60)))
-		"placar":
-			ci.draw_set_transform_matrix(xf)
-			Kit.wood(ci, Rect2(c + Vector2(-130, -60), Vector2(260, 110)))
-			Kit.text(ci, c + Vector2(-130, 20), "+3  +1  −1", 44, Kit.CREAM, HORIZONTAL_ALIGNMENT_CENTER, 260, 8, Color("#5a3a10"))
-		"batata":
-			ci.draw_set_transform_matrix(xf * Transform2D(sin(t * 8.0) * 0.15, c))
-			ci.draw_texture_rect(Data.tex("itens/dinamite"), Rect2(-70, -80, 140, 140), false)
-	ci.draw_set_transform_matrix(xf)
-
-func _draw_submodes(ci: CanvasItem) -> void:
-	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.45))
-	Kit.ribbon(ci, Rect2(560, 30, 800, 128), "DEMOLIÇÃO: SUBMODO", 52)
-	var subs: Array = main.demo.cfg["submodos"]
-	for i in subs.size():
-		var m: Dictionary = subs[i]
-		var on := i == sub_sel
-		var c := Vector2(270 + i * 460, 560)
-		var xf := Transform2D(sin(i * 1.7) * 0.03, Vector2.ONE * (1.06 if on else 0.96), 0.0, c)
-		ci.draw_set_transform_matrix(xf)
-		var r := Rect2(-200, -280, 400, 560)
-		if on:
-			Kit.paper(ci, r.grow(12), Color("#f2c84b"))
-		Kit.paper(ci, r)
-		_sub_art(ci, m["id"], Vector2(0, -110), xf)
-		Kit.text(ci, Vector2(r.position.x, 80), String(m["nome"]).to_upper(), 36 if String(m["nome"]).length() < 14 else 30, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-		var lines: PackedStringArray = String(m["dica"]).split("\n")
-		for k in lines.size():
-			Kit.text(ci, Vector2(r.position.x, 140 + k * 34), lines[k], 25, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-	ci.draw_set_transform(Vector2.ZERO)
-	Kit.text(ci, Vector2(0, 1056), "◄► escolher  ·  PULAR confirmar  ·  BACKSPACE/ESC voltar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
-
 func _draw_adjust(ci: CanvasItem) -> void:
 	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.45))
 	Kit.ribbon(ci, Rect2(560, 30, 800, 128), "AJUSTES DA PARTIDA", 54)
-	var sname: String = main.demo.find_submode(main.submode_choice)["nome"]
+	var sname: String = main.demo.find_mode(main.game_mode)["nome"]
 	var aname := "Sorteio"
 	for a in main.demo.cfg["arenas"]:
 		if a["id"] == main.arena_choice:
 			aname = a["nome"]
 	Kit.sticker(ci, Vector2(0, 205), "%s  ·  %s" % [sname, aname], 34, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_CENTER, 1920)
-	var items := [
-		"★ PARA VENCER:  ◄ %d ►" % STAR_GOALS[goal_sel],
-		"EVENTOS:  ◄ %s ►" % EVENT_LEVELS[main.event_level],
-		"ESCOLHER EVENTOS  ▸",
-		"ITENS:  ◄ %s ►" % ("SIM" if main.demo.items_on else "NÃO"),
-		"AJUDA PARA QUEM PERDE:  ◄ %s ►" % ("SIM" if main.demo.help_losers else "NÃO"),
-		"COMEÇAR  ▸",
-	]
-	for i in items.size():
-		_button(ci, Rect2(510, 250 + i * 128, 900, 96), items[i], adj_sel == i)
+	var labels := {
+		"estrelas": "★ PARA VENCER:  ◄ %d ►" % STAR_GOALS[goal_sel],
+		"vidas": "VIDAS:  ◄ %d ►" % main.demo.lives_setting,
+		"pavio": "PAVIO:  ◄ %s ►" % ["CURTO", "NORMAL", "LONGO"][main.demo.fuse_setting],
+		"eventos": "EVENTOS:  ◄ %s ►" % EVENT_LEVELS[main.event_level],
+		"escolher": "ESCOLHER EVENTOS  ▸",
+		"itens": "ITENS:  ◄ %s ►" % ("SIM" if main.demo.items_on else "NÃO"),
+		"ajuda": "AJUDA PARA QUEM PERDE:  ◄ %s ►" % ("SIM" if main.demo.help_losers else "NÃO"),
+		"comecar": "COMEÇAR  ▸",
+	}
+	var rows := adjust_rows()
+	var step := minf(112.0, 800.0 / rows.size())
+	for i in rows.size():
+		_button(ci, Rect2(510, 260 + i * step, 900, step - 20), labels[rows[i]], adj_sel == i)
 	Kit.text(ci, Vector2(0, 1056), "▲▼ escolher  ·  ◄► muda  ·  PULAR confirmar  ·  BACKSPACE/ESC voltar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
 
-## SORTEIO + arenas de data/modos.json.
+## Linhas da tela de AJUSTES (mudam conforme o modo).
+func adjust_rows() -> Array:
+	var rows := ["estrelas"]
+	match main.game_mode:
+		"derruba": rows.append("vidas")
+		"batata": rows.append("pavio")
+	rows.append_array(["eventos", "escolher", "itens", "ajuda", "comecar"])
+	return rows
+
+## SORTEIO + arenas do modo escolhido (data/modos.json → modos[].arenas).
 func arena_list() -> Array:
-	var out: Array = [{"id": "sorteio", "nome": "SORTEIO", "dica": "Cada rodada numa arena diferente"}]
-	out.append_array(main.demo.cfg["arenas"])
+	var out: Array = [{"id": "sorteio", "nome": "SORTEIO", "dica": "Cada rodada numa arena do modo"}]
+	out.append_array(main.demo.mode_arenas(main.game_mode))
 	return out
 
 func _draw_arenas(ci: CanvasItem) -> void:

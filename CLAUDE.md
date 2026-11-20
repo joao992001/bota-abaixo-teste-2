@@ -1,6 +1,6 @@
 # Bota-Abaixo — regras do projeto
 
-Plataforma competitivo, **multiplayer local 2–4**, Godot 4. Robôs de demolição montam a obra uns dos outros com **peças que têm dono** e correm até o elevador. Detalhes: `docs/GDD.md`. Visual: `docs/estilo_visual.md` + `docs/referencias/`. Plano: `docs/plano.md`.
+Plataforma competitivo, **multiplayer local 2–4**, Godot 4. Party game de robôs de demolição com **modos independentes** (Derruba, Batata-Dinamite, Rei da Obra, Fuga), cada um com suas arenas. (O antigo modo de peças com dono foi removido em 2026-11-20.) Detalhes: `docs/GDD.md`. Visual: `docs/estilo_visual.md` + `docs/referencias/`. Plano: `docs/plano.md`.
 
 ## Prioridades (nesta ordem)
 1. **Jogável cedo** — a rodada completa roda no Marco 1, mesmo com formas simples.
@@ -24,7 +24,7 @@ Não diga que algo funciona sem ter rodado. Se a Godot não estiver instalada ou
 - Grade de **64 px**; arena **30×16 tiles** (1920×1024) + faixa de placar de 56 px.
 - Robô ~80 px de altura; hitbox **48×72**.
 - Física 60 ticks. Valores iniciais em `data/controller.json` (pulo `sustain`: velocidade mantida enquanto segura o botão). Pode usar `CharacterBody2D` com velocidade calculada à mão.
-- Regras de peças e pontuação lidas de `data/pieces.json` e `data/scoring.json` (nunca números fixos no código).
+- Regras dos modos, arenas e itens lidas de `data/modos.json` (nunca números fixos no código).
 
 ## Nunca
 - Copiar personagens, logotipos, nomes, emblemas ou fundos exatos das referências. **Copie o estilo** (traço, formas, cores, efeitos), não o conteúdo.
@@ -34,7 +34,7 @@ Não diga que algo funciona sem ter rodado. Se a Godot não estiver instalada ou
 ## Estrutura
 ```
 docs/        GDD, estilo_visual, plano, decisoes, referencias/
-data/        controller.json, pieces.json, scoring.json
+data/        controller.json, modos.json
 levels/      mapas em texto .lvl (formato em levels/README.md); a Godot lê estes arquivos
 art/src/     fontes SVG (ou scripts que geram SVG) — fonte editável da arte
 art/out/     PNG/prévias geradas
@@ -46,7 +46,7 @@ tools/       sfxforge.py + scripts criados quando necessários
 ## Roteamento
 | Tarefa | Skill | Quem |
 |---|---|---|
-| Regras, rodada, peças, pontuação | `regras-do-jogo` | sessão principal |
+| Regras, modos, rodada, pontuação | `regras-do-jogo` | sessão principal |
 | Movimento e sensação do robô | `controle-do-robo` | sessão principal |
 | 2–4 jogadores, controles | `multiplayer-local` | sessão principal |
 | Mapas | `mapas` | sessão principal |

@@ -36,19 +36,14 @@ static func tool_tex(skin_tool: int) -> String:
 	return "robo/marreta" if n == "marreta" else "robo/ferramenta_" + n
 
 var ctrl: Dictionary
-var scoring: Dictionary
-var pieces := {}
 var root_dir := ""
 var robot_meta := {}   # art/out/game/robo/modelos.json: quadris, ombros, mãos, chapéu por modelo
 
 func _ready() -> void:
 	root_dir = ProjectSettings.globalize_path("res://").path_join("..").simplify_path()
 	ctrl = read_json("data/controller.json")
-	scoring = read_json("data/scoring.json")
 	if FileAccess.file_exists("res://assets/robo/modelos.json"):
 		robot_meta = JSON.parse_string(FileAccess.get_file_as_string("res://assets/robo/modelos.json"))
-	for p in read_json("data/pieces.json")["pecas"]:
-		pieces[p["id"]] = p
 	var t0 := Time.get_ticks_msec()
 	var n := preload_all()
 	print("Bota-Abaixo: %d imagens carregadas em %d ms" % [n, Time.get_ticks_msec() - t0])
@@ -92,10 +87,3 @@ func preload_all(dir := "res://assets") -> int:
 			n += 1
 	return n
 
-func piece_ids(milestone: int, implemented: Array) -> Array:
-	var out := []
-	for id in pieces:
-		if int(pieces[id]["marco"]) <= milestone and id in implemented:
-			out.append(id)
-	out.sort()
-	return out

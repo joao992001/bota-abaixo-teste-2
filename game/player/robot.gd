@@ -63,7 +63,7 @@ func setup(p: int, col_idx: int, m: Node, acc := 0, model := 0) -> void:
 	color_idx = col_idx
 	main = m
 	c = Data.ctrl
-	hammer_left = int(Data.scoring["hammer"]["uses_per_round"])
+	hammer_left = 999
 	collision_layer = 0
 	collision_mask = 1 | 2 | (1 << (2 + p))
 	var hb: Array = c["hitbox"]
