@@ -1,5 +1,5 @@
 id: demolicao
-terremoto: 30
+terremoto: 70
 size: 30x16
 spawns: 1,2,3,4
 legend: "d = caixote destrutível, I = parede invisível, ^ = espinho, 1-4 = spawn, . = vazio"

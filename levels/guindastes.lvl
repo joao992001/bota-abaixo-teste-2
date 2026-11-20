@@ -1,6 +1,6 @@
 id: guindastes
 plataformas: 6,9,3,4,0,5; 13.5,4,3,0,6,6; 19,11,3,-5,0,4.5
-terremoto: 40
+terremoto: 70
 fundo: #d8ecf4
 size: 30x16
 spawns: 1,2,3,4

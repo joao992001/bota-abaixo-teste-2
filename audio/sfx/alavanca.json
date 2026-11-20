@@ -1,0 +1,36 @@
+{
+ "wave": "square",
+ "duty": 0.5,
+ "freq_start": 160,
+ "freq_end": 90,
+ "duration": 0.06,
+ "decay": 0.05,
+ "sustain": 0.0,
+ "release": 0.03,
+ "lowpass": 0.4,
+ "volume": 0.5,
+ "layers": [
+  {
+   "wave": "noise",
+   "freq_start": 2000,
+   "duration": 0.04,
+   "decay": 0.03,
+   "sustain": 0,
+   "release": 0.02,
+   "volume": 0.4
+  },
+  {
+   "wave": "square",
+   "duty": 0.5,
+   "freq_start": 220,
+   "freq_end": 120,
+   "duration": 0.06,
+   "decay": 0.05,
+   "sustain": 0,
+   "release": 0.03,
+   "lowpass": 0.4,
+   "volume": 0.45,
+   "delay": 0.09
+  }
+ ]
+}

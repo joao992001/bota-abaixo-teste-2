@@ -1,0 +1,25 @@
+{
+ "wave": "saw",
+ "freq_start": 180,
+ "freq_end": 260,
+ "duration": 0.45,
+ "attack": 0.01,
+ "decay": 0.05,
+ "sustain": 0.8,
+ "release": 0.08,
+ "vibrato_depth": 1.5,
+ "vibrato_rate": 40,
+ "lowpass": 0.45,
+ "volume": 0.35,
+ "layers": [
+  {
+   "wave": "noise",
+   "freq_start": 4000,
+   "duration": 0.4,
+   "sustain": 0.4,
+   "release": 0.05,
+   "lowpass": 0.6,
+   "volume": 0.18
+  }
+ ]
+}

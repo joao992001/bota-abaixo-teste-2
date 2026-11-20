@@ -1,0 +1,25 @@
+{
+ "wave": "triangle",
+ "freq_start": 700,
+ "freq_end": 900,
+ "duration": 0.35,
+ "attack": 0.01,
+ "sustain": 0.6,
+ "release": 0.08,
+ "vibrato_depth": 3.0,
+ "vibrato_rate": 14,
+ "volume": 0.3,
+ "layers": [
+  {
+   "wave": "noise",
+   "freq_start": 3000,
+   "duration": 0.3,
+   "sustain": 0.3,
+   "release": 0.05,
+   "lowpass": 0.4,
+   "vibrato_depth": 4,
+   "vibrato_rate": 14,
+   "volume": 0.12
+  }
+ ]
+}

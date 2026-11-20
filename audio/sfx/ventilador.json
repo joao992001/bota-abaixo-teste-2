@@ -1,0 +1,14 @@
+{
+ "wave": "noise",
+ "freq_start": 400,
+ "freq_end": 900,
+ "duration": 0.7,
+ "attack": 0.15,
+ "decay": 0.2,
+ "sustain": 0.5,
+ "release": 0.3,
+ "lowpass": 0.2,
+ "vibrato_depth": 2,
+ "vibrato_rate": 9,
+ "volume": 0.4
+}

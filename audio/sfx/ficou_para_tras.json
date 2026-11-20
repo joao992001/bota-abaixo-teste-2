@@ -1,0 +1,13 @@
+{
+ "wave": "saw",
+ "freq_start": 600,
+ "freq_end": 120,
+ "duration": 0.5,
+ "attack": 0.005,
+ "sustain": 0.6,
+ "release": 0.1,
+ "vibrato_depth": 1.5,
+ "vibrato_rate": 10,
+ "lowpass": 0.4,
+ "volume": 0.3
+}

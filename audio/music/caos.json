@@ -1,0 +1,41 @@
+{
+ "bpm": 152,
+ "steps_per_beat": 4,
+ "loops": 2,
+ "tracks": [
+  {
+   "wave": "saw",
+   "volume": 0.14,
+   "lowpass": 0.2,
+   "release": 0.02,
+   "notes": "E2 E2 . E2 E2 . E2 . E2 E2 . E2 . E2 . . | E2 E2 . E2 E2 . E2 . E2 E2 . E2 . E2 . . | F2 F2 . F2 F2 . F2 . F2 F2 . F2 . F2 . . | E2 E2 . E2 E2 . E2 . E2 E2 . E2 . E2 . . | E2 E2 . E2 E2 . E2 . E2 E2 . E2 . E2 . . | E2 E2 . E2 E2 . E2 . E2 E2 . E2 . E2 . . | G2 G2 . G2 G2 . G2 . G2 G2 . G2 . G2 . . | F#2 F#2 . F#2 F#2 . F#2 . F#2 F#2 . F#2 . F#2 . ."
+  },
+  {
+   "wave": "square",
+   "duty": 0.125,
+   "volume": 0.1,
+   "lowpass": 0.5,
+   "release": 0.04,
+   "vibrato_depth": 0.2,
+   "vibrato_rate": 7,
+   "notes": "E4 . F4 . E4 . . . B4 . A#4 . A4 . . . | E4 . G4 . F#4 . F4 . E4 . . . . . . . | F4 . G#4 . A4 . . . C5 . B4 . A#4 . . . | E4 . . . B3 . . . E4 . . . . . . . | E5 . D#5 . E5 . B4 . G4 . A#4 . B4 . . . | E5 . F5 . E5 . D5 . C5 . B4 . . . . . | G4 . A#4 . D5 . . . C#5 . . . A#4 . . . | F#4 . A#4 . C#5 . F#5 . . . . . . . . ."
+  },
+  {
+   "wave": "sine",
+   "volume": 0.5,
+   "decay": 0.05,
+   "sustain": 0,
+   "release": 0.02,
+   "notes": "C2 . . C2 . . C2 . C2 . . C2 . . C2 . | C2 . . C2 . . C2 . C2 . . C2 . . C2 . | C2 . . C2 . . C2 . C2 . . C2 . . C2 . | C2 . . C2 . . C2 . C2 . . C2 . . C2 . | C2 . . C2 . . C2 . C2 . . C2 . . C2 . | C2 . . C2 . . C2 . C2 . . C2 . . C2 . | C2 . . C2 . . C2 . C2 . . C2 . . C2 . | C2 . . C2 . . C2 . C2 . . C2 . . C2 ."
+  },
+  {
+   "wave": "noise",
+   "volume": 0.07,
+   "decay": 0.02,
+   "sustain": 0,
+   "freq_start": 8000,
+   "highpass": 0.3,
+   "notes": "x x . x x . x . x x . x x . x x | x x . x x . x . x x . x x . x x | x x . x x . x . x x . x x . x x | x x . x x . x . x x . x x . x x | x x . x x . x . x x . x x . x x | x x . x x . x . x x . x x . x x | x x . x x . x . x x . x x . x x | x x . x x . x . x x . x x . x x"
+  }
+ ]
+}

@@ -1,0 +1,26 @@
+id: fornalha
+chama_ciclo: 2.6, 0.8, 1.2
+barril_cada: 4.5
+barril_vel: 4
+terremoto: 70
+fundo: #ffe2cc
+legend: "d caixote, f bico de chama, B calha de barris, w água, ^ espinho, 1-4 spawn"
+size: 30x16
+spawns: 1,2,3,4
+=== map
+IIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+I............................I
+I............................I
+I...........dddddd...........I
+I............................I
+IB..........................BI
+Idddddddd............ddddddddI
+I............................I
+I..1......2........3......4..I
+Iddddddfddddd.ff.dddddfddddddI
+I............................I
+I............................I
+I............................I
+I...dddfdddd......ddddfddd...I
+I............................I
+^^^^^^^^^^^^wwwwww^^^^^^^^^^^^

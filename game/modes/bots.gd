@@ -116,12 +116,34 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 	var row := int((pos.y + 2.0) / 64.0)
 	var col := int(pos.x / 64.0)
 	var cmd := {"dir": 0}
+	if r.item == "tabua" and not r.is_on_floor() and r.velocity.y > 250.0 and pos.y > 64.0 * (L.rows - 5):
+		cmd["item"] = true   # tábua de emergência caindo no buraco
 	# 1) fugir de dinamite
 	for d in demo.dynamites:
 		if d["pos"].distance_to(center) < 220.0:
 			cmd["dir"] = 1 if center.x >= d["pos"].x else -1
 			cmd["jump"] = true
 			return _safe(r, cmd, lv)
+	# 1b) máquinas da arena (chama, pistão, serra, barril): sair de perto ou pular por cima
+	var fx0 = demo.fx
+	if fx0 != null and is_instance_valid(fx0):
+		var hz: Vector2 = fx0.hazard_near(center, 110.0)
+		if hz != Vector2.INF:
+			cmd["dir"] = 1 if center.x >= hz.x else -1
+			if hz.y > center.y - 10.0 and absf(hz.x - center.x) < 90.0:
+				cmd["jump"] = true
+			return _safe(r, cmd, lv)
+		# alavanca ao alcance e rival em cima do alçapão: marreta a alavanca
+		for lvr in fx0.levers:
+			var lc: Vector2 = Vector2(lvr["cell"] * 64) + Vector2(32, 32)
+			if absf(lc.x - pos.x) < 90.0 and absf(lc.y - center.y) < 60.0 and fx0.traps_open_t <= 0.0 and fx0.someone_on_traps(r):
+				var want := 1 if lc.x > pos.x else -1
+				if want != r.facing:
+					cmd["dir"] = want
+				elif st.get("hammer_cd", 0.0) <= 0.0:
+					cmd["hammer"] = true
+					st["hammer_cd"] = float(lv["hammer_cooldown_s"])
+				return cmd
 	# 2) caixote embaixo rachando / tremendo: sair dele
 	var under := Vector2i(col, row)
 	if r.is_on_floor() and L.blocks.has(under):
@@ -134,7 +156,13 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 					return _safe(r, cmd, lv)
 	# 2b) maré de lama chegando: subir para o caixote mais alto alcançável
 	var fx = demo.fx
-	if fx != null and is_instance_valid(fx) and fx.goo_on and fx.goo_y - pos.y < 330.0 and r.is_on_floor():
+	var climb: bool = fx != null and is_instance_valid(fx) and fx.goo_on and fx.goo_y - pos.y < 330.0
+	if fx != null and is_instance_valid(fx) and fx.scroll_on and fx.scroll_dir == "cima" and pos.y > fx.scroll_center.y + 120.0:
+		climb = true   # Torre: a câmera sobe, não pode ficar para trás
+	if fx != null and is_instance_valid(fx) and fx.scroll_on and fx.scroll_dir != "cima" and pos.x < fx.scroll_center.x - 380.0:
+		cmd["dir"] = 1   # Ponte: a câmera avança, segue em frente
+		return _safe(r, cmd, lv)
+	if climb and r.is_on_floor():
 		var best := Vector2i(-1, -1)
 		for dr in range(1, 5):
 			for dc in range(-7, 8):
@@ -172,8 +200,20 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 			cmd["hammer"] = true
 			st["hammer_cd"] = float(lv["hammer_cooldown_s"])
 		return _safe(r, cmd, lv)
-	# 4) dinamite: arremessa quando o rival está a meia distância, mais ou menos na mesma altura
-	if r.item == "dinamite" and absf(dy) < 110.0 and absf(dx) > 140.0 and absf(dx) < 430.0 and main.rng.randf() < float(lv["use_items"]):
+	# 4) itens: cada um tem sua hora
+	var use_ok: bool = main.rng.randf() < float(lv["use_items"])
+	var it_ok := false
+	match r.item:
+		"gancho", "chave", "cola": it_ok = absf(dy) < 100.0 and absf(dx) > 120.0 and absf(dx) < 480.0
+		"furadeira": it_ok = absf(dy) < 60.0 and absf(dx) < 220.0
+		"mola_portatil": it_ok = r.is_on_floor() and dy < -200.0 and absf(dx) < 260.0
+	if it_ok and use_ok:
+		if signi(int(dx)) != r.facing:
+			cmd["dir"] = signi(int(dx))
+		else:
+			cmd["item"] = true
+		return cmd
+	if r.item == "dinamite" and absf(dy) < 110.0 and absf(dx) > 140.0 and absf(dx) < 430.0 and use_ok:
 		if signi(int(dx)) != r.facing:
 			cmd["dir"] = signi(int(dx))
 		else:

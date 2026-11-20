@@ -92,14 +92,16 @@ func _draw_tags() -> void:
 			if robot != null and main.state == S.RUN and robot.alive:
 				var fx: Dictionary = robot.fx_flags()
 				var ix: float = x + 132.0
-				for k in ["item", "martelao", "capacete", "mola"]:
+				for k in ["item", "martelao", "capacete", "mola", "ima", "foguete"]:
 					var on = fx[k] != "" if k == "item" else fx[k]
 					if on:
-						draw_texture_rect(Data.tex("itens/" + ("dinamite" if k == "item" else k)), Rect2(ix, 12, 34, 34), false)
-						ix += 30
+						draw_texture_rect(Data.tex("itens/" + (String(fx["item"]) if k == "item" else k)), Rect2(ix, 12, 34, 34), false)
+						ix += 26
 		else:
 			Kit.text(self, Vector2(x + 150, 44), "%d" % p["score"], 34, DARK)
 			Kit.text(self, Vector2(x + 92, 70), "pontos", 18, Color("#4a5a60"))
+		if main.mode == "demolicao" and main.state in [S.RUN, S.SCORE]:
+			_draw_sub_badge(i, x)
 		if out:
 			draw_rect(r, Color(0.95, 0.93, 0.88, 0.45))
 			Kit.text(self, Vector2(x + 150, 66), "FORA", 26, Color("#8a5a5a"))
@@ -117,16 +119,69 @@ func _draw_tags() -> void:
 	var sign := Rect2(1520, 6, 386, 78)
 	Kit.wood(self, sign)
 	var label := "RODADA %d" % main.round_no
+	if main.mode == "demolicao" and main.demo.submode() == "placar" and main.state == S.RUN:
+		var tl: float = maxf(main.demo.time_left, 0.0)
+		label = "R%d  ·  %d:%02d" % [main.round_no, int(tl) / 60, int(tl) % 60]
+	if main.mode == "demolicao" and main.state == S.RUN:
+		_draw_event_note()
 	if main.mode != "demolicao":
 		var names := {S.PICK: "ESCOLHA", S.BUILD: "CONSTRUÇÃO", S.RUN: "CORRIDA", S.SCORE: "PLACAR"}
 		label = "R%d · %s %d" % [main.round_no, names.get(main.state, ""), ceili(maxf(main.timer, 0.0))]
 	Kit.text(self, Vector2(sign.position.x, 56), label, 34, Kit.CREAM, HORIZONTAL_ALIGNMENT_CENTER, sign.size.x, 7, Color("#5a3a10"))
+
+## Selo embaixo da etiqueta: vidas (corações) ou pontos da rodada, conforme o submodo.
+func _draw_sub_badge(i: int, x: float) -> void:
+	var d = main.demo
+	match d.submode():
+		"vidas":
+			var n: int = int(d.lives.get(i, 0))
+			var tot: int = int(d.sub.get("vidas", 3))
+			panel(Rect2(x + 40, 84, 30 + tot * 34, 40))
+			for k in tot:
+				_heart(Vector2(x + 70 + k * 34, 104), 13.0, k < n)
+		"placar":
+			panel(Rect2(x + 40, 84, 170, 40))
+			Kit.text(self, Vector2(x + 40, 115), "%d pts" % int(d.points.get(i, 0)), 28, DARK, HORIZONTAL_ALIGNMENT_CENTER, 170)
+		"batata":
+			if d.bomb_holder == i:
+				panel(Rect2(x + 40, 84, 170, 40), Color(1, 0.85, 0.8))
+				draw_texture_rect(Data.tex("itens/dinamite"), Rect2(x + 50, 86, 34, 34), false)
+				Kit.text(self, Vector2(x + 86, 115), "%ds" % ceili(d.bomb_fuse), 28, Color("#d42035"))
+
+func _heart(c: Vector2, s: float, full: bool) -> void:
+	var pts := PackedVector2Array()
+	for k in 33:
+		var a := k * TAU / 32.0
+		var hx := 16.0 * pow(sin(a), 3)
+		var hy := -(13.0 * cos(a) - 5.0 * cos(2 * a) - 2.0 * cos(3 * a) - cos(4 * a))
+		pts.append(c + Vector2(hx, hy) * s / 16.0)
+	if full:
+		draw_colored_polygon(pts, Color("#e5484d"))
+	else:
+		draw_colored_polygon(pts, Color(0.75, 0.72, 0.68, 0.6))
+	draw_polyline(pts, DARK, 3.0, true)
+
+## Papel do evento ativo (nome + barra de tempo), entre as etiquetas e a placa.
+func _draw_event_note() -> void:
+	var ev = main.events
+	if ev.phase == "":
+		return
+	var r := Rect2(1090, 10, 410, 70)
+	var warn: bool = ev.phase == "aviso"
+	panel(r, Color(1, 0.88, 0.8) if warn else Color.WHITE)
+	var nm := String(ev.current.get("nome", "")).to_upper()
+	Kit.text(self, Vector2(r.position.x, 46), ("EM BREVE: " if warn else "") + nm, 30 if not warn else 26, Color("#d42035") if warn else DARK, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	if not warn:
+		var k: float = clampf(ev.phase_t / float(ev.current.get("dur", 1)), 0.0, 1.0)
+		draw_rect(Rect2(r.position.x + 30, 60, (r.size.x - 60) * k, 8), Color("#f2c84b"))
 
 ## Faixa de aviso que "salta" quando o texto muda.
 func _ribbon_pop(txt: String, y: float, w: float, size: int, alpha := 1.0) -> void:
 	if txt != _banner:
 		_banner = txt
 		_banner_age = 0.0
+		if txt != "":
+			Audio.play("locutor", 1.0, -6.0)   # "locutor" de bipes robóticos
 	var k := clampf(_banner_age / 0.22, 0.0, 1.0)
 	var s := lerpf(1.45, 1.0, 1.0 - pow(1.0 - k, 3.0))
 	draw_set_transform(Vector2(960, y), sin(_banner_age * 3.0) * 0.01, Vector2(s, s))
@@ -287,6 +342,39 @@ func _draw_win() -> void:
 	_ribbon_pop("P%d  VENCEU!" % (w + 1), 230, 1100, 90)
 	RobotVis.draw_robot(self, _look(pw), RobotVis.victory_pose(t), Transform2D(0.0, Vector2(4, 4), 0.0, Vector2(960, 830)))
 	draw_set_transform(Vector2.ZERO)
+	if main.mode == "demolicao":
+		_draw_titles()
 	var note := Rect2(560, 900, 800, 100)
 	panel(note)
 	Kit.text(self, Vector2(note.position.x, 962), "PULAR jogar de novo  ·  ESC menu", 36, DARK, HORIZONTAL_ALIGNMENT_CENTER, note.size.x)
+
+## Títulos da partida (a partir das estatísticas) e números de cada jogador.
+func _draw_titles() -> void:
+	var titles := [["MARRETEIRO", "derrubadas", "mais derrubou rivais"], ["DEMOLIDOR", "caixotes", "mais quebrou caixotes"], ["DESASTRADO", "quedas", "mais caiu"]]
+	var r := Rect2(60, 330, 560, 120 + titles.size() * 110)
+	panel(r)
+	Kit.text(self, Vector2(r.position.x, r.position.y + 62), "TÍTULOS", 44, DARK, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	var y: float = r.position.y + 110
+	for tt in titles:
+		var best := -1
+		var bv := 0
+		for i in main.players.size():
+			var v: int = int(main.players[i]["stats"][tt[1]])
+			if v > bv:
+				bv = v
+				best = i
+		Kit.text(self, Vector2(r.position.x + 40, y + 40), tt[0], 36, Color("#8a5a10"))
+		if best >= 0:
+			Kit.text(self, Vector2(r.position.x + 330, y + 40), "P%d  (%d)" % [best + 1, bv], 36, Data.TEXT_COLORS[main.players[best]["color"]])
+		else:
+			Kit.text(self, Vector2(r.position.x + 330, y + 40), "—", 36, Color("#9aa4ae"))
+		Kit.text(self, Vector2(r.position.x + 40, y + 76), tt[2], 22, Color("#4a5a60"))
+		y += 110
+	var r2 := Rect2(1300, 330, 560, 120 + main.players.size() * 80)
+	panel(r2)
+	Kit.text(self, Vector2(r2.position.x, r2.position.y + 62), "NÚMEROS", 44, DARK, HORIZONTAL_ALIGNMENT_CENTER, r2.size.x)
+	for i in main.players.size():
+		var st: Dictionary = main.players[i]["stats"]
+		var yy: float = r2.position.y + 130 + i * 80
+		Kit.text(self, Vector2(r2.position.x + 40, yy), "P%d" % (i + 1), 36, Data.TEXT_COLORS[main.players[i]["color"]])
+		Kit.text(self, Vector2(r2.position.x + 120, yy), "%d derrub. · %d caixas · %d quedas" % [st["derrubadas"], st["caixotes"], st["quedas"]], 24, DARK)

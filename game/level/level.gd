@@ -22,6 +22,8 @@ var belt_speed := 192.0
 var belt_warn := false      # esteiras piscando antes de inverter
 var extra_solid := Callable()   # sólidos que se movem (plataformas do guindaste), para bots e itens
 var anim_t := 0.0
+var traps := {}             # alçapões 'a' (fechado) / 'A' (aberto): Vector2i -> CollisionShape2D
+const FIXED_SOLID := ["#", "o", "I", "F", "f", "P", "B"]   # sólidos fixos que não quebram (máquinas incluídas)
 
 func load_level(level_id: String) -> void:
 	id = level_id
@@ -65,9 +67,38 @@ func ch_at(c: Vector2i) -> String:
 	return String(grid[c.y])[c.x]
 
 func is_solid(c: Vector2i) -> bool:
-	if ch_at(c) in ["#", "o", "I", "d", "T", "<", ">"]:
+	if ch_at(c) in ["#", "o", "I", "d", "T", "<", ">", "F", "f", "P", "B", "a"]:
 		return true
 	return extra_solid.is_valid() and extra_solid.call(c)
+
+## Caixote destrutível: corpo próprio para poder sumir sozinho.
+func _make_block(c: Vector2i) -> void:
+	var body := StaticBody2D.new()
+	body.collision_layer = 1
+	body.collision_mask = 0
+	var bs := CollisionShape2D.new()
+	var br := RectangleShape2D.new()
+	br.size = Vector2(T, T)
+	bs.shape = br
+	bs.position = Vector2(c.x * T + T / 2.0, c.y * T + T / 2.0)
+	body.add_child(bs)
+	add_child(body)
+	blocks[c] = {"hp": block_hp, "body": body, "load": 0.0, "warn": 0.0}
+
+## Caixote novo durante a partida (Chuva de Caixas).
+func add_block(c: Vector2i) -> bool:
+	if ch_at(c) != "." or c.y <= 0 or c.y >= rows - 1:
+		return false
+	set_cell_char(c, "d")
+	_make_block(c)
+	return true
+
+## Alçapões: abre/fecha uma célula ('a' fechado, 'A' aberto).
+func set_trap(c: Vector2i, open: bool) -> void:
+	if not traps.has(c):
+		return
+	traps[c].set_deferred("disabled", open)
+	set_cell_char(c, "A" if open else "a")
 
 ## Troca um caractere do mapa (rede rasgada, alçapão aberto...).
 func set_cell_char(c: Vector2i, ch: String) -> void:
@@ -123,8 +154,23 @@ func _build_colliders() -> void:
 		var x := 0
 		while x < cols:
 			var ch := ch_at(Vector2i(x, y))
-			if ch == "o" or ch == "I":
+			if ch in FIXED_SOLID:
 				ch = "#"
+			if ch == "a":
+				# alçapão: corpo próprio para abrir/fechar
+				var tb := StaticBody2D.new()
+				tb.collision_layer = 1
+				tb.collision_mask = 0
+				var tcs := CollisionShape2D.new()
+				var trs := RectangleShape2D.new()
+				trs.size = Vector2(T, 24)
+				tcs.shape = trs
+				tcs.position = Vector2(x * T + T / 2.0, y * T + 12)
+				tb.add_child(tcs)
+				add_child(tb)
+				traps[Vector2i(x, y)] = tcs
+				x += 1
+				continue
 			if ch == "<" or ch == ">":
 				# esteira do mapa: um corpo por trecho contínuo, com velocidade de plataforma
 				var x0b := x
@@ -146,25 +192,14 @@ func _build_colliders() -> void:
 				belts.append({"body": bb, "dir": dir, "x0": x0b, "x1": x, "y": y})
 				continue
 			if ch == "d" or ch == "T":
-				# caixote destrutível: corpo próprio para poder sumir sozinho
-				var body := StaticBody2D.new()
-				body.collision_layer = 1
-				body.collision_mask = 0
-				var bs := CollisionShape2D.new()
-				var br := RectangleShape2D.new()
-				br.size = Vector2(T, T)
-				bs.shape = br
-				bs.position = Vector2(x * T + T / 2.0, y * T + T / 2.0)
-				body.add_child(bs)
-				add_child(body)
-				blocks[Vector2i(x, y)] = {"hp": block_hp, "body": body, "load": 0.0, "warn": 0.0}
+				_make_block(Vector2i(x, y))
 				x += 1
 				continue
 			if ch != "#" and ch != "=":
 				x += 1
 				continue
 			var x0 := x
-			while x < cols and (ch_at(Vector2i(x, y)) == ch or (ch == "#" and ch_at(Vector2i(x, y)) in ["#", "o", "I"])):
+			while x < cols and (ch_at(Vector2i(x, y)) == ch or (ch == "#" and ch_at(Vector2i(x, y)) in FIXED_SOLID)):
 				x += 1
 			var cs := CollisionShape2D.new()
 			var r := RectangleShape2D.new()
@@ -229,6 +264,24 @@ func _draw_art() -> void:
 					_draw_block_d(c, pos)
 				"<", ">":
 					draw_texture_rect(Data.tex("cenario/esteira_piso"), Rect2(pos, tile), false)
+				"F":
+					draw_texture_rect(Data.tex("cenario/ventilador"), Rect2(pos, tile), false)
+				"f":
+					draw_texture_rect(Data.tex("cenario/bico_chama"), Rect2(pos, tile), false)
+				"P":
+					draw_texture_rect(Data.tex("cenario/pistao_caixa"), Rect2(pos, tile), false)
+				"B":
+					var flip := x >= cols / 2
+					draw_set_transform(pos + Vector2(T if flip else 0, 0), 0.0, Vector2(-1 if flip else 1, 1))
+					draw_texture_rect(Data.tex("cenario/calha"), Rect2(Vector2.ZERO, tile), false)
+					draw_set_transform(Vector2.ZERO)
+				"a":
+					draw_texture_rect(Data.tex("cenario/alcapao"), Rect2(pos, Vector2(T, 24)), false)
+				"A":
+					# aberto: tábua pendurada na dobradiça
+					draw_set_transform(pos + Vector2(4, 12), PI / 2.0)
+					draw_texture_rect(Data.tex("cenario/alcapao"), Rect2(Vector2(-4, -12), Vector2(T, 24)), false)
+					draw_set_transform(Vector2.ZERO)
 				"w":
 					var wv := sin(anim_t * 2.0 + x * 0.9) * 4.0
 					draw_rect(Rect2(pos + Vector2(0, 24 + wv), Vector2(T, T - 24 - wv)), Color("#6fc3dc"))

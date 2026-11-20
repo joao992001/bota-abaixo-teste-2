@@ -1,7 +1,7 @@
 id: esteiras
 esteira_vel: 3.2
 esteira_inverte: 7
-terremoto: 35
+terremoto: 70
 fundo: #fff7ee
 size: 30x16
 spawns: 1,2,3,4

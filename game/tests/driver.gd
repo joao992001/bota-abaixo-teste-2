@@ -134,6 +134,17 @@ func steer(devs: Array, frames_max: int, trace := false) -> void:
 func autotest() -> void:
 	seed(20261120)            # sorteios repetíveis: o teste não oscila
 	main.rng.seed = 20261120
+	for a in OS.get_cmdline_user_args():   # atalho de depuração: --so=maquinas,itens_novos,eventos
+		if a.begins_with("--so="):
+			PlayerInput.virtual = {"v0": {}, "v1": {}}
+			await frames(2)
+			await tap("v0", "jump")
+			await tap("v1", "jump")
+			main.mode = "demolicao"
+			main.start_match()
+			for nm in a.substr(5).split(","):
+				await call(nm + "_test")
+			return
 	print("== Áudio")
 	var missing := []
 	for k in Audio._index.keys():
@@ -381,6 +392,7 @@ func demo_round() -> void:
 func demolicao_test() -> void:
 	print("== Demolição")
 	main.mode = "demolicao"
+	main.event_level = 0   # eventos são testados à parte (eventos_test)
 	main.arena_choice = "demolicao"   # mecânicas básicas testadas no Canteiro
 	main.start_match()
 	check(main.level.id == "demolicao" and main.level.blocks.size() > 30, "arena de caixotes carregada (%d caixotes)" % main.level.blocks.size())
@@ -532,6 +544,10 @@ func demolicao_test() -> void:
 	await itens_test()
 	await bots_test()
 	await arenas_test()
+	await maquinas_test()
+	await itens_novos_test()
+	await submodos_test()
+	await eventos_test()
 	await menus_test()
 
 func menus_test() -> void:
@@ -548,11 +564,33 @@ func menus_test() -> void:
 	await tap("v0", "left")
 	await tap("v0", "down")
 	await tap("v0", "jump")
-	check(main.state == S.ARENAS, "Demolição abre a escolha de arena")
+	check(main.state == S.SUBMODOS, "Demolição abre a escolha de submodo")
+	await tap("v0", "right")
+	await tap("v0", "jump")
+	check(main.state == S.ARENAS and main.submode_choice == "vidas", "submodo Vidas escolhido → escolha de arena")
 	await tap("v0", "right")
 	await tap("v0", "right")
 	await tap("v0", "jump")
-	check(main.state == S.JOIN and main.mode == "demolicao" and int(main.demo.cfg["rounds_to_win"]) == 3 and main.arena_choice == "esteiras", "arena Fábrica de Esteiras escolhida, vence com 3 ★")
+	check(main.state == S.AJUSTES and main.arena_choice == "esteiras", "arena Fábrica de Esteiras → AJUSTES")
+	await tap("v0", "left")
+	await tap("v0", "down")
+	await tap("v0", "right")
+	var lvl: int = main.event_level
+	await tap("v0", "down")
+	await tap("v0", "jump")
+	check(main.state == S.EVENTOS, "ESCOLHER EVENTOS abre")
+	var first_id: String = main.events.cfg["lista"][0]["id"]
+	await tap("v0", "jump")
+	check(not main.events.enabled[first_id], "evento %s desligado" % first_id)
+	await tap("v0", "jump")
+	await tap("v0", "back")
+	check(main.state == S.AJUSTES and main.events.enabled[first_id], "volta aos AJUSTES (evento religado)")
+	await tap("v0", "down")
+	await tap("v0", "down")
+	await tap("v0", "down")
+	await tap("v0", "jump")
+	check(main.state == S.JOIN and main.mode == "demolicao" and int(main.demo.cfg["rounds_to_win"]) == 3 and lvl >= 0, "COMEÇAR → entrada; vence com 3 ★ (eventos nível %d)" % main.event_level)
+	main.submode_choice = "ultimo"
 	await tap("v0", "jump")
 	main.add_bot()
 	await tap("v0", "start")
@@ -580,6 +618,299 @@ func menus_test() -> void:
 	await tap("v0", "jump")
 	await tap("v0", "back")
 	check(main.state == S.MENU and main.shake_on, "voltar ao menu (tremor religado)")
+
+func maquinas_test() -> void:
+	print("== Máquinas e câmera que rola")
+	main.event_level = 0
+	main.submode_choice = "ultimo"
+	var fx
+	# Torre: a câmera sobe; quem fica embaixo está fora
+	await arena_round("torre")
+	fx = main.demo.fx
+	check(fx.scroll_on and fx.scroll_dir == "cima" and main.level.rows == 40, "Torre: mapa alto com câmera que sobe")
+	var y0: float = fx.scroll_center.y
+	main.demo.t = 20.0
+	await frames(60)
+	check(fx.scroll_center.y < y0 - 20.0, "Torre: a câmera subiu (%.0f → %.0f)" % [y0, fx.scroll_center.y])
+	var vr: Rect2 = main.view_rect()
+	check(vr.size.x <= 1921.0 and main.camera.position.y < float(main.level.rows) * 64.0, "Torre: a câmera acompanha (centro %.0f)" % main.cam_center.y)
+	main.robots[1].invuln = 0.0
+	fx.scroll_center.y = 600.0
+	await frames(3)
+	check(not main.robots[0].alive and main.demo.death_log[-1]["cause"] == "ficou para trás", "Torre: quem ficou para trás saiu (%s)" % main.demo.death_log[-1]["cause"])
+	# Ponte: ninguém passa da frente da tela
+	await arena_round("ponte")
+	fx = main.demo.fx
+	put(main.robots[0], Vector2(1950, 576))
+	await frames(2)
+	check(main.robots[0].position.x <= fx.scroll_center.x + 960.0 - 27.0, "Ponte: a frente da tela segura o robô (x %.0f)" % main.robots[0].position.x)
+	# Gangorras: o peso inclina a tábua
+	await arena_round("gangorras")
+	fx = main.demo.fx
+	var g: Dictionary = fx.seesaws[1]
+	put(main.robots[0], g["pivot"] + Vector2(190, -30))
+	put(main.robots[1], Vector2(col_x(2), 200))
+	await frames(70)
+	check(g["ang"] > 0.12, "Gangorras: peso na direita inclina para a direita (%.2f rad)" % g["ang"])
+	# Prensa: alavanca abre o alçapão; pistão desce e acerta
+	await arena_round("prensa")
+	fx = main.demo.fx
+	var r0 = main.robots[0]
+	var r1 = main.robots[1]
+	put(r0, Vector2(col_x(3), 704))
+	r0.facing = -1
+	put(r1, Vector2(col_x(13), 704))
+	await frames(3)
+	main.demo.hammer(r0)
+	await frames(2)
+	check(main.level.ch_at(Vector2i(13, 11)) == "A" and fx.traps_open_t > 0.0, "Prensa: marretada na alavanca abre os alçapões")
+	await frames(20)
+	check(r1.position.y > 740.0 and r1.last_cause == "alçapão" and r1.last_attacker == 0, "Prensa: quem estava em cima caiu (culpa de P1)")
+	await arena_round("prensa")
+	fx = main.demo.fx
+	fx.pull_lever(0)
+	await frames(2)
+	var opened: bool = main.level.ch_at(Vector2i(13, 11)) == "A"
+	await frames(int(float(main.level.prop("alcapao_s", "3")) * 60.0) + 20)
+	check(opened and main.level.ch_at(Vector2i(13, 11)) == "a", "Prensa: os alçapões fecham sozinhos")
+	r1 = main.robots[1]
+	put(r1, Vector2(col_x(7), 704))
+	var pc := float(main.level.prop("pistao_ciclo", "4.5"))
+	fx.t = pc - 2.0 + 0.8 - fx.pistons[0]["off"] + 0.02
+	await frames(10)
+	check(r1.dmg > 0.0 and r1.last_cause == "prensa", "Prensa: o pistão desce e acerta (%d%%)" % int(r1.dmg))
+	# Fornalha: chama acende e empurra; barril rola e derruba
+	await arena_round("fornalha")
+	fx = main.demo.fx
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	var fl: Dictionary = fx.flames[0]
+	var cc := String(main.level.prop("chama_ciclo", "2.4,0.8,1.3")).split(",")
+	var per := float(cc[0]) + float(cc[1]) + float(cc[2])
+	fx.t = float(cc[0]) + float(cc[1]) + 0.1 - fl["off"] * per
+	put(r1, Vector2(fl["rect"].get_center().x, fl["rect"].end.y))
+	await frames(4)
+	check(r1.last_cause == "chama" and r1.dmg > 0.0, "Fornalha: a chama acerta quem está em cima")
+	r0.invuln = 0.0
+	put(r0, Vector2(col_x(20), 576))
+	await frames(2)
+	fx.barrels.append({"pos": Vector2(col_x(17), 576 - 27), "vx": 300.0, "vy": 0.0, "by": 1, "bounces": 0, "rot": 0.0})
+	var d0: float = r0.dmg
+	await frames(40)
+	check(r0.dmg > d0 and r0.last_cause == "barril" and r0.last_attacker == 1, "Fornalha: barril rola e acerta (culpa de quem marretou)")
+
+func itens_novos_test() -> void:
+	print("== Itens novos")
+	main.event_level = 0
+	main.arena_choice = "demolicao"
+	await demo_round()
+	main.demo.item_t = 999.0
+	var r0 = main.robots[0]
+	var r1 = main.robots[1]
+	# gancho puxa o rival
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(16), 576))
+	r0.facing = 1
+	main.demo.give(r0, "gancho")
+	await frames(2)
+	main.demo.use_item(r0)
+	await frames(2)
+	check(r1.own_vx < -400.0 and r1.last_cause == "gancho", "gancho puxa o rival (%.0f)" % r1.own_vx)
+	# chave-bumerangue acerta e volta
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(16), 576))
+	r0.facing = 1
+	main.demo.give(r0, "chave")
+	main.demo.use_item(r0)
+	await frames(50)
+	check(r1.dmg > 0.0 and main.demo.wrenches.is_empty() or r1.dmg > 0.0, "chave-bumerangue acerta o rival (%d%%)" % int(r1.dmg))
+	# furadeira quebra caixotes à frente
+	await demo_round()
+	r0 = main.robots[0]
+	put(r0, Vector2(col_x(11), 576))
+	put(main.robots[1], Vector2(col_x(24), 576))
+	r0.facing = 1
+	var lv = main.level
+	lv.add_block(Vector2i(13, 8))
+	lv.add_block(Vector2i(14, 8))
+	main.demo.give(r0, "furadeira")
+	main.demo.use_item(r0)
+	await frames(2)
+	check(not lv.blocks.has(Vector2i(13, 8)) and not lv.blocks.has(Vector2i(14, 8)), "furadeira fura os caixotes à frente")
+	# tábua salva da queda
+	put(r0, Vector2(col_x(8) + 10, 700))
+	main.demo.give(r0, "tabua")
+	var nb: int = lv.blocks.size()
+	main.demo.use_item(r0)
+	await frames(30)
+	check(lv.blocks.size() > nb and r0.is_on_floor() and r0.position.y < 840.0, "tábua de emergência vira chão (y %.0f)" % r0.position.y)
+	# cola: poça deixa lento
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(16), 576))
+	r0.facing = 1
+	main.demo.give(r0, "cola")
+	main.demo.use_item(r0)
+	await frames(40)
+	check(main.demo.puddles.size() == 1, "cola vira poça no chão")
+	var pr: Rect2 = main.demo.puddles[0]["rect"]
+	put(r1, Vector2(pr.get_center().x, 576))
+	vset("v1", "right", true)
+	await frames(20)
+	vset("v1", "right", false)
+	check(absf(r1.velocity.x) < 250.0 and r1.glue_t > 0.0, "na cola, anda devagar (%.0f px/s)" % r1.velocity.x)
+	# mola portátil: quem pisa voa
+	await demo_round()
+	r0 = main.robots[0]
+	put(r0, Vector2(col_x(11), 576))
+	r0.facing = 1
+	main.demo.give(r0, "mola_portatil")
+	main.demo.use_item(r0)
+	await frames(2)
+	check(main.demo.springs.size() == 1, "mola portátil no chão")
+	vset("v0", "right", true)
+	var fly := false
+	for i in 30:
+		await frames(1)
+		if r0.velocity.y < -1000.0:
+			fly = true
+	vset("v0", "right", false)
+	check(fly, "pisou na mola e voou")
+	# bota-foguete: segurar PULAR no ar sobe
+	await demo_round()
+	r0 = main.robots[0]
+	put(r0, Vector2(col_x(11), 576))
+	main.demo.give(r0, "foguete")
+	r0.air_jumps = 0
+	put(r0, Vector2(col_x(14), 300))
+	vset("v0", "jump", true)
+	await frames(40)
+	vset("v0", "jump", false)
+	check(r0.position.y < 250.0, "bota-foguete sobe segurando PULAR (300 → %.0f)" % r0.position.y)
+	# ímã puxa
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(15), 576))
+	main.demo.give(r0, "ima")
+	var x1: float = r1.position.x
+	await frames(30)
+	check(r1.position.x < x1 - 20.0, "ímã puxa o rival (%.0f px)" % (x1 - r1.position.x))
+	main.demo.item_t = 4.0
+
+func submodos_test() -> void:
+	print("== Submodos")
+	main.mode = "demolicao"
+	main.arena_choice = "demolicao"
+	main.event_level = 0
+	# Vidas: cair tira 1 vida e volta pelo guindaste; com 0 vidas, sai
+	main.submode_choice = "vidas"
+	await demo_round()
+	var r0 = main.robots[0]
+	var lv0: int = main.demo.lives[0]
+	main.kill(r0, -1, null)
+	await frames(2)
+	check(r0.alive and main.demo.lives[0] == lv0 - 1, "Vidas: caiu, perdeu 1 vida (%d) e voltou" % main.demo.lives[0])
+	main.demo.lives[0] = 1
+	r0.invuln = 0.0
+	main.kill(r0, -1, null)
+	await frames(2)
+	check(not r0.alive, "Vidas: sem vidas, está fora")
+	await frames(100)
+	check(main.state == S.SCORE and main.demo.round_winner == 1, "Vidas: P2 vence a rodada")
+	# Placar: derrubar dá pontos, cair tira; quem tem mais quando o tempo acaba vence
+	main.submode_choice = "placar"
+	await demo_round()
+	r0 = main.robots[0]
+	var r1 = main.robots[1]
+	r1.last_attacker = 0
+	r1.last_cause = "marretada"
+	r1.last_hit = 0.0
+	main.kill(r1, -1, null)
+	await frames(2)
+	var pts: Dictionary = main.demo.sub["pontos"]
+	check(r1.alive and main.demo.points[0] == int(pts["derrubada"]) and main.demo.points[1] == int(pts["queda"]), "Placar: derrubada +%d, queda %d (%s)" % [pts["derrubada"], pts["queda"], str(main.demo.points)])
+	check(main.demo.time_left > 60.0, "Placar: relógio rodando (%.0f s)" % main.demo.time_left)
+	main.demo.time_left = 0.05
+	await frames(100)
+	check(main.state == S.SCORE and main.demo.round_winner == 0, "Placar: tempo acabou, P1 vence com mais pontos")
+	# Batata-Dinamite: a marretada passa a dinamite; quando o pavio acaba, explode quem está com ela
+	main.submode_choice = "batata"
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	main.demo.bomb_next = 0.01
+	await frames(3)
+	var h: int = main.demo.bomb_holder
+	check(h >= 0, "Batata: alguém pegou a dinamite (P%d)" % (h + 1))
+	var hr = main.robots[h]
+	var other = main.robots[1 - h]
+	put(hr, Vector2(col_x(12), 576))
+	put(other, Vector2(col_x(12) + 50, 576))
+	hr.facing = 1
+	await frames(3)
+	main.demo.hammer(hr)
+	await frames(2)
+	check(main.demo.bomb_holder == 1 - h, "Batata: marretada passou a dinamite para P%d" % (2 - h))
+	hr.invuln = 99.0
+	main.demo.bomb_fuse = 0.02
+	await frames(4)
+	check(not other.alive, "Batata: o pavio acabou e quem estava com ela explodiu")
+	await frames(100)
+	check(main.state == S.SCORE and main.demo.round_winner == h, "Batata: P%d vence a rodada" % (h + 1))
+	main.submode_choice = "ultimo"
+
+func eventos_test() -> void:
+	print("== Eventos")
+	main.mode = "demolicao"
+	main.arena_choice = "demolicao"
+	main.submode_choice = "ultimo"
+	main.event_level = 2
+	var ev = main.events
+	for e in ev.cfg["lista"]:
+		await demo_round()
+		main.demo.t = 0.0
+		for r in main.robots:
+			r.invuln = 99.0   # o teste olha o evento, não quer ninguém caindo
+		ev.timer = 999.0
+		ev.current = e
+		ev.phase = "aviso"
+		ev.phase_t = 0.02
+		await frames(3)
+		var ok: bool = ev.phase == "ativo"
+		match e["id"]:
+			"gravidade": ok = ok and ev.gravity_mult < 1.0
+			"ventania": ok = ok and ev.wind != 0.0
+			"sabao": ok = ok and ev.slip < 1.0
+			"martelao": ok = ok and main.robots[0].fx_t["martelao"] > 0.0
+			"apagao": ok = ok and ev.dark != null
+		var n0: int = main.level.blocks.size()
+		var d0: int = main.demo.dynamites.size()
+		await frames(90)
+		match e["id"]:
+			"caixas": ok = ok and (ev.falling.size() > 0 or main.level.blocks.size() > n0)
+			"dinamite": ok = ok and ev.spawned >= 2
+			"tremores": ok = ok and (main.level.blocks.size() < n0 or main.level.blocks.values().any(func(b): return b["warn"] > 0.0))
+			"vigas": ok = ok and (ev.marks.size() > 0 or ev.falling.size() > 0)
+		ev.phase_t = 0.01
+		await frames(3)
+		ok = ok and ev.phase == "" and ev.gravity_mult == 1.0 and ev.wind == 0.0 and ev.slip == 1.0 and ev.dark == null
+		check(ok, "evento %s liga, age e desliga (fase %s, caindo %d, caixotes %d→%d)" % [e["nome"], ev.phase, ev.falling.size(), n0, main.level.blocks.size()])
+	# agendamento: nível 3 traz o primeiro evento cedo
+	main.event_level = 3
+	await demo_round()
+	await frames(int(float(ev.cfg["primeiro_s"][3]) * 60.0) + 10)
+	check(ev.phase != "", "frequência ALTA: primeiro evento em %ss" % str(ev.cfg["primeiro_s"][3]))
+	main.event_level = 0
+	await demo_round()
+	await frames(60 * 20)
+	check(ev.phase == "", "eventos DESLIGADOS: nada acontece")
 
 func itens_test() -> void:
 	print("== Itens")

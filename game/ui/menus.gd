@@ -25,6 +25,9 @@ var pause_sel := 0
 var t := 0.0
 var shake_card := 0.0
 var arena_sel := 0
+var sub_sel := 0
+var adj_sel := 0
+const EVENT_LEVELS := ["DESLIGADOS", "POUCOS", "NORMAL", "CAOS"]
 
 func setup(m: Node) -> void:
 	main = m
@@ -66,14 +69,12 @@ func update(dt: float) -> void:
 					3: main.get_tree().quit()
 		S.MODES:
 			mode_sel = posmod(mode_sel + move_h(), MODES.size())
-			goal_sel = clampi(goal_sel - move_v(), 0, STAR_GOALS.size() - 1)
 			if confirm():
 				var m: Dictionary = MODES[mode_sel]
 				if m["ok"]:
 					main.mode = m["id"]
-					main.demo.cfg["rounds_to_win"] = STAR_GOALS[goal_sel]
 					if m["id"] == "demolicao":
-						main.state = S.ARENAS
+						main.state = S.SUBMODOS
 					else:
 						main.go_join()
 				else:
@@ -84,6 +85,42 @@ func update(dt: float) -> void:
 		S.HOWTO:
 			if confirm() or pressed("back"):
 				main.state = S.MENU
+		S.SUBMODOS:
+			var subs: Array = main.demo.cfg["submodos"]
+			sub_sel = posmod(sub_sel + move_h(), subs.size())
+			if confirm():
+				main.submode_choice = subs[sub_sel]["id"]
+				main.state = S.ARENAS
+			elif pressed("back"):
+				main.state = S.MODES
+		S.AJUSTES:
+			adj_sel = posmod(adj_sel + move_v(), 6)
+			var h2 := move_h()
+			var c2 := confirm()
+			match adj_sel:
+				0:
+					if h2 != 0:
+						goal_sel = clampi(goal_sel + h2, 0, STAR_GOALS.size() - 1)
+				1:
+					if h2 != 0 or c2:
+						main.event_level = posmod(main.event_level + (h2 if h2 != 0 else 1), 4)
+				2:
+					if c2:
+						main.state = S.EVENTOS
+				3:
+					if h2 != 0 or c2:
+						main.demo.items_on = not main.demo.items_on
+				4:
+					if h2 != 0 or c2:
+						main.demo.help_losers = not main.demo.help_losers
+				5:
+					if c2:
+						main.demo.cfg["rounds_to_win"] = STAR_GOALS[goal_sel]
+						main.go_join()
+			if pressed("back"):
+				main.state = S.ARENAS
+		S.EVENTOS:
+			main.events.menu_update(self)
 		S.ARENAS:
 			var n := arena_list().size()
 			arena_sel = posmod(arena_sel + move_h(), n)
@@ -92,9 +129,9 @@ func update(dt: float) -> void:
 				arena_sel = clampi(arena_sel + v * 4, 0, n - 1)
 			if confirm():
 				main.arena_choice = arena_list()[arena_sel]["id"]
-				main.go_join()
+				main.state = S.AJUSTES
 			elif pressed("back"):
-				main.state = S.MODES
+				main.state = S.SUBMODOS
 		S.OPTIONS:
 			opt_sel = posmod(opt_sel + move_v(), 6)
 			var h := move_h()
@@ -141,6 +178,9 @@ func draw(ci: CanvasItem) -> void:
 		S.HOWTO: _draw_howto(ci)
 		S.OPTIONS: _draw_options(ci)
 		S.ARENAS: _draw_arenas(ci)
+		S.SUBMODOS: _draw_submodes(ci)
+		S.AJUSTES: _draw_adjust(ci)
+		S.EVENTOS: main.events.menu_draw(ci, self)
 	if main.paused:
 		_draw_pause(ci)
 
@@ -219,13 +259,66 @@ func _draw_modes(ci: CanvasItem) -> void:
 		if not m["ok"]:
 			ci.draw_texture_rect(Data.tex("ui/em_breve"), Rect2(-130, -150, 260, 95), false)
 		ci.draw_set_transform(Vector2.ZERO)
-	# meta de estrelas (só para modos com rodadas)
-	var goal: int = STAR_GOALS[goal_sel]
-	Kit.wood(ci, Rect2(660, 860, 600, 90))
-	Kit.text(ci, Vector2(660, 918), "▲▼  vence com", 30, Kit.CREAM, HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color("#5a3a10"))
-	for k in goal:
-		Kit.star(ci, Vector2(900 + k * 46, 905), 44, true)
 	Kit.text(ci, Vector2(0, 1056), "◄► modo  ·  PULAR confirmar  ·  BACKSPACE/ESC voltar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
+
+func _sub_art(ci: CanvasItem, id: String, c: Vector2, xf: Transform2D) -> void:
+	match id:
+		"ultimo":
+			RobotVis.draw_robot(ci, {"color": 0, "model": 0, "acc": 0}, RobotVis.victory_pose(t), xf * Transform2D(0.0, Vector2(1.5, 1.5), 0.0, c + Vector2(0, 70)))
+		"vidas":
+			for k in 3:
+				RobotVis.draw_robot(ci, {"color": 1, "model": 2, "acc": 0}, RobotVis.idle_pose(t + k), xf * Transform2D(0.0, Vector2(0.9, 0.9), 0.0, c + Vector2(-80 + k * 80, 60)))
+		"placar":
+			ci.draw_set_transform_matrix(xf)
+			Kit.wood(ci, Rect2(c + Vector2(-130, -60), Vector2(260, 110)))
+			Kit.text(ci, c + Vector2(-130, 20), "+3  +1  −1", 44, Kit.CREAM, HORIZONTAL_ALIGNMENT_CENTER, 260, 8, Color("#5a3a10"))
+		"batata":
+			ci.draw_set_transform_matrix(xf * Transform2D(sin(t * 8.0) * 0.15, c))
+			ci.draw_texture_rect(Data.tex("itens/dinamite"), Rect2(-70, -80, 140, 140), false)
+	ci.draw_set_transform_matrix(xf)
+
+func _draw_submodes(ci: CanvasItem) -> void:
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.35))
+	Kit.ribbon(ci, Rect2(560, 30, 800, 128), "DEMOLIÇÃO: SUBMODO", 52)
+	var subs: Array = main.demo.cfg["submodos"]
+	for i in subs.size():
+		var m: Dictionary = subs[i]
+		var on := i == sub_sel
+		var c := Vector2(270 + i * 460, 560)
+		var xf := Transform2D(sin(i * 1.7) * 0.03, Vector2.ONE * (1.06 if on else 0.96), 0.0, c)
+		ci.draw_set_transform_matrix(xf)
+		var r := Rect2(-200, -280, 400, 560)
+		if on:
+			Kit.paper(ci, r.grow(12), Color("#f2c84b"))
+		Kit.paper(ci, r)
+		_sub_art(ci, m["id"], Vector2(0, -110), xf)
+		Kit.text(ci, Vector2(r.position.x, 80), String(m["nome"]).to_upper(), 36 if String(m["nome"]).length() < 14 else 30, Color("#1f3a40"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		var lines: PackedStringArray = String(m["dica"]).split("\n")
+		for k in lines.size():
+			Kit.text(ci, Vector2(r.position.x, 140 + k * 34), lines[k], 25, Color("#4a5a60"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	ci.draw_set_transform(Vector2.ZERO)
+	Kit.text(ci, Vector2(0, 1056), "◄► escolher  ·  PULAR confirmar  ·  BACKSPACE/ESC voltar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
+
+func _draw_adjust(ci: CanvasItem) -> void:
+	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.35))
+	Kit.ribbon(ci, Rect2(560, 30, 800, 128), "AJUSTES DA PARTIDA", 54)
+	var sname: String = main.demo.find_submode(main.submode_choice)["nome"]
+	var aname := "Sorteio"
+	for a in main.demo.cfg["arenas"]:
+		if a["id"] == main.arena_choice:
+			aname = a["nome"]
+	Kit.sticker(ci, Vector2(0, 205), "%s  ·  %s" % [sname, aname], 34, Color("#1f3a40"), HORIZONTAL_ALIGNMENT_CENTER, 1920)
+	var items := [
+		"★ PARA VENCER:  ◄ %d ►" % STAR_GOALS[goal_sel],
+		"EVENTOS:  ◄ %s ►" % EVENT_LEVELS[main.event_level],
+		"ESCOLHER EVENTOS  ▸",
+		"ITENS:  ◄ %s ►" % ("SIM" if main.demo.items_on else "NÃO"),
+		"AJUDA PARA QUEM PERDE:  ◄ %s ►" % ("SIM" if main.demo.help_losers else "NÃO"),
+		"COMEÇAR  ▸",
+	]
+	for i in items.size():
+		_button(ci, Rect2(510, 250 + i * 128, 900, 96), items[i], adj_sel == i)
+	Kit.text(ci, Vector2(0, 1056), "▲▼ escolher  ·  ◄► muda  ·  PULAR confirmar  ·  BACKSPACE/ESC voltar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
 
 ## SORTEIO + arenas de data/modos.json.
 func arena_list() -> Array:
@@ -237,13 +330,15 @@ func _draw_arenas(ci: CanvasItem) -> void:
 	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.1, 0.3, 0.35, 0.35))
 	Kit.ribbon(ci, Rect2(560, 30, 800, 128), "ESCOLHA A ARENA", 58)
 	var list := arena_list()
+	var nrows: int = int(ceil(list.size() / 4.0))
+	var sc := minf(1.0, 860.0 / (nrows * 400.0 - 70.0))   # mais arenas: cartões menores
 	for i in list.size():
 		var a: Dictionary = list[i]
 		var on := i == arena_sel
 		var col := i % 4
 		var row := i / 4
-		var c := Vector2(255 + col * 470, 370 + row * 400)
-		var xf := Transform2D(sin(i * 1.9) * 0.025, Vector2(1.06, 1.06) if on else Vector2.ONE, 0.0, c)
+		var c := Vector2(255 + col * 470, 175 + 165 * sc + row * 400 * sc)
+		var xf := Transform2D(sin(i * 1.9) * 0.025, Vector2(sc, sc) * (1.06 if on else 1.0), 0.0, c)
 		ci.draw_set_transform_matrix(xf)
 		var r := Rect2(-205, -165, 410, 330)
 		if on:
@@ -272,7 +367,7 @@ func _draw_howto(ci: CanvasItem) -> void:
 		["robo", "Derrube os outros no poço de espinhos. O último em pé ganha uma ★."],
 		["marreta", "MARRETA: quebra o caixote à frente (3 golpes) e empurra quem estiver ali."],
 		["pisao", "PULE NA CABEÇA de alguém para deixá-lo tonto.\n▼ + MARRETA quebra o chão embaixo de você."],
-		["itens", "Pegue as bolhas que caem: dinamite (botão de item arremessa),\nmartelão, capacete de aço e botas de mola."],
+		["itens", "Pegue as bolhas que caem (12 itens): dinamite, gancho, cola, chave-bumerangue,\nfuradeira, tábua, mola portátil (botão de ITEM usa) · martelão, ímã, botas, capacete."],
 		["parado", "Caixote racha se você fica parado em cima. Aos 30 s, TERREMOTO!"],
 	]
 	for i in tips.size():

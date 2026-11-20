@@ -12,6 +12,7 @@ const RobotVis := preload("res://player/robot_visual.gd")
 const Demolicao := preload("res://modes/demolicao.gd")
 const Bots := preload("res://modes/bots.gd")
 const Menus := preload("res://ui/menus.gd")
+const Eventos := preload("res://modes/eventos.gd")
 const PIECE_SCRIPTS := {
 	"P01": preload("res://pieces/viga.gd"),
 	"P02": preload("res://pieces/mola.gd"),
@@ -21,10 +22,10 @@ const PIECE_SCRIPTS := {
 const T := 64
 const MILESTONE := 1
 
-enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS }
+enum S { JOIN, PICK, BUILD, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS, SUBMODOS, AJUSTES, EVENTOS }
 var state := S.MENU
 var paused := false
-const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS]
+const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.SUBMODOS, S.AJUSTES, S.EVENTOS]
 var timer := 0.0
 var round_no := 0
 var players: Array = []      # {dev, color, score, piece, sel, unlock, cursor, ghost, placed, rep}
@@ -52,11 +53,14 @@ var shake_on := true          # OPÇÕES > tremor da tela
 var door_open := 0.0
 var mode := "demolicao"      # Modo Festa: "demolicao" · modo antigo de peças: "construcao" (F7 na entrada)
 var demo: Node
+var events: Node2D = null   # eventos dinâmicos (modes/eventos.gd)
 var bots: Node
 var menus: Node
 var fall_log: Array = []
 var self_falls := 0          # quedas sem ter levado golpe nos últimos 2 s (bots: deve ficar perto de 0)
-var arena_choice := "sorteio"   # arena da Demolição: "sorteio" ou o id do .lvl
+var arena_choice := "sorteio"
+var submode_choice := "ultimo"   # Demolição: ultimo, vidas, placar, batata
+var event_level := 2             # AJUSTES: 0 desligados, 1 poucos, 2 normal, 3 caos   # arena da Demolição: "sorteio" ou o id do .lvl
 var bot_level := 1            # 0 fácil, 1 médio, 2 difícil (M na entrada)
 var match_over := false
 var cam_lock: Array = []      # [zoom, centro] fixa a câmera (capturas de animação)
@@ -95,6 +99,9 @@ func _ready() -> void:
 	level.load_level("canteiro")
 	pieces_root = Node2D.new()
 	world.add_child(pieces_root)
+	events = Eventos.new()
+	events.setup(self)
+	world.add_child(events)
 	robots_root = Node2D.new()
 	world.add_child(robots_root)
 	overlay = Node2D.new()
@@ -155,6 +162,7 @@ func load_options() -> void:
 ## Volta ao menu principal: sem jogadores, arena da Demolição ao fundo.
 func go_menu() -> void:
 	paused = false
+	events.reset_round()
 	_clear_robots()
 	for pc in pieces:
 		pc.queue_free()
@@ -185,10 +193,19 @@ func timers(key: String) -> float:
 # ---------------------------------------------------------------- loop
 ## Música de cada tela.
 func _update_music() -> void:
+	var tense := false
 	match state:
 		S.WIN: Audio.music("vitoria", false)
-		S.PICK, S.BUILD, S.RUN, S.SCORE: Audio.music("partida")
+		S.PICK, S.BUILD, S.RUN, S.SCORE:
+			var nm := "partida"
+			if mode == "demolicao" and demo.arena.has("musica"):
+				nm = String(demo.arena["musica"])   # cada família de arena tem sua música
+				tense = state == S.RUN and (demo.quaking or (demo.submode() == "placar" and demo.time_left < 15.0)
+					or (demo.submode() == "batata" and demo.bomb_holder >= 0 and demo.bomb_fuse < 3.0)
+					or (demo.fx != null and is_instance_valid(demo.fx) and demo.fx.scroll_on and demo.t > 20.0))
+			Audio.music(nm)
 		_: Audio.music("menu")
+	Audio.music_tempo(1.1 if tense else 1.0, 1.0 / 60.0)   # tensão: a música acelera
 
 func _physics_process(dt: float) -> void:
 	_update_music()
@@ -252,8 +269,12 @@ func _physics_process(dt: float) -> void:
 # ---------------------------------------------------------------- câmera
 ## Na corrida, aproxima para enquadrar todos os robôs ainda em jogo (1x a CAM_MAX); nas outras fases mostra a obra inteira.
 func _update_camera(dt: float) -> void:
-	var tz := 1.0
-	var tc := Vector2(960, 512)
+	var lw: float = level.cols * 64.0
+	var lh: float = level.rows * 64.0
+	var zmin := minf(1.0, minf(1920.0 / lw, 1024.0 / lh))   # mapa maior que a tela: pode afastar um pouco
+	var zfloor := maxf(zmin, 0.72)                          # ...mas não muito (a câmera rola)
+	var tz := zmin
+	var tc := Vector2(lw, lh) / 2.0
 	if state in MENU_STATES:
 		tz = 1.25
 		tc = Vector2(1000, 470)
@@ -267,11 +288,15 @@ func _update_camera(dt: float) -> void:
 				first = false
 		if not first:
 			box = box.grow_individual(380, 300, 380, 220)
-			tz = clampf(minf(1920.0 / box.size.x, 1024.0 / box.size.y), 1.0, CAM_MAX)
+			tz = clampf(minf(1920.0 / box.size.x, 1024.0 / box.size.y), zfloor, CAM_MAX)
 			tc = box.get_center()
 		else:
 			tz = cam_zoom
 			tc = cam_center
+		if demo != null and demo.fx != null and is_instance_valid(demo.fx) and demo.fx.scroll_on:
+			# câmera que rola: a arena manda (Torre sobe, Ponte avança); quem sai da tela está fora
+			tz = demo.fx.scroll_zoom
+			tc = demo.fx.scroll_center
 	var k := 1.0 - exp(-dt * 3.0)
 	if cam_lock.size() == 2:
 		tz = cam_lock[0]
@@ -281,8 +306,8 @@ func _update_camera(dt: float) -> void:
 	cam_center = cam_center.lerp(tc, k)
 	var hw := 960.0 / cam_zoom
 	var hh := 512.0 / cam_zoom
-	cam_center.x = clampf(cam_center.x, hw, 1920.0 - hw)
-	cam_center.y = clampf(cam_center.y, hh, 1024.0 - hh)
+	cam_center.x = clampf(cam_center.x, hw, lw - hw) if lw > hw * 2.0 else lw / 2.0
+	cam_center.y = clampf(cam_center.y, hh, lh - hh) if lh > hh * 2.0 else lh / 2.0
 	camera.zoom = Vector2(cam_zoom, cam_zoom)
 	camera.position = cam_center + Vector2(0, Data.ARENA_Y) - Vector2(0, 28) / cam_zoom
 	shake_amt = move_toward(shake_amt, 0.0, dt * 40.0)
@@ -290,10 +315,23 @@ func _update_camera(dt: float) -> void:
 	# fundo em paralaxe (camada própria, move menos que o mundo)
 	var zb := 1.0 + (cam_zoom - 1.0) * 0.4
 	var bc := Vector2(960, 540) + (cam_center - Vector2(960, 512)) * 0.5
+	if lw > 1920.0 or lh > 1024.0:
+		# mapa grande: o fundo fica um pouco ampliado e rola uma fração do caminho
+		zb = maxf(zb, 1.15)
+		var rel := Vector2((cam_center.x - hw) / maxf(lw - hw * 2.0, 1.0), (cam_center.y - hh) / maxf(lh - hh * 2.0, 1.0))
+		rel = rel.clamp(Vector2.ZERO, Vector2.ONE)
+		bc = Vector2(960, 540) + (rel - Vector2(0.5, 0.5)) * Vector2(1920, 1080) * (1.0 - 1.0 / zb)
+	zb = maxf(zb, 1.0)
 	bc.x = clampf(bc.x, 960.0 / zb, 1920.0 - 960.0 / zb)
 	bc.y = clampf(bc.y, 540.0 / zb, 1080.0 - 540.0 / zb)
 	bg_layer.scale = Vector2(zb, zb)
 	bg_layer.offset = Vector2(960, 540) - bc * zb
+
+## Retângulo do mundo que a câmera mostra agora.
+func view_rect() -> Rect2:
+	var hw := 960.0 / cam_zoom
+	var hh := 512.0 / cam_zoom
+	return Rect2(cam_center - Vector2(hw, hh), Vector2(hw, hh) * 2.0)
 
 func to_screen(p: Vector2) -> Vector2:
 	return (p + world.position - camera.position) * cam_zoom + Vector2(960, 540)
@@ -649,6 +687,8 @@ func kill(r: CharacterBody2D, owner: int, pc: Node2D) -> void:
 			players[r.pid]["stats"]["quedas"] += 1
 			demo.feed.append({"text": "P%d %s" % [r.pid + 1, "caiu sozinho" if cause == "caiu sozinho" else "caiu (%s)" % cause], "col": r.pid, "t": 0.0})
 			demo.on_knockout(-1, r.pid)
+		if demo.intercept_kill(r):
+			return
 	r.eliminate()
 	if owner >= 0 and owner != r.pid:
 		round_kills[owner] = round_kills.get(owner, 0) + 1

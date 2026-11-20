@@ -1,0 +1,26 @@
+{
+ "wave": "sine",
+ "freq_start": 140,
+ "freq_end": 70,
+ "duration": 0.12,
+ "attack": 0.001,
+ "decay": 0.1,
+ "sustain": 0.0,
+ "release": 0.05,
+ "volume": 0.6,
+ "variations": 3,
+ "pitch_jitter": 0.1,
+ "layers": [
+  {
+   "wave": "noise",
+   "freq_start": 700,
+   "freq_end": 200,
+   "duration": 0.08,
+   "decay": 0.06,
+   "sustain": 0,
+   "release": 0.03,
+   "lowpass": 0.3,
+   "volume": 0.35
+  }
+ ]
+}

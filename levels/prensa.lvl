@@ -1,0 +1,26 @@
+id: prensa
+pistao_ciclo: 4.6
+serras: 8,7,21,6
+alcapao_s: 3
+terremoto: 70
+fundo: #e4ecef
+legend: "d caixote, P pistão (teto), a alçapão, L alavanca, ^ espinho, 1-4 spawn (serra no cabeçalho)"
+size: 30x16
+spawns: 1,2,3,4
+=== map
+IIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+I......P......PP......P......I
+I............................I
+I............................I
+I............................I
+I............................I
+I............................I
+I.dddd...dddd....dddd...dddd.I
+I............................I
+I............................I
+I.L..1....2........3....4..L.I
+IdddddddddddaaaaaadddddddddddI
+I............................I
+Iddd......................dddI
+I............................I
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

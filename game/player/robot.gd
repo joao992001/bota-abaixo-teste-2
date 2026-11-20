@@ -27,7 +27,9 @@ var spin := 0.0
 var wall_sliding := false
 var stun_t := 0.0            # atordoado: ignora o controle (pisão na cabeça, marretada)
 var item := ""               # item guardado (dinamite), usado com o botão de item
-var fx_t := {"martelao": 0.0, "mola": 0.0}   # efeitos com tempo
+var fx_t := {"martelao": 0.0, "mola": 0.0, "ima": 0.0, "foguete": 0.0}   # efeitos com tempo
+var glue_t := 0.0             # pisou na cola: lento
+var push_vx := 0.0            # empurrão externo deste quadro (ímã); zera a cada quadro
 var shield := 0              # capacete de aço: golpes que ainda aguenta
 var fall_reason := ""
 var last_hit := 99.0
@@ -107,6 +109,10 @@ func _physics_process(dt: float) -> void:
 	ext_vx = 0.0
 	if on_floor and floor_piece != null and is_instance_valid(floor_piece):
 		ext_vx = floor_piece.belt_vx(self, ix)
+	ext_vx += push_vx
+	push_vx = 0.0
+	if main.events != null and main.events.wind != 0.0 and hanging == false:
+		ext_vx += main.events.wind * (1.0 if on_floor else 1.3)   # evento Ventania
 	# horizontal
 	if wall_lock <= 0.0:
 		if ix != 0.0:
@@ -116,6 +122,8 @@ func _physics_process(dt: float) -> void:
 			a *= f("air_mult")
 		if stun_t > 0.0:
 			a *= 0.25   # empurrado: desliza longe
+		if on_floor and main.events != null:
+			a *= main.events.slip   # evento Sabão: chão escorregadio
 		own_vx = move_toward(own_vx, ix * f("max_run"), a * dt)
 	# pulo / parede
 	var wall_dir := 0 if on_floor else _wall_dir()
@@ -138,9 +146,25 @@ func _physics_process(dt: float) -> void:
 	# gravidade
 	if var_jump <= 0.0:
 		var g := f("gravity")
+		if main.events != null:
+			g *= main.events.gravity_mult   # evento Gravidade Baixa
 		if not spring and _held("jump") and absf(velocity.y) < f("half_grav_threshold"):
 			g *= 0.5
 		velocity.y += g * dt
+	if fx_t["foguete"] > 0.0 and not on_floor and _held("jump") and var_jump <= 0.0 and velocity.y > -300.0:
+		var fc: Dictionary = main.demo.item_cfg("foguete")
+		if velocity.y > -float(fc["sobe_max"]):
+			velocity.y -= float(fc["empuxo"]) * dt   # bota-foguete: segura PULAR no ar
+		if Engine.get_physics_frames() % 4 == 0:
+			main.spark(position + Vector2(0, 4), 1)
+		if Engine.get_physics_frames() % 18 == 0:
+			Audio.play("foguete", _pitch(), -8.0)
+	if glue_t > 0.0:
+		glue_t -= dt
+		var vmax: float = float(main.demo.item_cfg("cola")["vel_max"])
+		own_vx = clampf(own_vx, -vmax, vmax)
+		if velocity.y < -560.0 and on_floor == false and var_jump > 0.0:
+			velocity.y = -560.0
 	if spring and velocity.y >= 0.0:
 		spring = false
 	var max_fall := f("fast_max_fall") if _held("down") else f("max_fall")
@@ -216,7 +240,8 @@ func absorb() -> bool:
 	return true
 
 func fx_flags() -> Dictionary:
-	return {"martelao": fx_t["martelao"] > 0.0, "mola": fx_t["mola"] > 0.0, "capacete": shield > 0, "item": item}
+	return {"martelao": fx_t["martelao"] > 0.0, "mola": fx_t["mola"] > 0.0, "capacete": shield > 0, "item": item,
+		"ima": fx_t["ima"] > 0.0, "foguete": fx_t["foguete"] > 0.0}
 
 ## Pulo duplo do propulsor (um no ar; recarrega no chão, na parede e na borda).
 func _air_jump(ix: float) -> void:

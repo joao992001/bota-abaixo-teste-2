@@ -96,6 +96,12 @@ func music(name: String, loop := true) -> void:
 		if rec_log != null:
 			rec_log.append({"t": rec_time + 0.35, "path": "res://assets/audio/music/%s.wav" % name, "pitch": 1.0, "db": _music.volume_db, "music": true}))
 
+## Música mais rápida na tensão (terremoto, relógio acabando, morte súbita). 1.0 = normal.
+var _tempo := 1.0
+func music_tempo(k: float, dt: float) -> void:
+	_tempo = move_toward(_tempo, k, dt * 0.25)
+	_music.pitch_scale = _tempo
+
 func set_volumes(m: int, s: int) -> void:
 	music_vol = clampi(m, 0, 10)
 	sfx_vol = clampi(s, 0, 10)
