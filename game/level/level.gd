@@ -33,8 +33,8 @@ const THEMES := {
 	"pantano": {"crack": "#2e3a1c", "rope": "#6b5a3a"},
 	"mina": {"crack": "#2a1e18", "rope": "#8a6a47"},
 	"serraria": {"crack": "#4a2c14", "rope": "#8a6a47"},
-	"ferro_velho": {"crack": "#3a2418", "rope": "#5a5048"},
-	"fundicao": {"crack": "#2a1a14", "rope": "#4b4048"},
+	"ferro_velho": {"crack": "#3a2a2c", "rope": "#5c4a3e"},
+	"fundicao": {"crack": "#241c2a", "rope": "#8c8496"},
 }
 var theme := "canteiro"
 var traps := {}             # alçapões 'a' (fechado) / 'A' (aberto): Vector2i -> CollisionShape2D
