@@ -1,0 +1,27 @@
+{
+ "wave": "noise",
+ "freq_start": 900,
+ "duration": 0.06,
+ "attack": 0.001,
+ "decay": 0.041999999999999996,
+ "sustain": 0.1,
+ "release": 0.04,
+ "freq_end": 200,
+ "variations": 3,
+ "pitch_jitter": 0.07,
+ "layers": [
+  {
+   "wave": "square",
+   "duty": 0.5,
+   "freq_start": 180,
+   "duration": 0.04,
+   "attack": 0.002,
+   "decay": 0.024,
+   "sustain": 0.4,
+   "release": 0.05,
+   "freq_end": 120,
+   "volume": 0.3
+  }
+ ],
+ "volume": 0.6
+}

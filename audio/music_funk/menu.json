@@ -1,0 +1,47 @@
+{
+ "motor": "compositor",
+ "baixo": "slap",
+ "baixo_inst": "slap",
+ "pad": false,
+ "secoes": [
+  "A",
+  "B",
+  "A",
+  "C",
+  "B"
+ ],
+ "bpm": 96,
+ "tom": "F",
+ "escala": "mixolidio",
+ "semente": 3,
+ "swing": 0.1,
+ "acordes": "epiano",
+ "comping": "stabs",
+ "melodia": "pluck",
+ "bateria": "funk",
+ "reverb": 0.2,
+ "progressoes": {
+  "A": [
+   "I",
+   "IV",
+   "I",
+   "VII"
+  ],
+  "B": [
+   "IV",
+   "V",
+   "I",
+   "VI"
+  ],
+  "C": [
+   "II",
+   "V",
+   "I",
+   "I"
+  ]
+ },
+ "ganhos": {
+  "bateria": 0.5,
+  "acordes": 0.45
+ }
+}

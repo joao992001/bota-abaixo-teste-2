@@ -1,0 +1,14 @@
+{
+ "wave": "square",
+ "duty": 0.125,
+ "freq_start": 300,
+ "duration": 0.08,
+ "attack": 0.002,
+ "decay": 0.04,
+ "sustain": 0.5,
+ "release": 0.05,
+ "freq_end": 700,
+ "variations": 4,
+ "pitch_jitter": 0.06,
+ "volume": 0.6
+}

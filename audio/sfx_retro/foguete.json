@@ -1,0 +1,25 @@
+{
+ "wave": "noise",
+ "freq_start": 2000,
+ "duration": 0.3,
+ "attack": 0.02,
+ "decay": 0.21,
+ "sustain": 0.6,
+ "release": 0.04,
+ "layers": [
+  {
+   "wave": "square",
+   "duty": 0.5,
+   "freq_start": 120,
+   "duration": 0.3,
+   "attack": 0.002,
+   "decay": 0.18,
+   "sustain": 0.4,
+   "release": 0.05,
+   "vibrato_depth": 1,
+   "vibrato_rate": 20,
+   "volume": 0.3
+  }
+ ],
+ "volume": 0.6
+}

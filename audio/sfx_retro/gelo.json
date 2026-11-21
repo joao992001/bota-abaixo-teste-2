@@ -1,0 +1,17 @@
+{
+ "wave": "square",
+ "duty": 0.125,
+ "freq_start": 1568,
+ "duration": 0.15,
+ "attack": 0.002,
+ "decay": 0.09,
+ "sustain": 0.4,
+ "release": 0.05,
+ "arpeggio": [
+  0,
+  7,
+  12
+ ],
+ "arp_speed": 0.05,
+ "volume": 0.6
+}

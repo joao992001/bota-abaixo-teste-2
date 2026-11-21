@@ -1,0 +1,28 @@
+{
+ "wave": "square",
+ "duty": 0.25,
+ "freq_start": 660,
+ "duration": 0.12,
+ "attack": 0.002,
+ "decay": 0.072,
+ "sustain": 0.4,
+ "release": 0.05,
+ "arpeggio": [
+  0,
+  7
+ ],
+ "arp_speed": 0.05,
+ "layers": [
+  {
+   "wave": "noise",
+   "freq_start": 4000,
+   "duration": 0.02,
+   "attack": 0.001,
+   "decay": 0.013999999999999999,
+   "sustain": 0.1,
+   "release": 0.04,
+   "volume": 0.3
+  }
+ ],
+ "volume": 0.6
+}

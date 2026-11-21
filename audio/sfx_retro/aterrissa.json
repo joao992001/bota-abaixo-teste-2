@@ -1,0 +1,13 @@
+{
+ "wave": "noise",
+ "freq_start": 600,
+ "duration": 0.04,
+ "attack": 0.001,
+ "decay": 0.027999999999999997,
+ "sustain": 0.1,
+ "release": 0.04,
+ "freq_end": 150,
+ "variations": 3,
+ "pitch_jitter": 0.08,
+ "volume": 0.6
+}

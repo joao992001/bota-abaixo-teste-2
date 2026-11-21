@@ -1,0 +1,13 @@
+{
+ "wave": "square",
+ "duty": 0.5,
+ "freq_start": 110,
+ "duration": 0.3,
+ "attack": 0.03,
+ "decay": 0.18,
+ "sustain": 0.7,
+ "release": 0.05,
+ "vibrato_depth": 0.5,
+ "vibrato_rate": 20,
+ "volume": 0.6
+}
