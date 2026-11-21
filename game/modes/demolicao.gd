@@ -627,7 +627,7 @@ func hammer(r) -> void:
 			Audio.play("caixote_pancada", 0.85 if big else 1.0)
 			break_reason = "chão marretado"
 			break_by = r.pid
-			lv.damage(cell, int(item_cfg("martelao")["block_damage"]) if big else 1)
+			lv.damage(cell, int(item_cfg("martelao")["block_damage"]) if big or rule() == "batata" else 1)   # Batata: 1 golpe quebra
 			break_reason = ""
 			break_by = -1
 			return

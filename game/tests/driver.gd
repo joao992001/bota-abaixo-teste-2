@@ -1179,6 +1179,19 @@ func itens_modos_test() -> void:
 		if main.demo.items.is_empty():
 			sem.append(aid)
 	check(sem.is_empty(), "itens nascem em todas as fases da Batata (sem item: %s)" % str(sem))
+	# Batata: a marreta quebra caixote (Obra de Concreto, pilha embaixo do buraco)
+	main.game_mode = "batata"
+	main.arena_choice = "obra_concreto"
+	await demo_round()
+	main.demo.bomb_next = 99.0
+	var rr = main.robots[0]
+	var nb0: int = main.level.blocks.size()
+	put(rr, Vector2(5 * 64 + 22, 21 * 64 - 2))
+	rr.facing = 1
+	await frames(5)
+	main.demo.hammer(rr)
+	await frames(20)
+	check(main.level.blocks.size() < nb0, "Batata: 1 marretada quebra o caixote (%d → %d)" % [nb0, main.level.blocks.size()])
 	# mapa vivo: na Batata as alavancas se acionam sozinhas (portas trocam)
 	main.game_mode = "batata"
 	main.arena_choice = "obra_concreto"
