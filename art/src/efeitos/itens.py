@@ -273,6 +273,313 @@ def relogio():
     return wrap("".join(b), 241)
 
 
+# ---- itens novos (2026-11) ----
+FUS = '<path d="M{0},{1} l3,-2 M{0},{1} l4,1 M{0},{1} l-1,-3" stroke="#f2c84b" stroke-width="2" stroke-linecap="round"/><circle cx="{0}" cy="{1}" r="2.2" fill="#ffffff"/>'
+HL = '<path d="{0}" stroke="#ffffff" stroke-width="2.6" fill="none" stroke-linecap="round"/>'
+
+
+def dyn(x, y, w, h, seed, fill="#d14d35", sid="d"):
+    """Bastão de dinamite com faixa e pavio aceso."""
+    cx = x + w / 2
+    return (shape(sid, rect_d(x, y, w, h, 3), fill, seed, (x - 2, y - 2, x + w + 2, y + h + 2), k=1.1)
+            + f'<rect x="{x}" y="{y + h * 0.35:.1f}" width="{w}" height="5" fill="#3e4752"/>'
+            + f'<path d="M{cx},{y} C{cx},{y - 5} {cx + 4},{y - 6} {cx + 5},{y - 9}" stroke="#5a4632" stroke-width="2.2" fill="none" stroke-linecap="round"/>'
+            + FUS.format(cx + 5, y - 9))
+
+
+def isca():
+    b = [dyn(20, 18, 22, 40, 301, fill="#e07a5c"),
+         '<path d="M25,36 C25,30 37,30 37,36 C37,40 31,40 31,45" stroke="#ffffff" stroke-width="3.6" fill="none" stroke-linecap="round"/>',
+         '<circle cx="31" cy="52" r="2.4" fill="#ffffff"/>',
+         '<path d="M48,44 l6,-2 M50,52 l7,1" stroke="#c9c4b4" stroke-width="2.4" stroke-linecap="round"/>']
+    return wrap("".join(b), 301)
+
+
+def molabomba():
+    b = [dyn(22, 10, 20, 26, 311)]
+    for y in (40, 46, 52):
+        b.append(f'<path d="M16,{y} Q32,{y - 6} 48,{y} Q32,{y + 4} 16,{y}" fill="none" stroke="#aab4bc" stroke-width="3"/>')
+    b.append(shape("mbb", rect_d(12, 56, 40, 6, 2), "#5a6370", 312, (10, 54, 54, 64), k=1.0))
+    return wrap("".join(b), 311)
+
+
+def fumaca():
+    d = "M10,46 C2,44 4,30 14,32 C12,20 26,14 32,22 C36,12 52,14 50,28 C60,28 62,44 52,46 Z"
+    b = [shape("fm", d, "#9aa4ae", 321, (2, 12, 62, 48), k=1.3, dark="#6a7682", light="#d5dbe1"),
+         '<ellipse cx="22" cy="54" rx="6" ry="4" fill="#9aa4ae"/><ellipse cx="40" cy="57" rx="4" ry="3" fill="#aab4bc"/>',
+         HL.format("M14,36 C14,30 20,28 24,30"), HL.format("M34,22 C38,18 44,18 46,22")]
+    return wrap("".join(b), 321)
+
+
+def ventosa():
+    b = [shape("vc", "M28,4 H36 V34 H28 Z", "#b07a3d", 331, (26, 2, 38, 36), k=1.0, dark="#7a5226", light="#d9a35f"),
+         shape("vv", "M10,56 C10,40 20,32 32,32 C44,32 54,40 54,56 Z", "#d14d35", 332, (8, 30, 56, 58), k=1.3),
+         '<rect x="8" y="54" width="48" height="5" rx="2" fill="#a83a28"/>',
+         HL.format("M16,48 Q18,40 26,37")]
+    return wrap("".join(b), 331)
+
+
+def banana():
+    b = [shape("bn", "M8,52 C20,58 46,52 54,30 C56,24 52,22 50,26 C44,40 30,46 12,44 C6,44 4,50 8,52 Z", "#f2c84b", 341,
+               (4, 20, 58, 58), k=1.2, dark="#c99a28", light="#fff1b8"),
+         shape("bl", "M50,26 C46,14 52,8 58,10 C58,16 54,20 54,28 Z", "#e6b53a", 342, (44, 6, 60, 30), k=1.0, dark="#c99a28"),
+         shape("br", "M12,46 C4,40 6,32 12,32 C14,38 18,42 22,45 Z", "#e6b53a", 343, (2, 30, 24, 48), k=1.0, dark="#c99a28"),
+         '<path d="M54,10 l3,-4" stroke="#5a4632" stroke-width="3" stroke-linecap="round"/>',
+         HL.format("M16,50 C28,52 40,48 48,36")]
+    return wrap("".join(b), 341)
+
+
+def pavioduplo():
+    b = [dyn(12, 22, 16, 36, 351, sid="p1"), dyn(34, 22, 16, 36, 352, sid="p2"),
+         '<path d="M24,10 C30,4 36,4 42,10" stroke="#f2c84b" stroke-width="2.4" fill="none" stroke-dasharray="3 3" stroke-linecap="round"/>']
+    return wrap("".join(b), 351)
+
+
+def corneta():
+    b = [shape("cb", "M28,12 L38,12 L40,40 L26,40 Z", "#d14d35", 361, (24, 10, 42, 42), k=1.1),
+         shape("cbt", rect_d(24, 40, 18, 18, 4), "#4f86d9", 362, (22, 38, 44, 60), k=1.1, dark="#2f6fc8", light="#7fb0f0"),
+         shape("cbc", rect_d(26, 6, 14, 7, 2), "#3e4752", 363, (24, 4, 42, 15), k=0.8),
+         HL.format("M30,46 V54"),
+         '<path d="M46,10 q8,-2 12,-6 M46,20 h12 M46,30 q8,2 12,6" stroke="#ffffff" stroke-width="2.6" fill="none" stroke-linecap="round"/>']
+    return wrap("".join(b), 361)
+
+
+def balao():
+    b = [shape("bb", "M32,6 C46,6 52,18 50,28 C48,38 40,44 32,44 C24,44 16,38 14,28 C12,18 18,6 32,6 Z", "#f06aa8", 371,
+               (12, 4, 52, 46), k=1.3, dark="#c94a85", light="#ffb0d4"),
+         '<path d="M29,44 L35,44 L33,49 L31,49 Z" fill="#c94a85"/>',
+         '<path d="M32,49 C26,54 38,56 32,62" stroke="#f5f3ea" stroke-width="2.4" fill="none" stroke-linecap="round"/>',
+         HL.format("M20,22 C20,16 24,12 28,11")]
+    return wrap("".join(b), 371)
+
+
+def trocatroca():
+    b = ['<path d="M12,30 A20,20 0 0 1 46,14" stroke="#5cc45c" stroke-width="6" fill="none" stroke-linecap="round"/>',
+         '<path d="M42,6 L52,16 L40,20 Z" fill="#5cc45c"/>',
+         '<path d="M52,34 A20,20 0 0 1 18,50" stroke="#4f86d9" stroke-width="6" fill="none" stroke-linecap="round"/>',
+         '<path d="M22,58 L12,48 L24,44 Z" fill="#4f86d9"/>',
+         dyn(25, 24, 14, 24, 381)]
+    return wrap("".join(b), 381)
+
+
+def apito():
+    b = [shape("ap", "M8,26 H40 C52,26 56,34 56,40 C56,50 48,56 40,56 C30,56 24,48 24,38 H8 Z", "#c9d1d8", 391,
+               (6, 24, 58, 58), k=1.2, dark="#8a96a2", light="#ffffff"),
+         '<circle cx="40" cy="40" r="6" fill="#3e4752"/>', '<rect x="6" y="24" width="6" height="16" rx="2" fill="#5a6370"/>',
+         '<path d="M8,26 C4,16 12,8 22,10" stroke="#f2c84b" stroke-width="2.6" fill="none" stroke-linecap="round"/>',
+         '<path d="M44,18 l4,-8 M52,22 l8,-6 M30,18 l-2,-8" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/>']
+    return wrap("".join(b), 391)
+
+
+def capacetefalso():
+    b = [shape("cf", "M12,44 C12,22 24,14 32,14 C40,14 52,22 52,44 Z", "#f2c84b", 401, (10, 12, 54, 46), k=1.3,
+               dark="#c99a28", light="#fff1b8"),
+         '<path d="M6,44 Q32,38 58,44 L57,51 Q32,46 7,51 Z" fill="#e0a82a"/>',
+         '<path d="M25,30 C25,22 39,22 39,30 C39,34 32,34 32,39" stroke="#ffffff" stroke-width="3.6" fill="none" stroke-linecap="round"/>',
+         '<circle cx="32" cy="44" r="0" fill="none"/>',
+         '<path d="M50,10 l3,-5 M56,16 l5,-2 M8,14 l-3,-4" stroke="#f2c84b" stroke-width="2.4" stroke-linecap="round"/>']
+    return wrap("".join(b), 401)
+
+
+def armadura():
+    d = "M14,10 L24,8 C26,14 38,14 40,8 L50,10 L58,22 L50,28 L50,56 C40,60 24,60 14,56 L14,28 L6,22 Z"
+    b = [shape("ar", d, "#aab4bc", 411, (4, 6, 60, 60), k=1.3, dark="#7a8693", light="#e3e8ec"),
+         '<path d="M32,14 V56" stroke="#7a8693" stroke-width="2.4"/>',
+         '<path d="M20,28 Q32,34 44,28 M20,40 Q32,46 44,40" stroke="#7a8693" stroke-width="2.4" fill="none"/>',
+         '<circle cx="20" cy="20" r="2" fill="#5a6370"/><circle cx="44" cy="20" r="2" fill="#5a6370"/>',
+         HL.format("M18,30 Q18,42 22,50")]
+    return wrap("".join(b), 411)
+
+
+def cerca():
+    wood, dk = "#d9a35f", "#a8743a"
+    b = []
+    for i, x in enumerate((8, 26, 44)):
+        b.append(shape(f"ce{i}", f"M{x},58 V20 L{x + 6},12 L{x + 12},20 V58 Z", wood, 421 + i, (x - 2, 10, x + 14, 60), k=1.0, dark=dk, light="#f0cc95"))
+    b.append('<rect x="4" y="28" width="56" height="6" fill="#a8743a"/><rect x="4" y="44" width="56" height="6" fill="#a8743a"/>')
+    b.append(shape("cez", "M36,2 L24,22 L32,22 L26,40 L42,16 L34,16 L40,2 Z", "#f2c84b", 425, (22, 0, 44, 42), k=1.0,
+                   dark="#c99a28", light="#fff1b8"))
+    return wrap("".join(b), 421)
+
+
+def bumerangue():
+    d = "M8,18 C10,10 18,10 22,14 L36,30 L52,44 C58,50 54,58 46,56 L30,40 L14,26 C10,24 8,22 8,18 Z"
+    b = [shape("bu", "M6,22 C4,14 12,10 18,14 L34,30 L50,14 C56,10 62,14 58,22 L40,46 C36,52 28,52 24,46 Z",
+               "#f08a3d", 431, (2, 6, 62, 58), k=1.2, dark="#c0602a", light="#ffb27a"),
+         '<path d="M12,20 L24,32 M44,32 L54,20" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>',
+         '<path d="M6,30 A26,26 0 0 1 30,6" stroke="#ffffff" stroke-width="2.4" fill="none" stroke-dasharray="4 4" stroke-linecap="round"/>']
+    return wrap("".join(b), 431)
+
+
+def rede():
+    b = [shape("rf", "M8,12 C20,4 44,4 56,12 L50,50 C40,60 24,60 14,50 Z", "#5fd6b0", 441, (6, 4, 58, 60), k=0.6,
+               dark="#3aa888", extra='opacity="0.35"')]
+    for x in (16, 24, 32, 40, 48):
+        b.append(f'<path d="M{x},8 L{32 + (x - 32) * 0.5},56" stroke="#3aa888" stroke-width="2.4"/>')
+    for y in (18, 28, 38, 48):
+        b.append(f'<path d="M10,{y} Q32,{y + 6} 54,{y}" stroke="#3aa888" stroke-width="2.4" fill="none"/>')
+    b.append('<path d="M8,12 C20,4 44,4 56,12" stroke="#b07a3d" stroke-width="5" fill="none" stroke-linecap="round"/>')
+    for x, y in ((14, 52), (32, 60), (50, 52)):
+        b.append(f'<circle cx="{x}" cy="{y}" r="3.4" fill="#5a6370"/>')
+    return wrap("".join(b), 441)
+
+
+def imacapacete():
+    b = [shape("ic", "M14,58 C14,42 22,36 32,36 C42,36 50,42 50,58 Z", "#f2c84b", 451, (12, 34, 52, 60), k=1.2,
+               dark="#c99a28", light="#fff1b8"),
+         '<rect x="10" y="56" width="44" height="5" rx="2" fill="#e0a82a"/>',
+         shape("im", "M16,4 H26 V18 C26,24 38,24 38,18 V4 H48 V18 C48,34 16,34 16,18 Z", "#d14d35", 452, (14, 2, 50, 32), k=1.2),
+         '<rect x="16" y="4" width="10" height="6" fill="#d5dbe1"/><rect x="38" y="4" width="10" height="6" fill="#d5dbe1"/>',
+         '<path d="M6,36 l4,4 M58,36 l-4,4" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/>']
+    return wrap("".join(b), 451)
+
+
+def skate():
+    b = [shape("sk", "M4,30 C4,24 10,26 14,28 H50 C54,26 60,24 60,30 C60,36 56,38 50,38 H14 C8,38 4,36 4,30 Z",
+               "#4f86d9", 461, (2, 22, 62, 40), k=1.2, dark="#2f6fc8", light="#7fb0f0"),
+         '<path d="M16,30 H48" stroke="#f2c84b" stroke-width="3" stroke-linecap="round"/>',
+         '<rect x="14" y="38" width="10" height="4" fill="#5a6370"/><rect x="40" y="38" width="10" height="4" fill="#5a6370"/>']
+    for i, x in enumerate((19, 45)):
+        b.append(shape(f"sw{i}", ellipse_d(x, 48, 7, 7), "#f5f3ea", 462 + i, (x - 8, 40, x + 8, 56), k=0.8, dark="#c9c4b4"))
+        b.append(f'<circle cx="{x}" cy="48" r="2.4" fill="#5a6370"/>')
+    b.append('<path d="M2,14 H14 M6,20 H16" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/>')
+    return wrap("".join(b), 461)
+
+
+def oleo():
+    b = [shape("op", "M4,52 C4,44 18,44 26,46 C36,42 60,44 60,52 C60,60 40,60 30,58 C18,62 4,60 4,52 Z", "#2f2a45", 471,
+               (2, 40, 62, 62), k=1.0, dark="#1c1830", light="#5a4f80"),
+         shape("og", "M32,4 C38,16 48,24 48,34 C48,44 40,48 32,48 C24,48 16,44 16,34 C16,24 26,16 32,4 Z", "#3a3550", 472,
+               (14, 2, 50, 50), k=1.2, dark="#1c1830", light="#6a5f95"),
+         '<path d="M22,32 C22,26 26,22 28,20" stroke="#b48cff" stroke-width="3" fill="none" stroke-linecap="round"/>',
+         '<ellipse cx="44" cy="52" rx="6" ry="2" fill="#b48cff" opacity="0.7"/>']
+    return wrap("".join(b), 471)
+
+
+def chave_atalho():
+    b = [shape("ka", ellipse_d(18, 22, 12, 12), "#f2c84b", 481, (4, 8, 32, 36), k=1.2, dark="#c99a28", light="#fff1b8"),
+         '<circle cx="18" cy="22" r="5" fill="#ffffff" opacity="0"/><circle cx="18" cy="22" r="4.5" fill="#c99a28"/>',
+         shape("kb", "M28,26 L56,26 L56,32 L52,32 L52,40 L46,40 L46,32 L40,32 L40,38 L34,38 L34,32 L28,32 Z", "#f2c84b", 482,
+               (26, 24, 58, 42), k=1.0, dark="#c99a28", light="#fff1b8"),
+         '<path d="M10,52 H44" stroke="#5cc45c" stroke-width="6" stroke-linecap="round"/>',
+         '<path d="M42,44 L56,52 L42,60 Z" fill="#5cc45c"/>',
+         HL.format("M10,18 Q12,12 18,11")]
+    return wrap("".join(b), 481)
+
+
+def ancora():
+    b = [shape("an", "M29,16 H35 V48 C42,47 48,42 50,36 L46,36 L54,28 L58,40 L54,38 C50,50 42,56 32,56 C22,56 14,50 10,38 "
+               "L6,40 L10,28 L18,36 L14,36 C16,42 22,47 29,48 Z", "#8a96a2", 491, (4, 14, 60, 58), k=1.2, dark="#5a6370", light="#d5dbe1"),
+         '<rect x="20" y="20" width="24" height="6" rx="2" fill="#3e4752"/>',
+         '<circle cx="32" cy="10" r="6" fill="none" stroke="#8a96a2" stroke-width="4"/>',
+         HL.format("M14,40 Q18,48 24,51")]
+    return wrap("".join(b), 491)
+
+
+def turbo():
+    b = [shape("tb", ellipse_d(26, 32, 20, 22), "#5a6370", 501, (4, 8, 48, 56), k=1.2, dark="#3e4752", light="#aab4bc"),
+         '<ellipse cx="26" cy="32" rx="14" ry="16" fill="#2f3640"/>']
+    for a in (0, 90, 180, 270):
+        b.append(f'<path d="M26,32 C30,24 34,20 34,18 C30,18 26,22 26,32 Z" fill="#c9d1d8" transform="rotate({a + 20} 26 32)"/>')
+    b.append('<circle cx="26" cy="32" r="3.4" fill="#f2c84b"/>')
+    b.append(shape("tf", "M46,20 L62,26 L56,32 L62,38 L46,44 Z", "#f6a23a", 502, (44, 18, 64, 46), k=1.0))
+    b.append('<path d="M48,28 L56,32 L48,36 Z" fill="#fff1b8"/>')
+    return wrap("".join(b), 501)
+
+
+def bolha():
+    b = [shape("bo", ellipse_d(32, 32, 24, 24), "#8fd3f0", 511, (6, 6, 58, 58), k=0.6, dark="#4aa6d0", light="#e0f6ff",
+               extra='opacity="0.55"'),
+         '<circle cx="32" cy="32" r="24" fill="none" stroke="#4aa6d0" stroke-width="3"/>',
+         '<path d="M16,26 C18,18 24,14 30,13" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round"/>',
+         '<circle cx="44" cy="44" r="3" fill="#ffffff"/>',
+         '<path d="M54,6 v8 M50,10 h8" stroke="#f2c84b" stroke-width="2.6" stroke-linecap="round"/>',
+         '<circle cx="10" cy="54" r="4" fill="none" stroke="#4aa6d0" stroke-width="2"/>']
+    return wrap("".join(b), 511)
+
+
+def luva():
+    b = [shape("lv", "M30,12 C42,6 58,12 58,26 C58,40 46,48 34,46 C28,46 26,42 26,38 L26,20 C26,16 28,13 30,12 Z", "#d14d35",
+               521, (24, 4, 60, 50), k=1.3),
+         shape("lp", "M30,28 C24,28 22,36 28,38 L36,38", "#d14d35", 522, (20, 26, 38, 40), k=0.8),
+         '<path d="M30,28 C24,28 22,36 28,38" stroke="#a83a28" stroke-width="2.4" fill="none"/>',
+         shape("lc", rect_d(20, 18, 8, 26, 2), "#f5f3ea", 523, (18, 16, 30, 46), k=0.8, dark="#c9c4b4")]
+    b.append('<path d="M20,31 L16,24 L12,38 L8,24 L4,31" stroke="#aab4bc" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round"/>')
+    b.append(HL.format("M38,14 Q48,12 52,18"))
+    return wrap("".join(b), 521)
+
+
+def bolaferro():
+    b = []
+    for i, (x, y) in enumerate(((8, 10), (14, 16), (20, 22), (26, 28))):
+        b.append(f'<ellipse cx="{x}" cy="{y}" rx="4.5" ry="3" fill="none" stroke="#8a96a2" stroke-width="2.6" transform="rotate({45 if i % 2 else -45} {x} {y})"/>')
+    b.append(shape("bf", ellipse_d(38, 42, 18, 18), "#5a6370", 531, (18, 22, 58, 62), k=1.3, dark="#3e4752", light="#8a96a2"))
+    b.append('<circle cx="28" cy="30" r="4" fill="none" stroke="#aab4bc" stroke-width="3"/>')
+    b.append(HL.format("M28,40 Q30,32 36,30"))
+    return wrap("".join(b), 531)
+
+
+def mina():
+    b = [shape("mn", "M6,50 C6,36 18,30 32,30 C46,30 58,36 58,50 Z", "#5a6370", 541, (4, 28, 60, 52), k=1.3, dark="#3e4752", light="#8a96a2"),
+         shape("mnb", rect_d(4, 48, 56, 8, 3), "#3e4752", 542, (2, 46, 62, 58), k=1.0),
+         '<rect x="26" y="20" width="12" height="12" rx="2" fill="#3e4752"/>',
+         '<circle cx="32" cy="18" r="5" fill="#d42035"/><circle cx="30.5" cy="16.5" r="1.6" fill="#ffffff"/>',
+         '<path d="M14,40 l6,0 M44,40 l6,0" stroke="#d42035" stroke-width="3" stroke-linecap="round"/>',
+         '<path d="M22,8 l-4,-4 M42,8 l4,-4 M32,6 v-5" stroke="#d42035" stroke-width="2.4" stroke-linecap="round"/>']
+    return wrap("".join(b), 541)
+
+
+def guindaste():
+    b = ['<path d="M32,0 V14" stroke="#3e4752" stroke-width="4"/>',
+         shape("gb", rect_d(22, 12, 20, 14, 3), "#f2c84b", 551, (20, 10, 44, 28), k=1.0, dark="#c99a28", light="#fff1b8"),
+         '<rect x="22" y="17" width="20" height="4" fill="#3e4752"/>',
+         shape("gh", "M29,26 H35 V38 C35,40 44,40 46,46 C48,56 38,62 28,58 C20,55 18,48 22,44 L27,48 C26,52 32,54 36,52 "
+               "C40,50 40,46 36,44 C32,43 29,42 29,38 Z", "#8a96a2", 552, (16, 24, 50, 62), k=1.2, dark="#5a6370", light="#d5dbe1"),
+         '<path d="M20,46 L22,40 L28,46 Z" fill="#5a6370"/>']
+    return wrap("".join(b), 551)
+
+
+def espelho():
+    b = [shape("es", "M32,4 C40,8 50,9 56,9 C56,34 48,52 32,60 C16,52 8,34 8,9 C14,9 24,8 32,4 Z", "#8a96a2", 561,
+               (6, 2, 58, 62), k=1.3, dark="#5a6370", light="#c9d1d8"),
+         '<path d="M32,10 C38,13 45,14 50,14 C50,34 44,47 32,54 C20,47 14,34 14,14 C19,14 26,13 32,10 Z" fill="#d5f1ff"/>',
+         '<path d="M20,22 L30,14 M18,34 L40,16 M24,44 L46,26" stroke="#ffffff" stroke-width="3.4" stroke-linecap="round"/>',
+         '<path d="M58,40 l4,-4 M58,48 h5" stroke="#f2c84b" stroke-width="2.4" stroke-linecap="round"/>']
+    return wrap("".join(b), 561)
+
+
+def superpisao():
+    b = [shape("sp", "M18,4 H36 V28 L50,32 C56,34 56,44 50,44 H14 L16,28 Z", "#b07a3d", 571, (12, 2, 58, 46), k=1.2,
+               dark="#7a5226", light="#d9a35f"),
+         '<rect x="12" y="42" width="44" height="6" rx="2" fill="#3e4752"/>',
+         '<path d="M22,14 h10 M22,20 h10" stroke="#f2c84b" stroke-width="2.4" stroke-linecap="round"/>',
+         '<rect x="2" y="52" width="60" height="10" fill="#c9c4b4"/>',
+         '<path d="M34,52 L30,58 L36,62 M20,52 L14,62 M48,52 L54,58 L52,62" stroke="#3e4752" stroke-width="2.4" fill="none" stroke-linecap="round"/>',
+         '<path d="M4,46 l-2,-4 M60,46 l2,-4 M6,38 l-4,-2" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/>']
+    return wrap("".join(b), 571)
+
+
+def dado():
+    b = [shape("dd", rect_d(10, 10, 44, 44, 9), "#f5f3ea", 581, (8, 8, 56, 56), k=1.2, dark="#c9c4b4"),
+         '<path d="M12,48 Q32,56 52,48 L52,50 Q50,54 46,54 H18 Q12,54 12,48 Z" fill="#c9c4b4"/>']
+    for x, y in ((20, 20), (44, 20), (32, 32), (20, 44), (44, 44)):
+        b.append(f'<circle cx="{x}" cy="{y}" r="4.4" fill="#3e4752"/>')
+    b.append(HL.format("M16,26 V18 Q16,15 20,15"))
+    b.append('<path d="M58,6 l-3,5 M62,14 l-5,1" stroke="#f2c84b" stroke-width="2.4" stroke-linecap="round"/>')
+    return wrap("".join(b), 581)
+
+
+NOVOS = ("isca molabomba fumaca ventosa banana pavioduplo corneta balao trocatroca apito capacetefalso armadura cerca "
+         "bumerangue rede imacapacete skate oleo chave_atalho ancora turbo bolha luva bolaferro mina guindaste espelho "
+         "superpisao dado").split()
+
+
+def main_novos():
+    for name in NOVOS:
+        queue(globals()[name](), f"{SRC}/item_{name}.svg", f"{OUT}/{name}.png", 64, 64, K)
+    print("itens novos:", render_all())
+
+
 def main():
     for name, fn in (("dinamite", dinamite), ("martelao", martelao), ("capacete", capacete), ("mola", mola),
                      ("gancho", gancho), ("ima", ima), ("tabua", tabua), ("furadeira", furadeira), ("cola", cola),
@@ -283,7 +590,8 @@ def main():
                      ("relogio", relogio)):
         queue(fn(), f"{SRC}/item_{name}.svg", f"{OUT}/{name}.png", 64, 64, K)
     print("itens:", render_all())
+    main_novos()
 
 
 if __name__ == "__main__":
-    main()
+    main_novos() if "--novos" in sys.argv else main()
