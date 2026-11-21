@@ -1,29 +1,17 @@
 {
- "wave": "triangle",
- "freq_start": 2200,
- "freq_end": 900,
- "duration": 0.25,
+ "wave": "square",
+ "duty": 0.125,
+ "freq_start": 1568,
+ "duration": 0.15,
+ "attack": 0.002,
+ "decay": 0.09,
+ "sustain": 0.4,
+ "release": 0.05,
  "arpeggio": [
   0,
   7,
-  12,
-  5
+  12
  ],
- "arp_speed": 0.04,
- "attack": 0.001,
- "sustain": 0.4,
- "release": 0.12,
- "volume": 0.3,
- "layers": [
-  {
-   "wave": "noise",
-   "freq_start": 7000,
-   "duration": 0.2,
-   "decay": 0.15,
-   "sustain": 0.1,
-   "release": 0.05,
-   "highpass": 0.4,
-   "volume": 0.2
-  }
- ]
+ "arp_speed": 0.05,
+ "volume": 0.6
 }

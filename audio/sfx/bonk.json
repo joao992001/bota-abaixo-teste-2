@@ -1,27 +1,14 @@
 {
- "wave": "sine",
- "freq_start": 950,
- "freq_end": 280,
- "duration": 0.13,
- "attack": 0.001,
- "decay": 0.1,
- "sustain": 0.2,
- "release": 0.06,
- "volume": 0.6,
+ "wave": "square",
+ "duty": 0.5,
+ "freq_start": 500,
+ "duration": 0.06,
+ "attack": 0.002,
+ "decay": 0.036,
+ "sustain": 0.4,
+ "release": 0.05,
+ "freq_end": 200,
  "variations": 2,
- "pitch_jitter": 0.05,
- "layers": [
-  {
-   "wave": "noise",
-   "freq_start": 2500,
-   "freq_end": 600,
-   "duration": 0.03,
-   "attack": 0.001,
-   "decay": 0.03,
-   "sustain": 0,
-   "release": 0.02,
-   "lowpass": 0.5,
-   "volume": 0.35
-  }
- ]
+ "pitch_jitter": 0.06,
+ "volume": 0.6
 }

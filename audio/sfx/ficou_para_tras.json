@@ -1,13 +1,24 @@
 {
- "wave": "saw",
- "freq_start": 600,
- "freq_end": 120,
- "duration": 0.5,
- "attack": 0.005,
- "sustain": 0.6,
- "release": 0.1,
- "vibrato_depth": 1.5,
- "vibrato_rate": 10,
- "lowpass": 0.4,
- "volume": 0.3
+ "wave": "square",
+ "duty": 0.5,
+ "freq_start": 300,
+ "duration": 0.3,
+ "attack": 0.002,
+ "decay": 0.18,
+ "sustain": 0.4,
+ "release": 0.05,
+ "freq_end": 100,
+ "layers": [
+  {
+   "wave": "noise",
+   "freq_start": 500,
+   "duration": 0.2,
+   "attack": 0.001,
+   "decay": 0.13999999999999999,
+   "sustain": 0.1,
+   "release": 0.04,
+   "volume": 0.3
+  }
+ ],
+ "volume": 0.6
 }

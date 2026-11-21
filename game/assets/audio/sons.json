@@ -43,9 +43,9 @@
  "pistao": 0,
  "pistao_aviso": 0,
  "pulo": 4,
- "pulo_mola": 2,
+ "pulo_mola": 0,
  "rodada_vence": 0,
- "serra": 0,
+ "serra": 2,
  "soprador": 0,
  "teleporte": 0,
  "terremoto": 0,
@@ -53,7 +53,7 @@
  "vai": 0,
  "ventilador": 0,
  "vortice": 0,
- "voz_ai": 3,
- "voz_eba": 2,
+ "voz_ai": 0,
+ "voz_eba": 0,
  "voz_oi": 0
 }

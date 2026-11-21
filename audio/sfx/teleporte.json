@@ -1,26 +1,20 @@
 {
- "wave": "sine",
+ "wave": "square",
+ "duty": 0.125,
  "freq_start": 300,
- "freq_end": 1800,
- "duration": 0.3,
- "attack": 0.01,
- "sustain": 0.6,
- "release": 0.12,
- "vibrato_depth": 3,
- "vibrato_rate": 30,
- "volume": 0.4,
- "layers": [
-  {
-   "wave": "square",
-   "duty": 0.25,
-   "freq_start": 1800,
-   "freq_end": 300,
-   "duration": 0.3,
-   "sustain": 0.4,
-   "release": 0.1,
-   "lowpass": 0.4,
-   "volume": 0.15,
-   "delay": 0.05
-  }
- ]
+ "duration": 0.25,
+ "attack": 0.002,
+ "decay": 0.15,
+ "sustain": 0.4,
+ "release": 0.05,
+ "freq_end": 1500,
+ "arpeggio": [
+  0,
+  7,
+  12
+ ],
+ "arp_speed": 0.06,
+ "vibrato_depth": 0.3,
+ "vibrato_rate": 20,
+ "volume": 0.6
 }

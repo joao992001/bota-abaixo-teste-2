@@ -1,14 +1,13 @@
 {
  "wave": "noise",
- "freq_start": 4500,
- "freq_end": 700,
- "duration": 0.11,
- "attack": 0.01,
- "decay": 0.08,
+ "freq_start": 4000,
+ "duration": 0.08,
+ "attack": 0.001,
+ "decay": 0.06,
  "sustain": 0.2,
  "release": 0.04,
- "lowpass": 0.35,
- "volume": 0.22,
+ "freq_end": 600,
  "variations": 3,
- "pitch_jitter": 0.06
+ "pitch_jitter": 0.08,
+ "volume": 0.6
 }

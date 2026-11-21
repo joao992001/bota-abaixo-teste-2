@@ -1,24 +1,28 @@
 {
  "motor": "compositor",
- "bpm": 120,
- "tom": "C",
- "escala": "maior",
- "semente": 2,
+ "baixo": "slap",
+ "baixo_inst": "slap",
+ "pad": false,
  "secoes": [
   "A"
  ],
+ "bpm": 110,
+ "tom": "C",
+ "escala": "mixolidio",
+ "semente": 2,
+ "swing": 0.08,
+ "acordes": "metais",
+ "comping": "stabs",
+ "melodia": "metais",
+ "bateria": "funk",
+ "reverb": 0.2,
+ "loop": false,
  "progressoes": {
   "A": [
    "I",
    "IV",
-   "V",
+   "VII",
    "I"
   ]
- },
- "loop": false,
- "baixo": "andando",
- "acordes": "epiano",
- "comping": "longo",
- "melodia": "sino",
- "bateria": "leve"
+ }
 }

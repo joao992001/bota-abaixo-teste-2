@@ -1,9 +1,8 @@
 {
  "motor": "compositor",
- "bpm": 106,
- "tom": "A",
- "escala": "maior",
- "semente": 8,
+ "baixo": "slap",
+ "baixo_inst": "slap",
+ "pad": false,
  "secoes": [
   "A",
   "B",
@@ -11,6 +10,16 @@
   "C",
   "B"
  ],
+ "bpm": 100,
+ "tom": "A",
+ "escala": "maior",
+ "semente": 8,
+ "swing": 0.1,
+ "acordes": "epiano",
+ "comping": "contratempo",
+ "melodia": "metais",
+ "bateria": "funk",
+ "reverb": 0.22,
  "progressoes": {
   "A": [
    "I",
@@ -31,9 +40,8 @@
    "I"
   ]
  },
- "baixo": "longo",
- "acordes": "pluck",
- "comping": "arpejo",
- "melodia": "sino",
- "bateria": "leve"
+ "ganhos": {
+  "melodia": 0.45,
+  "bateria": 0.55
+ }
 }

@@ -1,38 +1,23 @@
 {
  "wave": "noise",
- "freq_start": 600,
- "freq_end": 60,
- "duration": 0.35,
+ "freq_start": 400,
+ "duration": 0.12,
  "attack": 0.001,
- "decay": 0.3,
+ "decay": 0.08399999999999999,
  "sustain": 0.1,
- "release": 0.25,
- "lowpass": 0.22,
- "volume": 0.8,
+ "release": 0.04,
  "layers": [
   {
    "wave": "square",
    "duty": 0.5,
-   "freq_start": 70,
-   "freq_end": 40,
-   "duration": 0.2,
-   "decay": 0.15,
-   "sustain": 0.1,
-   "release": 0.1,
-   "lowpass": 0.3,
-   "volume": 0.45
-  },
-  {
-   "wave": "noise",
-   "freq_start": 5000,
-   "freq_end": 3000,
-   "duration": 0.35,
-   "attack": 0.05,
+   "freq_start": 80,
+   "duration": 0.1,
+   "attack": 0.002,
+   "decay": 0.06,
    "sustain": 0.4,
-   "release": 0.2,
-   "highpass": 0.3,
-   "volume": 0.15,
-   "delay": 0.15
+   "release": 0.05,
+   "volume": 0.5
   }
- ]
+ ],
+ "volume": 0.6
 }

@@ -1,23 +1,18 @@
 {
- "wave": "sine",
- "freq_start": 1318,
- "duration": 0.5,
- "attack": 0.001,
- "decay": 0.4,
- "sustain": 0.2,
- "release": 0.2,
- "volume": 0.35,
- "layers": [
-  {
-   "wave": "sine",
-   "freq_start": 1046,
-   "duration": 0.6,
-   "attack": 0.001,
-   "decay": 0.5,
-   "sustain": 0.2,
-   "release": 0.2,
-   "volume": 0.35,
-   "delay": 0.14
-  }
- ]
+ "wave": "square",
+ "duty": 0.25,
+ "freq_start": 523,
+ "duration": 0.34,
+ "attack": 0.002,
+ "decay": 0.20400000000000001,
+ "sustain": 0.5,
+ "release": 0.05,
+ "arpeggio": [
+  0,
+  4,
+  7,
+  12
+ ],
+ "arp_speed": 0.08,
+ "volume": 0.6
 }

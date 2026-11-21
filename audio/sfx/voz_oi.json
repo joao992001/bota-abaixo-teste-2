@@ -1,18 +1,12 @@
 {
  "wave": "square",
  "duty": 0.25,
- "freq_start": 520,
- "duration": 0.2,
- "arpeggio": [
-  0,
-  5,
-  9
- ],
- "arp_speed": 0.06,
+ "freq_start": 440,
+ "duration": 0.12,
  "attack": 0.002,
- "decay": 0.04,
+ "decay": 0.072,
  "sustain": 0.6,
- "release": 0.06,
- "lowpass": 0.55,
- "volume": 0.25
+ "release": 0.05,
+ "freq_end": 660,
+ "volume": 0.6
 }
