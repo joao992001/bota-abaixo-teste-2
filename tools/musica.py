@@ -130,7 +130,74 @@ def pad(f, dur, vel):
     return _fade(lowpass(x * env, 1100, 2) * vel * 0.11)
 
 
-INSTR = {"epiano": epiano, "marimba": marimba, "sino": sino, "pluck": pluck, "baixo": baixo, "pad": pad}
+def chip(f, dur, vel):
+    """Pulso retrô (25%) bem filtrado: lembra 8-bit sem o chiado."""
+    t = _t(dur + 0.06)
+    vib = 1 + 0.004 * np.sin(2 * np.pi * 5.5 * t) * np.minimum(1, t / 0.25)
+    ph = np.cumsum(f * vib) / SR
+    x = np.where(ph % 1.0 < 0.25, 1.0, -1.0)
+    env = np.minimum(1, t / 0.004) * (0.7 + 0.3 * np.exp(-t * 8))
+    k = int(dur * SR)
+    env[k:] *= np.exp(-(t[k:] - dur) * 50)
+    return _fade(lowpass(x * env, 2400, 2) * vel * 0.22)
+
+
+def chipbaixo(f, dur, vel):
+    t = _t(dur + 0.04)
+    x = signal.sawtooth(2 * np.pi * f * t, 0.5)   # triângulo
+    env = np.minimum(1, t / 0.003)
+    k = int(dur * SR)
+    env[k:] *= np.exp(-(t[k:] - dur) * 60)
+    return _fade(x * env * vel * 0.5)
+
+
+def metais(f, dur, vel):
+    """Naipe de metais: serrotes com o filtro abrindo no ataque (sopro)."""
+    t = _t(dur + 0.12)
+    x = signal.sawtooth(2 * np.pi * f * t) + signal.sawtooth(2 * np.pi * f * 1.006 * t)
+    e = np.exp(-t * 7)
+    y = lowpass(x, 800) + (lowpass(x, 3200) - lowpass(x, 800)) * e
+    env = np.minimum(1, t / 0.025)
+    k = int(dur * SR)
+    env[k:] *= np.exp(-(t[k:] - dur) * 25)
+    return _fade(y * env * vel * 0.16)
+
+
+def guitarra(f, dur, vel):
+    """Guitarra com distorção (corda dedilhada + saturação + 'caixa' filtrando)."""
+    x = pluck(f, max(dur, 0.12), 1.0, bright=0.9)
+    n = int((dur + 0.08) * SR)
+    x = x[:n] if len(x) > n else np.pad(x, (0, n - len(x)))
+    y = np.tanh(5.0 * x)
+    y = lowpass(highpass(y, 90), 3200, 2)
+    return _fade(y * vel * 0.22, 0.04)
+
+
+def slap(f, dur, vel):
+    t = _t(dur + 0.06)
+    x = np.tanh(2.2 * (np.sin(2 * np.pi * f * t) + 0.5 * np.sin(2 * np.pi * 2 * f * t) * np.exp(-t * 12)))
+    env = np.minimum(1, t / 0.002) * (0.5 + 0.5 * np.exp(-t * 9))
+    k = int(dur * SR)
+    env[k:] *= np.exp(-(t[k:] - dur) * 45)
+    click = np.zeros_like(t)
+    m = min(len(t), int(0.006 * SR))
+    click[:m] = np.random.default_rng(3).uniform(-1, 1, m) * np.linspace(1, 0, m) * 0.35
+    return _fade(lowpass(x * env + click, 2200) * vel * 0.5)
+
+
+def piano(f, dur, vel):
+    t = _t(dur + 0.4)
+    env = np.exp(-t * 1.8) * np.minimum(1, t / 0.003)
+    x = sum(a * np.sin(2 * np.pi * f * h * (1 + 0.0004 * h * h) * t) * np.exp(-t * (1 + h * 1.5))
+            for h, a in ((1, 1.0), (2, 0.5), (3, 0.25), (4, 0.12), (5, 0.06)))
+    k = int(dur * SR)
+    rel = np.ones_like(t)
+    rel[k:] = np.exp(-(t[k:] - dur) * 10)
+    return _fade(x * env * rel * vel * 0.4)
+
+
+INSTR = {"epiano": epiano, "marimba": marimba, "sino": sino, "pluck": pluck, "baixo": baixo, "pad": pad,
+         "chip": chip, "chipbaixo": chipbaixo, "metais": metais, "guitarra": guitarra, "slap": slap, "piano": piano}
 
 
 def kick(vel):
@@ -152,6 +219,23 @@ def hat(vel, rng, open_=False):
     t = _t(0.25 if open_ else 0.05)
     x = highpass(rng.uniform(-1, 1, len(t)), 7000) * np.exp(-t * (12 if open_ else 70))
     return x * vel * 0.16
+
+
+def crash(vel, rng):
+    t = _t(1.4)
+    return highpass(rng.uniform(-1, 1, len(t)), 5000) * np.exp(-t * 3.2) * vel * 0.1
+
+
+def ride(vel, rng):
+    t = _t(0.5)
+    x = highpass(rng.uniform(-1, 1, len(t)), 6000) * np.exp(-t * 9) * 0.6 + np.sin(2 * np.pi * 3100 * t) * np.exp(-t * 6) * 0.15
+    return x * vel * 0.12
+
+
+def vassoura(vel, rng):
+    t = _t(0.18)
+    x = bandpass(rng.uniform(-1, 1, len(t)), 1500, 7000) * np.sin(np.pi * np.minimum(1, t / 0.18)) ** 0.7
+    return x * vel * 0.2
 
 
 def shaker(vel, rng):
@@ -185,6 +269,13 @@ class Song:
         r = roman.lower().strip("°")
         d = ROMAN[r.upper()]
         return [d, d + 2, d + 4]   # tríade da escala
+
+    def sw(self, t0, pos):
+        """Tempo (s) de uma posição em tempos dentro do compasso, com balanço nas colcheias do contratempo."""
+        frac = pos % 1.0
+        if abs(frac - 0.5) < 1e-6:
+            pos += float(self.s.get("swing", 0.0))
+        return t0 + pos * self.beat
 
     def put(self, track, x, t0):
         i = int(t0 * SR)
@@ -225,6 +316,17 @@ class Song:
         r = self.deg(ch[0], -2)
         v = 0.9
         bt = self.beat
+        baixo = INSTR[self.s.get("baixo_inst", "baixo")]
+        if style == "slap" and not calm:
+            pat = [(0, 0, 1.0, 0.35), (0.75, 0, 0.6, 0.2), (1.5, 12, 0.8, 0.15), (2, 0, 0.9, 0.3), (2.75, 7, 0.6, 0.2),
+                   (3.25, 12, 0.8, 0.15), (3.5, 10, 0.6, 0.2)]
+            for pos, off, vv, d in pat:
+                self.put("baixo", baixo(hz(r + off), bt * d * 2, v * vv), t0 + pos * bt)
+            return
+        if style == "oitavas" and not calm:
+            for k in range(8):
+                self.put("baixo", baixo(hz(r + (12 if k % 2 else 0)), bt * 0.42, v * (1.0 if k % 2 == 0 else 0.7)), t0 + k * bt / 2)
+            return
         if calm or style == "longo":
             self.put("baixo", baixo(hz(r), bt * 3.8, v), t0)
             return
@@ -244,6 +346,23 @@ class Song:
         style = "longo" if calm else self.s.get("comping", "contratempo")
         notes = [self.deg(d, 0) for d in ch]
         bt = self.beat
+        if style == "power":   # acordes de força em colcheias (tônica, quinta, oitava), abafados
+            r = self.deg(ch[0], -1)
+            for k in range(8):
+                acc = 1.0 if k in (0, 3, 6) else 0.6
+                for m in (r, r + 7, r + 12):
+                    self.put("acordes", inst(hz(m), bt * (0.45 if acc < 1 else 0.6), 0.45 * acc), t0 + k * bt / 2)
+            return
+        if style == "stabs":   # golpes de metais sincopados
+            for pos in (0.5, 1.75, 2.5, 3.75):
+                for i, m in enumerate(notes):
+                    self.put("acordes", inst(hz(m), bt * 0.3, 0.5), self.sw(t0, pos) + i * 0.006)
+            return
+        if style == "charleston":   # piano com balanço: no 1 e no "e" do 2
+            for pos, d in ((0.0, 0.8), (1.5, 0.5), (2.0, 0.8), (3.5, 0.4)):
+                for i, m in enumerate(notes):
+                    self.put("acordes", inst(hz(m), bt * d, 0.42), self.sw(t0, pos) + i * 0.01)
+            return
         if style == "longo":
             for i, m in enumerate(notes):
                 self.put("acordes", inst(hz(m), bt * 3.6, 0.5), t0 + i * 0.012)
@@ -254,7 +373,7 @@ class Song:
         else:   # contratempo: acorde curto nos "e" do tempo (balanço)
             for k in range(4):
                 for i, m in enumerate(notes):
-                    self.put("acordes", inst(hz(m), bt * 0.32, 0.38), t0 + (k + 0.5) * bt + i * 0.008)
+                    self.put("acordes", inst(hz(m), bt * 0.32, 0.38), self.sw(t0, k + 0.5) + i * 0.008)
 
     def make_motif(self):
         """Motivo de 2 compassos: ritmo de uma lista e alturas por passos (sobe/desce), terminando em nota de acorde."""
@@ -290,7 +409,9 @@ class Song:
                 deg = ch[0]
             if not (b in (3, 7) and pos >= 3.0) or final:
                 m = self.deg(deg, 1)
-                self.put("melodia", inst(hz(m), d * self.beat * 0.9, vel * (1.0 if pos in (0.0, 2.0) else 0.8)), t0 + pos * self.beat)
+                oc = int(self.s.get("oitava_melodia", 1))
+                m = self.deg(deg, oc)
+                self.put("melodia", inst(hz(m), d * self.beat * 0.9, vel * (1.0 if pos in (0.0, 2.0) else 0.8)), self.sw(t0, pos))
             pos += d
             if pos >= 4:
                 break
@@ -306,6 +427,44 @@ class Song:
                 self.put("bateria", shaker(0.7 if k % 2 == 0 else 0.45, rng), t0 + k * bt / 2)
             if first:
                 self.put("bateria", kick(0.6), t0)
+            return
+        if style == "funk":
+            for k in (0, 1.75, 2.5):
+                self.put("bateria", kick(0.85), t0 + k * bt)
+            for k in (1, 3):
+                self.put("bateria", snare(0.75, rng), t0 + k * bt)
+            for k in (1.75, 2.75, 3.25):
+                self.put("bateria", snare(0.18, rng), t0 + k * bt)   # notas fantasma
+            for k in range(16):
+                self.put("bateria", hat(0.6 if k % 4 == 2 else 0.3, rng), t0 + k * bt / 4)
+            return
+        if style == "rock":
+            if first:
+                self.put("bateria", crash(0.9, rng), t0)
+            for k in (0, 1.5, 2, 2.5):
+                self.put("bateria", kick(0.9), t0 + k * bt)
+            for k in (1, 3):
+                self.put("bateria", snare(0.95, rng), t0 + k * bt)
+            for k in range(8):
+                self.put("bateria", hat(0.7, rng), t0 + k * bt / 2)
+            if fill:
+                for k, p in enumerate((3.0, 3.25, 3.5, 3.75)):
+                    self.put("bateria", snare(0.5 + 0.12 * k, rng), t0 + p * bt)
+            return
+        if style == "vassourinha":   # jazz: prato de condução com balanço + vassoura no 2 e 4
+            for pos in (0, 1, 1.5, 2, 3, 3.5):
+                self.put("bateria", ride(0.8 if pos % 1 == 0 else 0.5, rng), self.sw(t0, pos))
+            for k in (1, 3):
+                self.put("bateria", vassoura(0.8, rng), t0 + k * bt)
+            self.put("bateria", kick(0.35), t0)
+            return
+        if style == "chip":
+            for k in (0, 2):
+                self.put("bateria", kick(0.6), t0 + k * bt)
+            for k in (1, 3):
+                self.put("bateria", snare(0.4, rng), t0 + k * bt)
+            for k in range(8):
+                self.put("bateria", hat(0.35, rng), t0 + k * bt / 2)
             return
         kicks = [0, 2] if style in ("leve", "calma") else [0, 1, 2, 3]
         if style == "leve" and rng.random() < 0.4:
