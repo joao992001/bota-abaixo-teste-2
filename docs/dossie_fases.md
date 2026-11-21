@@ -22,3 +22,4 @@ Referências de gênero: Super Smash Bros./Brawlhalla (arenas de derrubar), Ulti
 | 5 | Batata · Obra de Concreto | Não dá para quebrar nada (caixotes não quebram?). Conferir se a marreta quebra caixote na Batata; se não, decidir: quebrar ou trocar caixote por bloco fixo para não enganar. | 1 | pendente |
 | 6 | Batata (todas) | Pavio da dinamite curto demais: aumentar o tempo em todas as fases. | 1 | pendente |
 | 7 | Batata · Galerias da Mina | No alto da rocha não dá para descer: a saída é por tábua de mão única (só sobe) e o robô fica preso lá em cima. Trocar por buraco aberto/descida, ou permitir descer da tábua (▼ + pular) em todo o jogo. Conferir os outros poços com tábua. | 1 | pendente |
+| 8 | Batata · Prédio Velho | Pilhas e paredes de caixote demais: passa-se o tempo todo quebrando bloco em vez de correr/fugir. Batata precisa de fluxo livre: tirar as paredes de caixote do caminho, deixar só caixotes opcionais. | 1 | pendente |
