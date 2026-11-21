@@ -70,6 +70,10 @@ func _run() -> void:
 			await snap(a.substr(10), "oficina_painel")
 			get_tree().quit(0)
 			return
+		if a.begins_with("--itensgif="):
+			await gifs_frames(a.substr(11))
+			get_tree().quit(0)
+			return
 		if a.begins_with("--itens2="):
 			await itens2_frames(a.substr(9))
 			get_tree().quit(0)
@@ -2362,6 +2366,65 @@ func parede_frames(dir: String) -> void:
 	main.hud.visible = true
 
 # ---------------------------------------------------------------- capturas dos itens em ação (zoom no robô)
+## Sequência de quadros de cada item novo (vira GIF): --gifs=DIR,item1,item2...
+func gifs_frames(arg: String) -> void:
+	var parts := arg.split(",")
+	var dir := parts[0]
+	DirAccess.make_dir_recursive_absolute(dir)
+	get_window().size = Vector2i(1920, 1080)
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	await frames(2)
+	await tap("v0", "jump")
+	await tap("v1", "jump")
+	main.mode = "demolicao"
+	main.event_level = 0
+	main.arena_choice = "demolicao"
+	main.game_mode = "batata"
+	main.start_match()
+	for k in range(1, parts.size()):
+		var kind := parts[k]
+		await demo_round()
+		main.demo.item_t = 999.0
+		main.demo.bomb_next = 99.0
+		var r0 = main.robots[0]
+		var r1 = main.robots[1]
+		for rb in [r0, r1]:
+			rb.invuln = 0.0
+		put(r0, Vector2(col_x(11), 576))
+		put(r1, Vector2(col_x(15), 576))
+		r0.facing = 1
+		r1.facing = -1
+		main.demo.bomb_holder = 0
+		main.demo.bomb_fuse = 9.0
+		await frames(10)
+		match kind:
+			"molabomba":
+				main.demo.give(r1, "molabomba")
+				await frames(10)
+				vset("v0", "right", true)
+			"banana", "isca":
+				r0.facing = -1
+				put(r0, Vector2(col_x(13), 576))
+				put(r1, Vector2(col_x(17), 576))
+				await frames(4)
+				main.demo.give(r0, kind)
+				await frames(2)
+				main.demo.use_item(r0)
+				await frames(15)
+				vset("v1", "left", true)
+			"balao":
+				main.demo.give(r0, "balao")
+				put(r0, Vector2(col_x(12), 150))
+			_:
+				main.demo.give(r0, kind)
+				await frames(8)
+				main.demo.use_item(r0)
+		for f in 30:
+			await frames(3)
+			await snap(dir, "%s_%03d" % [kind, f])
+		vset("v0", "right", false)
+		vset("v1", "left", false)
+
 ## Fotos dos itens dos modos (Batata, Rei, Fuga) em ação.
 func itens2_frames(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
