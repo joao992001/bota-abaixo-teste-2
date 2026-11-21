@@ -587,9 +587,12 @@
         "dica": "Passe a dinamite\nantes que ela exploda!",
         "ok": true,
         "arenas": [
-          "paiol",
-          "galpao",
-          "andaime"
+          "obra_concreto",
+          "galerias_mina",
+          "predio_velho",
+          "sob_viaduto",
+          "palafitas",
+          "telhados"
         ],
         "itens": true,
         "raio": 170,
@@ -610,9 +613,12 @@
         "dica": "Segure o capacete de ouro.\nUma marretada derruba!",
         "ok": true,
         "arenas": [
-          "bola",
-          "laje",
-          "piramide"
+          "canteiro_rei",
+          "linha_montagem",
+          "cais_rei",
+          "mina_ouro",
+          "serraria_rei",
+          "predio_demolicao"
         ],
         "itens": true,
         "lento": 0.9,
@@ -636,8 +642,11 @@
         "ok": true,
         "arenas": [
           "torre",
-          "ponte",
-          "mare"
+          "obra_subindo",
+          "fuga_fundicao",
+          "viaduto_obras",
+          "ferro_velho",
+          "pantano_sobe"
         ],
         "itens": true,
         "itens_lista": [

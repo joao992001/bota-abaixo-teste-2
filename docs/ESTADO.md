@@ -7,12 +7,14 @@ Backup: GitHub privado `joao992001/bota-abaixo` (ramo `main`).
 Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controles), com bots. Modo principal **Demolição**
 (o modo antigo de peças/construção ainda existe como "Clássico", mas o GDD.md ainda descreve só ele — desatualizado).
 - **4 modos (sem submodos; o Clássico de peças foi removido):** fluxo Modo → Arena do modo → Ajustes do modo → Entrada.
-  - **Derruba** (vidas 1–5, dano %): Canteiro, Guindastes, Gangorras, Esteiras, Prensa, Fornalha.
-  - **Batata-Dinamite** (pavio curto/normal/longo; encostar ou marretar passa): Paiol, Galpão de Cargas, Andaime do Elevador (fechados, sem poço).
-  - **Rei da Obra** (capacete de ouro no `K`; 20/30/45 s; golpe derruba; 1,2 s de proteção): Bola de Demolição, Laje do Prédio, Pirâmide de Caixotes.
-  - **Fuga** (tela/lama persegue; cair só atrasa; pego pela tela sai; elevador `E` vence): Torre, Ponte, Maré de Lama.
-  - Regras e listas em `data/modos.json` (`demolicao.modos`); bots sabem cada modo (`modes/bots.gd`, `_climb`).
-- **12 itens:** TNT, furadeira, cola, teletransporte, raio laser, bomba de vórtice, soprador, raio congelante (botão ITEM) ·
+  - **Derruba** (vidas 1–5, dano %): Canteiro, Guindastes, Gangorras (serraria), Esteiras, Prensa (ferro-velho), Fornalha (fundição).
+  - **Batata-Dinamite** (pavio curto/normal/longo; encostar ou marretar passa; 44×24, sem espinho): Obra de Concreto (portas que trocam), Galerias da Mina (túneis e tubos), Prédio Velho (alçapões), Sob o Viaduto (plataformas e ventilador), Palafitas (gangorras), Telhados (trampolins).
+  - **Rei da Obra** (capacete de ouro no `K`; 20/30/45 s; golpe derruba; 1,2 s de proteção; 44×24): Trono do Canteiro, Linha de Montagem, Rei do Cais, Mina de Ouro, Serraria Real, Prédio em Demolição.
+  - **Fuga** (tela/lama persegue; cair só atrasa; pego pela tela sai; elevador `E` vence): Torre, Obra Subindo, Descida da Fundição (tela desce), Viaduto em Obras, Ferro-Velho, Pântano Subindo.
+  - Regras e listas em `data/modos.json` (`demolicao.modos`); bots sabem cada modo (`modes/bots.gd`: `_climb` + busca de caminho `_nav_step`).
+  - Fases geradas por `tools/mapas/` (gerar.py, variedade.py, fuga2.py). Antigas (Paiol, Galpão, Andaime, Bola, Laje, Pirâmide, Ponte, Maré) ficam em levels/ mas fora das listas.
+- **Itens por modo** (`itens_lista` em modos.json): Batata 8 (estilingue, patins, escudo, teletransporte, relógio, ímã, soprador, congelador) · Rei 9 (choque, laço, patins, cola, congelador, soprador, mola, foguete, vórtice) · Fuga 9 (barreira, patins, foguete, mola, cola, gancho, teletransporte, congelador, soprador).
+- **Derruba, 12 itens:** TNT, furadeira, cola, teletransporte, raio laser, bomba de vórtice, soprador, raio congelante (botão ITEM) ·
   martelão, ímã, botas de mola, bota-foguete (automáticos). Ferramentas aparecem na mão ao usar.
 - **9 eventos** configuráveis; Amassômetro (dano % aumenta o empurrão); aderência limitada na parede/borda com medidor.
 - **Temas de arena:** Canteiro, Fábrica, Porto e Cidade à noite (blocos, tábuas e fundo animado por tema; `tema:` no .lvl).
