@@ -16,7 +16,7 @@ Referências de gênero: Super Smash Bros./Brawlhalla (arenas de derrubar), Ulti
 | # | Fase / modo | Problema | Lote | Situação |
 |---|---|---|---|---|
 | 1 | Derruba, Batata e Rei (todas) | Zoom perto demais, pior com menos jogadores. Ideal: a arena inteira na tela, como no print (Esteiras com 4). | 1 | pendente |
-| 2 | Derruba, Batata e Rei | Rodízio de fases durante a partida, como em Gang Beasts (cada rodada numa fase diferente, sem voltar ao menu). | 1 | pendente |
+| 2 | TODOS os modos (Derruba, Batata, Rei e Fuga) | Rodízio de fases durante a partida, como em Gang Beasts (cada rodada numa fase diferente, sem voltar ao menu). | 1 | pendente |
 | 3 | Batata (Obra de Concreto) e Rei (Trono do Canteiro) | Prints mostram a câmera cortando a arena: aplicar o item 1 (arena inteira na tela). |  1 | pendente |
 | 4 | Batata · Obra de Concreto | Alavanca do topo fica trancada na "casa de máquinas" (paredes dos dois lados, sem entrada): impossível ativar. Abrir uma entrada ou mudar a alavanca de lugar. | 1 | pendente |
 | 5 | Batata · Obra de Concreto | Não dá para quebrar nada (caixotes não quebram?). Conferir se a marreta quebra caixote na Batata; se não, decidir: quebrar ou trocar caixote por bloco fixo para não enganar. | 1 | pendente |
