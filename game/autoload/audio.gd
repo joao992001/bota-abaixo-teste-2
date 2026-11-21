@@ -12,6 +12,9 @@ var _pool: Array = []
 var _music: AudioStreamPlayer
 var _music_name := ""
 var _cooldown := {}          # evita o mesmo som empilhado no mesmo instante
+## Intervalo mínimo entre repetições dos sons que disparam toda hora (o resto: 0,03 s).
+const COOLDOWN := {"passo": 0.09, "parede": 0.15, "caixote_pancada": 0.06, "marreta_vento": 0.07, "bonk": 0.08,
+	"item": 0.1, "locutor": 0.6, "aterrissa": 0.08, "lama": 0.2, "menu_mover": 0.04}
 var rec_log = null           # capturas de vídeo: lista de {t, path, pitch, db}; null = não grava
 var rec_time := 0.0
 
@@ -56,7 +59,7 @@ func _stream(path: String) -> AudioStream:
 func play(sfx: String, pitch := 1.0, vol := 0.0) -> void:
 	if not _index.has(sfx) or sfx_vol <= 0 or _cooldown.has(sfx):
 		return
-	_cooldown[sfx] = 0.03
+	_cooldown[sfx] = COOLDOWN.get(sfx, 0.03)
 	var n: int = int(_index[sfx])
 	var path := "res://assets/audio/sfx/%s.wav" % sfx if n == 0 else "res://assets/audio/sfx/%s_%d.wav" % [sfx, randi_range(1, n)]
 	var st := _stream(path)

@@ -287,7 +287,7 @@ func _update_music() -> void:
 					or (demo.fx != null and is_instance_valid(demo.fx) and demo.fx.scroll_on and demo.t > 20.0))
 			Audio.music(nm)
 		_: Audio.music("menu")
-	Audio.music_tempo(1.1 if tense else 1.0, 1.0 / 60.0)   # tensão: a música acelera
+	Audio.music_tempo(1.03 if tense else 1.0, 1.0 / 60.0)   # tensão: a música acelera um pouquinho
 
 func _physics_process(dt: float) -> void:
 	_update_music()

@@ -1,12 +1,11 @@
 {
- "wave": "square",
- "duty": 0.5,
- "freq_start": 720,
- "duration": 0.03,
- "attack": 0.001,
- "decay": 0.02,
- "sustain": 0.4,
- "release": 0.02,
- "lowpass": 0.5,
- "volume": 0.18
+  "wave": "triangle",
+  "freq_start": 900,
+  "freq_end": 1150,
+  "duration": 0.025,
+  "attack": 0.001,
+  "decay": 0.02,
+  "sustain": 0.2,
+  "release": 0.035,
+  "volume": 0.3
 }

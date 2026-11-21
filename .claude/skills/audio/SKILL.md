@@ -5,10 +5,11 @@ description: "Sons e música de Bota-Abaixo com tools/sfxforge.py: lista de efei
 
 # Áudio
 
-Lista: passo, pulo, aterrissagem, parede, marretada, peça destruída, eliminação (sucata), mola, serra, esteira, bate-estaca, compensado, gancho, ventilador, dinamite (explosão), colocar peça, cursor, contagem 3-2-1, chegada, placar, vitória, música curta de obra.
+Efeitos: `audio/sfx/*.json` → `python tools/sfxforge.py build` (acabamento automático: filtro, sala, volume por importância).
+Música: `audio/music/*.json` (motor "compositor") → `python tools/musica.py`.
 
-1. `python tools/sfxforge.py new <modelo> <nome> --seed N` e ajuste; `python tools/sfxforge.py build`.
-2. Sons repetidos com variações e leve variação de tom.
-3. Tom por jogador nos sons do robô (P1 mais grave → P4 mais agudo).
-4. Prioridade: eliminação e chegada sempre audíveis; música baixa.
-5. Ouça (ou confira pico e duração lendo o WAV) antes de integrar.
+1. Nada de onda quadrada/serrote crua: use triangle/sine, ruído filtrado, camadas.
+2. O que toca toda hora (passo, pulo, parede, marretada no ar, menu) fica BAIXO (lista QUIET); eliminação, explosão e vitória ficam altos (LOUD).
+3. Sons repetidos com 3–4 variações; intervalo mínimo em `Audio.COOLDOWN`.
+4. Música: faixas longas (~1min20) com partes e respiro; nada de loop de 15 s.
+5. Sem ouvir, confira pico, "brilho" (centroide) e espectrograma antes de integrar; mande uma amostra ao usuário.

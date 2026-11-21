@@ -62,6 +62,18 @@ SR = 44100
 ROOT = Path(__file__).resolve().parent.parent
 AUDIO = ROOT / "audio"
 OUT = ROOT / "out" / "audio"
+GAME_SFX = ROOT / "game" / "assets" / "audio" / "sfx"
+
+# Acabamento (polimento): volume final por importância, em dBFS de pico. O que toca toda hora fica baixo;
+# o que o jogador precisa ouvir (eliminação, explosão, vitória) fica alto. Resto: NORMAL.
+QUIET = {"passo", "parede", "aterrissa", "marreta_vento", "menu_mover", "pulo", "lama", "chama", "ventilador",
+         "esteira", "gelo", "furadeira", "foguete", "soprador", "bola_vento", "laser_carga"}
+SOFT = {"menu_ok", "menu_voltar", "menu_negado", "contagem", "locutor", "item", "bonk", "arremesso", "cola",
+        "caixote_pancada", "pisao", "tonto", "alavanca", "pistao_aviso", "capacete", "chave", "ima", "pulo_mola",
+        "teleporte", "barril", "serra", "evento_fim", "elevador"}
+LOUD = {"eliminado", "explosao", "rodada_vence", "vai", "terremoto", "evento", "ficou_para_tras", "alarme"}
+PEAK_DB = {"quiet": -17.0, "soft": -11.0, "normal": -7.5, "loud": -3.5}
+PEAK_NAME = {"passo": -22.0, "parede": -21.0, "aterrissa": -19.0}   # os mais repetidos de todos
 
 NOTE_INDEX = {"C": 0, "C#": 1, "DB": 1, "D": 2, "D#": 3, "EB": 3, "E": 4, "F": 5, "F#": 6,
               "GB": 6, "G": 7, "G#": 8, "AB": 8, "A": 9, "A#": 10, "BB": 10, "B": 11}
@@ -182,6 +194,35 @@ def write_wav(path, sig):
         w.writeframes(data)
 
 
+def polish(sig, name, p):
+    """Acabamento: tira o chiado agudo das ondas quadradas/serrote, leve sala, sem estalos, volume por importância."""
+    from scipy import signal
+    waves = {p.get("wave", "square")} | {lay.get("wave", "square") for lay in p.get("layers", [])}
+    if waves & {"square", "saw"}:
+        b, a = signal.butter(2, 3800 / (SR / 2))
+        sig = signal.lfilter(b, a, sig)
+    elif "noise" in waves:
+        b, a = signal.butter(2, 8000 / (SR / 2))
+        sig = signal.lfilter(b, a, sig)
+    # sala pequena (cauda de 0,25 s, bem leve): o som ganha corpo e deixa de soar "seco de bip"
+    rng = np.random.default_rng(zlib.crc32(name.encode()))
+    n = int(0.25 * SR)
+    t = np.arange(n) / SR
+    ir = rng.normal(0, 1, n) * np.exp(-t * 16)
+    ir = ir / np.sqrt(np.sum(ir ** 2))
+    tail = np.zeros(len(sig) + n)
+    tail[:len(sig)] = sig
+    wet = signal.fftconvolve(tail, ir)[:len(tail)]
+    sig = tail + 0.12 * wet
+    k = min(len(sig) // 2, int(0.0015 * SR))
+    sig[:k] *= np.linspace(0, 1, k)
+    k = min(len(sig) // 2, int(0.012 * SR))
+    sig[-k:] *= np.linspace(1, 0, k) ** 2
+    cat = "quiet" if name in QUIET else "soft" if name in SOFT else "loud" if name in LOUD else "normal"
+    peak = np.max(np.abs(sig)) or 1.0
+    return sig / peak * 10 ** (PEAK_NAME.get(name, PEAK_DB[cat]) / 20)
+
+
 # ------------------------------------------------------------- música
 def render_music(m):
     bpm, spb = m.get("bpm", 100), m.get("steps_per_beat", 4)
@@ -268,26 +309,35 @@ def cmd_new(args):
 
 
 def cmd_build(args):
+    """Gera os efeitos direto em game/assets/audio/sfx (com acabamento) e o índice sons.json.
+    Músicas com "motor": "compositor" são feitas por tools/musica.py."""
     count = 0
+    index = {}
+    for old in GAME_SFX.glob("*.wav"):
+        old.unlink()
     for f in sorted((AUDIO / "sfx").glob("*.json")):
         p = json.loads(f.read_text(encoding="utf-8"))
         nvar = int(p.get("variations", 1))
         jit = p.get("pitch_jitter", 0.0)
         rng = np.random.default_rng(zlib.crc32(f.stem.encode()))
         if nvar <= 1:
-            write_wav(OUT / "sfx" / f"{f.stem}.wav", synth_layers(p, rng))
+            write_wav(GAME_SFX / f"{f.stem}.wav", polish(synth_layers(p, rng), f.stem, p))
+            index[f.stem] = 0
             count += 1
         else:
             for i in range(1, nvar + 1):
                 mul = 1 + rng.uniform(-jit, jit)
-                write_wav(OUT / "sfx" / f"{f.stem}_{i}.wav", synth_layers(p, rng, mul))
+                write_wav(GAME_SFX / f"{f.stem}_{i}.wav", polish(synth_layers(p, rng, mul), f.stem, p))
                 count += 1
+            index[f.stem] = nvar
+    (GAME_SFX.parent / "sons.json").write_text(json.dumps(index, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     for f in sorted((AUDIO / "music").glob("*.json")):
         m = json.loads(f.read_text(encoding="utf-8"))
+        if m.get("motor") == "compositor":
+            continue
         write_wav(OUT / "music" / f"{f.stem}.wav", render_music(m))
         count += 1
-    print(f"{count} arquivos .wav em {OUT.relative_to(ROOT)}")
-    print("Na Godot: importe a música com Loop Mode = Forward.")
+    print(f"{count} arquivos .wav (efeitos em {GAME_SFX.relative_to(ROOT)}); músicas: python tools/musica.py")
 
 
 def main():
