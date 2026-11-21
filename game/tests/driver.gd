@@ -479,6 +479,7 @@ func demolicao_test() -> void:
 	await maquinas_test()
 	await itens_novos_test()
 	await submodos_test()
+	await itens_modos_test()
 	await eventos_test()
 	await menus_test()
 	await controles_test()
@@ -1070,6 +1071,88 @@ func submodos_test() -> void:
 	main.arena_choice = "demolicao"
 	main.game_mode = "derruba"
 	main.demo.lives_setting = 1
+
+## Itens próprios de cada modo (Batata, Rei, Fuga).
+func itens_modos_test() -> void:
+	print("== Itens dos modos")
+	var lists := {}
+	for m in main.demo.cfg["modos"]:
+		lists[m["id"]] = m["itens_lista"]
+	check("estilingue" in lists["batata"] and "choque" in lists["rei"] and "barreira" in lists["fuga"] and "dinamite" in lists["derruba"],
+		"cada modo tem a sua lista de itens")
+	# Batata: estilingue arremessa a dinamite; escudo impede receber
+	main.game_mode = "batata"
+	main.arena_choice = "demolicao"
+	await demo_round()
+	var r0 = main.robots[0]
+	var r1 = main.robots[1]
+	for r in [r0, r1]:
+		r.invuln = 0.0
+	main.demo.bomb_holder = 0
+	main.demo.bomb_fuse = 30.0
+	main.demo.bomb_next = 99.0
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(16), 576))
+	await frames(10)
+	r0.facing = 1
+	main.demo.give(r0, "estilingue")
+	main.demo.use_item(r0)
+	await frames(50)
+	check(main.demo.bomb_holder == 1 and r0.item == "", "Batata: o estilingue arremessou a dinamite no rival (%d)" % main.demo.bomb_holder)
+	main.demo.give(r1, "estilingue")
+	r1.facing = 1
+	main.demo.use_item(r1)
+	await frames(90)
+	check(main.demo.bomb_holder == 1, "Batata: estilingue que erra não passa a bomba (volta para quem jogou)")
+	main.demo.give(r0, "escudo")
+	main.demo.bomb_pass_cd = 0.0
+	put(r1, r0.position + Vector2(20, 0))
+	await frames(4)
+	check(main.demo.bomb_holder == 1 and r0.fx_t["escudo"] > 0.0, "Batata: com o escudo, a bomba não passa para você")
+	r0.fx_t["escudo"] = 0.0
+	main.demo.give(r0, "patins")
+	check(r0.fx_t["patins"] > 0.0, "patins ligam na hora")
+	# Rei: laço tira o capacete do rei; onda de choque protege e depois empurra
+	main.game_mode = "rei"
+	main.arena_choice = "piramide"
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	for r in [r0, r1]:
+		r.invuln = 0.0
+	put(r1, main.demo.crown_pos + Vector2(0, 2))
+	await frames(4)
+	check(main.demo.king == 1, "Rei: P2 é o rei")
+	main.demo.king_grace = 0.0
+	put(r0, r1.position + Vector2(-260, 0))
+	await frames(4)
+	r0.facing = 1
+	main.demo.give(r0, "laco")
+	main.demo.use_item(r0)
+	await frames(2)
+	check(main.demo.king == -1, "Rei: o laço puxou o rei e o capacete voou")
+	put(r0, r1.position + Vector2(-120, 0))
+	await frames(4)
+	main.demo.give(r0, "choque")
+	main.demo.use_item(r0)
+	await frames(3)
+	var d1: float = r1.dmg
+	check(r0.invuln > 1.0, "Rei: onda de choque deixa intocável enquanto carrega")
+	r1.invuln = 0.0
+	await frames(int(float(main.demo.item_cfg("choque")["espera_s"]) * 60.0) + 6)
+	check(r1.dmg > d1, "Rei: e depois joga quem está perto longe")
+	# Fuga: barreira larga caixotes atrás
+	main.game_mode = "fuga"
+	main.arena_choice = "torre"
+	await demo_round()
+	r0 = main.robots[0]
+	var nb: int = main.level.blocks.size()
+	main.demo.give(r0, "barreira")
+	main.demo.use_item(r0)
+	await frames(2)
+	check(main.level.blocks.size() > nb, "Fuga: a barreira larga caixotes atrás (%d→%d)" % [nb, main.level.blocks.size()])
+	main.arena_choice = "demolicao"
+	main.game_mode = "derruba"
 
 func eventos_test() -> void:
 	print("== Eventos")
@@ -2003,7 +2086,14 @@ func arenas_test() -> void:
 	check(before - main.level.blocks.size() >= 5 and tnt_left == 0, "TNT explode em cadeia (%d caixotes destruídos)" % (before - main.level.blocks.size()))
 
 # ---------------------------------------------------------------- miniaturas e capturas das arenas
-func arenas_frames(dir: String) -> void:
+## --arenas=DIR[,id:modo,...]: miniatura de cada arena (o mapa inteiro) e uma foto jogando com 4 bots.
+func arenas_frames(arg: String) -> void:
+	var parts := arg.split(",")
+	var dir := parts[0]
+	var only := {}
+	for k in range(1, parts.size()):
+		var pm := parts[k].split(":")
+		only[pm[0]] = pm[1] if pm.size() > 1 else "derruba"
 	DirAccess.make_dir_recursive_absolute(dir)
 	get_window().size = Vector2i(1920, 1080)
 	PlayerInput.virtual = {}
@@ -2013,11 +2103,22 @@ func arenas_frames(dir: String) -> void:
 		main.add_bot()
 	main.start_match()
 	for a in main.demo.cfg["arenas"]:
+		if not only.is_empty() and not only.has(a["id"]):
+			continue
+		if not only.is_empty():
+			main.game_mode = only[a["id"]]
+		else:
+			main.game_mode = "derruba"
+			for m in main.demo.cfg["modos"]:
+				if a["id"] in m["arenas"]:
+					main.game_mode = m["id"]
 		main.arena_choice = a["id"]
 		main._clear_robots()
 		main.demo.start_round()
 		# miniatura: arena inteira, sem HUD e sem robôs
-		main.cam_lock = [1.0, Vector2(960, 512)]
+		var lw: float = main.level.cols * 64.0
+		var lh: float = main.level.rows * 64.0
+		main.cam_lock = [minf(1.0, minf(1920.0 / lw, 1024.0 / lh)), Vector2(lw, lh) / 2.0]
 		main.hud.visible = false
 		for r in main.robots:
 			r.visible = false
@@ -2027,6 +2128,9 @@ func arenas_frames(dir: String) -> void:
 		img = img.get_region(Rect2i(0, 56, 1920, 1024))
 		img.resize(480, 256, Image.INTERPOLATE_LANCZOS)
 		img.save_png(dir.path_join("arena_%s.png" % a["id"]))
+		if not only.is_empty():
+			var full := get_viewport().get_texture().get_image()
+			full.save_png(dir.path_join("mapa_%s.png" % a["id"]))
 		main.hud.visible = true
 		main.cam_lock = []
 		for r in main.robots:

@@ -183,6 +183,10 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 				cmd["jump"] = true
 				cmd["jump_frames"] = 16
 			return _safe(r, cmd, lv)
+	# 1b) itens próprios dos modos (estilingue, choque, laço, barreira, cola na Fuga)
+	var mi := _mode_item(r, lv)
+	if not mi.is_empty():
+		return mi
 	# 2) Batata-Dinamite: sem a bomba, foge de quem está com ela; com ela, persegue o mais perto (encostar passa)
 	var bomb_on: bool = demo.rule() == "batata" and demo.bomb_holder >= 0 and demo.bomb_holder < main.robots.size()
 	var holder = main.robots[demo.bomb_holder] if bomb_on else null
@@ -281,6 +285,35 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 		cmd["jump"] = true
 		cmd["jump_frames"] = 16
 	return _safe(r, cmd, lv)
+
+## Bots usando os itens de Batata, Rei e Fuga. Vazio = nada a fazer agora.
+func _mode_item(r, lv: Dictionary) -> Dictionary:
+	var demo = main.demo
+	if r.item not in ["estilingue", "choque", "laco", "barreira", "cola"] or main.rng.randf() > float(lv["use_items"]):
+		return {}
+	if r.item == "cola" and demo.rule() != "fuga":
+		return {}
+	var pos: Vector2 = r.position
+	for o in main.robots:
+		if o == r or not o.alive or o.finished:
+			continue
+		var dx: float = o.position.x - pos.x
+		var dy: float = o.position.y - pos.y
+		var ok := false
+		var face := signi(int(dx))
+		match r.item:
+			"estilingue": ok = r.pid == demo.bomb_holder and absf(dx) > 120.0 and absf(dx) < 560.0 and absf(dy) < 70.0
+			"choque": ok = absf(dx) < 220.0 and absf(dy) < 120.0
+			"laco": ok = absf(dx) > 90.0 and absf(dx) < 420.0 and absf(dy) < 60.0 and (demo.king < 0 or o.pid == demo.king)
+			"barreira":   # alguém vindo atrás: larga o muro entre vocês
+				ok = absf(dx) < 360.0 and absf(dy) < 90.0
+				face = -signi(int(dx))
+			"cola": ok = absf(dx) > 140.0 and absf(dx) < 480.0 and absf(dy) < 90.0
+		if ok:
+			if face != 0 and face != r.facing and r.item not in ["choque"]:
+				return {"dir": face}
+			return {"dir": 0, "item": true}
+	return {}
 
 ## Subir até um objetivo no alto: escolhe um degrau (chão com espaço em cima, 1–3 linhas acima e perto)
 ## que aproxime do objetivo; tábuas dão para atravessar por baixo, blocos sólidos ele pega pela lateral.

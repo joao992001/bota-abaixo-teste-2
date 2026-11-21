@@ -28,11 +28,21 @@ const THEMES := {
 	"fabrica": {"crack": "#2f3640", "rope": "#5a6370"},
 	"porto": {"crack": "#232a35", "rope": "#8a6a47"},
 	"cidade": {"crack": "#3a1c14", "rope": "#3e3f5a"},
+	"concreto": {"crack": "#4a3a30", "rope": "#8a6a45"},
+	"demolicao": {"crack": "#3e2c2a", "rope": "#6e625c"},
+	"viaduto": {"crack": "#363a4c", "rope": "#4f4a5e"},
+	"pantano": {"crack": "#3a2a1e", "rope": "#d1b67c"},
+	"mina": {"crack": "#2e2428", "rope": "#b88d5c"},
+	"serraria": {"crack": "#4a2c1c", "rope": "#9a6b3c"},
+	"ferro_velho": {"crack": "#3a2a2c", "rope": "#5c4a3e"},
+	"fundicao": {"crack": "#241c2a", "rope": "#8c8496"},
 }
 var theme := "canteiro"
 var throne := Vector2.INF
 var traps := {}             # alçapões 'a' (fechado) / 'A' (aberto): Vector2i -> CollisionShape2D
-const FIXED_SOLID := ["#", "o", "I", "F", "f", "P", "B"]   # sólidos fixos que não quebram (máquinas incluídas)
+var doors := {}             # portas 'D' (fechada, sólida) / 'U' (aberta): Vector2i -> CollisionShape2D (alavanca abre e fecha)
+var portals := {}           # tubos de teletransporte 'Y' e 'Z' (cada letra é um par): letra -> [Vector2i, Vector2i]
+const FIXED_SOLID := ["#", "o", "I", "F", "f", "P", "B", "J"]   # sólidos fixos que não quebram (máquinas incluídas)
 
 func load_level(level_id: String) -> void:
 	id = level_id
@@ -81,7 +91,7 @@ func ch_at(c: Vector2i) -> String:
 	return String(grid[c.y])[c.x]
 
 func is_solid(c: Vector2i) -> bool:
-	if ch_at(c) in ["#", "o", "I", "d", "T", "<", ">", "F", "f", "P", "B", "a"]:
+	if ch_at(c) in ["#", "o", "I", "d", "T", "<", ">", "F", "f", "P", "B", "a", "D", "J"]:
 		return true
 	return extra_solid.is_valid() and extra_solid.call(c)
 
@@ -113,6 +123,13 @@ func set_trap(c: Vector2i, open: bool) -> void:
 		return
 	traps[c].set_deferred("disabled", open)
 	set_cell_char(c, "A" if open else "a")
+
+## Porta: abre ou fecha ('D' fechada e sólida, 'U' aberta).
+func set_door(c: Vector2i, open: bool) -> void:
+	if not doors.has(c):
+		return
+	doors[c].set_deferred("disabled", open)
+	set_cell_char(c, "U" if open else "D")
 
 ## Troca um caractere do mapa (rede rasgada, alçapão aberto...).
 func set_cell_char(c: Vector2i, ch: String) -> void:
@@ -172,6 +189,28 @@ func _build_colliders() -> void:
 			var ch := ch_at(Vector2i(x, y))
 			if ch in FIXED_SOLID:
 				ch = "#"
+			if ch == "D" or ch == "U":
+				# porta: corpo próprio, a alavanca abre e fecha
+				var db := StaticBody2D.new()
+				db.collision_layer = 1
+				db.collision_mask = 0
+				var dcs := CollisionShape2D.new()
+				var drs := RectangleShape2D.new()
+				drs.size = Vector2(T, T)
+				dcs.shape = drs
+				dcs.position = Vector2(x * T + T / 2.0, y * T + T / 2.0)
+				dcs.disabled = ch == "U"
+				db.add_child(dcs)
+				add_child(db)
+				doors[Vector2i(x, y)] = dcs
+				x += 1
+				continue
+			if ch == "Y" or ch == "Z":
+				if not portals.has(ch):
+					portals[ch] = []
+				portals[ch].append(Vector2i(x, y))
+				x += 1
+				continue
 			if ch == "a":
 				# alçapão: corpo próprio para abrir/fechar
 				var tb := StaticBody2D.new()
@@ -306,6 +345,33 @@ func _draw_art() -> void:
 					draw_set_transform(pos + Vector2(T if flip else 0, 0), 0.0, Vector2(-1 if flip else 1, 1))
 					draw_texture_rect(Data.tex("cenario/calha"), Rect2(Vector2.ZERO, tile), false)
 					draw_set_transform(Vector2.ZERO)
+				"D":
+					# porta de aço fechada: chapa com faixa de aviso e puxador
+					draw_rect(Rect2(pos + Vector2(4, 0), Vector2(T - 8, T)), Color("#7d8894"))
+					draw_rect(Rect2(pos + Vector2(4, 0), Vector2(T - 8, T)), Color("#2a1a2e"), false, 3.0)
+					draw_rect(Rect2(pos + Vector2(10, 6), Vector2(T - 20, T - 12)), Color("#9aa6b1"))
+					if ch_at(c + Vector2i.UP) != "D":
+						for k in 4:
+							draw_colored_polygon(PackedVector2Array([pos + Vector2(6 + k * 14, 0), pos + Vector2(13 + k * 14, 0), pos + Vector2(6 + k * 14, 8)]), Color("#f2c84b"))
+					if ch_at(c + Vector2i.DOWN) != "D":
+						draw_circle(pos + Vector2(T - 18, T / 2.0), 4.0, Color("#2a1a2e"))
+				"U":
+					# porta aberta: recolhida no batente
+					draw_rect(Rect2(pos + Vector2(2, 0), Vector2(10, T)), Color("#7d8894"))
+					draw_rect(Rect2(pos + Vector2(2, 0), Vector2(10, T)), Color("#2a1a2e"), false, 2.0)
+				"J":
+					# trampolim: base fixa + mola + tampo vermelho
+					draw_texture_rect(ttex("fixo", "cenario/caixote_%d" % ((x * 7 + y * 3) % 3)), Rect2(pos + Vector2(0, 20), Vector2(T, T - 20)), false)
+					for k in 3:
+						draw_line(pos + Vector2(14, 18 - k * 5), pos + Vector2(T - 14, 15 - k * 5), Color("#5a6370"), 3.0, true)
+					draw_rect(Rect2(pos + Vector2(4, 0), Vector2(T - 8, 8)), Color("#e5484d"))
+					draw_rect(Rect2(pos + Vector2(4, 0), Vector2(T - 8, 8)), Color("#2a1a2e"), false, 2.0)
+				"Y", "Z":
+					# boca do tubo de teletransporte (o redemoinho anima na camada de cima)
+					var pc := Color("#8a63d2") if ch_at(c) == "Y" else Color("#3fc1c9")
+					draw_circle(pos + Vector2(T / 2.0, T / 2.0), 30.0, Color("#2a1a2e"))
+					draw_circle(pos + Vector2(T / 2.0, T / 2.0), 26.0, pc)
+					draw_circle(pos + Vector2(T / 2.0, T / 2.0), 16.0, pc.darkened(0.45))
 				"a":
 					draw_texture_rect(Data.tex("cenario/alcapao"), Rect2(pos, Vector2(T, 24)), false)
 				"A":

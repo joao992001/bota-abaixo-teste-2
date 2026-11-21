@@ -20,8 +20,13 @@ const ROWS := ["dar", "soltar", "evento", "arena", "recarregar", "boneco", "bot"
 func setup(m: Node) -> void:
 	main = m
 
-func kinds() -> Array:
-	return main.demo.cfg["itens"]["kinds"]
+func kinds() -> Array:   # todos os itens de todos os modos
+	var out: Array = main.demo.cfg["itens"]["kinds"].duplicate()
+	for m in main.demo.cfg["modos"]:
+		for k in m.get("itens_lista", []):
+			if k not in out:
+				out.append(k)
+	return out
 
 func arenas() -> Array:
 	var out: Array = [{"id": "oficina", "nome": "Oficina"}]

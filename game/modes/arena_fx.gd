@@ -11,7 +11,10 @@ extends Node2D
 ##   chama_ciclo: apagada,aviso,acesa                (f)
 ##   pistao_ciclo: segundos                          (P, no teto: desce e prensa)
 ##   barril_cada: segundos · barril_vel: tiles/s      (B: calha que solta barris rolando)
-##   alcapao_s: segundos aberto                      (L alavanca: marretada abre os alçapões 'a')
+##   alcapao_s: segundos aberto                      (L alavanca: marretada abre os alçapões 'a' e abre/fecha as portas 'D')
+##   trampolim: velocidade (px/s, padrão 2150 ≈ 6 tiles)       (J: pisou, voa)
+##   rolagem baixo                                   (câmera desce; quem fica para cima está fora)
+## Tubos de teletransporte: 'Y' e 'Z' (dois de cada letra): entrou num, sai no outro.
 ## As plataformas são AnimatableBody2D: a física da Godot carrega quem está em cima.
 
 const T := 64
@@ -42,6 +45,8 @@ var barrels: Array = []    # {pos, vx, vy, by, bounces, rot}
 var seesaws: Array = []    # {body, pivot, w, ang}
 var levers: Array = []     # {cell, ang}
 var traps_open_t := 0.0
+var pad_t := {}            # trampolim: célula -> tempo da última mola (anima)
+var portal_cd := {}        # robô -> espera para usar um tubo de novo
 var trap_by := -1
 var fan_on := true
 var fan_t := 0.0
@@ -102,7 +107,7 @@ func _setup_machines(lv: Node) -> void:
 		scroll_on = true
 		var lw: float = lv.cols * T
 		var lh: float = lv.rows * T
-		scroll_center = Vector2(lw / 2.0, lh - 512.0) if scroll_dir == "cima" else Vector2(960.0, lh / 2.0)
+		scroll_center = Vector2(lw / 2.0, lh - 512.0) if scroll_dir == "cima" else (Vector2(lw / 2.0, 512.0) if scroll_dir == "baixo" else Vector2(960.0, lh / 2.0))
 	# gangorras
 	for part in String(lv.prop("gangorras", "")).split(";", false):
 		var g := part.split(",")
@@ -190,6 +195,7 @@ func update(dt: float, running: bool) -> void:
 		return
 	_update_scroll(dt)
 	_update_machines(dt)
+	_update_pads_portals(dt)
 	# esteiras invertem
 	if flip_every > 0.0:
 		flip_t -= dt
@@ -249,6 +255,8 @@ func _update_scroll(dt: float) -> void:
 	if main.demo.t >= scroll_start:
 		if scroll_dir == "cima":
 			scroll_center.y = maxf(scroll_center.y - scroll_vel * dt, 512.0)
+		elif scroll_dir == "baixo":
+			scroll_center.y = minf(scroll_center.y + scroll_vel * dt, lh - 512.0)
 		else:
 			scroll_center.x = minf(scroll_center.x + scroll_vel * dt, lw - 960.0)
 	var view := Rect2(scroll_center - Vector2(960, 512), Vector2(1920, 1024))
@@ -258,6 +266,11 @@ func _update_scroll(dt: float) -> void:
 		var behind := false
 		if scroll_dir == "cima":
 			behind = r.position.y - 80.0 > view.end.y
+		elif scroll_dir == "baixo":
+			behind = r.position.y + 10.0 < view.position.y   # ficou lá em cima
+			if r.position.y > view.end.y - 10.0 and r.velocity.y > 0.0:   # não passa da frente (de baixo) da tela
+				r.position.y = view.end.y - 10.0
+				r.velocity.y = 0.0
 		else:
 			behind = r.position.x + 30.0 < view.position.x
 			if r.position.x > view.end.x - 28.0:   # não passa da frente da tela
@@ -274,7 +287,8 @@ func _update_scroll(dt: float) -> void:
 	# o que ficou para trás desaba
 	for cell in level.blocks.keys():
 		var cp := Vector2(cell * T)
-		if (scroll_dir == "cima" and cp.y > view.end.y + 64.0) or (scroll_dir != "cima" and cp.x + T < view.position.x - 64.0):
+		if (scroll_dir == "cima" and cp.y > view.end.y + 64.0) or (scroll_dir == "baixo" and cp.y + T < view.position.y - 64.0) \
+				or (scroll_dir == "direita" and cp.x + T < view.position.x - 64.0):
 			if level.blocks[cell]["warn"] <= 0.0:
 				level.blocks[cell]["warn"] = 0.4
 
@@ -523,6 +537,19 @@ func hammer_hit(r, reach: Rect2) -> bool:
 
 func pull_lever(by: int) -> void:
 	traps_open_t = float(level.prop("alcapao_s", "3.5"))
+	# portas: alavanca inverte (abertas fecham, fechadas abrem); não fecha em cima de ninguém
+	for c in level.doors.keys():
+		var opening: bool = level.ch_at(c) == "D"
+		var busy := false
+		if not opening:
+			var dr := Rect2(Vector2(c * T), Vector2(T, T))
+			for r in main.robots:
+				if r.alive and r.rect().intersects(dr):
+					busy = true
+		if not busy:
+			level.set_door(c, opening)
+	if not level.doors.is_empty():
+		Audio.play("alcapao", 1.3, -3.0)
 	trap_by = by
 	Audio.play("alavanca")
 	Audio.play("alcapao", 1.0, -2.0)
@@ -535,6 +562,36 @@ func pull_lever(by: int) -> void:
 				r.last_attacker = by
 		level.set_trap(c, true)
 
+## Trampolins (J) e tubos de teletransporte (Y/Z).
+func _update_pads_portals(dt: float) -> void:
+	for k in portal_cd.keys():
+		portal_cd[k] = maxf(portal_cd[k] - dt, 0.0)
+	var launch := float(level.prop("trampolim", "2150"))   # ~6 tiles: pula dois andares
+	for r in main.robots:
+		if not r.alive:
+			continue
+		if r.is_on_floor() and r.velocity.y >= -10.0:
+			var below := Vector2i(int(r.position.x / T), int((r.position.y + 2.0) / T))
+			if level.ch_at(below) == "J":
+				r.velocity.y = -launch
+				r.var_jump = 0.0
+				r.vis.stretch()
+				pad_t[below] = t
+				Audio.play("pulo_mola", 0.9)
+		if portal_cd.get(r.pid, 0.0) > 0.0:
+			continue
+		var cc := Vector2i(int(r.position.x / T), int((r.position.y - 30.0) / T))
+		var ch: String = level.ch_at(cc)
+		if (ch == "Y" or ch == "Z") and level.portals.has(ch) and level.portals[ch].size() == 2:
+			var pair: Array = level.portals[ch]
+			var dest: Vector2i = pair[1] if pair[0] == cc else pair[0]
+			main.spark(r.rect().get_center(), 6)
+			r.position = Vector2(dest.x * T + T / 2.0, dest.y * T + T - 2.0)
+			r.reset_physics_interpolation()
+			portal_cd[r.pid] = 1.2
+			main.spark(r.rect().get_center(), 6)
+			Audio.play("teleporte", 1.1, -2.0)
+
 func _ball_step(_dt: float) -> void:
 	var ang: float = ball["amp"] * sin(TAU * t / float(ball["period"]))
 	var w: float = ball["amp"] * cos(TAU * t / float(ball["period"])) * TAU / float(ball["period"])
@@ -543,7 +600,23 @@ func _ball_step(_dt: float) -> void:
 	ball["vel"] = Vector2(cos(ang), -sin(ang)) * w * float(ball["len"])
 
 func _draw() -> void:
+	if level == null or not is_instance_valid(level):
+		return
 	_draw_machines()
+	# redemoinho dos tubos de teletransporte
+	for ch in level.portals:
+		var pc := Color("#d9c8ff") if ch == "Y" else Color("#c8f6f8")
+		for c in level.portals[ch]:
+			var cen := Vector2(c * T) + Vector2(T / 2.0, T / 2.0)
+			for k in 3:
+				var a0 := t * 4.0 + k * TAU / 3.0
+				draw_arc(cen, 8.0 + k * 5.0, a0, a0 + 2.2, 12, pc, 3.0, true)
+	# mola do trampolim encolhe e estica quando alguém pula
+	for c in pad_t:
+		var age: float = t - pad_t[c]
+		if age < 0.3:
+			var pos := Vector2(c * T)
+			draw_rect(Rect2(pos + Vector2(4, -10.0 * (1.0 - age / 0.3)), Vector2(T - 8, 8)), Color("#ff8a8a"))
 	# cabos e plataformas
 	var tex := Data.tex("cenario/plataforma_aco")
 	for p in plats:

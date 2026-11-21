@@ -1,0 +1,33 @@
+id: serraria_rei
+tema: serraria
+terremoto: 0
+alcapao_s: 3.5
+gangorras: 11.5,18,6; 31.5,18,6
+size: 44x24
+spawns: 1,2,3,4
+legend: "# sólido, d caixote, T TNT, = tábua, D porta, L alavanca (abre/fecha portas e alçapões a), J trampolim, Y/Z tubos, F ventilador, < > esteira, K trono, E elevador, 1-4 spawn"
+=== map
+IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+I..........................................I
+I..........................................I
+I..........................................I
+I..........................................I
+I..........................................I
+I.............===....K.....===.............I
+I..................dddddd..................I
+I..................dddddd..................I
+I...........Z......dddddd......Y...........I
+I.........#####....dddddd....#####.........I
+I..................dddddd..................I
+I..................dddddd..................I
+I..................dddddd..................I
+I....Y.............dddddd.............Z....I
+I...ddddd..........D....D..........ddddd...I
+I...ddddd..........D....D..........ddddd...I
+I...ddddd..........D.L..D..........ddddd...I
+I...ddddd..........dddddd..........ddddd...I
+I...ddddd..........dddddd..........ddddd...I
+I.J.ddddd.1..2..J..dddddd..J..3..4.ddddd.J.I
+############################################
+############################################
+############################################

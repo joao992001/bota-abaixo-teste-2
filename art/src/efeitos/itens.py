@@ -164,12 +164,99 @@ def congelador():
     return wrap("".join(b), 171)
 
 
+def estilingue():
+    b = [shape("ef", "M27,60 C27,62 35,62 35,60 L35,42 L47,28 L48,9 C48,6 42,6 42,9 L41,25 L31,36 L22,25 L21,9 "
+               "C21,6 15,6 15,9 L16,28 L27,42 Z", "#b07a3d", 181, (13, 4, 50, 62), k=1.2, dark="#7a5226", light="#d9a35f"),
+         '<path d="M18,10 L28,30 M45,10 L36,30" stroke="#3e4752" stroke-width="3" stroke-linecap="round"/>',
+         shape("ed", rect_d(26, 14, 12, 20, 2), "#d14d35", 182, (24, 12, 40, 36), k=1.1),
+         '<rect x="26" y="21" width="12" height="4" fill="#3e4752"/>',
+         '<path d="M26,32 Q32,36 38,32" stroke="#3e4752" stroke-width="3" fill="none" stroke-linecap="round"/>',
+         '<path d="M32,14 C32,9 36,8 37,5" stroke="#5a4632" stroke-width="2.2" fill="none" stroke-linecap="round"/>',
+         '<path d="M37,5 l3,-2 M37,5 l4,1 M37,5 l-1,-3" stroke="#f2c84b" stroke-width="2" stroke-linecap="round"/>',
+         '<circle cx="37" cy="5" r="2.2" fill="#ffffff"/>',
+         '<path d="M18,30 L24,38" stroke="#e0b47a" stroke-width="2" stroke-linecap="round"/>']
+    return wrap("".join(b), 181)
+
+
+def patins():
+    b = [shape("pb", "M16,8 L36,8 L38,26 L50,29 C55,30 56,40 50,40 L14,40 Z", "#f2c84b", 191, (12, 6, 58, 42), k=1.2,
+               dark="#c99a28", light="#fff1b8"),
+         '<rect x="16" y="8" width="20" height="6" fill="#d14d35"/>',
+         '<path d="M36,22 L44,26" stroke="#d14d35" stroke-width="3.2" stroke-linecap="round"/>',
+         '<path d="M22,18 l8,4 M22,24 l8,4 M30,18 l-8,4 M30,24 l-8,4" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>',
+         shape("pp", rect_d(12, 39, 42, 6, 2), "#d14d35", 192, (10, 37, 56, 47), k=1.1),
+         '<path d="M50,39 L56,36 L58,42 L54,45 Z" fill="#3e4752"/>']
+    for i, x in enumerate((21, 43)):
+        b.append(shape(f"pw{i}", ellipse_d(x, 52, 8, 8), "#3e4752", 193 + i, (x - 9, 43, x + 9, 61), k=1.0))
+        b.append(f'<circle cx="{x}" cy="52" r="3" fill="#d5dbe1"/>')
+    b.append('<path d="M2,20 H10 M4,30 H10 M2,40 H8" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/>')
+    return wrap("".join(b), 191)
+
+
+def escudo():
+    b = [shape("sh", "M32,4 C40,8 50,9 56,9 C56,34 48,52 32,60 C16,52 8,34 8,9 C14,9 24,8 32,4 Z", "#2f6fc8", 201,
+               (6, 2, 58, 62), k=1.3, dark="#1f4f99", light="#7fb0f0"),
+         '<path d="M32,10 C38,13 45,14 50,14 C50,34 44,47 32,54 C20,47 14,34 14,14 C19,14 26,13 32,10 Z" fill="#4f86d9"/>',
+         shape("sd0", rect_d(20, 24, 8, 22, 2), "#d14d35", 202, (18, 22, 30, 48), k=1.0),
+         shape("sd1", rect_d(28, 24, 8, 22, 2), "#d14d35", 203, (26, 22, 38, 48), k=1.0),
+         shape("sd2", rect_d(36, 24, 8, 22, 2), "#d14d35", 204, (34, 22, 46, 48), k=1.0),
+         '<rect x="19" y="32" width="26" height="5" fill="#3e4752"/>',
+         '<path d="M32,24 C32,19 36,18 38,15" stroke="#5a4632" stroke-width="2" fill="none" stroke-linecap="round"/>',
+         '<path d="M17,19 L47,49 M47,19 L17,49" stroke="#1f4f99" stroke-width="7" stroke-linecap="round" opacity="0.55"/>',
+         '<path d="M17,19 L47,49 M47,19 L17,49" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>',
+         '<path d="M14,16 Q15,30 20,40" stroke="#ffffff" stroke-width="2.6" fill="none" stroke-linecap="round" opacity="0.8"/>']
+    return wrap("".join(b), 201)
+
+
+def choque():
+    b = ['<path d="M10,22 A24,24 0 0 1 22,9 M54,42 A24,24 0 0 1 42,55" stroke="#f6a23a" stroke-width="3" fill="none" stroke-linecap="round"/>',
+         '<path d="M4,34 A28,28 0 0 1 10,15 M60,30 A28,28 0 0 1 54,49" stroke="#ffe08a" stroke-width="2.6" fill="none" stroke-linecap="round"/>',
+         '<path d="M18,46 A16,16 0 0 1 16,26 M46,18 A16,16 0 0 1 48,38" stroke="#f6a23a" stroke-width="2.6" fill="none" stroke-linecap="round"/>',
+         shape("cz", "M36,4 L18,34 L30,34 L24,60 L46,26 L34,26 L42,4 Z", "#f2c84b", 211, (16, 2, 48, 62), k=1.2,
+               dark="#c99a28", light="#fff1b8"),
+         '<path d="M36,4 L42,4 L38,14 L33,9 Z" fill="#fff1b8"/>',
+         '<circle cx="12" cy="52" r="2.4" fill="#f2c84b"/><circle cx="54" cy="10" r="2.4" fill="#f2c84b"/>']
+    return wrap("".join(b), 211)
+
+
+def laco():
+    rope = "#c9a26a"
+    d_loop = "M24,34 C8,30 10,10 34,8 C56,6 62,24 46,32 C40,35 30,36 24,34"
+    d_tail = "M24,34 C18,40 22,46 16,50 C10,54 6,50 10,46 C14,42 20,48 16,56 L12,61"
+    b = [f'<path d="{d_loop}" stroke="{rope}" stroke-width="5.5" fill="none" stroke-linecap="round"/>',
+         f'<path d="{d_loop}" stroke="#8a6a3e" stroke-width="5.5" fill="none" stroke-dasharray="1.6 3.4"/>',
+         f'<path d="{d_tail}" stroke="{rope}" stroke-width="5" fill="none" stroke-linecap="round"/>',
+         f'<path d="{d_tail}" stroke="#8a6a3e" stroke-width="5" fill="none" stroke-dasharray="1.6 3.4"/>',
+         '<path d="M16,20 C18,14 26,11 32,11" stroke="#f0d6a8" stroke-width="1.8" fill="none" stroke-linecap="round"/>',
+         shape("lk", rect_d(19, 29, 10, 10, 3), "#a8834c", 221, (17, 27, 31, 41), k=1.0),
+         '<path d="M50,44 l6,-3 M52,52 l7,0 M48,58 l5,3" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/>']
+    return wrap("".join(b), 221)
+
+
+def barreira():
+    wood, dk = "#d9a35f", "#a8743a"
+    b = []
+    for i, (x, y) in enumerate(((5, 34), (33, 34), (19, 8))):
+        b.append(shape(f"bc{i}", rect_d(x, y, 26, 26, 2), wood, 231 + i, (x - 2, y - 2, x + 28, y + 28), k=1.1,
+                       dark=dk, light="#f0cc95"))
+        b.append(f'<rect x="{x}" y="{y}" width="26" height="4" fill="{dk}"/>'
+                 f'<rect x="{x}" y="{y + 22}" width="26" height="4" fill="{dk}"/>'
+                 f'<path d="M{x + 3},{y + 21} L{x + 23},{y + 5}" stroke="{dk}" stroke-width="3.2" stroke-linecap="round"/>')
+    b.append('<clipPath id="bz"><rect x="3" y="40" width="58" height="9"/></clipPath>'
+             '<rect x="3" y="40" width="58" height="9" fill="#f2c84b"/><g clip-path="url(#bz)">'
+             + "".join(f'<path d="M{x},49 L{x + 9},40 L{x + 14},40 L{x + 5},49 Z" fill="#2f3640"/>' for x in range(-6, 62, 10))
+             + '</g>')
+    b.append('<path d="M23,12 H41" stroke="#fff1b8" stroke-width="1.8" stroke-linecap="round"/>')
+    return wrap("".join(b), 231)
+
+
 def main():
     for name, fn in (("dinamite", dinamite), ("martelao", martelao), ("capacete", capacete), ("mola", mola),
                      ("gancho", gancho), ("ima", ima), ("tabua", tabua), ("furadeira", furadeira), ("cola", cola),
                      ("foguete", foguete), ("chave", chave), ("mola_portatil", mola_portatil),
                      ("teletransporte", teletransporte), ("laser", laser), ("vortice", vortice), ("soprador", soprador),
-                     ("congelador", congelador)):
+                     ("congelador", congelador), ("estilingue", estilingue), ("patins", patins),
+                     ("escudo", escudo), ("choque", choque), ("laco", laco), ("barreira", barreira)):
         queue(fn(), f"{SRC}/item_{name}.svg", f"{OUT}/{name}.png", 64, 64, K)
     print("itens:", render_all())
 

@@ -136,6 +136,9 @@ func start_round() -> void:
 	bomb_pass_cd = 0.0
 	items.clear()
 	dynamites.clear()
+	slings.clear()
+	shocks.clear()
+	ropes.clear()
 	if tools == null or not is_instance_valid(tools):
 		tools = Ferramentas.new()
 		tools.setup(main, self)
@@ -279,6 +282,7 @@ func update(dt: float) -> void:
 		f["t"] += dt
 	feed = feed.filter(func(f): return f["t"] < 4.5)
 	_update_bomb(dt, alive)
+	_update_mode_items(dt)
 	var king_won := _update_king(dt, alive)
 	# fim da rodada: sobrou 1 (ou ninguém)
 	var over: bool = alive.size() <= 1 and main.robots.size() >= 2 and not main.sandbox
@@ -313,7 +317,7 @@ func _update_items(dt: float, alive: Array) -> void:
 		var span: Array = ic["spawn_every_s"]
 		item_t = main.rng.randf_range(float(span[0]), float(span[1]))
 		if items_on and items.size() < int(ic["max_on_map"]):
-			var kinds: Array = ic["kinds"].filter(func(k): return not (k == "dinamite" and rule() == "batata"))
+			var kinds: Array = sub.get("itens_lista", ic["kinds"])   # cada modo tem os seus itens
 			spawn_item(kinds[main.rng.randi() % kinds.size()])
 	var lv = main.level
 	for it in items:
@@ -375,8 +379,13 @@ func spawn_item(kind: String, col := -1) -> void:
 const ITEM_NAMES := {"dinamite": "TNT!", "martelao": "MARTELÃO!", "mola": "BOTAS DE MOLA!", "capacete": "CAPACETE!",
 	"ima": "ÍMÃ!", "furadeira": "FURADEIRA!", "cola": "COLA!", "foguete": "BOTA-FOGUETE!",
 	"teletransporte": "TELETRANSPORTE!", "laser": "RAIO LASER!", "vortice": "BOMBA DE VÓRTICE!", "soprador": "SOPRADOR!",
-	"congelador": "RAIO CONGELANTE!"}
-const USABLE := ["dinamite", "furadeira", "cola", "teletransporte", "laser", "vortice", "soprador", "congelador"]
+	"congelador": "RAIO CONGELANTE!", "estilingue": "ESTILINGUE!", "patins": "PATINS!", "escudo": "ESCUDO DE BORRACHA!",
+	"choque": "ONDA DE CHOQUE!", "laco": "LAÇO!", "barreira": "BARREIRA!"}
+const USABLE := ["dinamite", "furadeira", "cola", "teletransporte", "laser", "vortice", "soprador", "congelador",
+	"estilingue", "choque", "laco", "barreira"]
+var slings: Array = []       # Batata: dinamite arremessada com o estilingue {pos, vel, t, owner}
+var shocks: Array = []       # Rei: onda de choque carregando {pid, t}
+var ropes: Array = []        # laço desenhado {a, b, t}
 const Ferramentas := preload("res://modes/ferramentas.gd")
 var tools: Node2D = null     # furadeira, cola, teletransporte, laser, vórtice, soprador, congelador, ímã (modes/ferramentas.gd)
 
@@ -385,7 +394,7 @@ func give(r, kind: String) -> void:
 		push_warning("item desconhecido: %s" % kind)
 		return
 	match kind:
-		"martelao", "mola", "ima", "foguete": r.fx_t[kind] = float(item_cfg(kind)["duration_s"])
+		"martelao", "mola", "ima", "foguete", "patins", "escudo": r.fx_t[kind] = float(item_cfg(kind)["duration_s"])
 		"capacete": r.shield = int(item_cfg("capacete")["hits"])
 		_: r.item = kind
 	Audio.play({"martelao": "martelao", "ima": "ima", "foguete": "foguete"}.get(kind, "item"))
@@ -397,6 +406,12 @@ func give(r, kind: String) -> void:
 ## Botão de item: usa o item guardado.
 func use_item(r) -> void:
 	var kind: String = r.item
+	if kind in ["estilingue", "choque", "laco", "barreira"]:
+		if _use_mode_item(r, kind):
+			r.item = ""
+		else:
+			Audio.play("menu_negado", 1.0, -6.0)
+		return
 	if kind != "" and kind != "dinamite":
 		r.item = ""
 		if not tools.use(r, kind):
@@ -459,6 +474,19 @@ func _update_fx(dt: float) -> void:
 
 func _draw_canvas() -> void:
 	var now := Time.get_ticks_msec() / 1000.0
+	for sl in slings:
+		canvas.draw_texture_rect(Data.tex("itens/dinamite"), Rect2(sl["pos"] - Vector2(18, 18), Vector2(36, 36)), false)
+	for rp in ropes:
+		canvas.draw_line(rp["a"], rp["b"], Color("#b07a3d"), 4.0, true)
+		canvas.draw_arc(rp["b"], 12.0, 0, TAU, 14, Color("#b07a3d"), 3.0, true)
+	for sh in shocks:
+		if sh["pid"] < main.robots.size():
+			var cc: Vector2 = main.robots[sh["pid"]].rect().get_center()
+			var k: float = 1.0 - sh["t"] / float(item_cfg("choque")["espera_s"])
+			canvas.draw_arc(cc, 30.0 + k * 40.0, 0, TAU, 32, Color(1.0, 0.85, 0.3, 0.4 + 0.5 * k), 4.0 + k * 4.0, true)
+	for r in main.robots:
+		if r.alive and r.fx_t["escudo"] > 0.0:
+			canvas.draw_arc(r.rect().get_center(), 50.0, 0, TAU, 32, Color(0.35, 0.6, 1.0, 0.6), 4.0, true)
 	if rule() == "rei":
 		var cp := crown_pos
 		var glow := 0.5 + 0.5 * sin(now * 6.0)
@@ -879,9 +907,104 @@ func _update_bomb(dt: float, alive: Array) -> void:
 		explode(pos, float(sub["raio"]))
 		main.kill(holder, -1, null)
 
+## Itens próprios dos modos (Batata, Rei, Fuga). true = usou.
+func _use_mode_item(r, kind: String) -> bool:
+	var c: Vector2 = r.rect().get_center()
+	match kind:
+		"estilingue":   # só serve com a dinamite na mão: arremessa (se errar, ela volta para você)
+			if r.pid != bomb_holder:
+				return false
+			var v: Array = item_cfg("estilingue")["vel"]
+			slings.append({"pos": c + Vector2(r.facing * 24, -10), "vel": Vector2(r.facing * float(v[0]), -float(v[1])), "t": 0.0, "owner": r.pid})
+			Audio.play("arremesso", 1.2)
+			r.vis.stretch()
+			return true
+		"choque":   # fica intocável um instante e depois joga todo mundo longe
+			var wait := float(item_cfg("choque")["espera_s"])
+			r.invuln = wait + 0.2
+			if king == r.pid:
+				king_grace = wait + 0.2
+			shocks.append({"pid": r.pid, "t": wait})
+			Audio.play("laser_carga", 0.8)
+			return true
+		"laco":   # puxa o primeiro rival à frente; se for o rei, o capacete vem voando
+			var reach := float(item_cfg("laco")["alcance_px"])
+			var best = null
+			var bd := 1e9
+			for o in main.robots:
+				if o != r and o.alive:
+					var oc: Vector2 = o.rect().get_center()
+					var dx: float = (oc.x - c.x) * r.facing
+					if dx > 0.0 and dx < reach and absf(oc.y - c.y) < 80.0 and dx < bd:
+						bd = dx
+						best = o
+			var tip: Vector2 = c + Vector2(r.facing * (bd if best != null else reach), 0)
+			ropes.append({"a": c, "b": tip, "t": 0.0})
+			Audio.play("gancho")
+			if best != null:
+				if best.pid == king:
+					_drop_crown(((c - best.rect().get_center()).normalized() * 560.0) + Vector2(0, -420))
+				best.knock(-r.facing, 620.0, 260.0, 0.45)
+			return true
+		"barreira":   # muro de 2 caixotes atrás de você
+			var lv = main.level
+			var bx := int((r.position.x - r.facing * 100.0) / 64.0)
+			var by := int((r.position.y - 4.0) / 64.0)
+			var made := false
+			for k in int(item_cfg("barreira")["altura"]):
+				if lv.add_block(Vector2i(bx, by - k)):
+					lv.blocks[Vector2i(bx, by - k)]["hp"] = lv.block_hp
+					made = true
+			if made:
+				main.dust(Vector2(bx * 64 + 32, by * 64), 1.0)
+				Audio.play("caixote_pancada", 0.8)
+			return made
+	return false
+
+## Estilingue de TNT voando, onda de choque carregando, laço desenhado.
+func _update_mode_items(dt: float) -> void:
+	for sl in slings:
+		sl["t"] += dt
+		sl["vel"].y += 1500.0 * dt
+		sl["pos"] += sl["vel"] * dt
+		for o in main.robots:
+			if o.alive and o.pid != sl["owner"] and o.rect().grow(8).has_point(sl["pos"]) and o.fx_t["escudo"] <= 0.0:
+				bomb_holder = o.pid
+				bomb_pass_cd = 0.8
+				main.float_text(o.position + Vector2(0, -110), "TOMA!", main.player_color(sl["owner"]))
+				Audio.play("bonk")
+				sl["dead"] = true
+				break
+		var cell := Vector2i(int(sl["pos"].x / 64.0), int(sl["pos"].y / 64.0))
+		if not sl.get("dead", false) and (sl["t"] > 1.4 or main.level.is_solid(cell)):
+			sl["dead"] = true
+			if sl["owner"] < main.robots.size() and main.robots[sl["owner"]].alive:
+				main.float_text(main.robots[sl["owner"]].position + Vector2(0, -110), "ERROU!", main.player_color(sl["owner"]))
+	slings = slings.filter(func(x): return not x.get("dead", false))
+	for sh in shocks:
+		sh["t"] -= dt
+		if sh["t"] <= 0.0 and sh["pid"] < main.robots.size():
+			var me = main.robots[sh["pid"]]
+			var c0: Vector2 = me.rect().get_center()
+			var rad := float(item_cfg("choque")["raio_px"])
+			for o in main.robots:
+				if o != me and o.alive and o.rect().get_center().distance_to(c0) < rad:
+					o.take_hit(1 if o.rect().get_center().x >= c0.x else -1, "choque", me.pid)
+			booms.append({"pos": c0, "t": 0.0})
+			main.shake(10.0)
+			Audio.play("explosao", 1.3, -4.0)
+	shocks = shocks.filter(func(x): return x["t"] > 0.0)
+	for rp in ropes:
+		rp["t"] += dt
+	ropes = ropes.filter(func(x): return x["t"] < 0.3)
+
 ## Batata: a marretada passa a dinamite para quem levou o golpe.
 func pass_bomb(from_pid: int, to_pid: int) -> void:
 	if rule() != "batata" or from_pid != bomb_holder or bomb_pass_cd > 0.0:
+		return
+	if to_pid < main.robots.size() and main.robots[to_pid].fx_t["escudo"] > 0.0:
+		main.float_text(main.robots[to_pid].position + Vector2(0, -110), "ESCUDO!", main.player_color(to_pid))
+		bomb_pass_cd = 0.4
 		return
 	bomb_holder = to_pid
 	bomb_pass_cd = 0.8

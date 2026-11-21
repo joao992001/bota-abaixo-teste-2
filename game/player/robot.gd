@@ -27,7 +27,7 @@ var spin := 0.0
 var wall_sliding := false
 var stun_t := 0.0            # atordoado: ignora o controle (pisão na cabeça, marretada)
 var item := ""               # item guardado (dinamite), usado com o botão de item
-var fx_t := {"martelao": 0.0, "mola": 0.0, "ima": 0.0, "foguete": 0.0}   # efeitos com tempo
+var fx_t := {"martelao": 0.0, "mola": 0.0, "ima": 0.0, "foguete": 0.0, "patins": 0.0, "escudo": 0.0}   # efeitos com tempo
 var glue_t := 0.0             # pisou na cola: lento
 var caught := false           # Fuga: foi pego pela tela ou pela lama (esse sai de vez)
 var speed_k := 1.0            # multiplicador da corrida (Rei da Obra: o rei anda mais devagar)
@@ -160,7 +160,7 @@ func _physics_process(dt: float) -> void:
 			a *= 0.25   # empurrado: desliza longe
 		if on_floor and main.events != null:
 			a *= main.events.slip   # evento Sabão: chão escorregadio
-		own_vx = move_toward(own_vx, ix * f("max_run") * speed_k, a * dt)
+		own_vx = move_toward(own_vx, ix * f("max_run") * speed_k * (float(main.demo.item_cfg("patins")["vel"]) if fx_t["patins"] > 0.0 else 1.0), a * dt)
 	# pulo / parede
 	var wall_dir := 0 if on_floor else _wall_dir()
 	if on_floor:
@@ -290,7 +290,7 @@ func absorb() -> bool:
 
 func fx_flags() -> Dictionary:
 	return {"martelao": fx_t["martelao"] > 0.0, "mola": fx_t["mola"] > 0.0, "capacete": shield > 0, "item": item,
-		"ima": fx_t["ima"] > 0.0, "foguete": fx_t["foguete"] > 0.0, "foguete_on": thrusting, "cola": glue_t > 0.0,
+		"ima": fx_t["ima"] > 0.0, "foguete": fx_t["foguete"] > 0.0, "patins": fx_t["patins"] > 0.0, "escudo": fx_t["escudo"] > 0.0, "foguete_on": thrusting, "cola": glue_t > 0.0,
 		"furando": main.demo.tools != null and main.demo.tools.drilling(pid) if main.mode == "demolicao" else false,
 		"usando": main.demo.tools.using(pid) if main.mode == "demolicao" and main.demo.tools != null else {}}
 
@@ -410,6 +410,9 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 	dmg += float(k["dano"])
 	var kx := minf(float(k["kx"]) + dmg * float(k["kx_por"]), float(am["max_kx"]))
 	var ky := float(k["ky"]) + dmg * float(k["ky_por"])
+	if main.demo.rule() == "fuga":   # na Fuga o empurrão atrapalha, mas não decide sozinho
+		kx *= 0.6
+		ky *= 0.7
 	var stun := minf(float(am["stun_base"]) + dmg * float(am["stun_por"]), float(am["stun_max"]))
 	if frozen_t > 0.0:
 		# pancada em quem está congelado: o gelo estilhaça e o empurrão é maior

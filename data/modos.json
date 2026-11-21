@@ -129,6 +129,29 @@
       },
       "capacete": {
         "hits": 1
+      },
+      "estilingue": {
+        "vel": [
+          950,
+          220
+        ]
+      },
+      "patins": {
+        "duration_s": 7,
+        "vel": 1.4
+      },
+      "escudo": {
+        "duration_s": 6
+      },
+      "choque": {
+        "espera_s": 1.6,
+        "raio_px": 300
+      },
+      "laco": {
+        "alcance_px": 448
+      },
+      "barreira": {
+        "altura": 2
       }
     },
     "stomp_immune_s": 1.4,
@@ -223,6 +246,108 @@
         "nome": "Pirâmide de Caixotes",
         "dica": "Derrube a pirâmide do rei!",
         "musica": "partida"
+      },
+      {
+        "id": "obra_concreto",
+        "nome": "Obra de Concreto",
+        "dica": "Portas e alavancas por toda a obra!",
+        "musica": "partida"
+      },
+      {
+        "id": "galerias_mina",
+        "nome": "Galerias da Mina",
+        "dica": "Túneis com portas e portais!",
+        "musica": "caos"
+      },
+      {
+        "id": "predio_velho",
+        "nome": "Prédio Velho",
+        "dica": "Andares ligados por portas e molas!",
+        "musica": "partida"
+      },
+      {
+        "id": "sob_viaduto",
+        "nome": "Sob o Viaduto",
+        "dica": "Plataformas e ventiladores!",
+        "musica": "altura"
+      },
+      {
+        "id": "palafitas",
+        "nome": "Palafitas",
+        "dica": "Gangorras sobre o pântano!",
+        "musica": "partida"
+      },
+      {
+        "id": "telhados",
+        "nome": "Telhados",
+        "dica": "Pule de telhado em telhado!",
+        "musica": "altura"
+      },
+      {
+        "id": "canteiro_rei",
+        "nome": "Trono do Canteiro",
+        "dica": "O trono fica no alto da obra!",
+        "musica": "partida"
+      },
+      {
+        "id": "linha_montagem",
+        "nome": "Linha de Montagem",
+        "dica": "Esteiras e ventiladores até o trono!",
+        "musica": "fabrica"
+      },
+      {
+        "id": "cais_rei",
+        "nome": "Rei do Cais",
+        "dica": "Plataformas levam ao trono!",
+        "musica": "altura"
+      },
+      {
+        "id": "mina_ouro",
+        "nome": "Mina de Ouro",
+        "dica": "Elevador até o trono de ouro!",
+        "musica": "caos"
+      },
+      {
+        "id": "serraria_rei",
+        "nome": "Serraria Real",
+        "dica": "Gangorras no caminho do trono!",
+        "musica": "partida"
+      },
+      {
+        "id": "predio_demolicao",
+        "nome": "Prédio em Demolição",
+        "dica": "Cuidado com a bola de demolição!",
+        "musica": "caos"
+      },
+      {
+        "id": "obra_subindo",
+        "nome": "Obra Subindo",
+        "dica": "Suba antes que a tela te alcance!",
+        "musica": "altura"
+      },
+      {
+        "id": "fuga_fundicao",
+        "nome": "Descida da Fundição",
+        "dica": "Desça rápido! A tela vai para baixo!",
+        "musica": "fabrica"
+      },
+      {
+        "id": "viaduto_obras",
+        "nome": "Viaduto em Obras",
+        "dica": "Corra pelo viaduto até o elevador!",
+        "musica": "caos"
+      },
+      {
+        "id": "ferro_velho",
+        "nome": "Ferro-Velho",
+        "dica": "Esteiras e portais até a saída!",
+        "musica": "fabrica"
+      },
+      {
+        "id": "pantano_sobe",
+        "nome": "Pântano Subindo",
+        "dica": "A lama sobe! Suba rápido!",
+        "musica": "altura"
       }
     ],
     "amassometro": {
@@ -319,6 +444,13 @@
         "kx": 360,
         "kx_por": 6.0,
         "ky": 380,
+        "ky_por": 2.5
+      },
+      "choque": {
+        "dano": 18,
+        "kx": 900,
+        "kx_por": 6.0,
+        "ky": 520,
         "ky_por": 2.5
       }
     },
@@ -425,7 +557,21 @@
           "prensa",
           "fornalha"
         ],
-        "itens": true
+        "itens": true,
+        "itens_lista": [
+          "dinamite",
+          "martelao",
+          "mola",
+          "foguete",
+          "furadeira",
+          "cola",
+          "ima",
+          "teletransporte",
+          "laser",
+          "vortice",
+          "soprador",
+          "congelador"
+        ]
       },
       {
         "id": "batata",
@@ -437,8 +583,14 @@
           "galpao",
           "andaime"
         ],
-        "itens": false,
-        "raio": 170
+        "itens": true,
+        "raio": 170,
+        "itens_lista": [
+          "estilingue",
+          "patins",
+          "escudo",
+          "teletransporte"
+        ]
       },
       {
         "id": "rei",
@@ -452,7 +604,14 @@
         ],
         "itens": true,
         "lento": 0.9,
-        "protecao_s": 1.2
+        "protecao_s": 1.2,
+        "itens_lista": [
+          "choque",
+          "laco",
+          "patins",
+          "cola",
+          "congelador"
+        ]
       },
       {
         "id": "fuga",
@@ -464,7 +623,14 @@
           "ponte",
           "mare"
         ],
-        "itens": true
+        "itens": true,
+        "itens_lista": [
+          "barreira",
+          "patins",
+          "foguete",
+          "mola",
+          "cola"
+        ]
       }
     ]
   },
