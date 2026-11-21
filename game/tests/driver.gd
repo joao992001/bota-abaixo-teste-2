@@ -1192,6 +1192,49 @@ func itens_modos_test() -> void:
 	main.demo.hammer(rr)
 	await frames(20)
 	check(main.level.blocks.size() < nb0, "Batata: 1 marretada quebra o caixote (%d → %d)" % [nb0, main.level.blocks.size()])
+	# lote 2a: itens novos da Batata
+	main.game_mode = "batata"
+	main.arena_choice = "demolicao"
+	await demo_round()
+	var a0 = main.robots[0]
+	var a1 = main.robots[1]
+	for rb in [a0, a1]:
+		rb.invuln = 0.0
+	main.demo.bomb_next = 99.0
+	main.demo.bomb_holder = 0
+	main.demo.bomb_fuse = 20.0
+	put(a0, Vector2(col_x(11), 576))
+	put(a1, Vector2(col_x(14), 576))
+	await frames(5)
+	main.demo.give(a0, "trocatroca")
+	main.demo.use_item(a0)
+	check(main.demo.bomb_holder == 1, "Troca-Troca: a bomba pulou para outro jogador")
+	main.demo.give(a1, "apito")
+	main.demo.use_item(a1)
+	var f0: float = main.demo.bomb_fuse
+	await frames(60)
+	check(absf(main.demo.bomb_fuse - f0) < 0.01, "Apito do Juiz: o pavio fica parado")
+	main.demo.apito_t = 0.0
+	main.demo.give(a0, "corneta")
+	main.demo.use_item(a0)
+	check(a1.stun_t > 0.5, "Corneta: quem está perto fica tonto")
+	await frames(70)
+	main.demo.give(a0, "molabomba")
+	main.demo.bomb_pass_cd = 0.0
+	main.demo.pass_bomb(1, 0)
+	check(main.demo.bomb_holder == 1, "Mola Anti-Bomba: a bomba quica de volta")
+	a0.fx_t["molabomba"] = 0.0
+	main.demo.give(a1, "banana")
+	a1.facing = -1
+	main.demo.use_item(a1)
+	check(main.demo.traps.size() == 1, "Casca de Banana: fica no chão")
+	main.demo.give(a0, "balao")
+	put(a0, Vector2(col_x(11), 200))
+	await frames(30)
+	check(a0.velocity.y <= 141.0, "Balão: cai devagar (vy %.0f)" % a0.velocity.y)
+	main.demo.give(a0, "fumaca")
+	main.demo.use_item(a0)
+	check(main.demo.clouds.size() == 1, "Bomba de Fumaça: nuvem no lugar")
 	# mapa vivo: na Batata as alavancas se acionam sozinhas (portas trocam)
 	main.game_mode = "batata"
 	main.arena_choice = "obra_concreto"

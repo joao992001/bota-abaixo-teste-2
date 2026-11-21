@@ -160,6 +160,31 @@
       },
       "gancho": {
         "alcance_tiles": 7
+      },
+      "molabomba": {
+        "duration_s": 6
+      },
+      "balao": {
+        "duration_s": 5,
+        "queda_max": 140
+      },
+      "apito": {
+        "duracao_s": 4
+      },
+      "corneta": {
+        "raio_px": 260,
+        "tonto_s": 1.0
+      },
+      "fumaca": {
+        "duracao_s": 5,
+        "raio_px": 220
+      },
+      "banana": {
+        "vida_s": 12
+      },
+      "isca": {
+        "vida_s": 12,
+        "tonto_s": 1.0
       }
     },
     "stomp_immune_s": 1.4,
@@ -604,7 +629,15 @@
           "relogio",
           "ima",
           "soprador",
-          "congelador"
+          "congelador",
+          "trocatroca",
+          "apito",
+          "corneta",
+          "molabomba",
+          "fumaca",
+          "banana",
+          "isca",
+          "balao"
         ],
         "itens_cada_s": [
           3,

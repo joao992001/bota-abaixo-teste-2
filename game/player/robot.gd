@@ -27,7 +27,7 @@ var spin := 0.0
 var wall_sliding := false
 var stun_t := 0.0            # atordoado: ignora o controle (pisão na cabeça, marretada)
 var item := ""               # item guardado (dinamite), usado com o botão de item
-var fx_t := {"martelao": 0.0, "mola": 0.0, "ima": 0.0, "foguete": 0.0, "patins": 0.0, "escudo": 0.0}   # efeitos com tempo
+var fx_t := {"martelao": 0.0, "mola": 0.0, "ima": 0.0, "foguete": 0.0, "patins": 0.0, "escudo": 0.0, "molabomba": 0.0, "balao": 0.0}   # efeitos com tempo
 var glue_t := 0.0             # pisou na cola: lento
 var caught := false           # Fuga: foi pego pela tela ou pela lama (esse sai de vez)
 var speed_k := 1.0            # multiplicador da corrida (Rei da Obra: o rei anda mais devagar)
@@ -224,6 +224,8 @@ func _physics_process(dt: float) -> void:
 	if spring and velocity.y >= 0.0:
 		spring = false
 	var max_fall := f("fast_max_fall") if _held("down") else f("max_fall")
+	if fx_t["balao"] > 0.0:
+		max_fall = float(main.demo.item_cfg("balao")["queda_max"])   # balão: cai devagar
 	wall_sliding = wall_dir != 0 and int(signf(ix)) == wall_dir and velocity.y > 0.0 and grip > 0.0
 	wall_side = wall_dir if wall_sliding else 0
 	if main.mode == "demolicao":

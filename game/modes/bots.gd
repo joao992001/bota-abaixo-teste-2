@@ -289,8 +289,11 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 ## Bots usando os itens de Batata, Rei e Fuga. Vazio = nada a fazer agora.
 func _mode_item(r, lv: Dictionary) -> Dictionary:
 	var demo = main.demo
-	if r.item not in ["estilingue", "choque", "laco", "barreira", "cola", "relogio", "gancho"] or main.rng.randf() > float(lv["use_items"]):
+	if r.item not in ["estilingue", "choque", "laco", "barreira", "cola", "relogio", "gancho", "trocatroca", "apito", "fumaca",
+			"corneta", "banana", "isca"] or main.rng.randf() > float(lv["use_items"]):
 		return {}
+	if r.item in ["trocatroca", "apito", "fumaca"]:   # usa quando está com a bomba
+		return {"dir": 0, "item": true} if demo.bomb_holder == r.pid else {}
 	if r.item == "relogio":
 		var demo0 = main.demo
 		if demo0.bomb_holder >= 0 and (demo0.bomb_holder != r.pid or demo0.bomb_fuse < 4.0):
@@ -312,6 +315,10 @@ func _mode_item(r, lv: Dictionary) -> Dictionary:
 			"estilingue": ok = r.pid == demo.bomb_holder and absf(dx) > 120.0 and absf(dx) < 560.0 and absf(dy) < 70.0
 			"choque": ok = absf(dx) < 220.0 and absf(dy) < 120.0
 			"laco": ok = absf(dx) > 90.0 and absf(dx) < 420.0 and absf(dy) < 60.0 and (demo.king < 0 or o.pid == demo.king)
+			"corneta": ok = absf(dx) < 220.0 and absf(dy) < 120.0
+			"banana", "isca":
+				ok = absf(dx) < 360.0 and absf(dy) < 90.0
+				face = -signi(int(dx))
 			"barreira":   # alguém vindo atrás: larga o muro entre vocês
 				ok = absf(dx) < 360.0 and absf(dy) < 90.0
 				face = -signi(int(dx))

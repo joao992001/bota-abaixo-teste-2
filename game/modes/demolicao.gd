@@ -145,6 +145,9 @@ func start_round() -> void:
 	items.clear()
 	dynamites.clear()
 	slings.clear()
+	traps.clear()
+	clouds.clear()
+	apito_t = 0.0
 	clocks.clear()
 	rings.clear()
 	auto_lever_t = float(sub.get("alavanca_auto_s", 12.0))
@@ -402,14 +405,19 @@ const ITEM_NAMES := {"dinamite": "TNT!", "martelao": "MARTELÃO!", "mola": "BOTA
 	"ima": "ÍMÃ!", "furadeira": "FURADEIRA!", "cola": "COLA!", "foguete": "BOTA-FOGUETE!",
 	"teletransporte": "TELETRANSPORTE!", "laser": "RAIO LASER!", "vortice": "BOMBA DE VÓRTICE!", "soprador": "SOPRADOR!",
 	"congelador": "RAIO CONGELANTE!", "estilingue": "ESTILINGUE!", "patins": "PATINS!", "escudo": "ESCUDO DE BORRACHA!",
-	"choque": "ONDA DE CHOQUE!", "laco": "LAÇO!", "barreira": "BARREIRA!", "relogio": "RELÓGIO!", "gancho": "GANCHO!"}
+	"choque": "ONDA DE CHOQUE!", "laco": "LAÇO!", "barreira": "BARREIRA!", "relogio": "RELÓGIO!", "gancho": "GANCHO!",
+	"trocatroca": "TROCA-TROCA!", "apito": "APITO DO JUIZ!", "corneta": "CORNETA!", "molabomba": "MOLA ANTI-BOMBA!",
+	"fumaca": "BOMBA DE FUMAÇA!", "banana": "CASCA DE BANANA!", "isca": "BOMBA-ISCA!", "balao": "BALÃO!"}
 const USABLE := ["dinamite", "furadeira", "cola", "teletransporte", "laser", "vortice", "soprador", "congelador",
-	"estilingue", "choque", "laco", "barreira", "relogio", "gancho"]
+	"estilingue", "choque", "laco", "barreira", "relogio", "gancho", "trocatroca", "apito", "corneta", "fumaca", "banana", "isca"]
 var slings: Array = []       # Batata: dinamite arremessada com o estilingue {pos, vel, t, owner}
 var shocks: Array = []       # Rei: onda de choque carregando {pid, t}
 var ropes: Array = []        # laço e gancho {kind, pid, tgt, tip, t, dur}
 var clocks: Array = []       # relógio aparecendo em cima de quem está com a bomba {pid, t, mais}
 var rings: Array = []        # anel da onda de choque {pos, t, r}
+var traps: Array = []        # casca de banana e bomba-isca no chão {kind, pos, t, owner}
+var clouds: Array = []       # bomba de fumaça {pos, t}
+var apito_t := 0.0           # apito do juiz: pavio congelado
 const Ferramentas := preload("res://modes/ferramentas.gd")
 var tools: Node2D = null     # furadeira, cola, teletransporte, laser, vórtice, soprador, congelador, ímã (modes/ferramentas.gd)
 
@@ -418,7 +426,7 @@ func give(r, kind: String) -> void:
 		push_warning("item desconhecido: %s" % kind)
 		return
 	match kind:
-		"martelao", "mola", "ima", "foguete", "patins", "escudo": r.fx_t[kind] = float(item_cfg(kind)["duration_s"])
+		"martelao", "mola", "ima", "foguete", "patins", "escudo", "molabomba", "balao": r.fx_t[kind] = float(item_cfg(kind)["duration_s"])
 		"capacete": r.shield = int(item_cfg("capacete")["hits"])
 		_: r.item = kind
 	Audio.play({"martelao": "martelao", "ima": "ima", "foguete": "foguete"}.get(kind, "item"))
@@ -430,7 +438,7 @@ func give(r, kind: String) -> void:
 ## Botão de item: usa o item guardado.
 func use_item(r) -> void:
 	var kind: String = r.item
-	if kind in ["estilingue", "choque", "laco", "barreira", "relogio", "gancho"]:
+	if kind in ["estilingue", "choque", "laco", "barreira", "relogio", "gancho", "trocatroca", "apito", "corneta", "fumaca", "banana", "isca"]:
 		if _use_mode_item(r, kind):
 			r.item = ""
 		else:
@@ -584,7 +592,11 @@ func _draw_canvas() -> void:
 			if fmod(now, 0.2) < 0.1:
 				canvas.draw_circle(hp + shake + Vector2(14, -24), 7, Color("#fff4c8"))
 			var col := Color("#d42035") if bomb_fuse < 3.0 else Color("#2a1a2e")
-			Kit.text(canvas, hp + Vector2(-60, -34), "%d" % ceili(bomb_fuse), 34, col, HORIZONTAL_ALIGNMENT_CENTER, 120, 8, Color("#fff7ee"))
+			var hidden := false
+			for cl in clouds:
+				if cl["pos"].distance_to(h.position) < float(item_cfg("fumaca")["raio_px"]):
+					hidden = true
+			Kit.text(canvas, hp + Vector2(-60, -34), "?" if hidden else "%d" % ceili(bomb_fuse), 34, col, HORIZONTAL_ALIGNMENT_CENTER, 120, 8, Color("#fff7ee"))
 
 # ---------------------------------------------------------------- marreta
 ## Marretada: empurra o robô à frente e quebra o caixote à frente (no corpo ou no chão).
@@ -904,7 +916,10 @@ func _update_bomb(dt: float, alive: Array) -> void:
 			if o != holder and o.invuln <= 0.0 and hr.intersects(o.rect()):
 				pass_bomb(holder.pid, o.pid)
 				break
-	bomb_fuse -= dt
+	if apito_t > 0.0:
+		apito_t -= dt   # apito do juiz: pavio parado
+	else:
+		bomb_fuse -= dt
 	bomb_beep -= dt
 	if bomb_beep <= 0.0:
 		bomb_beep = clampf(bomb_fuse / 6.0, 0.12, 1.0)
@@ -994,6 +1009,44 @@ func _use_mode_item(r, kind: String) -> bool:
 				main.shake(4.0)
 				Audio.play("caixote_pancada", 0.8)
 			return made
+		"trocatroca":   # a bomba pula para um jogador sorteado (pode voltar para você)
+			if bomb_holder < 0:
+				return false
+			var cand: Array = main.robots.filter(func(o): return o.alive and o.pid != bomb_holder)
+			if cand.is_empty():
+				return false
+			var nw = cand[main.rng.randi() % cand.size()]
+			rings.append({"pos": main.robots[bomb_holder].rect().get_center(), "t": 0.0, "r": 120.0})
+			bomb_holder = nw.pid
+			bomb_pass_cd = 0.8
+			main.float_text(nw.position + Vector2(0, -130), "SOBROU PRA VOCÊ!", main.player_color(nw.pid))
+			Audio.play("teleporte")
+			return true
+		"apito":   # congela o pavio de todo mundo
+			if bomb_holder < 0:
+				return false
+			apito_t = float(item_cfg("apito")["duracao_s"])
+			main.float_text(r.position + Vector2(0, -130), "PRIIII!", main.player_color(r.pid))
+			Audio.play("alarme", 1.6)
+			return true
+		"corneta":   # deixa tonto quem está perto
+			var cc := item_cfg("corneta")
+			for o in main.robots:
+				if o != r and o.alive and o.rect().get_center().distance_to(c) < float(cc["raio_px"]):
+					o.stun_t = maxf(o.stun_t, float(cc["tonto_s"]))
+					main.float_text(o.position + Vector2(0, -110), "@_@", Color.WHITE)
+			rings.append({"pos": c, "t": 0.0, "r": float(cc["raio_px"])})
+			Audio.play("buzina" if Audio._index.has("buzina") else "alarme", 0.7)
+			return true
+		"fumaca":
+			clouds.append({"pos": c, "t": 0.0})
+			Audio.play("vento" if Audio._index.has("vento") else "bola_vento")
+			return true
+		"banana", "isca":   # larga no chão atrás de você
+			var fp := Vector2(r.position.x - r.facing * 70.0, r.position.y)
+			traps.append({"kind": kind, "pos": fp, "t": 0.0, "owner": r.pid})
+			Audio.play("caixote_pancada", 1.4, -6.0)
+			return true
 		"relogio":   # com a bomba: mais pavio; sem ela: encurta o pavio de quem está
 			if bomb_holder < 0:
 				return false
@@ -1085,6 +1138,31 @@ func _draw_mode_items(now: float) -> void:
 		var k: float = rg["t"] / 0.45
 		canvas.draw_arc(rg["pos"], rg["r"] * k, 0, TAU, 48, Color(1.0, 0.85, 0.3, 1.0 - k), 14.0 * (1.0 - k) + 2.0, true)
 		canvas.draw_arc(rg["pos"], rg["r"] * k * 0.92, 0, TAU, 48, Color(1, 1, 1, 0.8 * (1.0 - k)), 4.0, true)
+	for tp in traps:
+		var tex: String = "itens/banana" if tp["kind"] == "banana" else "itens/dinamite"
+		canvas.draw_texture_rect(Data.tex(tex), Rect2(tp["pos"] + Vector2(-20, -38), Vector2(40, 40)), false)
+	for cl in clouds:   # nuvem de fumaça (some com o tempo)
+		var a: float = clampf((float(item_cfg("fumaca")["duracao_s"]) - cl["t"]) / 1.0, 0.0, 1.0)
+		var rad := float(item_cfg("fumaca")["raio_px"])
+		for k in 9:
+			var off := Vector2.from_angle(k * 0.7 + cl["t"] * 0.4) * rad * (0.25 + 0.5 * fposmod(k * 0.37, 1.0))
+			canvas.draw_circle(cl["pos"] + off, rad * 0.45, Color(0.82, 0.79, 0.86, 0.85 * a))
+	for r in main.robots:
+		if r.alive and r.fx_t["balao"] > 0.0:   # balão preso nas costas
+			var top: Vector2 = r.position + Vector2(-r.facing * 10.0, -150.0 + sin(now * 3.0) * 4.0)
+			canvas.draw_line(r.position + Vector2(-r.facing * 8.0, -60), top + Vector2(0, 26), Color("#2b2233"), 2.0, true)
+			canvas.draw_set_transform(top, 0.0, Vector2(0.85, 1.0))
+			canvas.draw_circle(Vector2.ZERO, 28.0, Color("#2b2233"))
+			canvas.draw_circle(Vector2.ZERO, 25.0, Color("#f06aa8"))
+			canvas.draw_set_transform(Vector2.ZERO)
+			canvas.draw_arc(top + Vector2(-8, -8), 10.0, PI, PI * 1.5, 6, Color(1, 1, 1, 0.8), 3.0, true)
+		if r.alive and r.fx_t["molabomba"] > 0.0:   # mola em volta do corpo
+			var cc2: Vector2 = r.rect().get_center()
+			for k in 4:
+				var yy: float = cc2.y - 30.0 + k * 16.0 + sin(now * 10.0) * 3.0
+				canvas.draw_arc(Vector2(cc2.x, yy), 34.0, -0.3, PI + 0.3, 12, Color("#c9d1d8"), 4.0, true)
+	if apito_t > 0.0 and bomb_holder >= 0 and bomb_holder < main.robots.size():
+		Kit.text(canvas, main.robots[bomb_holder].position + Vector2(-80, -205), "PAVIO PARADO", 22, Color("#3a8fd9"), HORIZONTAL_ALIGNMENT_CENTER, 160, 6, Color("#fff7ee"))
 	for ck in clocks:   # relógio em cima de quem está com a bomba
 		if ck["pid"] < main.robots.size():
 			var h = main.robots[ck["pid"]]
@@ -1173,6 +1251,25 @@ func _update_mode_items(dt: float) -> void:
 			for k in 6:
 				tools._part(rp["tip"], Vector2.from_angle(randf() * TAU) * randf_range(120, 260), 0.35, "estrela", Color("#fff4c8"), 4)
 	ropes = ropes.filter(func(x): return x["t"] < x["dur"])
+	for tp in traps:   # casca de banana e bomba-isca
+		tp["t"] += dt
+		for o in main.robots:
+			if o.alive and (o.pid != tp["owner"] or tp["t"] > 1.0) and o.rect().grow(4).has_point(tp["pos"] + Vector2(0, -10)):
+				if tp["kind"] == "banana":
+					o.knock(o.facing if absf(o.velocity.x) > 10.0 else 1, 760.0, 260.0, 0.9)
+					main.float_text(o.position + Vector2(0, -110), "ESCORREGOU!", Color.WHITE)
+					Audio.play("lama")
+				else:
+					o.stun_t = maxf(o.stun_t, float(item_cfg("isca")["tonto_s"]))
+					main.float_text(o.position + Vector2(0, -110), "ERA FALSA!", Color.WHITE)
+					main.dust(tp["pos"], 1.2)
+					Audio.play("bonk")
+				tp["t"] = 999.0
+				break
+	traps = traps.filter(func(x): return x["t"] < float(item_cfg(x["kind"])["vida_s"]))
+	for cl in clouds:
+		cl["t"] += dt
+	clouds = clouds.filter(func(x): return x["t"] < float(item_cfg("fumaca")["duracao_s"]))
 	for ck in clocks:
 		ck["t"] += dt
 	clocks = clocks.filter(func(x): return x["t"] < 1.0)
@@ -1186,6 +1283,13 @@ func _update_mode_items(dt: float) -> void:
 ## Batata: a marretada passa a dinamite para quem levou o golpe.
 func pass_bomb(from_pid: int, to_pid: int) -> void:
 	if rule() != "batata" or from_pid != bomb_holder or bomb_pass_cd > 0.0:
+		return
+	if to_pid < main.robots.size() and main.robots[to_pid].fx_t["molabomba"] > 0.0:
+		var fr = main.robots[from_pid]
+		main.float_text(main.robots[to_pid].position + Vector2(0, -110), "BOING!", main.player_color(to_pid))
+		fr.knock(-fr.facing, 420.0, 300.0, 0.4)   # a bomba quica de volta e empurra quem tentou passar
+		Audio.play("pulo_mola")
+		bomb_pass_cd = 0.6
 		return
 	if to_pid < main.robots.size() and main.robots[to_pid].fx_t["escudo"] > 0.0:
 		main.float_text(main.robots[to_pid].position + Vector2(0, -110), "ESCUDO!", main.player_color(to_pid))
