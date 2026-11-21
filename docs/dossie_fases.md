@@ -21,3 +21,4 @@ Referências de gênero: Super Smash Bros./Brawlhalla (arenas de derrubar), Ulti
 | 4 | Batata · Obra de Concreto | Alavanca do topo fica trancada na "casa de máquinas" (paredes dos dois lados, sem entrada): impossível ativar. Abrir uma entrada ou mudar a alavanca de lugar. | 1 | pendente |
 | 5 | Batata · Obra de Concreto | Não dá para quebrar nada (caixotes não quebram?). Conferir se a marreta quebra caixote na Batata; se não, decidir: quebrar ou trocar caixote por bloco fixo para não enganar. | 1 | pendente |
 | 6 | Batata (todas) | Pavio da dinamite curto demais: aumentar o tempo em todas as fases. | 1 | pendente |
+| 7 | Batata · Galerias da Mina | No alto da rocha não dá para descer: a saída é por tábua de mão única (só sobe) e o robô fica preso lá em cima. Trocar por buraco aberto/descida, ou permitir descer da tábua (▼ + pular) em todo o jogo. Conferir os outros poços com tábua. | 1 | pendente |
