@@ -270,7 +270,7 @@
       {
         "id": "predio_velho",
         "nome": "Prédio Velho",
-        "dica": "Alçapões que abrem e paredes de caixote!",
+        "dica": "Corra pelos andares! Alavanca abre o alçapão.",
         "musica": "partida"
       },
       {
@@ -282,7 +282,7 @@
       {
         "id": "palafitas",
         "nome": "Palafitas",
-        "dica": "Gangorras ligam as casinhas. Cuidado com o peso!",
+        "dica": "Pontes ligam as casas. Trampolins na lama!",
         "musica": "partida"
       },
       {

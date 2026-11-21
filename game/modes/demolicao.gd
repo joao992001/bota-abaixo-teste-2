@@ -24,6 +24,7 @@ const Kit := preload("res://ui/kit.gd")
 var fx: Node2D = null        # mecânicas da arena (plataformas, lama, bola, esteiras)
 var arena := {}              # {id, nome, dica} da rodada atual
 var last_arena := ""
+var last_choice := ""         # rodízio: escolha da rodada anterior
 var tnt_queue: Array = []
 var go_played := false
 var break_reason := ""       # por que o caixote que está quebrando agora quebrou (para a causa da queda)
@@ -93,6 +94,13 @@ func pick_arena() -> Dictionary:
 	var choice: String = main.arena_choice
 	if choice == "oficina":
 		return {"id": "oficina", "nome": "Oficina", "dica": "Teste à vontade: START abre o painel", "musica": "partida"}
+	if choice != "sorteio" and choice == last_choice and main.round_no > 1:
+		# rodízio (como em Gang Beasts): a 1ª rodada na escolhida, depois a próxima fase do modo
+		var ids: Array = list.map(func(a): return a["id"])
+		var k := ids.find(last_arena)
+		if k >= 0:
+			return list[(k + 1) % list.size()]
+	last_choice = choice
 	if choice != "sorteio":
 		for a in cfg["arenas"]:   # arena escolhida (de qualquer modo: Oficina e testes podem pedir qualquer uma)
 			if a["id"] == choice:

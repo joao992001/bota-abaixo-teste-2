@@ -73,18 +73,20 @@ def b_viaduto():
 
 
 def b_pantano():
-    """Palafitas: casinhas sobre estacas ligadas por GANGORRAS que balançam com o peso."""
+    """Palafitas: casas sobre estacas ligadas por PONTES de tábua (caminho contínuo, ▼ desce);
+    TRAMPOLINS na lama levam às pontes; plataforma que vai e volta liga os telhados."""
     c = C(W, H)
     for x0 in (4, 18):
         c.plat(x0, 15, 8)                                              # piso da casa
-        c.col(x0, 16, 5); c.col(x0 + 7, 16, 5)                         # estacas até o chão
+        c.col(x0, 16, 3); c.col(x0 + 7, 16, 3)                         # estacas (passa por baixo)
         c.col(x0, 11, 2); c.col(x0 + 7, 11, 2)                         # paredes (porta aberta embaixo)
         c.plat(x0, 10, 8)                                              # telhado
-    c.box(2, 18, 2, 3, "d"); c.box(13, 18, 2, 3, "d")                  # caixotes para subir
+    c.plat(12, 15, 6, "=")                                             # ponte entre as casas
+    c.box(1, 18, 3, 3, "d")                                            # caixotes para subir
+    c.put(14, GROUND - 1, "J")                                         # trampolim sob a ponte
     c.mirror()
-    c.put(1, 20, "1"); c.put(16, 20, "2"); c.put(27, 20, "3"); c.put(42, 20, "4")
-    return c, "gangorras: 14.5,13,6; 28.5,13,6"
-
+    spawns(c, [8, 16, 27, 35])
+    return c, "plataformas: 12,7,3,17,0,7"
 
 def b_telhados():
     """Telhados: TRAMPOLINS nos becos levam de telhado em telhado; ventilador no prédio alto; caixa-d'água."""
