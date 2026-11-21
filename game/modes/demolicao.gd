@@ -145,6 +145,8 @@ func start_round() -> void:
 	items.clear()
 	dynamites.clear()
 	slings.clear()
+	clocks.clear()
+	rings.clear()
 	auto_lever_t = float(sub.get("alavanca_auto_s", 12.0))
 	shocks.clear()
 	ropes.clear()
@@ -405,7 +407,9 @@ const USABLE := ["dinamite", "furadeira", "cola", "teletransporte", "laser", "vo
 	"estilingue", "choque", "laco", "barreira", "relogio", "gancho"]
 var slings: Array = []       # Batata: dinamite arremessada com o estilingue {pos, vel, t, owner}
 var shocks: Array = []       # Rei: onda de choque carregando {pid, t}
-var ropes: Array = []        # laço desenhado {a, b, t}
+var ropes: Array = []        # laço e gancho {kind, pid, tgt, tip, t, dur}
+var clocks: Array = []       # relógio aparecendo em cima de quem está com a bomba {pid, t, mais}
+var rings: Array = []        # anel da onda de choque {pos, t, r}
 const Ferramentas := preload("res://modes/ferramentas.gd")
 var tools: Node2D = null     # furadeira, cola, teletransporte, laser, vórtice, soprador, congelador, ímã (modes/ferramentas.gd)
 
@@ -494,19 +498,7 @@ func _update_fx(dt: float) -> void:
 
 func _draw_canvas() -> void:
 	var now := Time.get_ticks_msec() / 1000.0
-	for sl in slings:
-		canvas.draw_texture_rect(Data.tex("itens/dinamite"), Rect2(sl["pos"] - Vector2(18, 18), Vector2(36, 36)), false)
-	for rp in ropes:
-		canvas.draw_line(rp["a"], rp["b"], Color("#b07a3d"), 4.0, true)
-		canvas.draw_arc(rp["b"], 12.0, 0, TAU, 14, Color("#b07a3d"), 3.0, true)
-	for sh in shocks:
-		if sh["pid"] < main.robots.size():
-			var cc: Vector2 = main.robots[sh["pid"]].rect().get_center()
-			var k: float = 1.0 - sh["t"] / float(item_cfg("choque")["espera_s"])
-			canvas.draw_arc(cc, 30.0 + k * 40.0, 0, TAU, 32, Color(1.0, 0.85, 0.3, 0.4 + 0.5 * k), 4.0 + k * 4.0, true)
-	for r in main.robots:
-		if r.alive and r.fx_t["escudo"] > 0.0:
-			canvas.draw_arc(r.rect().get_center(), 50.0, 0, TAU, 32, Color(0.35, 0.6, 1.0, 0.6), 4.0, true)
+	_draw_mode_items(now)
 	if rule() == "rei":
 		var cp := crown_pos
 		var glow := 0.5 + 0.5 * sin(now * 6.0)
@@ -953,6 +945,7 @@ func _use_mode_item(r, kind: String) -> bool:
 				return false
 			var v: Array = item_cfg("estilingue")["vel"]
 			slings.append({"pos": c + Vector2(r.facing * 24, -10), "vel": Vector2(r.facing * float(v[0]), -float(v[1])), "t": 0.0, "owner": r.pid})
+			tools._anim(r.pid, "estilingue", 0.4, 0.0)
 			Audio.play("arremesso", 1.2)
 			r.vis.stretch()
 			return true
@@ -972,16 +965,17 @@ func _use_mode_item(r, kind: String) -> bool:
 				if o != r and o.alive:
 					var oc: Vector2 = o.rect().get_center()
 					var dx: float = (oc.x - c.x) * r.facing
-					if dx > 0.0 and dx < reach and absf(oc.y - c.y) < 80.0 and dx < bd:
+					if dx > 0.0 and dx < reach and absf(oc.y - c.y) < 80.0 and dx < bd and _clear_line(c, oc):
 						bd = dx
 						best = o
 			var tip: Vector2 = c + Vector2(r.facing * (bd if best != null else reach), 0)
-			ropes.append({"a": c, "b": tip, "t": 0.0})
+			ropes.append({"kind": "laco", "pid": r.pid, "tgt": best.pid if best != null else -1, "tip": tip, "t": 0.0, "dur": 0.5})
+			tools._anim(r.pid, "laco", 0.5, 0.0)
 			Audio.play("gancho")
 			if best != null:
 				if best.pid == king:
 					_drop_crown(((c - best.rect().get_center()).normalized() * 560.0) + Vector2(0, -420))
-				best.knock(-r.facing, 620.0, 260.0, 0.45)
+				best.stun_t = maxf(best.stun_t, 0.8)   # laçado: fica tonto e é puxado até colar em você
 			return true
 		"barreira":   # muro de 2 caixotes atrás de você
 			var lv = main.level
@@ -993,7 +987,11 @@ func _use_mode_item(r, kind: String) -> bool:
 					lv.blocks[Vector2i(bx, by - k)]["hp"] = lv.block_hp
 					made = true
 			if made:
-				main.dust(Vector2(bx * 64 + 32, by * 64), 1.0)
+				for k in int(item_cfg("barreira")["altura"]):
+					var bc := Vector2(bx * 64 + 32, (by - k) * 64 + 32)
+					main.spark(bc, 6)
+					main.dust(bc + Vector2(0, 30), 0.9)
+				main.shake(4.0)
 				Audio.play("caixote_pancada", 0.8)
 			return made
 		"relogio":   # com a bomba: mais pavio; sem ela: encurta o pavio de quem está
@@ -1006,6 +1004,8 @@ func _use_mode_item(r, kind: String) -> bool:
 			else:
 				bomb_fuse = maxf(float(rc["minimo_s"]), bomb_fuse - float(rc["perda_s"]))
 				main.float_text(main.robots[bomb_holder].position + Vector2(0, -150), "-%d s!" % int(rc["perda_s"]), main.player_color(r.pid))
+			clocks.append({"pid": bomb_holder, "t": 0.0, "mais": r.pid == bomb_holder})
+			tools._anim(r.pid, "relogio", 0.6)
 			Audio.play("contagem", 1.4)
 			return true
 		"gancho":   # puxa você até a beirada mais alta à frente
@@ -1030,12 +1030,100 @@ func _use_mode_item(r, kind: String) -> bool:
 			r.velocity = Vector2((tgt.x * 64.0 + 32.0 - r.position.x) / (vy / g), -vy)
 			r.own_vx = r.velocity.x
 			r.var_jump = 0.0
-			ropes.append({"a": c, "b": Vector2(tgt.x * 64.0 + 32.0, tgt.y * 64.0), "t": 0.0})
+			ropes.append({"kind": "gancho", "pid": r.pid, "tgt": -1, "tip": Vector2(tgt.x * 64.0 + 32.0, tgt.y * 64.0 + 6.0), "t": 0.0, "dur": 0.55})
+			tools._anim(r.pid, "gancho", 0.45, 0.0)
 			Audio.play("gancho")
 			return true
 	return false
 
-## Estilingue de TNT voando, onda de choque carregando, laço desenhado.
+## Desenho dos itens dos modos: estilingue, laço, gancho, choque, relógio, escudo, patins.
+func _draw_mode_items(now: float) -> void:
+	for sl in slings:   # dinamite girando no ar
+		canvas.draw_set_transform(sl["pos"], sl["t"] * 14.0)
+		canvas.draw_texture_rect(Data.tex("itens/dinamite"), Rect2(-18, -18, 36, 36), false)
+		canvas.draw_set_transform(Vector2.ZERO)
+		if fmod(now, 0.12) < 0.06:
+			canvas.draw_circle(sl["pos"] + Vector2(10, -14).rotated(sl["t"] * 14.0), 5, Color("#fff4c8"))
+	for rp in ropes:
+		if rp["pid"] >= main.robots.size():
+			continue
+		var me = main.robots[rp["pid"]]
+		var hand: Vector2 = me.position + Vector2(me.facing * 30.0, -46.0)
+		var k := clampf(rp["t"] / 0.12, 0.0, 1.0)   # corda saindo
+		var tip: Vector2 = hand.lerp(rp["tip"], k)
+		var slack := (1.0 - k) * 26.0 + (8.0 if rp["kind"] == "laco" and rp["tgt"] < 0 else 0.0)
+		var pts := PackedVector2Array()
+		for i in 13:
+			var u := i / 12.0
+			var wave := sin(u * PI * 3.0 + now * 30.0) * 5.0 * (1.0 - k)
+			pts.append(hand.lerp(tip, u) + Vector2(0, sin(u * PI) * slack + wave))
+		canvas.draw_polyline(pts, Color("#5a3d1c"), 7.0, true)
+		canvas.draw_polyline(pts, Color("#c99252") if rp["kind"] == "laco" else Color("#8a96a3"), 4.0, true)
+		if rp["kind"] == "laco":
+			var lr := 16.0 if rp["tgt"] < 0 else 30.0
+			canvas.draw_set_transform(tip, 0.0, Vector2(1.0, 0.45))
+			canvas.draw_arc(Vector2.ZERO, lr, 0, TAU, 20, Color("#5a3d1c"), 7.0, true)
+			canvas.draw_arc(Vector2.ZERO, lr, 0, TAU, 20, Color("#c99252"), 4.0, true)
+			canvas.draw_set_transform(Vector2.ZERO)
+		else:
+			var ang := (tip - hand).angle() + PI / 4.0
+			canvas.draw_set_transform(tip, ang)
+			canvas.draw_texture_rect(Data.tex("itens/gancho"), Rect2(-22, -22, 44, 44), false)
+			canvas.draw_set_transform(Vector2.ZERO)
+	for sh in shocks:   # carregando: raios elétricos em volta
+		if sh["pid"] < main.robots.size():
+			var cc: Vector2 = main.robots[sh["pid"]].rect().get_center()
+			var k: float = 1.0 - sh["t"] / float(item_cfg("choque")["espera_s"])
+			canvas.draw_circle(cc, 46.0 + k * 20.0, Color(1.0, 0.9, 0.3, 0.12 + 0.18 * k))
+			for b in 4:
+				var a0 := randf() * TAU
+				var zz := PackedVector2Array()
+				for j in 5:
+					zz.append(cc + Vector2.from_angle(a0 + j * 0.28) * (34.0 + 26.0 * k + randf_range(-8, 8)))
+				canvas.draw_polyline(zz, Color("#fff4a0"), 3.0, true)
+	for rg in rings:   # estouro: anel de choque se espalhando
+		var k: float = rg["t"] / 0.45
+		canvas.draw_arc(rg["pos"], rg["r"] * k, 0, TAU, 48, Color(1.0, 0.85, 0.3, 1.0 - k), 14.0 * (1.0 - k) + 2.0, true)
+		canvas.draw_arc(rg["pos"], rg["r"] * k * 0.92, 0, TAU, 48, Color(1, 1, 1, 0.8 * (1.0 - k)), 4.0, true)
+	for ck in clocks:   # relógio em cima de quem está com a bomba
+		if ck["pid"] < main.robots.size():
+			var h = main.robots[ck["pid"]]
+			var pop := minf(1.0, ck["t"] / 0.15) * (1.0 - maxf(0.0, ck["t"] - 0.8) / 0.2)
+			var cp: Vector2 = h.position + Vector2(0, -190)
+			canvas.draw_circle(cp, 26.0 * pop + 3.0, Color("#2a1a2e"))
+			canvas.draw_circle(cp, 26.0 * pop, Color("#e8503a") if not ck["mais"] else Color("#2f9e5b"))
+			canvas.draw_circle(cp, 19.0 * pop, Color("#fff4dc"))
+			var sgn := 1.0 if ck["mais"] else -1.0
+			canvas.draw_line(cp, cp + Vector2.from_angle(-PI / 2.0 + sgn * ck["t"] * 14.0) * 15.0 * pop, Color("#2a1a2e"), 3.0, true)
+			canvas.draw_line(cp, cp + Vector2.from_angle(-PI / 2.0 + sgn * ck["t"] * 3.0) * 9.0 * pop, Color("#2a1a2e"), 3.0, true)
+	for r in main.robots:
+		if not r.alive:
+			continue
+		if r.fx_t["escudo"] > 0.0 and (r.fx_t["escudo"] > 1.5 or fmod(now, 0.2) < 0.13):
+			var cc: Vector2 = r.rect().get_center()
+			var pulse := 1.0 + sin(now * 6.0) * 0.04
+			canvas.draw_circle(cc, 54.0 * pulse, Color(0.45, 0.72, 1.0, 0.18))
+			canvas.draw_arc(cc, 54.0 * pulse, 0, TAU, 40, Color("#2a1a2e"), 6.0, true)
+			canvas.draw_arc(cc, 54.0 * pulse, 0, TAU, 40, Color("#7fc4ff"), 3.5, true)
+			canvas.draw_arc(cc, 42.0, PI * 1.1, PI * 1.45, 10, Color(1, 1, 1, 0.85), 4.0, true)
+			canvas.draw_arc(cc, 42.0, PI * 1.55, PI * 1.62, 4, Color(1, 1, 1, 0.85), 4.0, true)
+		if r.fx_t["patins"] > 0.0 and absf(r.velocity.x) > 300.0:
+			var back := -signf(r.velocity.x)
+			for i in 3:
+				var y: float = r.position.y - 18.0 - i * 20.0
+				var x0: float = r.position.x + back * (30.0 + fmod(now * 400.0 + i * 37.0, 30.0))
+				canvas.draw_line(Vector2(x0, y), Vector2(x0 + back * (26.0 + i * 6.0), y), Color(1, 1, 1, 0.75), 3.0, true)
+
+## Há caminho livre (sem bloco sólido) em linha reta entre dois pontos? (laço não atravessa parede)
+func _clear_line(a: Vector2, b: Vector2) -> bool:
+	var n := int(a.distance_to(b) / 24.0) + 1
+	for i in n:
+		var p := a.lerp(b, float(i) / n)
+		if main.level.is_solid(Vector2i(int(p.x / 64.0), int(p.y / 64.0))):
+			return false
+	return true
+
+## Estilingue de TNT voando, onda de choque carregando, laço e gancho.
 func _update_mode_items(dt: float) -> void:
 	for sl in slings:
 		sl["t"] += dt
@@ -1064,13 +1152,36 @@ func _update_mode_items(dt: float) -> void:
 			for o in main.robots:
 				if o != me and o.alive and o.rect().get_center().distance_to(c0) < rad:
 					o.take_hit(1 if o.rect().get_center().x >= c0.x else -1, "choque", me.pid)
-			booms.append({"pos": c0, "t": 0.0})
+			rings.append({"pos": c0, "t": 0.0, "r": rad})
+			for k in 16:
+				tools._part(c0, Vector2.from_angle(k * TAU / 16.0) * 520.0, 0.4, "estrela", Color("#ffe066"), 6)
 			main.shake(10.0)
 			Audio.play("explosao", 1.3, -4.0)
 	shocks = shocks.filter(func(x): return x["t"] > 0.0)
 	for rp in ropes:
 		rp["t"] += dt
-	ropes = ropes.filter(func(x): return x["t"] < 0.3)
+		var me = main.robots[rp["pid"]] if rp["pid"] < main.robots.size() else null
+		if rp["kind"] == "laco" and rp["tgt"] >= 0 and me != null and rp["t"] > 0.1 and rp["t"] < 0.4:
+			var o = main.robots[rp["tgt"]]
+			if o.alive:   # puxa até colar na sua frente
+				var want: Vector2 = me.position + Vector2(me.facing * 58.0, 0)
+				o.position = o.position.lerp(want, clampf(dt * 14.0, 0.0, 1.0))
+				o.velocity = Vector2.ZERO
+				o.own_vx = 0.0
+				rp["tip"] = o.rect().get_center()
+		if rp["kind"] == "gancho" and rp["t"] < 0.06:
+			for k in 6:
+				tools._part(rp["tip"], Vector2.from_angle(randf() * TAU) * randf_range(120, 260), 0.35, "estrela", Color("#fff4c8"), 4)
+	ropes = ropes.filter(func(x): return x["t"] < x["dur"])
+	for ck in clocks:
+		ck["t"] += dt
+	clocks = clocks.filter(func(x): return x["t"] < 1.0)
+	for rg in rings:
+		rg["t"] += dt
+	rings = rings.filter(func(x): return x["t"] < 0.45)
+	for sl in slings:   # rastro de faíscas da dinamite voando
+		if randf() < 0.6:
+			tools._part(sl["pos"], -sl["vel"] * 0.08 + Vector2(randf_range(-40, 40), randf_range(-40, 40)), 0.35, "estrela", Color("#ffcf3a"), 3.5)
 
 ## Batata: a marretada passa a dinamite para quem levou o golpe.
 func pass_bomb(from_pid: int, to_pid: int) -> void:

@@ -12,8 +12,9 @@ const ORIGIN := Vector2(64, 120)
 const GRIP := Vector2(32, 56)          # pega dentro da textura da marreta (64x64)
 const HAMMER_REST := 0.35
 const STRIDE := 46.0
-const HELD_TOOLS := ["furadeira", "laser", "soprador", "congelador"]
-const TOOL_GRIP := {"laser": Vector2(19, 46), "congelador": Vector2(19, 46), "soprador": Vector2(18, 48), "furadeira": Vector2(24, 44)}
+const HELD_TOOLS := ["furadeira", "laser", "soprador", "congelador", "estilingue", "laco", "gancho", "relogio"]
+const TOOL_GRIP := {"laser": Vector2(19, 46), "congelador": Vector2(19, 46), "soprador": Vector2(18, 48), "furadeira": Vector2(24, 44),
+	"estilingue": Vector2(30, 54), "laco": Vector2(24, 40), "gancho": Vector2(14, 52), "relogio": Vector2(32, 52)}
 const TOOL_SIZE := 44.0                   # px percorridos por ciclo de passada (pés não deslizam)
 
 # aparência
@@ -225,7 +226,7 @@ func current_pose() -> Dictionary:
 	if uk in HELD_TOOLS:
 		var kick := 0.0
 		var fire: float = us.get("fire", -1.0)
-		if uk in ["laser", "congelador"] and fire >= 0.0:
+		if uk in ["laser", "congelador", "estilingue", "gancho", "laco"] and fire >= 0.0:
 			kick = clampf(1.0 - fire / 0.18, 0.0, 1.0)   # coice do disparo
 		var buzz := Vector2(sin(t * 80.0), cos(t * 71.0)) * (1.6 if uk in ["furadeira", "soprador"] else 0.0)
 		if uk == "laser" and fire < 0.0:
@@ -428,6 +429,20 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 			var fl: float = (9.0 + sin(now * 50.0 + i) * 3.0) if fx.get("foguete_on", false) else (2.5 + sin(now * 30.0 + i) * 1.0)
 			ci.draw_colored_polygon(PackedVector2Array([noz + Vector2(-3, 4), noz + Vector2(1, 4 + fl), noz + Vector2(5, 4)]), Color("#f6a23a"))
 			ci.draw_colored_polygon(PackedVector2Array([noz + Vector2(-1, 4), noz + Vector2(1, 4 + fl * 0.6), noz + Vector2(3, 4)]), Color("#fff1b8"))
+		if fx.get("patins", false):
+			# patins: base vermelha com faixa e duas rodinhas girando embaixo do pé
+			ci.draw_set_transform_matrix(base)
+			var sp := fp + Vector2(s * 1.5, 4.0)
+			var plate := Rect2(sp + Vector2(-11, -2), Vector2(24, 7))
+			ci.draw_rect(plate.grow(1.5), Color("#2a1a2e"))
+			ci.draw_rect(plate, Color("#e8503a"))
+			ci.draw_rect(Rect2(plate.position + Vector2(0, 2), Vector2(24, 2)), Color("#ffcf3a"))
+			for wx in [-6.0, 8.0]:
+				var wc: Vector2 = sp + Vector2(float(wx), 8.0)
+				ci.draw_circle(wc, 4.6, Color("#2a1a2e"))
+				ci.draw_circle(wc, 3.2, Color("#9fd8ff"))
+				var spin: float = now * 25.0 + float(wx)
+				ci.draw_line(wc, wc + Vector2.from_angle(spin) * 3.0, Color("#2a1a2e"), 1.4)
 		if fx.get("cola", false):
 			ci.draw_set_transform_matrix(base)
 			ci.draw_circle(fp + Vector2(s * 1.5, 3.0), 5.5, Color(0.97, 0.96, 0.9))

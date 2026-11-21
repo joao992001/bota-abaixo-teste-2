@@ -70,6 +70,10 @@ func _run() -> void:
 			await snap(a.substr(10), "oficina_painel")
 			get_tree().quit(0)
 			return
+		if a.begins_with("--itens2="):
+			await itens2_frames(a.substr(9))
+			get_tree().quit(0)
+			return
 		if a.begins_with("--itens="):
 			await itens_frames(a.substr(8))
 			get_tree().quit(0)
@@ -1138,6 +1142,8 @@ func itens_modos_test() -> void:
 	main.demo.use_item(r0)
 	await frames(2)
 	check(main.demo.king == -1, "Rei: o laço puxou o rei e o capacete voou")
+	await frames(30)
+	check(absf(r1.position.x - r0.position.x) < 100.0, "Rei: o laço puxa o rival até colar em você (distância %.0f)" % absf(r1.position.x - r0.position.x))
 	put(r0, r1.position + Vector2(-120, 0))
 	await frames(4)
 	main.demo.give(r0, "choque")
@@ -2300,6 +2306,48 @@ func parede_frames(dir: String) -> void:
 	main.hud.visible = true
 
 # ---------------------------------------------------------------- capturas dos itens em ação (zoom no robô)
+## Fotos dos itens dos modos (Batata, Rei, Fuga) em ação.
+func itens2_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	get_window().size = Vector2i(1920, 1080)
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	await frames(2)
+	await tap("v0", "jump")
+	await tap("v1", "jump")
+	main.mode = "demolicao"
+	main.event_level = 0
+	main.arena_choice = "demolicao"
+	main.game_mode = "batata"
+	main.start_match()
+	for pl in [["estilingue", 12], ["laco", 9], ["gancho", 10], ["choque", 50], ["choque_estouro", 104], ["relogio", 10], ["escudo", 30], ["patins", 24], ["barreira", 6]]:
+		var kind: String = pl[0]
+		await demo_round()
+		main.demo.item_t = 999.0
+		main.demo.bomb_next = 99.0
+		main.demo.auto_lever_t = 999.0
+		var r0 = main.robots[0]
+		var r1 = main.robots[1]
+		put(r0, Vector2(col_x(10), 576))
+		put(r1, Vector2(col_x(15), 576))
+		r0.facing = 1
+		r1.facing = -1
+		main.cam_lock = [1.5, Vector2(col_x(13), 450)]
+		await frames(3)
+		if kind in ["estilingue", "relogio"]:
+			main.demo.bomb_holder = 0
+			main.demo.bomb_fuse = 20.0
+		var k2: String = "choque" if kind == "choque_estouro" else kind
+		if kind == "patins":
+			main.demo.give(r0, "patins")
+			vset("v0", "right", true)
+		else:
+			main.demo.give(r0, k2)
+			await frames(1)
+			main.demo.use_item(r0)
+		await frames(int(pl[1]))
+		await snap(dir, "item2_" + kind)
+		vset("v0", "right", false)
+
 func itens_frames(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	get_window().size = Vector2i(1920, 1080)
