@@ -1,0 +1,184 @@
+<title>Catálogo de Itens Novos</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700&display=swap">
+<style>
+/* Layout: filtro por modo no topo; grade de cartas de item (ícone grande, nome, modos, efeito); barra fixa com o que foi marcado */
+:root{
+  --bg:#f3eee4; --paper:#fffaf0; --ink:#2b2233; --soft:#6b5a70; --chip:#efe5d3; --shadow:rgba(43,34,51,.16);
+  --derruba:#e8503a; --batata:#d9932b; --rei:#c9a227; --fuga:#3a8fd9; --ok:#2f9e5b;
+  --display:"Fredoka","Trebuchet MS",system-ui,sans-serif; --body:"Nunito",system-ui,sans-serif;
+  --barbg:#2b2233; --barfg:#fffaf0; --iconbg:#fbe9c8;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1d1824; --paper:#2a2333; --ink:#f4ecdf; --soft:#c2b3c6; --chip:#3a3044; --shadow:rgba(0,0,0,.4);
+  --barbg:#0f0c14; --barfg:#f4ecdf; --iconbg:#3b3045; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1d1824; --paper:#2a2333; --ink:#f4ecdf; --soft:#c2b3c6; --chip:#3a3044; --shadow:rgba(0,0,0,.4);
+  --barbg:#0f0c14; --barfg:#f4ecdf; --iconbg:#3b3045; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 110px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(2rem,5vw,3rem);margin:0;line-height:1.05;text-wrap:balance}
+header p{margin:.5rem 0 0;max-width:70ch;color:var(--soft)}
+.filters{display:flex;flex-wrap:wrap;gap:8px}
+.filters button{font:600 .95rem var(--display);padding:7px 14px;border-radius:999px;border:3px solid var(--ink);background:var(--paper);color:var(--ink);cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
+.card{background:var(--paper);border:3px solid var(--ink);border-radius:18px;box-shadow:0 5px 0 var(--shadow);display:flex;flex-direction:column;min-width:0}
+.card.on{outline:4px solid var(--ok);outline-offset:-1px}
+.top{display:flex;gap:12px;padding:12px 12px 0;align-items:center}
+.ico{width:84px;height:84px;flex:none;background:var(--iconbg);border-radius:16px;border:3px solid var(--ink);display:grid;place-items:center}
+.ico svg{width:70px;height:70px}
+.top h3{font-family:var(--display);font-size:1.2rem;margin:0;line-height:1.1}
+.modes{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.modes span{font:600 .72rem var(--display);color:#fff;border-radius:999px;padding:1px 8px;letter-spacing:.03em}
+.body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px;flex:1}
+.body p{margin:0}
+.uso{font-size:.85rem;color:var(--soft);background:var(--chip);border-radius:8px;padding:5px 8px}
+.pick{margin-top:auto;display:flex;align-items:center;gap:8px;font:600 .95rem var(--display);cursor:pointer;border:3px solid var(--ink);border-radius:12px;padding:7px 10px;background:var(--paper)}
+.pick input{width:20px;height:20px;accent-color:var(--ok)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--barbg);color:var(--barfg);z-index:5;
+  padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:center}
+.bar b{font:600 1rem var(--display)}
+.bar button{font:700 1rem var(--display);padding:8px 16px;border-radius:12px;border:3px solid var(--barfg);background:var(--rei);color:#2b2233;cursor:pointer}
+#saida{flex-basis:100%;max-width:900px;min-height:90px;font:inherit;background:var(--paper);color:var(--ink);border-radius:10px;padding:8px}
+button:focus-visible,.pick:focus-within{outline:3px solid var(--fuga);outline-offset:2px}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Catálogo de itens novos</h1>
+  <p>40 ideias de itens para Bota-Abaixo, 10 pensadas para cada modo (alguns servem para mais de um). Os ícones são esboços no estilo do jogo; os definitivos o artista desenha depois da escolha. Marque <b>Quero no jogo</b> nos que gostar, copie e cole no chat.</p>
+</header>
+<div class="filters" id="filtros"></div>
+<div class="grid" id="grade"></div>
+</div>
+<div class="bar"><b id="cnt">0 marcados</b><button id="copiar" type="button">Copiar escolhidos</button><textarea id="saida" readonly hidden aria-label="Itens escolhidos"></textarea></div>
+
+<script>
+// ícones: SVG 64×64, contorno grosso #2b2233
+const K = '#2b2233';
+const o = 'stroke="' + K + '" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"';
+const I = {
+ bombafalsa:`<rect x="18" y="22" width="26" height="32" rx="4" fill="#e8503a" ${o}/><path d="M24 22v32M38 22v32" ${o} fill="none"/><path d="M31 22c0-8 6-10 10-14" ${o} fill="none"/><text x="31" y="46" font-size="20" font-family="Fredoka" font-weight="700" text-anchor="middle" fill="#fff4c8" stroke="${K}" stroke-width="1.5">?</text>`,
+ molabomba:`<path d="M20 54h24M22 48l20-4-20-4 20-4-20-4" ${o} fill="none"/><rect x="22" y="10" width="20" height="18" rx="3" fill="#e8503a" ${o}/><path d="M32 10c2-4 6-5 8-7" ${o} fill="none"/>`,
+ fumaca:`<circle cx="22" cy="38" r="12" fill="#c9c2cf" ${o}/><circle cx="38" cy="30" r="14" fill="#ddd6e2" ${o}/><circle cx="44" cy="44" r="10" fill="#c9c2cf" ${o}/><circle cx="30" cy="46" r="9" fill="#ddd6e2" ${o}/>`,
+ ventosa:`<path d="M14 50c0-12 8-18 18-18s18 6 18 18z" fill="#e8503a" ${o}/><rect x="27" y="12" width="10" height="22" rx="4" fill="#ffcf3a" ${o}/>`,
+ banana:`<path d="M32 22c-6 10-16 16-22 30 8-4 14-6 20-14 2 8 8 14 12 22 2-10-2-20-6-30 8 4 14 4 20 12-2-10-12-18-24-20z" fill="#ffd23a" ${o}/><path d="M30 22l2-10" stroke="#6b5a3a" stroke-width="5" stroke-linecap="round"/>`,
+ pavioduplo:`<rect x="10" y="24" width="18" height="28" rx="3" fill="#e8503a" ${o}/><rect x="36" y="24" width="18" height="28" rx="3" fill="#e8503a" ${o}/><path d="M19 24c0-8 6-10 13-12 7 2 13 4 13 12" ${o} fill="none"/><circle cx="32" cy="10" r="4" fill="#ffcf3a" ${o}/>`,
+ corneta:`<path d="M10 28h12l26-14v36L22 36H10z" fill="#ffcf3a" ${o}/><path d="M54 22c4 6 4 14 0 20" ${o} fill="none"/>`,
+ balao:`<ellipse cx="32" cy="24" rx="16" ry="19" fill="#f06aa8" ${o}/><path d="M32 43l-3 4h6zM32 47c-4 6 4 8 0 14" ${o} fill="none"/><path d="M24 16c2-4 6-6 9-6" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+ trocatroca:`<rect x="12" y="12" width="40" height="40" rx="8" fill="#fffaf0" ${o}/><circle cx="22" cy="22" r="4" fill="${K}"/><circle cx="42" cy="42" r="4" fill="${K}"/><circle cx="32" cy="32" r="4" fill="${K}"/><circle cx="42" cy="22" r="4" fill="${K}"/><circle cx="22" cy="42" r="4" fill="${K}"/>`,
+ apito:`<path d="M10 30a12 12 0 1 0 24 0h18V20H22a12 12 0 0 0-12 10z" fill="#c9d1d8" ${o}/><circle cx="22" cy="31" r="4" fill="${K}"/><path d="M52 20v-8" ${o}/>`,
+ coroafalsa:`<path d="M10 46l4-26 10 12 8-16 8 16 10-12 4 26z" fill="#ffd23a" ${o}/><text x="32" y="44" font-size="18" font-family="Fredoka" font-weight="700" text-anchor="middle" fill="${K}">?</text>`,
+ trono:`<path d="M18 10h28v26H18z" fill="#c9a227" ${o}/><path d="M14 36h36v8H14zM18 44v12M46 44v12" fill="#b07a3d" ${o}/>`,
+ armadura:`<path d="M32 8l18 8v14c0 12-8 20-18 26C22 50 14 42 14 30V16z" fill="#c9d1d8" ${o}/><path d="M32 16v32" ${o}/><circle cx="24" cy="26" r="2.5" fill="${K}"/><circle cx="40" cy="26" r="2.5" fill="${K}"/>`,
+ cerca:`<path d="M10 48h44M16 48V22M32 48V22M48 48V22M10 30h44M10 40h44" ${o} fill="none"/><path d="M36 8l-8 12h8l-6 12" stroke="#ffcf3a" stroke-width="4" fill="none" stroke-linejoin="round"/>`,
+ bumerangue:`<path d="M14 18l22 4 14 24-8 4-12-20-16-2z" fill="#e8503a" ${o}/><path d="M18 20l14 3" stroke="#fff4c8" stroke-width="3"/>`,
+ rede:`<path d="M12 14h40l-6 40H18z" fill="#fff4dc" ${o}/><path d="M16 26h32M18 38h28M24 14l-2 40M32 14v40M40 14l2 40" stroke="${K}" stroke-width="2" fill="none"/>`,
+ imacoroa:`<path d="M14 30V18h10v12a8 8 0 0 0 16 0V18h10v12a18 18 0 0 1-36 0z" fill="#d42035" ${o}/><path d="M14 18h10v6H14zM40 18h10v6H40z" fill="#c9d1d8" ${o}/><path d="M24 4l3 6 5-5 5 5 3-6v8H24z" fill="#ffd23a" stroke="${K}" stroke-width="2"/>`,
+ megafone:`<path d="M10 26h10l24-12v36L20 38H10z" fill="#3a8fd9" ${o}/><path d="M16 38l4 14h6l-2-12" fill="#c9d1d8" ${o}/><path d="M50 24l6-4M50 32h8M50 40l6 4" ${o}/>`,
+ pa:`<path d="M10 54l20-20" stroke="#b07a3d" stroke-width="7" stroke-linecap="round"/><path d="M10 54l20-20" ${o} fill="none"/><path d="M28 28l16-16 10 10-16 16z" fill="#c9d1d8" ${o}/><rect x="36" y="44" width="20" height="10" fill="#a8a29a" ${o}/>`,
+ skate:`<path d="M8 32h48c0 6-4 8-8 8H16c-4 0-8-2-8-8z" fill="#3a8fd9" ${o}/><circle cx="20" cy="48" r="6" fill="#ffcf3a" ${o}/><circle cx="44" cy="48" r="6" fill="#ffcf3a" ${o}/>`,
+ paraquedas:`<path d="M8 30C8 14 20 6 32 6s24 8 24 24z" fill="#f06aa8" ${o}/><path d="M8 30l18 20M56 30L38 50M32 30v20" ${o} fill="none"/><rect x="24" y="48" width="16" height="10" rx="2" fill="#b07a3d" ${o}/>`,
+ escada:`<path d="M20 6v52M44 6v52M20 14h24M20 26h24M20 38h24M20 50h24" stroke="#b07a3d" stroke-width="7" stroke-linecap="round"/><path d="M20 6v52M44 6v52M20 14h24M20 26h24M20 38h24M20 50h24" ${o} fill="none"/>`,
+ oleo:`<path d="M32 8c10 14 16 22 16 30a16 16 0 0 1-32 0c0-8 6-16 16-30z" fill="#3e4752" ${o}/><path d="M26 38a6 6 0 0 0 6 6" stroke="#9fd8ff" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+ chave:`<circle cx="20" cy="22" r="12" fill="#ffd23a" ${o}/><circle cx="20" cy="22" r="4" fill="var(--iconbg)" ${o}/><path d="M28 30l22 22M42 44l6-6M48 50l6-6" ${o}/>`,
+ ancora:`<path d="M32 12v40M18 22h28M12 40c4 10 12 14 20 14s16-4 20-14" ${o} fill="none"/><circle cx="32" cy="10" r="5" fill="#c9d1d8" ${o}/>`,
+ turbo:`<circle cx="28" cy="32" r="18" fill="#c9d1d8" ${o}/><path d="M28 32l0-14M28 32l13 7M28 32l-13 7" stroke="#3a8fd9" stroke-width="6" stroke-linecap="round"/><path d="M50 22h8M50 32h10M50 42h8" ${o}/>`,
+ rampa:`<path d="M8 52h48V16z" fill="#b07a3d" ${o}/><path d="M18 46l30-24" stroke="#ffcf3a" stroke-width="3" stroke-dasharray="5 5"/>`,
+ bolha:`<circle cx="32" cy="32" r="22" fill="#9fd8ff" fill-opacity=".6" ${o}/><path d="M20 24a14 14 0 0 1 10-8" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M28 34l4 4 8-10" ${o} fill="none"/>`,
+ marretaelastica:`<path d="M8 50c8-4 4-10 12-14s4-10 12-14" stroke="#e8503a" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="32" y="8" width="24" height="16" rx="3" fill="#c9d1d8" ${o}/>`,
+ luva:`<path d="M14 30c0-12 10-18 22-18s16 8 16 18-6 16-16 16H22c-6 0-8-6-8-16z" fill="#e8503a" ${o}/><path d="M14 40H6v12h14" fill="#ffcf3a" ${o}/><path d="M30 26c4-2 8-2 12 0" stroke="#fff4c8" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+ bolaferro:`<circle cx="30" cy="36" r="20" fill="#3e4752" ${o}/><circle cx="24" cy="30" r="5" fill="#8a96a3"/><path d="M44 18l10-10" ${o}/><circle cx="56" cy="6" r="3" fill="#c9d1d8" ${o}/>`,
+ pistao:`<rect x="12" y="40" width="40" height="16" rx="3" fill="#3e4752" ${o}/><rect x="26" y="18" width="12" height="22" fill="#c9d1d8" ${o}/><rect x="16" y="10" width="32" height="10" rx="3" fill="#ffcf3a" ${o}/>`,
+ furacao:`<path d="M10 14h44M14 24h34M20 34h24M24 44h14M28 54h6" ${o} fill="none"/><path d="M10 14h44M14 24h34M20 34h24" stroke="#9fd8ff" stroke-width="2"/>`,
+ mina:`<path d="M10 46h44l-6-14H16z" fill="#6b5a3a" ${o}/><circle cx="32" cy="32" r="8" fill="#d42035" ${o}/><path d="M32 22v-8M24 26l-6-6M40 26l6-6" ${o}/>`,
+ guindaste:`<path d="M14 6h36" ${o}/><path d="M32 6v24" stroke="${K}" stroke-width="3"/><path d="M32 30c-8 0-10 8-6 14s12 6 14 0" fill="none" stroke="#c9d1d8" stroke-width="7" stroke-linecap="round"/><path d="M32 30c-8 0-10 8-6 14s12 6 14 0" fill="none" ${o}/>`,
+ peso:`<path d="M18 22h28l8 32H10z" fill="#3e4752" ${o}/><path d="M24 22a8 8 0 0 1 16 0" ${o} fill="none"/><text x="32" y="46" font-size="15" font-family="Fredoka" font-weight="700" text-anchor="middle" fill="#fffaf0">1T</text>`,
+ molagigante:`<path d="M12 56h40M14 50l36-6-36-6 36-6-36-6 36-6-36-6" ${o} fill="none"/><rect x="10" y="8" width="44" height="8" rx="3" fill="#e8503a" ${o}/>`,
+ espelho:`<path d="M32 8l18 8v14c0 12-8 20-18 26C22 50 14 42 14 30V16z" fill="#9fd8ff" ${o}/><path d="M22 20l8 4M22 30l16 8" stroke="#fff" stroke-width="4" stroke-linecap="round"/>`,
+ superpisao:`<path d="M16 10h16v26h14c6 0 8 6 8 10v6H16z" fill="#b07a3d" ${o}/><path d="M6 60l8-6M22 60v-4M38 60v-4M58 60l-8-6" ${o}/>`,
+};
+const M = {derruba:"Derruba", batata:"Batata-Dinamite", rei:"Rei da Obra", fuga:"Fuga"};
+// [ícone, nome, modos, o que faz, como usa]
+const D = [
+ ["bombafalsa","Bomba-Isca",["batata"],"Larga uma dinamite falsa no chão, igual à de verdade. Quem encostar leva um susto e fica tonto 1 s.","Botão ITEM"],
+ ["molabomba","Mola Anti-Bomba",["batata"],"Por 6 s, se alguém passar a bomba para você, ela quica de volta na hora para quem passou.","Liga ao pegar"],
+ ["fumaca","Bomba de Fumaça",["batata","rei"],"Nuvem de 5 s: some o número do pavio e o brilho do capacete. Ninguém sabe quem está com o quê.","Botão ITEM"],
+ ["ventosa","Ventosa",["batata","rei","fuga"],"Gruda em parede e teto por 4 s. Fugir pelo alto ou cortar caminho.","Liga ao pegar"],
+ ["banana","Casca de Banana",["batata","derruba"],"Larga uma casca atrás. Quem pisa escorrega longe e cai de bunda.","Botão ITEM"],
+ ["pavioduplo","Pavio Duplo",["batata"],"Por 8 s a dinamite vira duas: dois jogadores ficam com bomba ao mesmo tempo.","Botão ITEM (só com a bomba)"],
+ ["corneta","Corneta",["batata","rei","derruba"],"Buzinada que deixa tonto (1 s) quem estiver perto. Bom para encostar a bomba ou tirar o capacete.","Botão ITEM"],
+ ["balao","Balão",["batata","fuga"],"Flutua devagar por 5 s, fora do alcance de quem vem atrás.","Liga ao pegar"],
+ ["trocatroca","Troca-Troca",["batata"],"A bomba pula para um jogador sorteado. Pode voltar para você!","Botão ITEM"],
+ ["apito","Apito do Juiz",["batata"],"Congela o pavio de todo mundo por 4 s. Dá tempo de respirar e montar a jogada.","Botão ITEM"],
+ ["coroafalsa","Capacete Falso",["rei"],"Cria um capacete de mentira brilhando em outro lugar por 6 s. Quem for pegar, perde tempo.","Botão ITEM"],
+ ["trono","Trono Portátil",["rei"],"O rei monta um pedestal de 2 blocos embaixo de si, ficando mais difícil de alcançar.","Botão ITEM"],
+ ["armadura","Armadura do Rei",["rei"],"Aguenta 1 golpe sem perder o capacete.","Liga ao pegar"],
+ ["cerca","Cerca Elétrica",["rei"],"Anel elétrico no chão em volta de você por 5 s. Quem atravessar leva choque e é jogado para trás.","Botão ITEM"],
+ ["bumerangue","Bumerangue",["rei","derruba"],"Vai e volta pela frente. Se acertar o rei, o capacete cai; acerta até 2 vezes.","Botão ITEM"],
+ ["rede","Lança-Rede",["rei","fuga","derruba"],"Rede que prende quem acertar por 1,5 s.","Botão ITEM"],
+ ["imacoroa","Ímã de Capacete",["rei"],"Puxa o capacete solto até você (alcance de meia tela).","Botão ITEM"],
+ ["megafone","Megafone",["rei"],"Grito em cone à frente que empurra todo mundo para longe do trono.","Botão ITEM"],
+ ["pa","Pá de Cimento",["rei","fuga"],"Cria uma escadinha de 3 degraus de concreto à sua frente (somem em 10 s).","Botão ITEM"],
+ ["skate","Skate",["fuga","derruba"],"Arrancada longa para a frente; atropela e empurra quem estiver no caminho.","Botão ITEM"],
+ ["paraquedas","Paraquedas",["fuga"],"Cai devagar e controla bem no ar. Perfeito na Descida da Fundição.","Liga ao pegar"],
+ ["escada","Escada Portátil",["fuga","rei"],"Coloca uma escada de 4 tiles na sua frente; qualquer um pode subir (até quem vem atrás).","Botão ITEM"],
+ ["oleo","Mancha de Óleo",["fuga","derruba"],"Mancha atrás de você: quem pisa desliza sem controle.","Botão ITEM"],
+ ["chave","Chave de Atalho",["fuga"],"Teletransporta você 6 tiles para a frente, se houver lugar livre.","Botão ITEM"],
+ ["ancora","Âncora",["fuga"],"Joga uma âncora para trás que prende o rival mais próximo por 2 s.","Botão ITEM"],
+ ["turbo","Ventilador de Costas",["fuga"],"Por 5 s: empurra você para a frente e quem está colado atrás para trás.","Liga ao pegar"],
+ ["rampa","Rampa",["fuga","derruba"],"Monta uma rampa no chão; quem passar correndo por ela voa longe.","Botão ITEM"],
+ ["bolha","Bolha Salva-Vidas",["fuga"],"Salva uma vez de ser pego pela tela ou pela lama: volta lá na frente com 2 s de proteção.","Liga ao pegar"],
+ ["marretaelastica","Marreta Elástica",["fuga","derruba"],"Por 8 s a marreta estica e alcança 3 tiles.","Liga ao pegar"],
+ ["luva","Luva de Mola",["derruba"],"Soco que estica e joga o rival muito longe (como marretada com +50% de %).","Botão ITEM"],
+ ["bolaferro","Bola de Ferro",["derruba"],"Solta uma bola pesada que rola pela plataforma derrubando todos.","Botão ITEM"],
+ ["pistao","Pistão de Bolso",["derruba","fuga"],"Planta um pistão no chão: quem pisar é lançado para cima (até você).","Botão ITEM"],
+ ["furacao","Mini-Furacão",["derruba"],"Redemoinho que anda pela fase por 6 s levantando quem pegar.","Botão ITEM"],
+ ["mina","Mina Escondida",["derruba","batata"],"Planta uma mina quase invisível; explode quando alguém pisa.","Botão ITEM"],
+ ["guindaste","Guindaste de Bolso",["derruba"],"Um gancho desce do alto, pega o rival mais próximo e solta 3 tiles adiante.","Botão ITEM"],
+ ["peso","Peso de 1 Tonelada",["derruba","rei"],"Uma sombra aparece no chão à frente; 1 s depois cai um peso que achata e quebra o chão.","Botão ITEM"],
+ ["molagigante","Mola Gigante",["derruba","fuga"],"Coloca uma mola enorme: quem pisar vai até o teto (serve de atalho e de armadilha).","Botão ITEM"],
+ ["espelho","Escudo-Espelho",["derruba","rei"],"Por 5 s rebate de volta golpes, raios e dinamites.","Liga ao pegar"],
+ ["superpisao","Super Pisão",["derruba"],"Seu próximo pisão abre uma cratera e joga todo mundo em volta para cima.","Liga ao pegar"],
+ ["trocatroca","Dado da Sorte",["derruba","rei","fuga"],"Dá um item aleatório de qualquer modo (pode ser ótimo ou péssimo).","Liga ao pegar"],
+];
+const KEY = "catalogo-itens-v1";
+let pick = {};
+try { pick = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(pick)); } catch (e) {} };
+let filtro = "todos";
+const grade = document.getElementById("grade");
+function render() {
+  grade.innerHTML = "";
+  D.forEach(([ic, nome, modos, efeito, uso], i) => {
+    if (filtro !== "todos" && !modos.includes(filtro)) return;
+    const c = document.createElement("article");
+    c.className = "card" + (pick[nome] ? " on" : "");
+    c.innerHTML = `<div class="top"><div class="ico"><svg viewBox="0 0 64 64" aria-hidden="true">${I[ic]}</svg></div><div><h3>${nome}</h3><div class="modes">${modos.map(m => `<span style="background:var(--${m})">${M[m]}</span>`).join("")}</div></div></div>
+      <div class="body"><p>${efeito}</p><div class="uso">${uso}</div>
+      <label class="pick"><input type="checkbox" id="p${i}" ${pick[nome] ? "checked" : ""}> Quero no jogo</label></div>`;
+    c.querySelector("input").addEventListener("change", e => { pick[nome] = e.target.checked; if (!e.target.checked) delete pick[nome]; c.classList.toggle("on", e.target.checked); save(); upd(); });
+    grade.append(c);
+  });
+}
+const fl = document.getElementById("filtros");
+[["todos","Todos (40)"],["derruba","Derruba"],["batata","Batata-Dinamite"],["rei","Rei da Obra"],["fuga","Fuga"]].forEach(([k, t]) => {
+  const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.setAttribute("aria-pressed", k === filtro);
+  b.onclick = () => { filtro = k; fl.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); render(); };
+  fl.append(b);
+});
+function upd() { document.getElementById("cnt").textContent = Object.keys(pick).length + " marcados"; }
+render(); upd();
+document.getElementById("copiar").onclick = async () => {
+  const t = document.getElementById("saida");
+  t.value = "ITENS ESCOLHIDOS: " + (Object.keys(pick).join(", ") || "nenhum");
+  t.hidden = false;
+  const b = document.getElementById("copiar");
+  try { await navigator.clipboard.writeText(t.value); b.textContent = "Copiado! Cole no chat"; }
+  catch (e) { t.focus(); t.select(); b.textContent = "Selecionado: copie e cole"; }
+  setTimeout(() => b.textContent = "Copiar escolhidos", 3000);
+};
+</script>
