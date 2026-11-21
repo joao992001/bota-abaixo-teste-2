@@ -290,8 +290,12 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 func _mode_item(r, lv: Dictionary) -> Dictionary:
 	var demo = main.demo
 	if r.item not in ["estilingue", "choque", "laco", "barreira", "cola", "relogio", "gancho", "trocatroca", "apito", "fumaca",
-			"corneta", "banana", "isca"] or main.rng.randf() > float(lv["use_items"]):
+			"corneta", "banana", "isca", "capacetefalso", "cerca", "bumerangue", "rede", "imacapacete"] or main.rng.randf() > float(lv["use_items"]):
 		return {}
+	if r.item in ["capacetefalso", "cerca"]:   # o rei se defende
+		return {"dir": 0, "item": true} if demo.king == r.pid else {}
+	if r.item == "imacapacete":
+		return {"dir": 0, "item": true} if demo.king < 0 else {}
 	if r.item in ["trocatroca", "apito", "fumaca"]:   # usa quando está com a bomba
 		return {"dir": 0, "item": true} if demo.bomb_holder == r.pid else {}
 	if r.item == "relogio":
@@ -316,6 +320,7 @@ func _mode_item(r, lv: Dictionary) -> Dictionary:
 			"choque": ok = absf(dx) < 220.0 and absf(dy) < 120.0
 			"laco": ok = absf(dx) > 90.0 and absf(dx) < 420.0 and absf(dy) < 60.0 and (demo.king < 0 or o.pid == demo.king)
 			"corneta": ok = absf(dx) < 220.0 and absf(dy) < 120.0
+			"bumerangue", "rede": ok = absf(dx) > 90.0 and absf(dx) < 560.0 and absf(dy) < 60.0 and (demo.king < 0 or o.pid == demo.king)
 			"banana", "isca":
 				ok = absf(dx) < 360.0 and absf(dy) < 90.0
 				face = -signi(int(dx))

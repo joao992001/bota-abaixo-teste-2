@@ -1239,6 +1239,54 @@ func itens_modos_test() -> void:
 	main.demo.give(a0, "fumaca")
 	main.demo.use_item(a0)
 	check(main.demo.clouds.size() == 1, "Bomba de Fumaça: nuvem no lugar")
+	# lote 2b: itens novos do Rei
+	main.game_mode = "rei"
+	main.arena_choice = "demolicao"
+	await demo_round()
+	var k0 = main.robots[0]
+	var k1 = main.robots[1]
+	for rb in [k0, k1]:
+		rb.invuln = 0.0
+	put(k0, Vector2(col_x(11), 576))
+	put(k1, Vector2(col_x(15), 576))
+	await frames(5)
+	main.demo.king = 1
+	main.demo.king_grace = 0.0
+	main.demo.king_hit[1] = k1.last_hit
+	main.demo.give(k1, "armadura")
+	k1.take_hit(-1, "marretada", 0)
+	await frames(3)
+	check(main.demo.king == 1, "Armadura: o rei aguenta 1 golpe sem perder o capacete")
+	main.demo.king_grace = 0.0
+	k1.invuln = 0.0
+	put(k1, Vector2(col_x(15), 576))
+	put(k0, Vector2(col_x(11), 576))
+	k0.facing = 1
+	await frames(10)
+	main.demo.give(k0, "bumerangue")
+	main.demo.use_item(k0)
+	await frames(40)
+	check(main.demo.king == -1, "Bumerangue: acertou o rei e o capacete caiu")
+	await frames(60)
+	put(k1, Vector2(col_x(15), 576))
+	k1.invuln = 0.0
+	await frames(5)
+	main.demo.give(k0, "rede")
+	main.demo.use_item(k0)
+	await frames(25)
+	check(main.demo.nets.size() == 1 and k1.stun_t > 0.5, "Lança-Rede: prende quem acertar")
+	main.demo.give(k0, "capacetefalso")
+	main.demo.use_item(k0)
+	main.demo.give(k0, "cerca")
+	main.demo.use_item(k0)
+	check(main.demo.fakes.size() == 1 and main.demo.fences.size() == 1, "Capacete Falso e Cerca Elétrica aparecem")
+	main.demo.king = -1
+	main.demo.crown_pos = Vector2(col_x(20), 500)
+	var d0: float = main.demo.crown_pos.distance_to(k0.position)
+	main.demo.give(k0, "imacapacete")
+	main.demo.use_item(k0)
+	await frames(20)
+	check(main.demo.king == 0 or main.demo.crown_pos.distance_to(k0.position) < d0 - 100.0, "Ímã de Capacete: o capacete vem até você")
 	# mapa vivo: na Batata as alavancas se acionam sozinhas (portas trocam)
 	main.game_mode = "batata"
 	main.arena_choice = "obra_concreto"
@@ -2383,6 +2431,8 @@ func gifs_frames(arg: String) -> void:
 	main.start_match()
 	for k in range(1, parts.size()):
 		var kind := parts[k]
+		var rei: bool = kind in ["armadura", "capacetefalso", "cerca", "bumerangue", "rede", "imacapacete"]
+		main.game_mode = "rei" if rei else "batata"
 		await demo_round()
 		main.demo.item_t = 999.0
 		main.demo.bomb_next = 99.0
@@ -2397,7 +2447,18 @@ func gifs_frames(arg: String) -> void:
 		main.demo.bomb_holder = 0
 		main.demo.bomb_fuse = 9.0
 		await frames(10)
+		if rei:
+			main.demo.king = -1 if kind == "imacapacete" else 1
+			main.demo.king_grace = 0.0
+			main.demo.king_hit[1] = r1.last_hit
+			if kind == "imacapacete":
+				main.demo.crown_pos = Vector2(col_x(17), 500)
 		match kind:
+			"armadura":
+				main.demo.give(r1, "armadura")
+				put(r0, Vector2(col_x(14), 576))
+				await frames(15)
+				main.demo.hammer(r0)
 			"molabomba":
 				main.demo.give(r1, "molabomba")
 				await frames(10)

@@ -185,6 +185,28 @@
       "isca": {
         "vida_s": 12,
         "tonto_s": 1.0
+      },
+      "armadura": {
+        "duration_s": 30
+      },
+      "capacetefalso": {
+        "duracao_s": 6,
+        "tonto_s": 0.8
+      },
+      "cerca": {
+        "duracao_s": 5,
+        "raio_px": 150
+      },
+      "bumerangue": {
+        "vel": 900,
+        "ida_s": 0.55
+      },
+      "rede": {
+        "vel": 1000,
+        "preso_s": 1.5
+      },
+      "imacapacete": {
+        "forca": 950
       }
     },
     "stomp_immune_s": 1.4,
@@ -672,7 +694,13 @@
           "soprador",
           "mola",
           "foguete",
-          "vortice"
+          "vortice",
+          "armadura",
+          "capacetefalso",
+          "cerca",
+          "bumerangue",
+          "rede",
+          "imacapacete"
         ],
         "itens_cada_s": [
           3,

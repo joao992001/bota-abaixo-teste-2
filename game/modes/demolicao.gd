@@ -145,6 +145,10 @@ func start_round() -> void:
 	items.clear()
 	dynamites.clear()
 	slings.clear()
+	fakes.clear()
+	fences.clear()
+	shots.clear()
+	nets.clear()
 	traps.clear()
 	clouds.clear()
 	apito_t = 0.0
@@ -407,9 +411,12 @@ const ITEM_NAMES := {"dinamite": "TNT!", "martelao": "MARTELÃO!", "mola": "BOTA
 	"congelador": "RAIO CONGELANTE!", "estilingue": "ESTILINGUE!", "patins": "PATINS!", "escudo": "ESCUDO DE BORRACHA!",
 	"choque": "ONDA DE CHOQUE!", "laco": "LAÇO!", "barreira": "BARREIRA!", "relogio": "RELÓGIO!", "gancho": "GANCHO!",
 	"trocatroca": "TROCA-TROCA!", "apito": "APITO DO JUIZ!", "corneta": "CORNETA!", "molabomba": "MOLA ANTI-BOMBA!",
-	"fumaca": "BOMBA DE FUMAÇA!", "banana": "CASCA DE BANANA!", "isca": "BOMBA-ISCA!", "balao": "BALÃO!"}
+	"fumaca": "BOMBA DE FUMAÇA!", "banana": "CASCA DE BANANA!", "isca": "BOMBA-ISCA!", "balao": "BALÃO!",
+	"armadura": "ARMADURA!", "capacetefalso": "CAPACETE FALSO!", "cerca": "CERCA ELÉTRICA!", "bumerangue": "BUMERANGUE!",
+	"rede": "LANÇA-REDE!", "imacapacete": "ÍMÃ DE CAPACETE!"}
 const USABLE := ["dinamite", "furadeira", "cola", "teletransporte", "laser", "vortice", "soprador", "congelador",
-	"estilingue", "choque", "laco", "barreira", "relogio", "gancho", "trocatroca", "apito", "corneta", "fumaca", "banana", "isca"]
+	"estilingue", "choque", "laco", "barreira", "relogio", "gancho", "trocatroca", "apito", "corneta", "fumaca", "banana", "isca",
+	"capacetefalso", "cerca", "bumerangue", "rede", "imacapacete"]
 var slings: Array = []       # Batata: dinamite arremessada com o estilingue {pos, vel, t, owner}
 var shocks: Array = []       # Rei: onda de choque carregando {pid, t}
 var ropes: Array = []        # laço e gancho {kind, pid, tgt, tip, t, dur}
@@ -418,6 +425,10 @@ var rings: Array = []        # anel da onda de choque {pos, t, r}
 var traps: Array = []        # casca de banana e bomba-isca no chão {kind, pos, t, owner}
 var clouds: Array = []       # bomba de fumaça {pos, t}
 var apito_t := 0.0           # apito do juiz: pavio congelado
+var fakes: Array = []        # capacete falso {pos, t}
+var fences: Array = []       # cerca elétrica {pid, t, cd: {pid: s}}
+var shots: Array = []        # bumerangue e rede voando {kind, pos, vel, t, owner, hit: []}
+var nets: Array = []         # rede presa em alguém {pid, t}
 const Ferramentas := preload("res://modes/ferramentas.gd")
 var tools: Node2D = null     # furadeira, cola, teletransporte, laser, vórtice, soprador, congelador, ímã (modes/ferramentas.gd)
 
@@ -426,7 +437,7 @@ func give(r, kind: String) -> void:
 		push_warning("item desconhecido: %s" % kind)
 		return
 	match kind:
-		"martelao", "mola", "ima", "foguete", "patins", "escudo", "molabomba", "balao": r.fx_t[kind] = float(item_cfg(kind)["duration_s"])
+		"martelao", "mola", "ima", "foguete", "patins", "escudo", "molabomba", "balao", "armadura": r.fx_t[kind] = float(item_cfg(kind)["duration_s"])
 		"capacete": r.shield = int(item_cfg("capacete")["hits"])
 		_: r.item = kind
 	Audio.play({"martelao": "martelao", "ima": "ima", "foguete": "foguete"}.get(kind, "item"))
@@ -438,7 +449,7 @@ func give(r, kind: String) -> void:
 ## Botão de item: usa o item guardado.
 func use_item(r) -> void:
 	var kind: String = r.item
-	if kind in ["estilingue", "choque", "laco", "barreira", "relogio", "gancho", "trocatroca", "apito", "corneta", "fumaca", "banana", "isca"]:
+	if kind in ["estilingue", "choque", "laco", "barreira", "relogio", "gancho", "trocatroca", "apito", "corneta", "fumaca", "banana", "isca", "capacetefalso", "cerca", "bumerangue", "rede", "imacapacete"]:
 		if _use_mode_item(r, kind):
 			r.item = ""
 		else:
@@ -836,7 +847,13 @@ func _update_king(dt: float, alive: Array) -> int:
 			return -1
 		king_grace = maxf(king_grace - dt, 0.0)
 		# levou golpe (marretada, pisão, explosão): o capacete voa para longe do golpe
-		if king_grace <= 0.0 and kr.last_hit < float(king_hit.get(king, 99.0)) and kr.last_hit < 0.1:
+		if king_grace <= 0.0 and kr.last_hit < float(king_hit.get(king, 99.0)) and kr.last_hit < 0.1 and kr.fx_t["armadura"] > 0.0:
+			kr.fx_t["armadura"] = 0.0   # armadura aguenta 1 golpe
+			king_grace = 0.5
+			main.float_text(kr.position + Vector2(0, -110), "CLANG!", Color("#c9d1d8"))
+			main.spark(kr.rect().get_center(), 8)
+			Audio.play("bonk", 0.6)
+		elif king_grace <= 0.0 and kr.last_hit < float(king_hit.get(king, 99.0)) and kr.last_hit < 0.1:
 			var away: float = -1.0 if kr.velocity.x < 0.0 else 1.0
 			_drop_crown(Vector2(away * 260.0, -620.0))
 			main.float_text(kr.position + Vector2(0, -110), "PERDEU A COROA!", main.player_color(kr.pid))
@@ -1009,6 +1026,37 @@ func _use_mode_item(r, kind: String) -> bool:
 				main.shake(4.0)
 				Audio.play("caixote_pancada", 0.8)
 			return made
+		"capacetefalso":   # capacete de mentira num chão qualquer
+			var spots := []
+			var lv = main.level
+			for y in range(2, lv.rows):
+				for x in range(1, lv.cols - 1):
+					var cc := Vector2i(x, y)
+					if lv.is_solid(cc) and lv.ch_at(cc) != "I" and not lv.is_solid(cc + Vector2i.UP) and not lv.is_solid(cc + Vector2i(0, -2)):
+						spots.append(cc)
+			if spots.is_empty():
+				return false
+			var sp: Vector2i = spots[main.rng.randi() % spots.size()]
+			fakes.append({"pos": Vector2(sp.x * 64 + 32, sp.y * 64 - 4), "t": 0.0})
+			Audio.play("item")
+			return true
+		"cerca":
+			fences.append({"pid": r.pid, "t": 0.0, "cd": {}})
+			Audio.play("laser_carga", 1.3)
+			return true
+		"bumerangue", "rede":
+			var v := float(item_cfg(kind)["vel"])
+			shots.append({"kind": kind, "pos": c + Vector2(r.facing * 30, -6), "vel": Vector2(r.facing * v, 0), "t": 0.0, "owner": r.pid, "hit": []})
+			Audio.play("arremesso", 1.1)
+			r.vis.stretch()
+			return true
+		"imacapacete":   # puxa o capacete solto até você
+			if king >= 0:
+				return false
+			crown_vel = (c - crown_pos).normalized() * float(item_cfg("imacapacete")["forca"]) + Vector2(0, -300)
+			rings.append({"pos": crown_pos, "t": 0.0, "r": 80.0})
+			Audio.play("ima")
+			return true
 		"trocatroca":   # a bomba pula para um jogador sorteado (pode voltar para você)
 			if bomb_holder < 0:
 				return false
@@ -1138,6 +1186,31 @@ func _draw_mode_items(now: float) -> void:
 		var k: float = rg["t"] / 0.45
 		canvas.draw_arc(rg["pos"], rg["r"] * k, 0, TAU, 48, Color(1.0, 0.85, 0.3, 1.0 - k), 14.0 * (1.0 - k) + 2.0, true)
 		canvas.draw_arc(rg["pos"], rg["r"] * k * 0.92, 0, TAU, 48, Color(1, 1, 1, 0.8 * (1.0 - k)), 4.0, true)
+	for fk in fakes:
+		var glow := 0.5 + 0.5 * sin(now * 6.0)
+		canvas.draw_circle(fk["pos"] + Vector2(0, -26), 40.0 + glow * 8.0, Color(1.0, 0.85, 0.3, 0.18 + glow * 0.12))
+		canvas.draw_texture_rect(Data.tex("itens/capacete"), Rect2(fk["pos"] + Vector2(-30, -56), Vector2(60, 60)), false, Color(1.0, 0.82, 0.25))
+	for fe in fences:
+		if fe["pid"] < main.robots.size():
+			var oc: Vector2 = main.robots[fe["pid"]].rect().get_center()
+			var rad := float(item_cfg("cerca")["raio_px"])
+			canvas.draw_arc(oc, rad, 0, TAU, 40, Color("#2b2233"), 7.0, true)
+			canvas.draw_arc(oc, rad, 0, TAU, 40, Color("#ffcf3a"), 3.5, true)
+			for k in 10:
+				var a0 := k * TAU / 10.0 + now * 0.6
+				var p0 := oc + Vector2.from_angle(a0) * rad
+				canvas.draw_line(p0, p0 + Vector2.from_angle(a0) * 16.0 + Vector2(randf_range(-6, 6), randf_range(-6, 6)), Color("#fff4a0"), 3.0, true)
+	for sh in shots:
+		canvas.draw_set_transform(sh["pos"], sh["t"] * (18.0 if sh["kind"] == "bumerangue" else 0.0))
+		canvas.draw_texture_rect(Data.tex("itens/" + sh["kind"]), Rect2(-24, -24, 48, 48), false)
+		canvas.draw_set_transform(Vector2.ZERO)
+	for nt in nets:
+		if nt["pid"] < main.robots.size():
+			var nc: Vector2 = main.robots[nt["pid"]].rect().get_center()
+			canvas.draw_texture_rect(Data.tex("itens/rede"), Rect2(nc - Vector2(44, 50), Vector2(88, 96)), false, Color(1, 1, 1, 0.9))
+	for r in main.robots:
+		if r.alive and r.fx_t["armadura"] > 0.0:
+			canvas.draw_texture_rect(Data.tex("itens/armadura"), Rect2(r.rect().get_center() + Vector2(-20, -18), Vector2(40, 40)), false)
 	for tp in traps:
 		var tex: String = "itens/banana" if tp["kind"] == "banana" else "itens/dinamite"
 		canvas.draw_texture_rect(Data.tex(tex), Rect2(tp["pos"] + Vector2(-20, -38), Vector2(40, 40)), false)
@@ -1251,6 +1324,64 @@ func _update_mode_items(dt: float) -> void:
 			for k in 6:
 				tools._part(rp["tip"], Vector2.from_angle(randf() * TAU) * randf_range(120, 260), 0.35, "estrela", Color("#fff4c8"), 4)
 	ropes = ropes.filter(func(x): return x["t"] < x["dur"])
+	for fk in fakes:   # capacete falso: quem encostar fica tonto
+		fk["t"] += dt
+		for o in main.robots:
+			if o.alive and o.rect().grow(8).has_point(fk["pos"]):
+				o.stun_t = maxf(o.stun_t, float(item_cfg("capacetefalso")["tonto_s"]))
+				main.float_text(o.position + Vector2(0, -110), "FALSO!", Color("#ffd23a"))
+				main.dust(fk["pos"], 1.0)
+				Audio.play("bonk")
+				fk["t"] = 999.0
+				break
+	fakes = fakes.filter(func(x): return x["t"] < float(item_cfg("capacetefalso")["duracao_s"]))
+	for fe in fences:   # cerca elétrica: anel em volta do dono
+		fe["t"] += dt
+		if fe["pid"] >= main.robots.size():
+			continue
+		var own = main.robots[fe["pid"]]
+		var oc: Vector2 = own.rect().get_center()
+		var rad := float(item_cfg("cerca")["raio_px"])
+		for o in main.robots:
+			if o != own and o.alive and o.rect().get_center().distance_to(oc) < rad and fe["cd"].get(o.pid, 0.0) <= 0.0:
+				o.take_hit(1 if o.rect().get_center().x >= oc.x else -1, "choque", own.pid)
+				fe["cd"][o.pid] = 0.6
+				main.spark(o.rect().get_center(), 6)
+		for k2 in fe["cd"].keys():
+			fe["cd"][k2] -= dt
+	fences = fences.filter(func(x): return x["t"] < float(item_cfg("cerca")["duracao_s"]))
+	for sh in shots:   # bumerangue (vai e volta) e rede (reta)
+		sh["t"] += dt
+		var own = main.robots[sh["owner"]] if sh["owner"] < main.robots.size() else null
+		if sh["kind"] == "bumerangue" and sh["t"] > float(item_cfg("bumerangue")["ida_s"]) and own != null:
+			sh["vel"] = sh["vel"].lerp((own.rect().get_center() - sh["pos"]).normalized() * float(item_cfg("bumerangue")["vel"]), clampf(dt * 6.0, 0.0, 1.0))
+			if sh["pos"].distance_to(own.rect().get_center()) < 50.0:
+				sh["t"] = 999.0   # voltou para a mão
+		sh["pos"] += sh["vel"] * dt
+		if main.level.is_solid(Vector2i(int(sh["pos"].x / 64.0), int(sh["pos"].y / 64.0))):
+			if sh["kind"] == "rede":
+				sh["t"] = 999.0
+			elif sh["t"] < float(item_cfg("bumerangue")["ida_s"]):
+				sh["t"] = float(item_cfg("bumerangue")["ida_s"])   # bateu: volta
+		for o in main.robots:
+			if o.alive and o.pid != sh["owner"] and not (o.pid in sh["hit"]) and o.rect().grow(10).has_point(sh["pos"]):
+				sh["hit"].append(o.pid)
+				if sh["kind"] == "rede":
+					o.stun_t = maxf(o.stun_t, float(item_cfg("rede")["preso_s"]))
+					o.velocity = Vector2.ZERO
+					nets.append({"pid": o.pid, "t": 0.0})
+					sh["t"] = 999.0
+					Audio.play("cola")
+				else:
+					o.take_hit(signi(int(sh["vel"].x)) if sh["vel"].x != 0.0 else 1, "marretada", sh["owner"])
+					Audio.play("bonk")
+				break
+		if sh["t"] > 3.0:
+			sh["t"] = 999.0
+	shots = shots.filter(func(x): return x["t"] < 999.0)
+	for nt in nets:
+		nt["t"] += dt
+	nets = nets.filter(func(x): return x["t"] < float(item_cfg("rede")["preso_s"]))
 	for tp in traps:   # casca de banana e bomba-isca
 		tp["t"] += dt
 		for o in main.robots:
