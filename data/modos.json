@@ -610,7 +610,9 @@
           3,
           5
         ],
-        "itens_max": 3
+        "itens_max": 3,
+        "eventos_ritmo": 0.55,
+        "alavanca_auto_s": 12
       },
       {
         "id": "rei",
@@ -643,7 +645,9 @@
           3,
           5
         ],
-        "itens_max": 3
+        "itens_max": 3,
+        "eventos_ritmo": 0.55,
+        "alavanca_auto_s": 12
       },
       {
         "id": "fuga",

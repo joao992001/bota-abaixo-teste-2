@@ -1173,6 +1173,16 @@ func itens_modos_test() -> void:
 		if main.demo.items.is_empty():
 			sem.append(aid)
 	check(sem.is_empty(), "itens nascem em todas as fases da Batata (sem item: %s)" % str(sem))
+	# mapa vivo: na Batata as alavancas se acionam sozinhas (portas trocam)
+	main.game_mode = "batata"
+	main.arena_choice = "obra_concreto"
+	await demo_round()
+	main.demo.bomb_next = 99.0
+	var doors0: Array = main.level.doors.keys().map(func(c): return main.level.ch_at(c))
+	main.demo.auto_lever_t = 0.05
+	await frames(10)
+	var doors1: Array = main.level.doors.keys().map(func(c): return main.level.ch_at(c))
+	check(doors0 != doors1, "Batata: alavanca automática troca as portas sozinha")
 	# ▼ em cima de tábua fina: desce por ela (Galerias da Mina, saída do alto da rocha)
 	main.game_mode = "batata"
 	main.arena_choice = "galerias_mina"

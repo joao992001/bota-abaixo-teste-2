@@ -145,6 +145,7 @@ func start_round() -> void:
 	items.clear()
 	dynamites.clear()
 	slings.clear()
+	auto_lever_t = float(sub.get("alavanca_auto_s", 12.0))
 	shocks.clear()
 	ropes.clear()
 	if tools == null or not is_instance_valid(tools):
@@ -291,6 +292,7 @@ func update(dt: float) -> void:
 	feed = feed.filter(func(f): return f["t"] < 4.5)
 	_update_bomb(dt, alive)
 	_update_mode_items(dt)
+	_update_auto_lever(dt)
 	var king_won := _update_king(dt, alive)
 	# fim da rodada: sobrou 1 (ou ninguém)
 	var over: bool = alive.size() <= 1 and main.robots.size() >= 2 and not main.sandbox
@@ -924,6 +926,23 @@ func _update_bomb(dt: float, alive: Array) -> void:
 		bomb_next = 2.5
 		explode(pos, float(sub["raio"]))
 		main.kill(holder, -1, null)
+
+## Mapa vivo (Batata/Rei): de tempos em tempos as alavancas se acionam sozinhas, com aviso antes.
+var auto_lever_t := 12.0
+func _update_auto_lever(dt: float) -> void:
+	var every := float(sub.get("alavanca_auto_s", 0.0))
+	if every <= 0.0 or fx == null or not is_instance_valid(fx) or fx.levers.is_empty() or main.countdown > 0.0:
+		return
+	var before := auto_lever_t
+	auto_lever_t -= dt
+	if before > 1.5 and auto_lever_t <= 1.5:
+		for lvr in fx.levers:   # aviso: "!" piscando em cima de cada alavanca
+			main.float_text(Vector2(lvr["cell"] * 64) + Vector2(32, -40), "!", Color("#ffcf3a"))
+		Audio.play("alarme", 1.2, -6.0)
+	if auto_lever_t <= 0.0:
+		auto_lever_t = every * main.rng.randf_range(0.8, 1.2)
+		fx.pull_lever(-1)
+		Audio.play("alavanca")
 
 ## Itens próprios dos modos (Batata, Rei, Fuga). true = usou.
 func _use_mode_item(r, kind: String) -> bool:

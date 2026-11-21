@@ -35,7 +35,7 @@ func reset_round() -> void:
 	falling.clear()
 	marks.clear()
 	var lvl: int = main.event_level
-	timer = float(cfg["primeiro_s"][lvl])
+	timer = float(cfg["primeiro_s"][lvl]) * _ritmo()
 	phase = ""
 
 func update(dt: float) -> void:
@@ -71,7 +71,7 @@ func update(dt: float) -> void:
 				_end_event()
 				Audio.play("evento_fim", 1.0, -4.0)
 				phase = ""
-				timer = float(cfg["intervalo_s"][main.event_level]) * main.rng.randf_range(0.8, 1.2)
+				timer = float(cfg["intervalo_s"][main.event_level]) * main.rng.randf_range(0.8, 1.2) * _ritmo()
 
 ## Dispara um evento agora (painel da Oficina): aviso curto e depois ativo.
 func trigger(e: Dictionary) -> void:
@@ -268,3 +268,10 @@ func menu_draw(ci: CanvasItem, m: Node) -> void:
 		else:
 			Kit.text(ci, Vector2(r.position.x, y), "VOLTAR  ▸", 36, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 	Kit.text(ci, Vector2(0, 1056), "▲▼ escolher  ·  PULAR liga/desliga  ·  BACKSPACE/ESC voltar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
+
+
+## Batata e Rei pedem mapa mais vivo: eventos mais frequentes (data/modos.json → "eventos_ritmo").
+func _ritmo() -> float:
+	if main.demo == null:
+		return 1.0
+	return float(main.demo.sub.get("eventos_ritmo", 1.0))
