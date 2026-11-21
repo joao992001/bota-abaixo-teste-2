@@ -1,25 +1,25 @@
 id: gangorras
 tema: serraria
-gangorras: 6,10,6; 14.5,7,7; 23,10,6
+alcapao_s: 3.5
+gangorras: 8,7,6; 14.5,6,7; 21,7,6
 terremoto: 70
-fundo: #fff4d0
-legend: "d caixote, # pilar, ^ espinho, 1-4 spawn (gangorras no cabeçalho)"
 size: 30x16
 spawns: 1,2,3,4
+legend: "# sólido, d caixote, T TNT, = tábua, D porta, L alavanca (abre/fecha portas e alçapões a), J trampolim, Y/Z tubos, F ventilador, < > esteira, K trono, E elevador, 1-4 spawn"
 === map
 IIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 I............................I
 I............................I
-I........ddd......ddd........I
-I....1..................4....I
-I...ddd................ddd...I
 I............................I
 I............................I
-I......2......##......3......I
+I............................I
+I............................I
 I.............##.............I
-I.............##.............I
-I.....#.......##.......#.....I
-Idddd.#.......##.......#.ddddI
-I.....#.......##.......#.....I
-I.....#.......##.......#.....I
+I.1.....#.....dd.....#.....4.I
+I####...#...2dddd3...#...####I
+I####...#...######...#...####I
+I####...#...######...#...####I
+I####...#...######...#...####I
+I####...#...######...#...####I
+I####...#...######...#...####I
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

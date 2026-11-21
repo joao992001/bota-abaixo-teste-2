@@ -153,35 +153,33 @@ def f_viaduto():
 
 
 def f_ferro_velho():
-    """Ferro-Velho (câmera avança): prensas no teto, montes de sucata que sobem e descem, esteiras,
-    tubo de atalho (o caminho de baixo é mais longo), gangorra."""
+    """Ferro-Velho (câmera avança): montes de sucata que sobem e descem, prensas presas numa viga,
+    esteiras a favor e contra, tubo de atalho, gangorra sobre o poço."""
     w = 84
     c = C(w, 18, floor_rows=1, spikes=True)
     def pile(x0, x1, top, ch="#"):
         for x in range(x0, x1 + 1):
             for y in range(top, 16):
                 c.put(x, y, ch if y == top else "#")
+    c.plat(1, 1, w - 2)                                                # viga do galpão (as prensas ficam presas nela)
+    def press(x0, x1, xs):
+        for x in xs:
+            c.put(x, 2, "P")
     pile(1, 9, 13)
     for i, x in enumerate([2, 4, 6, 8]):
         c.put(x, 12, str(i + 1))
-    pile(12, 19, 13, ">")                          # esteira a favor, com prensas em cima
-    c.put(14, 1, "P"); c.put(18, 1, "P")
-    pile(22, 26, 10)                               # monte alto
-    c.plat(28, 12, 3, "d")                         # degrau de caixotes no vão
-    pile(32, 39, 12, "<")                          # esteira contra
-    c.put(35, 1, "P")
-    c.put(33, 11, "Y")                             # tubo: atalho até o monte 50
-    pile(42, 45, 9)                                # torre: pule do monte...
-    c.plat(47, 12, 3, "=")
-    pile(50, 57, 13)
-    c.put(54, 12, "Y")
-    c.put(56, 1, "P")
-    pile(60, 62, 11, "d")                          # monte de caixotes
-    pile(70, 75, 13)                               # gangorra sobre o poço (no cabeçalho)
-    c.put(71, 1, "P"); c.put(74, 1, "P")
+    pile(12, 19, 13, ">"); press(12, 19, [14, 17])                     # esteira a favor sob a prensa
+    pile(22, 26, 10)                                                   # monte alto
+    pile(28, 30, 12, "d")                                              # monte de caixotes
+    pile(32, 39, 12, "<"); press(34, 37, [35])                         # esteira contra
+    c.put(33, 11, "Y")                                                 # tubo: atalho até o monte seguinte
+    pile(42, 45, 9)                                                    # torre de sucata
+    pile(47, 48, 12, "d")
+    pile(50, 57, 13); c.put(54, 12, "Y"); press(55, 58, [56])
+    pile(60, 62, 11, "d")
+    pile(70, 75, 13); press(70, 75, [71, 74])                          # gangorra no poço antes (cabeçalho)
     pile(77, 82, 12); c.put(80, 11, "E")
     return c, "rolagem: direita, 1.0, 5\nesteira_vel: 2.6\npistao_ciclo: 3.2\ngangorras: 66,14,6"
-
 
 def f_pantano():
     """Pântano Subindo (a lama sobe): gangorras, tubo de atalho, plataforma que sobe e desce, caixotes, tábuas."""

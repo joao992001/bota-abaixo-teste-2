@@ -152,6 +152,14 @@
       },
       "barreira": {
         "altura": 2
+      },
+      "relogio": {
+        "ganho_s": 4,
+        "perda_s": 3,
+        "minimo_s": 1.5
+      },
+      "gancho": {
+        "alcance_tiles": 7
       }
     },
     "stomp_immune_s": 1.4,
@@ -250,73 +258,73 @@
       {
         "id": "obra_concreto",
         "nome": "Obra de Concreto",
-        "dica": "Portas e alavancas por toda a obra!",
+        "dica": "A alavanca troca as portas: abertas fecham, fechadas abrem!",
         "musica": "partida"
       },
       {
         "id": "galerias_mina",
         "nome": "Galerias da Mina",
-        "dica": "Túneis com portas e portais!",
+        "dica": "Túneis na rocha e tubos que cruzam a mina!",
         "musica": "caos"
       },
       {
         "id": "predio_velho",
         "nome": "Prédio Velho",
-        "dica": "Andares ligados por portas e molas!",
+        "dica": "Alçapões que abrem e paredes de caixote!",
         "musica": "partida"
       },
       {
         "id": "sob_viaduto",
         "nome": "Sob o Viaduto",
-        "dica": "Plataformas e ventiladores!",
+        "dica": "Plataformas que vão e voltam. O ventilador te leva à pista!",
         "musica": "altura"
       },
       {
         "id": "palafitas",
         "nome": "Palafitas",
-        "dica": "Gangorras sobre o pântano!",
+        "dica": "Gangorras ligam as casinhas. Cuidado com o peso!",
         "musica": "partida"
       },
       {
         "id": "telhados",
         "nome": "Telhados",
-        "dica": "Pule de telhado em telhado!",
+        "dica": "Trampolins nos becos: pule de telhado em telhado!",
         "musica": "altura"
       },
       {
         "id": "canteiro_rei",
         "nome": "Trono do Canteiro",
-        "dica": "O trono fica no alto da obra!",
+        "dica": "A alavanca abre a escada de dentro da torre!",
         "musica": "partida"
       },
       {
         "id": "linha_montagem",
         "nome": "Linha de Montagem",
-        "dica": "Esteiras e ventiladores até o trono!",
+        "dica": "Esteiras levam ao ventilador. Prensas em cima!",
         "musica": "fabrica"
       },
       {
         "id": "cais_rei",
         "nome": "Rei do Cais",
-        "dica": "Plataformas levam ao trono!",
+        "dica": "Guindastes levam até o trono!",
         "musica": "altura"
       },
       {
         "id": "mina_ouro",
         "nome": "Mina de Ouro",
-        "dica": "Elevador até o trono de ouro!",
+        "dica": "Elevador até o trono e tubos pela caverna!",
         "musica": "caos"
       },
       {
         "id": "serraria_rei",
         "nome": "Serraria Real",
-        "dica": "Gangorras no caminho do trono!",
+        "dica": "Suba a pirâmide de toras! Gangorras e trampolim dos lados.",
         "musica": "partida"
       },
       {
         "id": "predio_demolicao",
         "nome": "Prédio em Demolição",
-        "dica": "Cuidado com a bola de demolição!",
+        "dica": "A bola varre o trono! Alçapões no meio do prédio.",
         "musica": "caos"
       },
       {
@@ -340,7 +348,7 @@
       {
         "id": "ferro_velho",
         "nome": "Ferro-Velho",
-        "dica": "Esteiras e portais até a saída!",
+        "dica": "Prensas, esteiras e um tubo de atalho!",
         "musica": "fabrica"
       },
       {
@@ -589,7 +597,11 @@
           "estilingue",
           "patins",
           "escudo",
-          "teletransporte"
+          "teletransporte",
+          "relogio",
+          "ima",
+          "soprador",
+          "congelador"
         ]
       },
       {
@@ -610,7 +622,11 @@
           "laco",
           "patins",
           "cola",
-          "congelador"
+          "congelador",
+          "soprador",
+          "mola",
+          "foguete",
+          "vortice"
         ]
       },
       {
@@ -629,7 +645,11 @@
           "patins",
           "foguete",
           "mola",
-          "cola"
+          "cola",
+          "gancho",
+          "teletransporte",
+          "congelador",
+          "soprador"
         ]
       }
     ]

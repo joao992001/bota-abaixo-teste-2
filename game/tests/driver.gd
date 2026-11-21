@@ -1112,6 +1112,13 @@ func itens_modos_test() -> void:
 	r0.fx_t["escudo"] = 0.0
 	main.demo.give(r0, "patins")
 	check(r0.fx_t["patins"] > 0.0, "patins ligam na hora")
+	main.demo.bomb_fuse = 20.0
+	main.demo.give(r0, "relogio")
+	main.demo.use_item(r0)
+	check(main.demo.bomb_holder == 1 and absf(main.demo.bomb_fuse - 17.0) < 0.1, "Batata: relógio de quem não tem a bomba encurta o pavio (%.1f)" % main.demo.bomb_fuse)
+	main.demo.give(r1, "relogio")
+	main.demo.use_item(r1)
+	check(absf(main.demo.bomb_fuse - 21.0) < 0.1, "Batata: relógio de quem tem a bomba dá mais tempo (%.1f)" % main.demo.bomb_fuse)
 	# Rei: laço tira o capacete do rei; onda de choque protege e depois empurra
 	main.game_mode = "rei"
 	main.arena_choice = "piramide"
@@ -1151,6 +1158,11 @@ func itens_modos_test() -> void:
 	main.demo.use_item(r0)
 	await frames(2)
 	check(main.level.blocks.size() > nb, "Fuga: a barreira larga caixotes atrás (%d→%d)" % [nb, main.level.blocks.size()])
+	await frames(30)
+	r0.facing = 1
+	main.demo.give(r0, "gancho")
+	main.demo.use_item(r0)
+	check(r0.item == "" and r0.velocity.y < -900.0, "Fuga: o gancho puxa para cima (vy %.0f item %s pos %s)" % [r0.velocity.y, r0.item, str(r0.position)])
 	main.arena_choice = "demolicao"
 	main.game_mode = "derruba"
 

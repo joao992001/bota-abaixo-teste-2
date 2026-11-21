@@ -250,13 +250,37 @@ def barreira():
     return wrap("".join(b), 231)
 
 
+def relogio():
+    b = []
+    for i, (x, a) in enumerate(((17, -30), (47, 30))):
+        b.append(f'<g transform="rotate({a} {x} 16)">'
+                 + shape(f"rs{i}", "M{0},22 C{0},10 {1},8 {2},8 C{3},8 {4},10 {4},22 Z".format(x - 9, x - 6, x, x + 6, x + 9),
+                         "#f2c84b", 241 + i, (x - 11, 6, x + 11, 24), k=1.1, dark="#c99a28", light="#fff1b8")
+                 + f'<rect x="{x - 10}" y="20" width="20" height="4" rx="2" fill="#3e4752"/></g>')
+    b.append('<path d="M18,54 L13,61 M46,54 L51,61" stroke="#3e4752" stroke-width="4.5" stroke-linecap="round"/>')
+    b.append(shape("rc", ellipse_d(32, 37, 22, 22), "#d14d35", 243, (8, 13, 56, 61), k=1.3))
+    b.append(shape("rf", ellipse_d(32, 37, 15, 15), "#fdf6e3", 244, (15, 20, 49, 54), k=0.9, dark="#e3d6b8"))
+    for a in range(0, 360, 90):
+        b.append(f'<path d="M32,24 v3" stroke="#3e4752" stroke-width="2.4" stroke-linecap="round" transform="rotate({a} 32 37)"/>')
+    b.append('<path d="M32,37 V27 M32,37 L39,41" stroke="#3e4752" stroke-width="3" stroke-linecap="round"/>')
+    b.append('<circle cx="32" cy="37" r="2.4" fill="#3e4752"/>')
+    b.append('<path d="M14,30 Q15,22 22,18" stroke="#f08a78" stroke-width="2.6" fill="none" stroke-linecap="round"/>')
+    b.append('<path d="M32,15 C32,9 36,7 38,4" stroke="#5a4632" stroke-width="2.2" fill="none" stroke-linecap="round"/>')
+    b.append('<path d="M38,4 l3,-2 M38,4 l4,1 M38,4 l-1,-3" stroke="#f2c84b" stroke-width="2" stroke-linecap="round"/>')
+    b.append('<circle cx="38" cy="4" r="2.2" fill="#ffffff"/>')
+    b.append(shape("rp", "M52,45 h4 v-4 h4 v4 h4 v4 h-4 v4 h-4 v-4 h-4 Z", "#f2c84b", 245, (50, 39, 64, 55), k=0.8,
+                   dark="#c99a28", light="#fff1b8"))
+    return wrap("".join(b), 241)
+
+
 def main():
     for name, fn in (("dinamite", dinamite), ("martelao", martelao), ("capacete", capacete), ("mola", mola),
                      ("gancho", gancho), ("ima", ima), ("tabua", tabua), ("furadeira", furadeira), ("cola", cola),
                      ("foguete", foguete), ("chave", chave), ("mola_portatil", mola_portatil),
                      ("teletransporte", teletransporte), ("laser", laser), ("vortice", vortice), ("soprador", soprador),
                      ("congelador", congelador), ("estilingue", estilingue), ("patins", patins),
-                     ("escudo", escudo), ("choque", choque), ("laco", laco), ("barreira", barreira)):
+                     ("escudo", escudo), ("choque", choque), ("laco", laco), ("barreira", barreira),
+                     ("relogio", relogio)):
         queue(fn(), f"{SRC}/item_{name}.svg", f"{OUT}/{name}.png", 64, 64, K)
     print("itens:", render_all())
 

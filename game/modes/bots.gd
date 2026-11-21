@@ -289,8 +289,15 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 ## Bots usando os itens de Batata, Rei e Fuga. Vazio = nada a fazer agora.
 func _mode_item(r, lv: Dictionary) -> Dictionary:
 	var demo = main.demo
-	if r.item not in ["estilingue", "choque", "laco", "barreira", "cola"] or main.rng.randf() > float(lv["use_items"]):
+	if r.item not in ["estilingue", "choque", "laco", "barreira", "cola", "relogio", "gancho"] or main.rng.randf() > float(lv["use_items"]):
 		return {}
+	if r.item == "relogio":
+		var demo0 = main.demo
+		if demo0.bomb_holder >= 0 and (demo0.bomb_holder != r.pid or demo0.bomb_fuse < 4.0):
+			return {"dir": 0, "item": true}
+		return {}
+	if r.item == "gancho":
+		return {"dir": 0, "item": true} if r.is_on_floor() else {}
 	if r.item == "cola" and demo.rule() != "fuga":
 		return {}
 	var pos: Vector2 = r.position
@@ -315,6 +322,85 @@ func _mode_item(r, lv: Dictionary) -> Dictionary:
 			return {"dir": 0, "item": true}
 	return {}
 
+## Caminho até o objetivo: distância (em pulos) de cada degrau até o degrau do objetivo, calculada de trás
+## para a frente e guardada enquanto o objetivo não muda de célula. Devolve o próximo degrau (ou -1).
+var _nav := {"lv": null, "goal": Vector2i(-99, -99), "dist": {}, "t": 0.0}
+
+func _standable(L, c: Vector2i) -> bool:
+	var ch: String = L.ch_at(c)
+	return (L.is_solid(c) or ch == "=") and ch != "I" and not L.is_solid(c + Vector2i.UP) and not L.is_solid(c + Vector2i(0, -2))
+
+func _reach(L, a: Vector2i, b: Vector2i) -> bool:
+	var dx := absi(b.x - a.x)
+	var up := a.y - b.y
+	var hmax := 6 if L.ch_at(a) == "J" else 3
+	if up > hmax or dx > (3 if up > 0 else 5):
+		return false
+	var sx := signi(b.x - a.x)
+	if up > 0:   # sobe na coluna de saída e depois atravessa na altura de chegada
+		for y in range(b.y - 2, a.y):
+			if L.is_solid(Vector2i(a.x, y)):
+				return false
+		for x in range(a.x, b.x + sx, sx if sx != 0 else 1):
+			if L.is_solid(Vector2i(x, b.y - 1)) or L.is_solid(Vector2i(x, b.y - 2)):
+				return false
+		return true
+	for x in range(a.x, b.x + sx, sx if sx != 0 else 1):   # atravessa na altura de saída e depois cai
+		if L.is_solid(Vector2i(x, a.y - 1)):
+			return false
+	for y in range(a.y - 1, b.y):
+		if L.is_solid(Vector2i(b.x, y)):
+			return false
+	return true
+
+func _goal_cell(L, goal: Vector2) -> Vector2i:
+	var gx := int(goal.x / 64.0)
+	var gy := int((goal.y + 2.0) / 64.0)
+	for k in 4:
+		if _standable(L, Vector2i(gx, gy + k)):
+			return Vector2i(gx, gy + k)
+	return Vector2i(-1, -1)
+
+func _nav_step(from: Vector2i, goal: Vector2) -> Vector2i:
+	var L = main.level
+	var g := _goal_cell(L, goal)
+	if g.x < 0 or not _standable(L, from):
+		return Vector2i(-1, -1)
+	var now := Time.get_ticks_msec() / 1000.0
+	if _nav["lv"] != L or (_nav["goal"] != g and now - float(_nav["t"]) > 0.5):
+		var ok := {}
+		for y in range(1, L.rows):
+			for x in range(1, L.cols - 1):
+				if _standable(L, Vector2i(x, y)):
+					ok[Vector2i(x, y)] = true
+		var dist := {g: 0}
+		var queue: Array = [g]
+		var qi := 0
+		while qi < queue.size():
+			var b: Vector2i = queue[qi]
+			qi += 1
+			for y in range(b.y - 8, b.y + 7):   # quem chega em b: até 6 abaixo (trampolim) ou caindo de até 8 acima
+				for x in range(b.x - 5, b.x + 6):
+					var a := Vector2i(x, y)
+					if ok.has(a) and not dist.has(a) and _reach(L, a, b):
+						dist[a] = int(dist[b]) + 1
+						queue.append(a)
+		_nav = {"lv": L, "goal": g, "dist": dist, "t": now}
+	var d: Dictionary = _nav["dist"]
+	if not d.has(from) or int(d[from]) == 0:
+		return Vector2i(-1, -1)
+	var best := Vector2i(-1, -1)
+	var bk := 1e9
+	for y in range(from.y - 6, from.y + 9):
+		for x in range(from.x - 5, from.x + 6):
+			var c := Vector2i(x, y)
+			if c != from and d.has(c) and _reach(L, from, c):
+				var k := float(d[c]) * 100.0 + absi(x - from.x)
+				if k < bk:
+					bk = k
+					best = c
+	return best
+
 ## Subir até um objetivo no alto: escolhe um degrau (chão com espaço em cima, 1–3 linhas acima e perto)
 ## que aproxime do objetivo; tábuas dão para atravessar por baixo, blocos sólidos ele pega pela lateral.
 func _climb(r, goal: Vector2, lv: Dictionary) -> Dictionary:
@@ -324,10 +410,22 @@ func _climb(r, goal: Vector2, lv: Dictionary) -> Dictionary:
 	var row := int((pos.y + 2.0) / 64.0)
 	var col := int(pos.x / 64.0)
 	var tx := goal.x
-	if goal.y < pos.y - 90.0:
-		var best := Vector2i(-1, -1)
+	var nav := _nav_step(Vector2i(col, row), goal)
+	if nav.x >= 0 and nav.y >= row:
+		# o caminho segue pelo mesmo andar ou desce: anda até lá (cai da beirada se preciso)
+		var ndx := nav.x * 64 + 32 - pos.x
+		cmd["dir"] = signi(int(ndx)) if absf(ndx) > 12.0 else 0
+		var rs := _safe(r, cmd, lv)
+		if cmd["dir"] != 0 and rs.get("dir", 0) == 0:
+			rs["dir"] = cmd["dir"]   # o próximo degrau do caminho é chão: segue (e cai, se for para baixo)
+			if nav.y == row and not _standable(L, Vector2i(col + int(cmd["dir"]), row)) and r.is_on_floor():
+				rs["jump"] = true    # vão no mesmo andar: pula
+				rs["jump_frames"] = 16
+		return rs
+	if goal.y < pos.y - 90.0 or nav.x >= 0:
+		var best := nav
 		var bs := 1e9
-		for dy in range(1, 4):
+		for dy in range(1, 4 if nav.x < 0 else 1):
 			var y := row - dy
 			for x in range(col - 5, col + 6):
 				var c := Vector2i(x, y)

@@ -380,9 +380,9 @@ const ITEM_NAMES := {"dinamite": "TNT!", "martelao": "MARTELÃO!", "mola": "BOTA
 	"ima": "ÍMÃ!", "furadeira": "FURADEIRA!", "cola": "COLA!", "foguete": "BOTA-FOGUETE!",
 	"teletransporte": "TELETRANSPORTE!", "laser": "RAIO LASER!", "vortice": "BOMBA DE VÓRTICE!", "soprador": "SOPRADOR!",
 	"congelador": "RAIO CONGELANTE!", "estilingue": "ESTILINGUE!", "patins": "PATINS!", "escudo": "ESCUDO DE BORRACHA!",
-	"choque": "ONDA DE CHOQUE!", "laco": "LAÇO!", "barreira": "BARREIRA!"}
+	"choque": "ONDA DE CHOQUE!", "laco": "LAÇO!", "barreira": "BARREIRA!", "relogio": "RELÓGIO!", "gancho": "GANCHO!"}
 const USABLE := ["dinamite", "furadeira", "cola", "teletransporte", "laser", "vortice", "soprador", "congelador",
-	"estilingue", "choque", "laco", "barreira"]
+	"estilingue", "choque", "laco", "barreira", "relogio", "gancho"]
 var slings: Array = []       # Batata: dinamite arremessada com o estilingue {pos, vel, t, owner}
 var shocks: Array = []       # Rei: onda de choque carregando {pid, t}
 var ropes: Array = []        # laço desenhado {a, b, t}
@@ -406,7 +406,7 @@ func give(r, kind: String) -> void:
 ## Botão de item: usa o item guardado.
 func use_item(r) -> void:
 	var kind: String = r.item
-	if kind in ["estilingue", "choque", "laco", "barreira"]:
+	if kind in ["estilingue", "choque", "laco", "barreira", "relogio", "gancho"]:
 		if _use_mode_item(r, kind):
 			r.item = ""
 		else:
@@ -959,6 +959,43 @@ func _use_mode_item(r, kind: String) -> bool:
 				main.dust(Vector2(bx * 64 + 32, by * 64), 1.0)
 				Audio.play("caixote_pancada", 0.8)
 			return made
+		"relogio":   # com a bomba: mais pavio; sem ela: encurta o pavio de quem está
+			if bomb_holder < 0:
+				return false
+			var rc := item_cfg("relogio")
+			if r.pid == bomb_holder:
+				bomb_fuse += float(rc["ganho_s"])
+				main.float_text(r.position + Vector2(0, -150), "+%d s" % int(rc["ganho_s"]), main.player_color(r.pid))
+			else:
+				bomb_fuse = maxf(float(rc["minimo_s"]), bomb_fuse - float(rc["perda_s"]))
+				main.float_text(main.robots[bomb_holder].position + Vector2(0, -150), "-%d s!" % int(rc["perda_s"]), main.player_color(r.pid))
+			Audio.play("contagem", 1.4)
+			return true
+		"gancho":   # puxa você até a beirada mais alta à frente
+			var lv = main.level
+			var col := int(r.position.x / 64.0)
+			var row := int((r.position.y + 2.0) / 64.0)
+			var reach := int(item_cfg("gancho")["alcance_tiles"])
+			var tgt := Vector2i(-1, -1)
+			for dy in range(reach, 1, -1):
+				for dx in range(0, 5):
+					var cc := Vector2i(col + dx * r.facing, row - dy)
+					if (lv.is_solid(cc) or lv.ch_at(cc) == "=") and lv.ch_at(cc) != "I" and not lv.is_solid(cc + Vector2i.UP) and not lv.is_solid(cc + Vector2i(0, -2)):
+						tgt = cc
+						break
+				if tgt.x >= 0:
+					break
+			if tgt.x < 0:
+				return false
+			var g: float = r.f("gravity")
+			var h: float = r.position.y - tgt.y * 64.0 + 40.0
+			var vy := sqrt(2.0 * g * h)
+			r.velocity = Vector2((tgt.x * 64.0 + 32.0 - r.position.x) / (vy / g), -vy)
+			r.own_vx = r.velocity.x
+			r.var_jump = 0.0
+			ropes.append({"a": c, "b": Vector2(tgt.x * 64.0 + 32.0, tgt.y * 64.0), "t": 0.0})
+			Audio.play("gancho")
+			return true
 	return false
 
 ## Estilingue de TNT voando, onda de choque carregando, laço desenhado.
