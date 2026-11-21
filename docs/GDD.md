@@ -1,56 +1,104 @@
-# Bota-Abaixo — GDD
+# Bota-Abaixo — documento do jogo (GDD)
 
-## Fantasia
-Pequenos robôs de demolição disputam quem chega primeiro ao elevador de uma obra caótica. Antes de cada corrida, cada um instala uma peça com a sua cor: ela **ajuda o dono e atrapalha os rivais**. A obra cresce a cada rodada até alguém vencer.
+Atualizado em 2026-11-21. Estado técnico e como rodar: `docs/ESTADO.md`. Problemas de fase em aberto: `docs/dossie_fases.md`.
 
-## Jogadores
-2–4 locais; cada um com controle (até 2 podem dividir o teclado). Na entrada, cada jogador escolhe **cor** e **acessório** (chapéu/óculos/etc.).
+## 1. Visão
+Party game de plataforma, **multiplayer local de 2 a 4 jogadores** (com bots para completar a mesa).
+Robôs de demolição se enfrentam com marretas em obras, fábricas, portos e minas.
+- **Gênero:** brawler/party de plataforma 2D (referências de estilo: BattleBlock Theater, Heave Ho, Ultimate Chicken Horse).
+- **Plataforma:** PC (Windows/Linux), Godot 4. Controle (Xbox/PlayStation) ou teclado dividido.
+- **Sessão:** partidas curtas, rodadas de 30 s a 2 min; quem vencer 5 rodadas leva a partida (padrão).
+- **Fora do escopo:** online, campanha e editor de mapas.
 
-## Verbos
-Correr · pular (altura variável) · deslizar e pular na parede · **marretar** (1 vez por rodada; destrói uma peça rival encostada) · na construção: escolher, mover, girar e colocar a peça.
+**Pilares**
+1. Jogável na hora: apertou PULAR, entrou.
+2. Controle responsivo antes de animação bonita.
+3. Caos legível: em 1 s cada um entende o que é perigoso para ele.
+4. Visual cartoon de papel e giz, com contorno grosso e cores fortes por cenário.
 
-## Rodada
-1. **Escolha (10 s):** esteira com `jogadores + 2` peças; o último no placar escolhe primeiro.
-2. **Construção (20 s, simultânea):** cada jogador coloca a sua peça na grade; proibido perto dos spawns e do elevador.
-3. **Corrida (60 s):** todos correm até o elevador; tocar perigo rival = eliminado da rodada (de forma engraçada).
-4. **Placar (5 s):** soma de pontos. Vence quem chegar a 60.
+## 2. Controles
+| Ação | Controle | Teclado J1 | Teclado J2 |
+|---|---|---|---|
+| Andar | analógico / direcional | A · D | ← · → |
+| Pular (segurar = mais alto) | A | Espaço | Ctrl direito · L · 0 do teclado numérico |
+| Marreta | X · RB · RT | F · E | . · / · K · Enter numérico |
+| Usar item | Y · B · LB · LT | G · Q | , · J · 1 do teclado numérico |
+| Descer de tábua fina; com marreta, quebrar o chão embaixo | ▼ | S | ↓ |
+| Pausa / voltar | START | Enter · Backspace/Esc | Enter · Delete |
 
-## Peças com dono (`data/pieces.json`)
-| ID | Peça | Dono | Rivais | Marco |
-|---|---|---|---|---|
-| P01 | Viga | atravessa por baixo | bloco sólido | 1 |
-| P02 | Mola | lança 5 tiles | lança 3 tiles | 1 |
-| P03 | Serra circular | inofensiva | elimina | 1 |
-| P04 | Esteira | sempre a favor | empurra na direção marcada | 1 |
-| P05 | Compensado frágil | firme | quebra após 0,5 s | 2 |
-| P06 | Bate-estaca | empurra | esmaga | 2 |
-| P07 | Gancho de guindaste | balança | escorrega | 2 |
-| P08 | Andaime | sobe rápido | sobe devagar | 2 |
-| P09 | Cone | atravessável | bloqueia | 2 |
-| P10 | Bola de demolição | atravessa o dono | elimina | 2 |
-| P11 | Ventilador | vento a favor | vento contra | 2 |
-| P12 | Dinamite (sem dono) | explode peças num raio de 1 tile | — | 2 |
+Movimento: corrida, pulo variável, tempo de "coiote", buffer de pulo, deslizar e pular na parede (com medidor de aderência), pisão na cabeça.
 
-## Pontuação (`data/scoring.json`, hipótese)
-Chegou +10 · primeiro +5 · rival eliminado por peça sua +3 (máx. +6) · marretada +1. Se **todos** chegam, ninguém leva os +10. Se ninguém chega por 2 rodadas, a peça que mais eliminou é demolida.
+## 3. Regras comuns
+- **Marreta:** empurra o rival e quebra caixotes. **Amassômetro (%):** cada golpe soma dano; quanto maior o %, mais longe o golpe joga (estilo Smash).
+- **Caixotes:** quebráveis (2 golpes; 1 na Batata). Blocos fixos nunca quebram.
+- **Itens:** caem de paraquedas em cima de qualquer chão; encostou, pegou. Uns ligam na hora (botas, patins, escudo), outros se usam com o botão ITEM.
+- **Eventos:** a cada tanto tempo um evento muda a fase (frequência nos Ajustes: desligado, baixa, média, alta).
+- **Câmera:** arena inteira na tela (Derruba, Batata, Rei); na Fuga a câmera rola.
+- **Rodízio:** a 1ª rodada é na fase escolhida, as seguintes passam para a próxima fase do modo (ou "Sorteio").
+- **Bots:** 3 níveis; jogam todos os modos (na Fuga ainda não chegam ao elevador).
 
-## Mapas (cada um com o visual de uma referência)
-| Mapa | Jogo | Visual |
-|---|---|---|
-| **Canteiro** | horizontal, ensina o loop | BattleBlock Theater: céu turquesa, blocos gordinhos laranja e magenta, plateia de operários em silhueta |
-| **Andaimes** | vertical, pulo de parede | Heave Ho: céu pastel, nuvens fofas, montanhas nevadas, pilares pintados, espinhos cinza |
-| **Cais Noturno** | duas rotas que se cruzam | referência 2: noite com aurora, blocos de vidro/gelo com aro branco, água refletindo, explosões cartoon |
+## 4. Modos
+| Modo | Objetivo | Como se perde | Ajustes |
+|---|---|---|---|
+| **Derruba** | Ser o último de pé | Cair em espinho/poço gasta 1 vida | Vidas 1–5 |
+| **Batata-Dinamite** | Não estar com a dinamite quando o pavio acaba | Encostar ou marretar passa a bomba; explodiu, sai da rodada | Pavio curto (10–14 s), normal (14–20 s), longo (20–28 s) |
+| **Rei da Obra** | Segurar o capacete de ouro até somar o tempo | Qualquer golpe derruba o capacete; o rei anda mais devagar | Meta 20 / 30 / 45 s |
+| **Fuga** | Chegar primeiro ao elevador | A tela (ou a lama) que alcança você tira da rodada; cair só atrasa | — |
 
-## Fora de escopo
-Online, campanha solo, bots jogáveis, desbloqueios, editor de mapas, mais de 4 jogadores.
+Batata e Rei têm **mapa vivo**: itens a cada 3–5 s (até 3 na fase), eventos quase 2× mais frequentes e alavancas que se acionam sozinhas a cada ~12 s (com aviso "!").
 
-## Hipóteses para testar jogando
-Peças com dono deixam a construção mais estratégica (teste com e sem dono) · a marreta ajuda quem está atrás · partida de 8–12 min com meta de 60 pontos.
+## 5. Itens
+**Derruba (12):** dinamite, martelão, botas de mola, bota-foguete, furadeira, cola, ímã, teletransporte, raio laser, bomba de vórtice, soprador, raio congelante.
 
-## Mudança de rumo (2026-11-20): Modo Festa
-Playtest do usuário: colocar armadilhas e correr ficou confuso e curto. Novo núcleo: **Modo Festa**, rodadas curtas
-com desafios diferentes na mesma obra, mesmos robôs e marreta; pontos (⭐) acumulam até a meta.
-1. **Demolição** (protótipo jogável): caixotes sobre espinhos; marreta quebra caixote (2 golpes) e empurra robô;
-   pular na cabeça atordoa; caixote racha se alguém fica parado; terremoto aos 25 s; último em pé ganha ⭐; 5 ⭐ vence.
-2. Rei da Obra · 3. Corrida Sabotada · 4. Torre Maluca — depois que a Demolição for aprovada jogando.
-O modo antigo (peças com dono) continua acessível com F7 na entrada, para comparar. Números em `data/modos.json`.
+**Batata-Dinamite (8)**
+| Item | Efeito |
+|---|---|
+| Estilingue de TNT | Arremessa a bomba para a frente; se errar, ela continua com você |
+| Patins | +40% de velocidade por 7 s |
+| Escudo de borracha | Por 6 s ninguém passa a bomba para você |
+| Teletransporte | Troca de lugar com alguém |
+| Relógio | Com a bomba: +4 s no pavio. Sem ela: −3 s no pavio de quem está |
+| Ímã · Soprador · Raio congelante | Puxa rivais · empurra para longe · congela |
+
+**Rei da Obra (9)**
+| Item | Efeito |
+|---|---|
+| Onda de choque | Intocável por 1,6 s, depois joga longe quem está perto (300 px) |
+| Laço | Laça o primeiro rival à frente (7 tiles) e puxa até colar em você; se for o rei, o capacete voa |
+| Patins · Cola · Raio congelante | Velocidade · poça que deixa lento · congela |
+| Soprador · Botas de mola · Bota-foguete · Vórtice | Afasta quem chega · pula mais · voa · puxa todos |
+
+**Fuga (9)**
+| Item | Efeito |
+|---|---|
+| Barreira | Muro de 2 caixotes atrás de você |
+| Gancho | Puxa você até a beirada mais alta à frente (até 7 tiles) |
+| Patins · Bota-foguete · Botas de mola | Correr, voar, pular mais |
+| Cola · Teletransporte · Raio congelante · Soprador | Atrasar quem vem atrás ou alcançar o líder |
+
+## 6. Fases (6 por modo, 12 cenários)
+| Modo | Fases (cenário · interação principal) |
+|---|---|
+| Derruba (30×16) | Canteiro (canteiro · ilhas de caixote, terremoto) · Guindastes (porto · plataformas móveis) · Gangorras (serraria · gangorras sobre estacas) · Fábrica de Esteiras (fábrica · esteiras que invertem) · Prensa (ferro-velho · prensas e alçapão) · Fornalha (fundição · chamas e barris) |
+| Batata (44×24, sem espinho) | Obra de Concreto (portas que trocam) · Galerias da Mina (túneis e tubos) · Prédio Velho (volta pelos andares, alçapão) · Sob o Viaduto (plataformas e ventilador) · Palafitas (pontes e trampolins) · Telhados (trampolins nos becos) |
+| Rei (44×24, trono `K`) | Trono do Canteiro (torre com portas) · Linha de Montagem (esteiras, ventilador, prensas) · Rei do Cais (guindastes) · Mina de Ouro (elevador e tubos) · Serraria Real (pirâmide de toras) · Prédio em Demolição (bola de demolição) |
+| Fuga | Torre em Ruínas (sobe) · Obra Subindo (sobe) · Descida da Fundição (desce) · Viaduto em Obras (avança) · Ferro-Velho (avança) · Pântano Subindo (lama sobe) |
+
+**Elementos de fase:** caixote, TNT, tábua fina (sobe por baixo, desce com ▼), espinho, água, rede, esteira, ventilador, chama, prensa, barril, alavanca + alçapão, porta (aberta/fechada; a alavanca inverte), trampolim (6 tiles), tubos de teletransporte (pares), plataformas móveis, gangorra, bola de demolição, elevador de chegada.
+Mapas em texto (`levels/*.lvl`, formato em `levels/README.md`); geradores em `tools/mapas/`.
+
+**Regras de level design** (detalhes em `docs/dossie_fases.md`): uma ideia principal por fase; centro disputado com voltas; degraus de 3 tiles, vãos até 4; alavanca perto do que controla; nada flutuando sem motivo; spawns justos.
+
+## 7. Eventos
+Chuva de Caixas · Gravidade Baixa · Ventania · Apagão · Chão Ensaboado · Hora do Martelão · Chuva de Dinamite · Tremores · Vigas Desgovernadas. Cada um avisa 2 s antes.
+
+## 8. Personagens e personalização
+Robôs de ~80 px com expressões, chapéus e ferramentas. **Garagem:** 8 robôs salvos — modelo, cor livre, cor secundária, padrão, chapéu, item de rosto, ferramenta (aparência da marreta) e comemoração. Cada jogador escolhe o seu na entrada.
+
+## 9. Interface e áudio
+Estilo cartoon (cartões com contorno grosso). HUD discreto no topo: retrato, nome, estrelas de rodadas, vidas/% e pílula do modo (segundos de rei, pavio). Menus: Modo → Arena → Ajustes → Entrada; Opções, Controles, Garagem, Oficina (fase de testes).
+Música "funk de obra" e efeitos "retrô limpo", gerados por código (`tools/musica.py`, `tools/sfxforge.py`); sem IA geradora de imagem ou áudio.
+
+## 10. Números de referência
+Resolução lógica 1920×1080 · grade de 64 px · hitbox do robô 48×72 · física a 60 ticks · pulo ~3,9 tiles · trampolim ~6 tiles.
+Valores ajustáveis em `data/controller.json` (controle) e `data/modos.json` (modos, itens, arenas, eventos).
