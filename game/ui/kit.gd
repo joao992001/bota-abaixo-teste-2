@@ -69,9 +69,40 @@ static func text(ci: CanvasItem, pos: Vector2, s: String, size: int, col: Color,
 
 ## Texto "adesivo": cor com contorno grosso escuro e sombra.
 static func sticker(ci: CanvasItem, pos: Vector2, s: String, size: int, col: Color, align := HORIZONTAL_ALIGNMENT_CENTER, w := -1.0) -> void:
+	if col.get_luminance() < 0.35:
+		col = Color(1, 1, 1, col.a)   # letra escura com contorno escuro some: vira clara
 	var o := maxi(int(size * 0.2), 4)
 	text(ci, pos + Vector2(0, size * 0.08), s, size, Color(INK, col.a), align, w, o, Color(INK, col.a))
 	text(ci, pos, s, size, col, align, w, o, Color(INK, col.a))
+
+## Texto que cabe em uma largura: quebra em até max_lines linhas e diminui a fonte se ainda não couber.
+## pos = canto de cima à esquerda da área; centraliza cada linha em w.
+static func text_box(ci: CanvasItem, pos: Vector2, w: float, s: String, size: int, col: Color, max_lines := 2, outline := 0) -> void:
+	var f := font()
+	var sz := size
+	var lines: Array = []
+	while sz >= 12:
+		lines = _wrap(f, s, sz, w)
+		if lines.size() <= max_lines:
+			break
+		sz -= 2
+	var lh := sz * 1.15
+	for k in lines.size():
+		text(ci, Vector2(pos.x, pos.y + sz + k * lh), lines[k], sz, col, HORIZONTAL_ALIGNMENT_CENTER, w, outline)
+
+static func _wrap(f: Font, s: String, sz: int, w: float) -> Array:
+	var out: Array = []
+	var cur := ""
+	for word in s.split(" "):
+		var cand := word if cur == "" else cur + " " + word
+		if f.get_string_size(cand, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x <= w or cur == "":
+			cur = cand
+		else:
+			out.append(cur)
+			cur = word
+	if cur != "":
+		out.append(cur)
+	return out
 
 ## Estrela desenhada (cheia: amarela com contorno; vazia: sombra translúcida).
 static func star(ci: CanvasItem, c: Vector2, size: float, filled: bool) -> void:

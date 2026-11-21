@@ -970,6 +970,17 @@ func submodos_test() -> void:
 	main.kill(r0, -1, null)
 	await frames(2)
 	check(r0.alive and main.demo.lives[0] == lv0 - 1, "Derruba: caiu, perdeu 1 vida (%d) e voltou" % main.demo.lives[0])
+	# sem nenhum caixote no mapa: o guindaste traz um caixote e o robô volta em cima dele (não no espinho)
+	for c in main.level.blocks.keys():
+		main.level.break_block(c)
+	await frames(2)
+	r0.invuln = 0.0
+	main.demo.lives[0] = 3
+	main.kill(r0, -1, null)
+	await frames(90)
+	var under := Vector2i(int(r0.position.x / 64.0), int((r0.position.y + 2.0) / 64.0))
+	check(r0.alive and r0.is_on_floor() and main.level.is_solid(under) and r0.position.y < (main.level.rows - 2) * 64.0,
+		"Derruba: sem chão, volta em cima de um caixote novo (%s)" % str(under))
 	main.demo.lives[0] = 1
 	r0.invuln = 0.0
 	main.kill(r0, -1, null)
@@ -1034,6 +1045,12 @@ func submodos_test() -> void:
 	r0.take_hit(1, "marretada", 1)
 	await frames(3)
 	check(main.demo.king == -1 and r0.speed_k == 1.0, "Rei: golpe derruba o capacete")
+	main.demo.crown_pos = Vector2(64 * 3 + 32, main.level.rows * 64.0 + 20.0)
+	main.demo.crown_vel = Vector2.ZERO
+	main.demo.crown_cd = {0: 99.0, 1: 99.0}
+	await frames(3)
+	check(main.demo.crown_pos.distance_to(main.demo.crown_home) < 2.0, "Rei: capacete no fundo/espinho volta para o trono")
+	main.demo.crown_cd.clear()
 	main.demo.crown_cd.clear()
 	main.demo.king = 1
 	main.demo.king_hit[1] = r1.last_hit

@@ -7,9 +7,9 @@ const RobotVis := preload("res://player/robot_visual.gd")
 const Retrato := preload("res://ui/retrato.gd")
 const DIM := Color(0.16, 0.1, 0.18, 0.45)
 const DARK := Color("#2a1a2e")
-const CARD_W := 430.0
-const CARD_GAP := 26.0
-const CARD_Y := 938.0
+const CARD_W := 290.0
+const CARD_H := 62.0
+const CARD_Y := 6.0
 
 var main: Node
 var t := 0.0
@@ -46,6 +46,17 @@ func _look(p: Dictionary) -> Dictionary:
 
 ## Nome do jogador: o nome do robô da Garagem, ou "P1".."P4" para os robôs de fábrica.
 func pname(i: int) -> String:
+	var base := _raw_name(i)
+	if base == "P%d" % (i + 1):
+		return base
+	# dois jogadores com o mesmo robô da Garagem: o segundo vira "Parafuso 2"
+	var same := 1
+	for k in i:
+		if _raw_name(k) == base:
+			same += 1
+	return base if same == 1 else "%s %d" % [base, same]
+
+func _raw_name(i: int) -> String:
 	var sk: Dictionary = main.players[i].get("skin", {})
 	return String(sk.get("nome", "")) if not sk.is_empty() and String(sk.get("nome", "")) != "" else "P%d" % (i + 1)
 
@@ -116,26 +127,37 @@ func _draw_all() -> void:
 func _draw_tags() -> void:
 	var S = main.S
 	var n: int = main.players.size()
-	var x0 := (1920.0 - (n * CARD_W + (n - 1) * CARD_GAP)) / 2.0
+	var xs: Array = card_slots(n)
 	for i in n:
-		_card(i, Rect2(x0 + i * (CARD_W + CARD_GAP), CARD_Y, CARD_W, 130))
-	# título da rodada (topo, na faixa do placar)
-	var label := "RODADA %d" % main.round_no
-	Kit.title(self, Vector2(0, 52), label, 46)
+		_card(i, Rect2(xs[i], CARD_Y, CARD_W, CARD_H))
+	# título da rodada (topo, no meio, entre os cartões)
+	Kit.title(self, Vector2(0, 42), "RODADA %d" % main.round_no, 34)
 	if main.mode == "demolicao" and main.state == S.RUN:
 		_draw_event_note()
-	# avisos de derrubada (canto de cima, à direita)
+	# avisos de derrubada (embaixo dos cartões da direita)
 	if main.mode == "demolicao":
-		var fy := 10.0
+		var fy := CARD_Y + CARD_H + 44.0
 		for f in main.demo.feed:
 			var a: float = clampf((4.5 - f["t"]) / 0.5, 0.0, 1.0)
-			var fr := Rect2(1530, fy, 370, 46)
-			Kit.chunk(self, fr, Color(Kit.CREAM, a), 23, 5, 5.0)
+			var fr := Rect2(1920.0 - 14.0 - 330.0, fy, 330, 36)
+			Kit.chunk(self, fr, Color(Kit.CREAM, a * 0.92), 18, 4, 3.0)
 			var p2: Dictionary = main.players[f["col"]] if f["col"] < main.players.size() else {"color": 0}
-			fit_text(Vector2(fr.position.x + 16, fy + 32), f["text"], 24, Color(Data.TEXT_COLORS[p2["color"]], a), fr.size.x - 32, 0, HORIZONTAL_ALIGNMENT_CENTER)
-			fy += 56.0
+			fit_text(Vector2(fr.position.x + 12, fy + 25), f["text"], 20, Color(Data.TEXT_COLORS[p2["color"]], a), fr.size.x - 24, 0, HORIZONTAL_ALIGNMENT_CENTER)
+			fy += 42.0
 
-## Cartão de um jogador: retrato, P# e nome, estrelas, % de dano grande, item no selo e efeitos ativos.
+## Posição x de cada cartão: os primeiros à esquerda, os outros à direita (o meio fica para o título).
+func card_slots(n: int) -> Array:
+	var l0 := 14.0
+	var l1 := l0 + CARD_W + 10.0
+	var r1 := 1920.0 - 14.0 - CARD_W
+	var r0 := r1 - CARD_W - 10.0
+	match n:
+		1: return [l0]
+		2: return [l0, r1]
+		3: return [l0, l1, r1]
+	return [l0, l1, r0, r1]
+
+## Cartão compacto de um jogador (topo): retrato, nome, estrelas, vidas, % de dano e item.
 ## Fica translúcido quando um robô passa por trás dele.
 func _card(i: int, r: Rect2) -> void:
 	var S = main.S
@@ -145,56 +167,61 @@ func _card(i: int, r: Rect2) -> void:
 	var out: bool = main.state == S.RUN and robot != null and not robot.alive
 	var a := 1.0
 	for rb in main.robots:
-		if rb.alive and r.grow(30).has_point(main.to_screen(rb.position)):
+		if rb.alive and r.grow(26).has_point(main.to_screen(rb.position)):
 			a = 0.35
-	var body := Rect2(r.position + Vector2(0, 18), Vector2(r.size.x, 112))
-	Kit.chunk(self, body, Color(Color("#b8aeb4") if out else col, a))
-	_head(i, r.position + Vector2(71, 59), 58, Kit.INK, Kit.CREAM, "eliminado" if out else "normal", a)
+	Kit.chunk(self, r, Color(Color("#b8aeb4") if out else col, a * 0.95), 18, 4, 4.0)
+	_head(i, r.position + Vector2(31, r.size.y / 2.0), 24, Kit.INK, Kit.CREAM, "eliminado" if out else "normal", a)
 	var tc := Color(1, 1, 1, a)
 	var oc := Color(Kit.INK, a)
-	fit_text(Vector2(r.position.x + 142, r.position.y + 58), ("P%d  %s" % [i + 1, pname(i)]) if pname(i) != "P%d" % (i + 1) else "P%d" % (i + 1), 26, tc, 255, 7)
+	var nm := ("P%d  %s" % [i + 1, pname(i)]) if pname(i) != "P%d" % (i + 1) else "P%d" % (i + 1)
+	fit_text(Vector2(r.position.x + 62, r.position.y + 25), nm, 19, tc, 130, 5)
+	var x2 := r.position.x + 68.0
 	if main.mode == "demolicao":
 		var goal := int(main.demo.cfg["rounds_to_win"])
-		var sz := minf(28.0, 150.0 / goal)
 		if goal > 10:   # metas enormes (testes): número em vez de estrelas
-			Kit.star(self, Vector2(r.position.x + 160, r.position.y + 96), 26, true)
-			Kit.text(self, Vector2(r.position.x + 178, r.position.y + 106), "%d" % int(p["score"]), 26, tc, HORIZONTAL_ALIGNMENT_LEFT, -1, 7)
+			Kit.star(self, Vector2(x2, r.position.y + 46), 15, true)
+			Kit.text(self, Vector2(x2 + 10, r.position.y + 52), "%d" % int(p["score"]), 16, tc, HORIZONTAL_ALIGNMENT_LEFT, -1, 4)
 			goal = 0
+			x2 += 40.0
 		for k in goal:
-			var sc := Vector2(r.position.x + 156 + k * sz, r.position.y + 96)
+			var sc := Vector2(x2 + k * 15.0, r.position.y + 46)
 			if k < int(p["score"]):
-				Kit.star(self, sc, sz * 1.05, true)
+				Kit.star(self, sc, 15.0, true)
 			else:
-				draw_colored_polygon(_star_pts(sc, sz * 1.05), Color(Kit.INK, 0.3 * a))
+				draw_colored_polygon(_star_pts(sc, 15.0), Color(Kit.INK, 0.3 * a))
+		x2 += goal * 15.0 + 6.0
+		var d = main.demo
+		if d.rule() == "derruba" and d.lives_setting > 1:
+			var nl: int = int(d.lives.get(i, 0))
+			for k in d.lives_setting:
+				_heart(Vector2(x2 + 4 + k * 15.0, r.position.y + 47), 6.5, k < nl)
 		if robot != null and robot.alive and not out:
 			var dc: Color = main.dmg_color(robot.dmg)
-			Kit.text(self, Vector2(r.position.x, r.position.y + 104), "%d%%" % int(robot.dmg), 62, Color(dc, a), HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 20, 13, oc)
+			Kit.text(self, Vector2(r.position.x, r.position.y + 45), "%d%%" % int(robot.dmg), 32, Color(dc, a), HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 12, 8, oc)
 		if robot != null and main.state == S.RUN and robot.alive:
 			var fx: Dictionary = robot.fx_flags()
 			var held: String = String(fx["item"])
 			if held != "":
-				var hc := r.position + Vector2(118, 104)
+				var hc := r.position + Vector2(50, r.size.y - 10)
 				_over_cmds.append(func(ci: CanvasItem):
-					ci.draw_circle(hc, 25, Color(Kit.INK, a))
-					ci.draw_circle(hc, 21, Color(1, 1, 1, a))
-					ci.draw_texture_rect(Data.tex("itens/" + held), Rect2(hc - Vector2(17, 17), Vector2(34, 34)), false, Color(1, 1, 1, a)))
-			var ix: float = r.position.x + 160.0
+					ci.draw_circle(hc, 13, Color(Kit.INK, a))
+					ci.draw_circle(hc, 11, Color(1, 1, 1, a))
+					ci.draw_texture_rect(Data.tex("itens/" + held), Rect2(hc - Vector2(9, 9), Vector2(18, 18)), false, Color(1, 1, 1, a)))
+			var ix: float = r.position.x + 14.0
 			for k in ["martelao", "capacete", "mola", "ima", "foguete"]:
 				if fx[k]:
-					var ic := Vector2(ix, r.position.y + 14)
-					draw_circle(ic, 19, Color(Kit.INK, a))
-					draw_circle(ic, 16, Color(Kit.CREAM, a))
-					draw_texture_rect(Data.tex("itens/" + k), Rect2(ic - Vector2(14, 14), Vector2(28, 28)), false, Color(1, 1, 1, a))
-					ix += 40.0
+					var ic := Vector2(ix, r.end.y + 16)
+					draw_circle(ic, 12, Color(Kit.INK, a))
+					draw_circle(ic, 10, Color(Kit.CREAM, a))
+					draw_texture_rect(Data.tex("itens/" + k), Rect2(ic - Vector2(9, 9), Vector2(18, 18)), false, Color(1, 1, 1, a))
+					ix += 28.0
 		if main.state in [S.RUN, S.SCORE]:
 			_draw_sub_badge(i, r)
-	else:
-		Kit.text(self, Vector2(r.position.x, r.position.y + 104), "%d pts" % int(p["score"]), 50, tc, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 20, 11, oc)
 	if out:
-		var cc := body.get_center()
+		var cc := r.get_center()
 		_over_cmds.append(func(ci: CanvasItem):
-			ci.draw_set_transform(cc + Vector2(40, 0), -0.14)
-			Kit.sticker(ci, Vector2(-200, 24), "FORA!", 64, Color("#ff5a5a"), HORIZONTAL_ALIGNMENT_CENTER, 400)
+			ci.draw_set_transform(cc + Vector2(30, 0), -0.1)
+			Kit.sticker(ci, Vector2(-100, 12), "FORA", 32, Color("#ff5a5a"), HORIZONTAL_ALIGNMENT_CENTER, 200)
 			ci.draw_set_transform(Vector2.ZERO))
 
 func _star_pts(c: Vector2, size: float) -> PackedVector2Array:
@@ -203,34 +230,24 @@ func _star_pts(c: Vector2, size: float) -> PackedVector2Array:
 		pts.append(c + Vector2.from_angle(-PI / 2.0 + k * PI / 5.0) * size * (0.5 if k % 2 == 0 else 0.22))
 	return pts
 
-## Selo em cima do cartão (à direita): vidas (corações) ou pontos da rodada, conforme o submodo.
+## Selo pequeno embaixo do cartão: segundos do rei, pavio da dinamite.
 func _draw_sub_badge(i: int, r: Rect2) -> void:
 	var d = main.demo
 	match d.rule():
-		"derruba":
-			var n: int = int(d.lives.get(i, 0))
-			var tot: int = d.lives_setting
-			if tot <= 1:
-				return
-			var w := 24.0 + tot * 34.0
-			var b := Rect2(r.end.x - w - 14, r.position.y - 30, w, 44)
-			Kit.chunk(self, b, Kit.CREAM, 22, 5, 0.0)
-			for k in tot:
-				_heart(Vector2(b.position.x + 29 + k * 34, b.get_center().y + 1), 13.0, k < n)
 		"rei":
 			var secs: float = float(d.king_time.get(i, 0.0))
-			var b3 := Rect2(r.end.x - 184, r.position.y - 30, 170, 44)
-			Kit.chunk(self, b3, Color("#ffe48a") if d.king == i else Kit.CREAM, 22, 5, 0.0)
-			draw_texture_rect(Data.tex("itens/capacete"), Rect2(b3.position.x + 10, b3.position.y + 3, 38, 38), false, Color(1.0, 0.82, 0.25))
-			Kit.text(self, Vector2(b3.position.x + 52, b3.position.y + 33), "%d/%d s" % [int(secs), int(d.king_goal())], 26, DARK)
+			var b3 := Rect2(r.end.x - 130, r.end.y + 4, 120, 30)
+			Kit.chunk(self, b3, Color("#ffe48a") if d.king == i else Kit.CREAM, 15, 3, 0.0)
+			draw_texture_rect(Data.tex("itens/capacete"), Rect2(b3.position.x + 6, b3.position.y + 2, 26, 26), false, Color(1.0, 0.82, 0.25))
+			Kit.text(self, Vector2(b3.position.x + 36, b3.position.y + 22), "%d/%d s" % [int(secs), int(d.king_goal())], 18, DARK)
 		"batata":
 			if d.bomb_holder == i:
-				var b2 := Rect2(r.end.x - 184, r.position.y - 30, 170, 44)
-				Kit.chunk(self, b2, Color("#ffd0c8"), 22, 5, 0.0)
-				draw_texture_rect(Data.tex("itens/dinamite"), Rect2(b2.position.x + 14, b2.position.y + 5, 34, 34), false)
-				Kit.text(self, Vector2(b2.position.x + 56, b2.position.y + 32), "%ds" % ceili(d.bomb_fuse), 28, Color("#d42035"))
+				var b2 := Rect2(r.end.x - 110, r.end.y + 4, 100, 30)
+				Kit.chunk(self, b2, Color("#ffd0c8"), 15, 3, 0.0)
+				draw_texture_rect(Data.tex("itens/dinamite"), Rect2(b2.position.x + 8, b2.position.y + 3, 24, 24), false)
+				Kit.text(self, Vector2(b2.position.x + 38, b2.position.y + 22), "%ds" % ceili(d.bomb_fuse), 20, Color("#d42035"))
 
-func _heart(c: Vector2, s: float, full: bool) -> void:
+func _heart(c: Vector2, s: float, full: bool) -> void:   # s = meia largura
 	var pts := PackedVector2Array()
 	for k in 33:
 		var a := k * TAU / 32.0
@@ -241,21 +258,21 @@ func _heart(c: Vector2, s: float, full: bool) -> void:
 		draw_colored_polygon(pts, Color("#e5484d"))
 	else:
 		draw_colored_polygon(pts, Color(0.75, 0.72, 0.68, 0.6))
-	draw_polyline(pts, Kit.INK, 3.0, true)
+	draw_polyline(pts, Kit.INK, maxf(1.5, s * 0.22), true)
 
 ## Evento ativo (nome + barra de tempo), no canto de cima à esquerda.
 func _draw_event_note() -> void:
 	var ev = main.events
 	if ev.phase == "":
 		return
-	var r := Rect2(20, 10, 420, 62)
+	var r := Rect2(960 - 180, 58, 360, 44)
 	var warn: bool = ev.phase == "aviso"
-	Kit.chunk(self, r, Color("#ffd0c8") if warn else Kit.CREAM, 22, 5, 6.0)
+	Kit.chunk(self, r, Color("#ffd0c8") if warn else Kit.CREAM, 18, 4, 3.0)
 	var nm := String(ev.current.get("nome", "")).to_upper()
-	fit_text(Vector2(r.position.x + 16, r.position.y + (40 if warn else 36)), ("EM BREVE: " if warn else "") + nm, 28, Color("#d42035") if warn else DARK, r.size.x - 32, 0, HORIZONTAL_ALIGNMENT_CENTER)
+	fit_text(Vector2(r.position.x + 12, r.position.y + (30 if warn else 26)), ("EM BREVE: " if warn else "") + nm, 22, Color("#d42035") if warn else DARK, r.size.x - 24, 0, HORIZONTAL_ALIGNMENT_CENTER)
 	if not warn:
 		var k: float = clampf(ev.phase_t / float(ev.current.get("dur", 1)), 0.0, 1.0)
-		draw_rect(Rect2(r.position.x + 24, r.position.y + 44, (r.size.x - 48) * k, 8), Color("#f2c84b"))
+		draw_rect(Rect2(r.position.x + 20, r.position.y + 33, (r.size.x - 40) * k, 6), Color("#f2c84b"))
 
 ## Avisos de controle conectado/desconectado (canto de baixo, à esquerda).
 func _draw_toasts() -> void:

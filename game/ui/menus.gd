@@ -383,7 +383,7 @@ func _draw_arenas(ci: CanvasItem) -> void:
 		else:
 			ci.draw_rect(tr, Color("#9fe3ee"))
 		Kit.text(ci, Vector2(r.position.x, 100), String(a["nome"]).to_upper(), 34 if String(a["nome"]).length() < 15 else 28, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-		Kit.text(ci, Vector2(r.position.x, 138), a["dica"], 21, Color("#6b5a70"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+		Kit.text_box(ci, Vector2(r.position.x + 14, 116), r.size.x - 28, String(a["dica"]), 21, Color("#6b5a70"), 2)
 	ci.draw_set_transform(Vector2.ZERO)
 	Kit.text(ci, Vector2(0, 1056), "◄►▲▼ escolher  ·  PULAR confirmar  ·  BACKSPACE/ESC voltar", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)
 

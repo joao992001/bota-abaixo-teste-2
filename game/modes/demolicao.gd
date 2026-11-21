@@ -631,7 +631,13 @@ func respawn(r) -> void:
 			var c := Vector2i(x, y)
 			if lv.is_solid(c) and lv.ch_at(c) != "I" and not lv.is_solid(c + Vector2i.UP) and not lv.is_solid(c + Vector2i(0, -2)):
 				var p := Vector2(x * 64 + 32, y * 64)
-				if not pr.has_point(p):
+				if not pr.has_point(p) or not _firm(lv, c) or not (_firm(lv, c + Vector2i.LEFT) or _firm(lv, c + Vector2i.RIGHT)):
+					continue   # só volta em bloco firme, com chão ao lado (nada de caixote solto rachando)
+				var danger := false
+				for h in lv.hazard_rects:
+					if h.grow(96).has_point(p):
+						danger = true
+				if danger:
 					continue
 				if fx != null and is_instance_valid(fx) and fx.goo_on and p.y > fx.goo_y - 96.0:
 					continue
@@ -647,13 +653,22 @@ func respawn(r) -> void:
 					best_d = dmin
 					best = c
 	if best.x < 0:
-		# não sobrou chão para voltar: volta no trono (Rei) ou no ponto de nascer, invulnerável
-		var spot: Vector2 = crown_home if rule() == "rei" else lv.spawns.get(r.pid % 4 + 1, Vector2(lv.cols * 32.0, 128.0))
-		r.position = spot + Vector2(0, -8)
+		# não sobrou chão firme: o guindaste traz um caixote novo e o robô volta em cima dele
+		var spot: Vector2 = crown_home if rule() == "rei" else lv.spawns.get(r.pid % 4 + 1, Vector2(lv.cols * 32.0, 256.0))
+		var cell := Vector2i(int(spot.x / 64.0), int(spot.y / 64.0))
+		if not lv.is_solid(cell):
+			lv.add_block(cell)
+			if lv.blocks.has(cell):
+				lv.blocks[cell]["hp"] = lv.block_hp
+			main.dust(Vector2(cell * 64) + Vector2(32, 32), 1.0)
+		r.position = Vector2(cell.x * 64 + 32, cell.y * 64 - 220)
 		r.reset_physics_interpolation()
 		r.velocity = Vector2.ZERO
 		r.own_vx = 0.0
+		r.stun_t = 0.0
+		r.hanging = false
 		r.invuln = float(cfg["recuperacao"]["invuln_volta_s"])
+		r.drop_t = 1.0
 		return
 	r.position = Vector2(best.x * 64 + 32, best.y * 64 - 220)
 	r.reset_physics_interpolation()
@@ -663,6 +678,15 @@ func respawn(r) -> void:
 	r.hanging = false
 	r.invuln = float(cfg["recuperacao"]["invuln_volta_s"])
 	r.drop_t = 1.0
+
+## Chão firme para voltar: sólido fixo, ou caixote inteiro, sem aviso de queda e sem estar rachando.
+func _firm(lv, c: Vector2i) -> bool:
+	if not lv.is_solid(c) or lv.ch_at(c) in ["I", "T"]:
+		return false
+	if lv.blocks.has(c):
+		var b: Dictionary = lv.blocks[c]
+		return b["warn"] <= 0.0 and b["hp"] >= lv.block_hp and b["load"] < 0.5
+	return true
 
 func _on_block_broken(cell: Vector2i, kind: String) -> void:
 	var center := Vector2(cell * 64) + Vector2(32, 32)
@@ -788,9 +812,19 @@ func _update_king(dt: float, alive: Array) -> int:
 		crown_vel.x = -crown_vel.x * 0.5
 		np.x = crown_pos.x
 	crown_pos = np
-	if crown_pos.y > lv.rows * 64.0 + 64.0 or crown_pos.x < 0.0 or crown_pos.x > lv.cols * 64.0:
+	# caiu em espinho, água, lama ou no fundo do mapa: volta para o trono (senão ninguém consegue pegar)
+	var here := Vector2i(int(crown_pos.x / 64.0), int((crown_pos.y + 8.0) / 64.0))
+	var bad: bool = lv.ch_at(here) in ["^", "w"] or crown_pos.y >= (lv.rows - 1) * 64.0 - 2.0 \
+		or crown_pos.x < 0.0 or crown_pos.x > lv.cols * 64.0
+	for h in lv.hazard_rects:
+		if h.grow(6).has_point(crown_pos):
+			bad = true
+	if fx != null and is_instance_valid(fx) and fx.goo_on and crown_pos.y > fx.goo_y - 10.0:
+		bad = true
+	if bad:
 		crown_pos = crown_home
 		crown_vel = Vector2.ZERO
+		main.dust(crown_home, 0.8)
 	for r in alive:
 		if crown_cd.get(r.pid, 0.0) <= 0.0 and r.rect().grow(10).has_point(crown_pos):
 			king = r.pid
