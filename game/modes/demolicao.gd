@@ -36,7 +36,7 @@ var sub := {}                # modo atual (data/modos.json → demolicao.modos):
 var lives := {}              # Derruba: pid -> vidas restantes
 var lives_setting := 3       # AJUSTES (Derruba): vidas por rodada
 var fuse_setting := 1        # AJUSTES (Batata): 0 curto, 1 normal, 2 longo
-const FUSES := [[6, 10], [9, 15], [13, 20]]
+const FUSES := [[10, 14], [14, 20], [20, 28]]   # pavio curto/normal/longo (s): mais tempo para correr
 # Rei da Obra
 var king := -1               # quem está com o capacete de ouro (-1: no chão)
 var crown_pos := Vector2.ZERO

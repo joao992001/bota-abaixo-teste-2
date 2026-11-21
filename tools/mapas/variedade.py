@@ -20,7 +20,7 @@ def b_obra():
     c.put(2, 20, "L")
     c.mirror()
     c.col(31, 19, 2, "U"); c.col(26, 13, 2, "U")                        # do outro lado começam abertas
-    c.put(21, 8, "L")
+    c.put(21, 5, "L")                                                  # alavanca em cima da casa de máquinas
     spawns(c, [9, 16, 27, 34])
     return c
 

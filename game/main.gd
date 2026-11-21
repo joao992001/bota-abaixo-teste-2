@@ -388,6 +388,8 @@ func _update_camera(dt: float) -> void:
 		else:
 			tz = cam_zoom
 			tc = cam_center
+		tz = zmin   # arena inteira na tela, sempre (pedido: ver tudo, mesmo com poucos jogadores)
+		tc = Vector2(lw, lh) / 2.0
 		if demo != null and demo.fx != null and is_instance_valid(demo.fx) and demo.fx.scroll_on:
 			# câmera que rola: a arena manda (Torre sobe, Ponte avança); quem sai da tela está fora
 			tz = demo.fx.scroll_zoom
