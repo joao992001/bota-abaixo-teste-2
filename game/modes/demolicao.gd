@@ -314,9 +314,9 @@ func _update_items(dt: float, alive: Array) -> void:
 	var ic: Dictionary = cfg["itens"]
 	item_t -= dt
 	if item_t <= 0.0:
-		var span: Array = ic["spawn_every_s"]
+		var span: Array = sub.get("itens_cada_s", ic["spawn_every_s"])   # cada modo pode ter seu ritmo
 		item_t = main.rng.randf_range(float(span[0]), float(span[1]))
-		if items_on and items.size() < int(ic["max_on_map"]):
+		if items_on and items.size() < int(sub.get("itens_max", ic["max_on_map"])):
 			var kinds: Array = sub.get("itens_lista", ic["kinds"])   # cada modo tem os seus itens
 			spawn_item(kinds[main.rng.randi() % kinds.size()])
 	var lv = main.level
@@ -361,20 +361,30 @@ func play_rect() -> Rect2:
 		return Rect2(fx.scroll_center - Vector2(960, 512), Vector2(1920, 1024))
 	return Rect2(0, 0, main.level.cols * 64.0, main.level.rows * 64.0)
 
-## Item cai do céu numa coluna que ainda tem caixote (dentro da tela).
+## Item desce de paraquedas logo acima de um chão onde dá para ficar de pé (dentro da tela),
+## inclusive dentro de túneis e prédios. col >= 0: força a coluna (cai do alto).
 func spawn_item(kind: String, col := -1) -> void:
 	var lv = main.level
 	var pr := play_rect()
-	if col < 0:
-		var cols := []
-		for cell in lv.blocks.keys():
-			var cp := Vector2(cell * 64) + Vector2(32, 32)
-			if pr.grow(-64).has_point(cp) and not (cell.x in cols):
-				cols.append(cell.x)
-		if cols.is_empty():
-			return
-		col = cols[main.rng.randi() % cols.size()]
-	items.append({"kind": kind, "pos": Vector2(col * 64 + 32, maxf(70.0, pr.position.y + 70.0)), "vy": 0.0, "t": 0.0})   # abaixo do teto invisível
+	if col >= 0:
+		items.append({"kind": kind, "pos": Vector2(col * 64 + 32, maxf(70.0, pr.position.y + 70.0)), "vy": 0.0, "t": 0.0})
+		return
+	var spots := []
+	for y in range(2, lv.rows):
+		for x in range(1, lv.cols - 1):
+			var c := Vector2i(x, y)
+			var ch: String = lv.ch_at(c)
+			if (lv.is_solid(c) or ch == "=") and ch != "I" and not ch in ["^", "w", "J", "F", "f", "P", "B"] \
+					and not lv.is_solid(c + Vector2i.UP) and not lv.is_solid(c + Vector2i(0, -2)) \
+					and pr.grow(-64).has_point(Vector2(c * 64) + Vector2(32, -32)):
+				spots.append(c)
+	if spots.is_empty():
+		return
+	var c: Vector2i = spots[main.rng.randi() % spots.size()]
+	var top := c.y - 1
+	while top > c.y - 4 and top > 1 and not lv.is_solid(Vector2i(c.x, top - 1)):
+		top -= 1   # começa até 3 tiles acima do chão (cai de paraquedas)
+	items.append({"kind": kind, "pos": Vector2(c.x * 64 + 32, top * 64 + 20.0), "vy": 0.0, "t": 0.0})
 
 const ITEM_NAMES := {"dinamite": "TNT!", "martelao": "MARTELÃO!", "mola": "BOTAS DE MOLA!", "capacete": "CAPACETE!",
 	"ima": "ÍMÃ!", "furadeira": "FURADEIRA!", "cola": "COLA!", "foguete": "BOTA-FOGUETE!",

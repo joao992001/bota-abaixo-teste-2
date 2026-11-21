@@ -45,19 +45,17 @@ def b_mina():
 
 
 def b_predio():
-    """Prédio Velho: ALÇAPÕES (as alavancas do 3º andar abrem todos) e PAREDES DE CAIXOTE que dá para quebrar."""
+    """Prédio Velho: volta completa para correr (escadas nas pontas, buracos no 3º andar);
+    ALÇAPÃO no meio do 2º andar com a alavanca no 3º, de onde se vê quem está em cima dele."""
     c = C(W, H)
-    c.box(1, 18, 3, 3, "d")                                            # entulho para subir
-    c.plat(4, 15, 18); c.plat(17, 15, 5, "a")                          # 2º andar, alçapão no meio
-    c.box(4, 12, 2, 3, "d")                                            # entulho no 2º andar
-    c.plat(6, 9, 16); c.plat(9, 9, 4, "a")                             # 3º andar
-    c.plat(6, 6, 7); c.col(6, 7, 2); c.col(12, 7, 2)                   # sala no telhado
-    c.col(13, 16, 5, "d"); c.col(15, 10, 5, "d")                       # paredes de caixote
-    c.put(18, 8, "L")                                                  # alavanca de olho no alçapão do meio
+    c.box(1, 18, 3, 3)                                                 # escada: chão → 2º andar
+    c.plat(4, 15, 18); c.plat(18, 15, 4, "a")                          # 2º andar, alçapão no meio
+    c.box(4, 12, 2, 3)                                                 # escada: 2º → 3º andar
+    c.plat(7, 9, 15); c.clear(13, 9, 2, 1)                             # 3º andar com buraco para descer
+    c.put(17, 8, "L")                                                  # alavanca de olho no alçapão
     c.mirror()
-    spawns(c, [8, 18, 25, 35])
+    spawns(c, [8, 16, 27, 35])
     return c
-
 
 def b_viaduto():
     """Sob o Viaduto: PLATAFORMAS QUE VÃO E VOLTAM entre os pilares e VENTILADOR que leva à pista.

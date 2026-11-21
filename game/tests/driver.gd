@@ -1163,6 +1163,29 @@ func itens_modos_test() -> void:
 	main.demo.give(r0, "gancho")
 	main.demo.use_item(r0)
 	check(r0.item == "" and r0.velocity.y < -900.0, "Fuga: o gancho puxa para cima (vy %.0f item %s pos %s)" % [r0.velocity.y, r0.item, str(r0.position)])
+	# itens aparecem em todas as fases da Batata (antes só nasciam em coluna com caixote)
+	var sem := []
+	for aid in main.demo.find_mode("batata")["arenas"]:
+		main.arena_choice = aid
+		await demo_round()
+		main.demo.items.clear()
+		main.demo.spawn_item("patins")
+		if main.demo.items.is_empty():
+			sem.append(aid)
+	check(sem.is_empty(), "itens nascem em todas as fases da Batata (sem item: %s)" % str(sem))
+	# ▼ em cima de tábua fina: desce por ela (Galerias da Mina, saída do alto da rocha)
+	main.game_mode = "batata"
+	main.arena_choice = "galerias_mina"
+	await demo_round()
+	r0 = main.robots[0]
+	main.demo.bomb_next = 99.0
+	put(r0, Vector2(9 * 64 + 32, 6 * 64 - 2))
+	await frames(20)
+	var y0: float = r0.position.y
+	PlayerInput.virtual["v0"] = {"down": true}
+	await frames(40)
+	PlayerInput.virtual["v0"] = {}
+	check(r0.position.y > y0 + 100.0, "▼ na tábua fina: o robô desce por ela (%.0f → %.0f)" % [y0, r0.position.y])
 	main.arena_choice = "demolicao"
 	main.game_mode = "derruba"
 

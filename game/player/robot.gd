@@ -46,6 +46,7 @@ var stomp_immune := 0.0
 var dmg := 0.0                # Amassômetro (%): quanto mais amassado, mais longe cada golpe arremessa
 var invuln := 0.0             # invulnerável (começo da rodada, voltando da água/vida)
 var air_jumps := 1            # pulo duplo do propulsor (recarrega no chão, na parede e na borda)
+var plank_t := 0.0            # descendo por uma tábua fina (▼)
 var drop_t := 0.0             # descendo pendurado no guindaste (desenho do cabo)
 var hanging := false          # agarrado na borda de um caixote
 var hang_dir := 0
@@ -107,6 +108,21 @@ func _physics_process(dt: float) -> void:
 	frozen_t = maxf(frozen_t - dt, 0.0)
 	invuln = maxf(invuln - dt, 0.0)
 	drop_t = maxf(drop_t - dt, 0.0) if not is_on_floor() else 0.0
+	# ▼ em cima de uma tábua fina: desce por ela (desliga a colisão de mão única por um instante)
+	if plank_t > 0.0:
+		plank_t -= dt
+		if plank_t <= 0.0 and collision_mask != 0:
+			collision_mask |= 2
+	elif on_floor and _held("down") and stun_t <= 0.0:
+		var lv = main.level
+		var under := Vector2i(int(position.x / 64.0), int((position.y + 4.0) / 64.0))
+		if lv.ch_at(under) == "=":
+			plank_t = 0.28
+			collision_mask &= ~2
+			position.y += 6.0
+			velocity.y = 220.0
+			vis.stretch()
+			main.dust(position, 0.6)
 	last_hit += dt
 	if climb_t >= 0.0:
 		_climb_update(dt)
