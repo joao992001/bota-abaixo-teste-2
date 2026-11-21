@@ -15,5 +15,6 @@ Referências de gênero: Super Smash Bros./Brawlhalla (arenas de derrubar), Ulti
 ## Lista (o usuário vai mandando)
 | # | Fase / modo | Problema | Lote | Situação |
 |---|---|---|---|---|
-| 1 | Derruba (todas) | Zoom perto demais, pior com menos jogadores. Ideal: a arena inteira na tela, como no print (Esteiras com 4). | 1 | pendente |
-| 2 | Derruba (todas) | Rodízio de fases durante a partida, como em Gang Beasts (cada rodada numa fase diferente, sem voltar ao menu). | 1 | pendente |
+| 1 | Derruba, Batata e Rei (todas) | Zoom perto demais, pior com menos jogadores. Ideal: a arena inteira na tela, como no print (Esteiras com 4). | 1 | pendente |
+| 2 | Derruba, Batata e Rei | Rodízio de fases durante a partida, como em Gang Beasts (cada rodada numa fase diferente, sem voltar ao menu). | 1 | pendente |
+| 3 | Batata (Obra de Concreto) e Rei (Trono do Canteiro) | Prints mostram a câmera cortando a arena: aplicar o item 1 (arena inteira na tela). |  1 | pendente |
