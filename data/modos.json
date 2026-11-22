@@ -207,6 +207,32 @@
       },
       "imacapacete": {
         "forca": 950
+      },
+      "ventosa": {
+        "duration_s": 6,
+        "sobe": 380
+      },
+      "skate": {
+        "vel": 1150,
+        "dash_s": 0.5
+      },
+      "oleo": {
+        "vida_s": 10
+      },
+      "chave_atalho": {
+        "tiles": 6
+      },
+      "ancora": {
+        "alcance_px": 520,
+        "preso_s": 2.0
+      },
+      "turbo": {
+        "duration_s": 5,
+        "vel": 1.25,
+        "empurra": 900
+      },
+      "bolha": {
+        "duration_s": 40
       }
     },
     "stomp_immune_s": 1.4,
@@ -733,7 +759,14 @@
           "gancho",
           "teletransporte",
           "congelador",
-          "soprador"
+          "soprador",
+          "ventosa",
+          "skate",
+          "oleo",
+          "chave_atalho",
+          "ancora",
+          "turbo",
+          "bolha"
         ]
       }
     ]

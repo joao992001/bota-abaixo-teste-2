@@ -145,6 +145,7 @@ func start_round() -> void:
 	items.clear()
 	dynamites.clear()
 	slings.clear()
+	dashes.clear()
 	fakes.clear()
 	fences.clear()
 	shots.clear()
@@ -413,10 +414,11 @@ const ITEM_NAMES := {"dinamite": "TNT!", "martelao": "MARTELÃO!", "mola": "BOTA
 	"trocatroca": "TROCA-TROCA!", "apito": "APITO DO JUIZ!", "corneta": "CORNETA!", "molabomba": "MOLA ANTI-BOMBA!",
 	"fumaca": "BOMBA DE FUMAÇA!", "banana": "CASCA DE BANANA!", "isca": "BOMBA-ISCA!", "balao": "BALÃO!",
 	"armadura": "ARMADURA!", "capacetefalso": "CAPACETE FALSO!", "cerca": "CERCA ELÉTRICA!", "bumerangue": "BUMERANGUE!",
-	"rede": "LANÇA-REDE!", "imacapacete": "ÍMÃ DE CAPACETE!"}
+	"rede": "LANÇA-REDE!", "imacapacete": "ÍMÃ DE CAPACETE!", "ventosa": "VENTOSA!", "skate": "SKATE!", "oleo": "MANCHA DE ÓLEO!",
+	"chave_atalho": "CHAVE DE ATALHO!", "ancora": "ÂNCORA!", "turbo": "VENTILADOR DE COSTAS!", "bolha": "BOLHA SALVA-VIDAS!"}
 const USABLE := ["dinamite", "furadeira", "cola", "teletransporte", "laser", "vortice", "soprador", "congelador",
 	"estilingue", "choque", "laco", "barreira", "relogio", "gancho", "trocatroca", "apito", "corneta", "fumaca", "banana", "isca",
-	"capacetefalso", "cerca", "bumerangue", "rede", "imacapacete"]
+	"capacetefalso", "cerca", "bumerangue", "rede", "imacapacete", "skate", "oleo", "chave_atalho", "ancora"]
 var slings: Array = []       # Batata: dinamite arremessada com o estilingue {pos, vel, t, owner}
 var shocks: Array = []       # Rei: onda de choque carregando {pid, t}
 var ropes: Array = []        # laço e gancho {kind, pid, tgt, tip, t, dur}
@@ -428,7 +430,8 @@ var apito_t := 0.0           # apito do juiz: pavio congelado
 var fakes: Array = []        # capacete falso {pos, t}
 var fences: Array = []       # cerca elétrica {pid, t, cd: {pid: s}}
 var shots: Array = []        # bumerangue e rede voando {kind, pos, vel, t, owner, hit: []}
-var nets: Array = []         # rede presa em alguém {pid, t}
+var nets: Array = []         # rede presa em alguém {pid, t, kind}
+var dashes: Array = []       # skate {pid, t, hit: []}
 const Ferramentas := preload("res://modes/ferramentas.gd")
 var tools: Node2D = null     # furadeira, cola, teletransporte, laser, vórtice, soprador, congelador, ímã (modes/ferramentas.gd)
 
@@ -437,7 +440,7 @@ func give(r, kind: String) -> void:
 		push_warning("item desconhecido: %s" % kind)
 		return
 	match kind:
-		"martelao", "mola", "ima", "foguete", "patins", "escudo", "molabomba", "balao", "armadura": r.fx_t[kind] = float(item_cfg(kind)["duration_s"])
+		"martelao", "mola", "ima", "foguete", "patins", "escudo", "molabomba", "balao", "armadura", "ventosa", "turbo", "bolha": r.fx_t[kind] = float(item_cfg(kind)["duration_s"])
 		"capacete": r.shield = int(item_cfg("capacete")["hits"])
 		_: r.item = kind
 	Audio.play({"martelao": "martelao", "ima": "ima", "foguete": "foguete"}.get(kind, "item"))
@@ -449,7 +452,7 @@ func give(r, kind: String) -> void:
 ## Botão de item: usa o item guardado.
 func use_item(r) -> void:
 	var kind: String = r.item
-	if kind in ["estilingue", "choque", "laco", "barreira", "relogio", "gancho", "trocatroca", "apito", "corneta", "fumaca", "banana", "isca", "capacetefalso", "cerca", "bumerangue", "rede", "imacapacete"]:
+	if kind in ["estilingue", "choque", "laco", "barreira", "relogio", "gancho", "trocatroca", "apito", "corneta", "fumaca", "banana", "isca", "capacetefalso", "cerca", "bumerangue", "rede", "imacapacete", "skate", "oleo", "chave_atalho", "ancora"]:
 		if _use_mode_item(r, kind):
 			r.item = ""
 		else:
@@ -684,7 +687,7 @@ func _update_water_and_nets(dt: float, alive: Array) -> void:
 					main.float_text(r.position + Vector2(0, -80), "RASGOU!", Color.WHITE)
 
 ## Volta pendurado no guindaste num lugar livre longe dos outros, invulnerável por um tempo.
-func respawn(r) -> void:
+func respawn(r, ahead := false) -> void:
 	var lv = main.level
 	var best := Vector2i(-1, -1)
 	var best_d := -1.0
@@ -709,7 +712,9 @@ func respawn(r) -> void:
 					if o != r and o.alive:
 						dmin = minf(dmin, o.position.distance_to(p))
 				dmin += main.rng.randf_range(0, 200)
-				if rule() == "fuga":
+				if rule() == "fuga" and ahead and fx != null and is_instance_valid(fx):
+					dmin = -p.distance_to(fx.scroll_center)   # bolha: volta no meio da tela
+				elif rule() == "fuga":
 					# Fuga: volta no ponto mais atrasado da tela (perde terreno, mas não sai)
 					dmin = (-p.x if lv.cols > lv.rows * 2 else p.y) + main.rng.randf_range(0, 40)
 				if dmin > best_d:
@@ -786,6 +791,14 @@ func intercept_kill(r) -> bool:
 		respawn(r)
 		return true   # na Oficina ninguém sai
 	if rule() == "fuga":
+		if r.caught and r.fx_t["bolha"] > 0.0:
+			r.fx_t["bolha"] = 0.0   # bolha salva-vidas: volta lá na frente, protegido
+			r.caught = false
+			respawn(r, true)
+			r.invuln = 2.0
+			main.float_text(r.position + Vector2(0, -90), "SALVO PELA BOLHA!", main.player_color(r.pid))
+			Audio.play("item")
+			return true
 		if r.caught:
 			return false   # a tela (ou a lama) pegou: está fora
 		main.float_text(r.position + Vector2(0, -90), "VOLTOU LÁ ATRÁS!", main.player_color(r.pid))
@@ -1057,6 +1070,51 @@ func _use_mode_item(r, kind: String) -> bool:
 			rings.append({"pos": crown_pos, "t": 0.0, "r": 80.0})
 			Audio.play("ima")
 			return true
+		"skate":   # arrancada longa que atropela
+			var sc := item_cfg("skate")
+			r.velocity.x = r.facing * float(sc["vel"])
+			r.own_vx = r.velocity.x
+			dashes.append({"pid": r.pid, "t": 0.0, "hit": []})
+			Audio.play("foguete", 1.4)
+			return true
+		"oleo":
+			traps.append({"kind": "oleo", "pos": Vector2(r.position.x - r.facing * 80.0, r.position.y), "t": 0.0, "owner": r.pid, "cd": {}})
+			Audio.play("lama", 0.8)
+			return true
+		"chave_atalho":   # teletransporta para a frente, num chão livre
+			var lv = main.level
+			var col := int(r.position.x / 64.0)
+			var row := int((r.position.y + 2.0) / 64.0)
+			var n := int(item_cfg("chave_atalho")["tiles"])
+			for dx in range(n, 1, -1):
+				for dy in [0, -1, 1, -2, 2, -3, 3]:
+					var cc := Vector2i(col + dx * r.facing, row + dy)
+					if lv.is_solid(cc) and lv.ch_at(cc) != "I" and not lv.is_solid(cc + Vector2i.UP) and not lv.is_solid(cc + Vector2i(0, -2)):
+						rings.append({"pos": c, "t": 0.0, "r": 70.0})
+						r.position = Vector2(cc.x * 64 + 32, cc.y * 64)
+						r.reset_physics_interpolation()
+						r.velocity = Vector2.ZERO
+						rings.append({"pos": r.rect().get_center(), "t": 0.0, "r": 70.0})
+						Audio.play("teleporte")
+						return true
+			return false
+		"ancora":   # prende o rival mais próximo atrás de você
+			var best = null
+			var bd := float(item_cfg("ancora")["alcance_px"])
+			for o in main.robots:
+				if o != r and o.alive:
+					var dd: float = o.position.distance_to(r.position)
+					if (o.position.x - r.position.x) * r.facing < 0.0 and dd < bd:
+						bd = dd
+						best = o
+			if best == null:
+				return false
+			best.stun_t = maxf(best.stun_t, float(item_cfg("ancora")["preso_s"]))
+			best.velocity = Vector2.ZERO
+			nets.append({"pid": best.pid, "t": 0.0, "kind": "ancora"})
+			ropes.append({"kind": "gancho", "pid": r.pid, "tgt": -1, "tip": best.rect().get_center(), "t": 0.0, "dur": 0.35})
+			Audio.play("gancho", 0.7)
+			return true
 		"trocatroca":   # a bomba pula para um jogador sorteado (pode voltar para você)
 			if bomb_holder < 0:
 				return false
@@ -1211,7 +1269,37 @@ func _draw_mode_items(now: float) -> void:
 	for r in main.robots:
 		if r.alive and r.fx_t["armadura"] > 0.0:
 			canvas.draw_texture_rect(Data.tex("itens/armadura"), Rect2(r.rect().get_center() + Vector2(-20, -18), Vector2(40, 40)), false)
+	for nt in nets:
+		if nt.get("kind", "") == "ancora" and nt["pid"] < main.robots.size():
+			canvas.draw_texture_rect(Data.tex("itens/ancora"), Rect2(main.robots[nt["pid"]].position + Vector2(-26, -40), Vector2(52, 52)), false)
+	for ds in dashes:
+		var me = main.robots[ds["pid"]]
+		canvas.draw_texture_rect(Data.tex("itens/skate"), Rect2(me.position + Vector2(-34, -24), Vector2(68, 68)), false)
+	for r in main.robots:
+		if not r.alive:
+			continue
+		if r.fx_t["turbo"] > 0.0:
+			canvas.draw_texture_rect(Data.tex("itens/turbo"), Rect2(r.position + Vector2(-r.facing * 46.0 - 20.0, -70), Vector2(40, 40)), false)
+			for i in 3:
+				var x0: float = r.position.x - r.facing * (70.0 + fmod(now * 300.0 + i * 25.0, 60.0))
+				canvas.draw_line(Vector2(x0, r.position.y - 40 - i * 12), Vector2(x0 - r.facing * 22.0, r.position.y - 40 - i * 12), Color(1, 1, 1, 0.8), 3.0, true)
+		if r.fx_t["bolha"] > 0.0:
+			var cc3: Vector2 = r.rect().get_center()
+			canvas.draw_arc(cc3, 58.0 + sin(now * 4.0) * 3.0, 0, TAU, 40, Color(0.55, 0.85, 1.0, 0.7), 3.0, true)
+			canvas.draw_arc(cc3, 46.0, PI * 1.15, PI * 1.4, 8, Color(1, 1, 1, 0.8), 3.0, true)
+		if r.fx_t["ventosa"] > 0.0:
+			canvas.draw_texture_rect(Data.tex("itens/ventosa"), Rect2(r.position + Vector2(r.facing * 22.0 - 14.0, -62), Vector2(28, 28)), false)
 	for tp in traps:
+		if tp["kind"] == "oleo":
+			canvas.draw_set_transform(tp["pos"] + Vector2(0, -2), 0.0, Vector2(1.0, 0.22))
+			canvas.draw_circle(Vector2.ZERO, 74.0, Color("#2b2233"))
+			canvas.draw_circle(Vector2.ZERO, 68.0, Color("#3e3550"))
+			canvas.draw_circle(Vector2(-20, -10), 22.0, Color(0.6, 0.5, 0.9, 0.5))
+			canvas.draw_set_transform(Vector2.ZERO)
+			continue
+	for tp in traps:
+		if tp["kind"] == "oleo":
+			continue
 		var tex: String = "itens/banana" if tp["kind"] == "banana" else "itens/dinamite"
 		canvas.draw_texture_rect(Data.tex(tex), Rect2(tp["pos"] + Vector2(-20, -38), Vector2(40, 40)), false)
 	for cl in clouds:   # nuvem de fumaça (some com o tempo)
@@ -1381,9 +1469,36 @@ func _update_mode_items(dt: float) -> void:
 	shots = shots.filter(func(x): return x["t"] < 999.0)
 	for nt in nets:
 		nt["t"] += dt
-	nets = nets.filter(func(x): return x["t"] < float(item_cfg("rede")["preso_s"]))
+	nets = nets.filter(func(x): return x["t"] < float(item_cfg(x.get("kind", "rede"))["preso_s"]))
+	for ds in dashes:   # skate atropelando
+		ds["t"] += dt
+		var me = main.robots[ds["pid"]]
+		for o in main.robots:
+			if o != me and o.alive and not (o.pid in ds["hit"]) and o.rect().intersects(me.rect().grow(6)):
+				ds["hit"].append(o.pid)
+				o.knock(me.facing, 700.0, 320.0, 0.5)
+				Audio.play("bonk")
+		if randf() < 0.5:
+			tools._part(me.position, Vector2(-me.facing * 200, -60), 0.3, "estrela", Color("#fff4c8"), 3)
+	dashes = dashes.filter(func(x): return x["t"] < float(item_cfg("skate")["dash_s"]))
+	for r in main.robots:   # ventilador de costas: empurra quem está colado atrás
+		if r.alive and r.fx_t["turbo"] > 0.0:
+			for o in main.robots:
+				var bx2: float = (o.position.x - r.position.x) * r.facing
+				if o != r and o.alive and bx2 < 0.0 and bx2 > -160.0 and absf(o.position.y - r.position.y) < 80.0:
+					o.velocity.x -= r.facing * float(item_cfg("turbo")["empurra"]) * dt
 	for tp in traps:   # casca de banana e bomba-isca
 		tp["t"] += dt
+		if tp["kind"] == "oleo":
+			for o in main.robots:
+				if o.alive and o.pid != tp["owner"] and absf(o.position.x - tp["pos"].x) < 70.0 and absf(o.position.y - tp["pos"].y) < 12.0 \
+						and tp["cd"].get(o.pid, 0.0) <= 0.0:
+					o.knock(1 if o.velocity.x >= 0.0 else -1, 560.0, 60.0, 0.6)
+					tp["cd"][o.pid] = 1.2
+					main.float_text(o.position + Vector2(0, -110), "ÓLEO!", Color.WHITE)
+			for k3 in tp["cd"].keys():
+				tp["cd"][k3] -= dt
+			continue
 		for o in main.robots:
 			if o.alive and (o.pid != tp["owner"] or tp["t"] > 1.0) and o.rect().grow(4).has_point(tp["pos"] + Vector2(0, -10)):
 				if tp["kind"] == "banana":

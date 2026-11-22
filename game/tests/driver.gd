@@ -1287,6 +1287,47 @@ func itens_modos_test() -> void:
 	main.demo.use_item(k0)
 	await frames(20)
 	check(main.demo.king == 0 or main.demo.crown_pos.distance_to(k0.position) < d0 - 100.0, "Ímã de Capacete: o capacete vem até você")
+	# lote 2c: itens novos da Fuga (mecânica testada no Canteiro)
+	main.game_mode = "batata"
+	main.arena_choice = "demolicao"
+	await demo_round()
+	main.demo.bomb_next = 99.0
+	var f0r = main.robots[0]
+	var f1r = main.robots[1]
+	for rb in [f0r, f1r]:
+		rb.invuln = 0.0
+	put(f0r, Vector2(col_x(11), 576))
+	put(f1r, Vector2(col_x(14), 576))
+	f0r.facing = 1
+	await frames(5)
+	main.demo.give(f0r, "skate")
+	main.demo.use_item(f0r)
+	await frames(20)
+	check(f1r.stun_t > 0.0 or absf(f1r.velocity.x) > 100.0 or f1r.position.x > col_x(14) + 40.0, "Skate: atropela quem está na frente")
+	await frames(60)
+	put(f0r, Vector2(col_x(11), 576))
+	await frames(5)
+	var x0: float = f0r.position.x
+	main.demo.give(f0r, "chave_atalho")
+	main.demo.use_item(f0r)
+	check(f0r.position.x > x0 + 120.0, "Chave de Atalho: teletransporta para a frente (%.0f → %.0f)" % [x0, f0r.position.x])
+	put(f0r, Vector2(col_x(11), 576))
+	put(f1r, Vector2(col_x(9), 576))
+	f0r.facing = 1
+	await frames(5)
+	main.demo.give(f0r, "ancora")
+	main.demo.use_item(f0r)
+	check(f1r.stun_t > 1.5, "Âncora: prende quem vem atrás")
+	main.game_mode = "fuga"
+	main.arena_choice = "torre"
+	await demo_round()
+	var fb = main.robots[0]
+	main.demo.give(fb, "bolha")
+	fb.invuln = 0.0
+	fb.caught = true
+	main.kill(fb, -1, null)
+	await frames(2)
+	check(fb.alive and fb.fx_t["bolha"] == 0.0, "Bolha Salva-Vidas: salva uma vez de ser pego pela tela")
 	# mapa vivo: na Batata as alavancas se acionam sozinhas (portas trocam)
 	main.game_mode = "batata"
 	main.arena_choice = "obra_concreto"

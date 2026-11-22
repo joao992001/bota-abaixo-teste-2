@@ -27,7 +27,7 @@ var spin := 0.0
 var wall_sliding := false
 var stun_t := 0.0            # atordoado: ignora o controle (pisão na cabeça, marretada)
 var item := ""               # item guardado (dinamite), usado com o botão de item
-var fx_t := {"martelao": 0.0, "mola": 0.0, "ima": 0.0, "foguete": 0.0, "patins": 0.0, "escudo": 0.0, "molabomba": 0.0, "balao": 0.0, "armadura": 0.0}   # efeitos com tempo
+var fx_t := {"martelao": 0.0, "mola": 0.0, "ima": 0.0, "foguete": 0.0, "patins": 0.0, "escudo": 0.0, "molabomba": 0.0, "balao": 0.0, "armadura": 0.0, "ventosa": 0.0, "turbo": 0.0, "bolha": 0.0}   # efeitos com tempo
 var glue_t := 0.0             # pisou na cola: lento
 var caught := false           # Fuga: foi pego pela tela ou pela lama (esse sai de vez)
 var speed_k := 1.0            # multiplicador da corrida (Rei da Obra: o rei anda mais devagar)
@@ -176,7 +176,7 @@ func _physics_process(dt: float) -> void:
 			a *= 0.25   # empurrado: desliza longe
 		if on_floor and main.events != null:
 			a *= main.events.slip   # evento Sabão: chão escorregadio
-		own_vx = move_toward(own_vx, ix * f("max_run") * speed_k * (float(main.demo.item_cfg("patins")["vel"]) if fx_t["patins"] > 0.0 else 1.0), a * dt)
+		own_vx = move_toward(own_vx, ix * f("max_run") * speed_k * (float(main.demo.item_cfg("patins")["vel"]) if fx_t["patins"] > 0.0 else 1.0) * (float(main.demo.item_cfg("turbo")["vel"]) if fx_t["turbo"] > 0.0 else 1.0), a * dt)
 	# pulo / parede
 	var wall_dir := 0 if on_floor else _wall_dir()
 	if on_floor:
@@ -226,6 +226,10 @@ func _physics_process(dt: float) -> void:
 	var max_fall := f("fast_max_fall") if _held("down") else f("max_fall")
 	if fx_t["balao"] > 0.0:
 		max_fall = float(main.demo.item_cfg("balao")["queda_max"])   # balão: cai devagar
+	if fx_t["ventosa"] > 0.0:
+		grip = 1.0   # ventosa: gruda sem cansar
+		if wall_dir != 0 and _held("up"):
+			velocity.y = -float(main.demo.item_cfg("ventosa")["sobe"])   # sobe pela parede
 	wall_sliding = wall_dir != 0 and int(signf(ix)) == wall_dir and velocity.y > 0.0 and grip > 0.0
 	wall_side = wall_dir if wall_sliding else 0
 	if main.mode == "demolicao":
