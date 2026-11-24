@@ -42,12 +42,21 @@ const SHOULDER := Vector2(3, -38)       # ombro da frente: a mão gira em volta 
 const ARM := 18.0
 ## Spells sem arma: objeto nas costas (andaime dobrado, marreta sísmica, fornalha desmontada) ou na mão de trás.
 const BACK_PROPS := {"S04": ["s04_marreta", Vector2(30, 60), 2.55], "S10": ["s10_trouxa", Vector2(34, 23), 1.35],
-	"S13": ["s13_costas", Vector2(40, 35), 0.0], "S25": ["s25_tabua", Vector2(46, 15), 1.45],
+	"S25": ["s25_tabua", Vector2(46, 15), 1.45],
 	"S16": ["a16_jato", Vector2(38, 44), 0.0]}
+## Kit da transformação levado NAS COSTAS antes de usar (como a Fornalha): peça de costas no meio das costas,
+## placa da frente dobrada por cima espiando no ombro (dá para reconhecer a máquina) e alças pelo peito.
+## [textura de costas, tamanho, giro, placa da frente ("" = nenhuma), tamanho, giro]
+const KITS := {
+	"S13": ["s13_costas", Vector2(52, 45), -0.08, "s13_frente", Vector2(38, 33), -0.42],
+	"S14": ["a14_costas", Vector2(52, 45), -0.08, "a14_frente", Vector2(38, 33), -0.42],
+	"S31": ["a31_costas", Vector2(52, 45), -0.08, "a31_frente", Vector2(38, 33), -0.42],
+	"S33": ["a33_costas", Vector2(52, 45), -0.08, "a33_frente", Vector2(38, 33), -0.42],
+	"S15": ["s15_bola", Vector2(40, 40), 0.0, "", Vector2.ZERO, 0.0],
+	"S34": ["a34_raio", Vector2(48, 32), -1.57, "", Vector2.ZERO, 0.0],
+}
 const HAND_PROPS := {"S18": ["s18_disco", Vector2(24, 24)], "S12": ["s12_carga", Vector2(30, 22)],
-	"S27": ["s27_controle", Vector2(18, 24)], "S28": ["s28_macarico", Vector2(30, 15)], "S33": ["a33_tocha", Vector2(34, 14)],
-	"S14": ["a14_frente", Vector2(30, 26)], "S15": ["s15_bola", Vector2(24, 24)], "S31": ["a31_braco", Vector2(36, 18)],
-	"S34": ["a34_raio", Vector2(32, 22)]}
+	"S27": ["s27_controle", Vector2(18, 24)], "S28": ["s28_macarico", Vector2(30, 15)], }
 # aparência
 var color_idx := 0
 var model := 0
@@ -1044,6 +1053,15 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 		var spec0: Array = SPELL_TOOLS[sid0]
 		ci.draw_set_transform_matrix(base * bx * Transform2D(-2.2, Vector2.ONE, 0.0, _v(sh[0]) + Vector2(-10, 8)))
 		ci.draw_texture_rect(Data.tex("spells/" + spec0[0]), Rect2(-spec0[1] * 0.4, spec0[1] * 0.8), false)
+	var kit_on: bool = KITS.has(sid0) and not armor and not sf.has("form") and not sf.get("fading", false)
+	if kit_on:   # kit nas costas (atrás do corpo): peça de costas + placa da frente dobrada espiando no ombro
+		var kd: Array = KITS[sid0]
+		var anchor: Vector2 = (_v(sh[0]) + _v(hips[0])) / 2.0 + Vector2(-9, -2) + (Vector2(-2, -16) if sid0 == "S34" else Vector2.ZERO)
+		if String(kd[3]) != "":
+			ci.draw_set_transform_matrix(base * bx * Transform2D(float(kd[5]), anchor + Vector2(-2, -20)))
+			ci.draw_texture_rect(Data.tex("spells/" + kd[3]), Rect2(-kd[4] / 2.0, kd[4]), false)
+		ci.draw_set_transform_matrix(base * bx * Transform2D(float(kd[2]), anchor))
+		ci.draw_texture_rect(Data.tex("spells/" + kd[0]), Rect2(-kd[1] / 2.0, kd[1]), false)
 	if BACK_PROPS.has(sid0) and not armor and not sf.get("fading", false) and not (sid0 == "S04" and (float(sf.get("prep", -1.0)) >= 0.0 or float(sf.get("fire", -1.0)) >= 0.0)):
 		var bp: Array = BACK_PROPS[sid0]
 		ci.draw_set_transform_matrix(base * bx * Transform2D(float(bp[2]), _v(sh[0]) + Vector2(-12, 10)))
@@ -1132,6 +1150,15 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 				ci.draw_rect(Rect2(eye + drop - Vector2(13, 8), Vector2(26, 16)), Color(0.2, 0.9, 0.4, 0.55) if glow else Color(0.08, 0.25, 0.12, 0.55))
 				ci.draw_rect(Rect2(eye + drop - Vector2(13, 8), Vector2(26, 16)), ring, false, 2.5)
 				ci.draw_line(eye + drop + Vector2(-10, -5), eye + drop + Vector2(10, -5), Color(1, 1, 1, 0.35), 1.4, true)
+	if kit_on:   # alças passando pela frente do peito (por cima do corpo) com fivela
+		ci.draw_set_transform_matrix(base * bx)
+		var s0: Vector2 = _v(sh[0]) + Vector2(1, -4)
+		var h1: Vector2 = _v(hips[1]) + Vector2(-1, -7)
+		ci.draw_line(s0, h1, Color("#2a1a2e"), 5.5, true)
+		ci.draw_line(s0, h1, Color("#8f5a2c"), 3.0, true)
+		var bk := s0.lerp(h1, 0.55)
+		ci.draw_rect(Rect2(bk - Vector2(3.5, 3.5), Vector2(7, 7)), Color("#2a1a2e"))
+		ci.draw_rect(Rect2(bk - Vector2(2, 2), Vector2(4, 4)), Color("#f2c84b"))
 	if HAND_PROPS.has(sid0) and not armor and not sf.has("form") and not sf.get("flying_on", false) and not sf.get("fading", false) and float(sf.get("fire", -1.0)) < 0.0:
 		var hp: Array = HAND_PROPS[sid0] if not (sid0 == "S12" and sf.get("placed", false)) else ["s27_controle", Vector2(18, 24)]
 		ci.draw_set_transform_matrix(base * Transform2D(-0.4, hb + Vector2(-2, -4)))

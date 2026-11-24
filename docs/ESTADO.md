@@ -119,6 +119,9 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
    (`levels/laboratorio.lvl`, Canteiro no layout "lab": laje em 6 trechos com núcleo fixo, 2 andaimes, 2 vigas penduradas,
    vão + plataforma firme + parede à direita). Menu curto: SPELL, EVENTO, BOTS, BONECOS, BONECO FAZ, REINICIAR FASE,
    INVENCÍVEL, CÂMERA LENTA, MEDIDORES, SAIR. Saíram: números ao vivo/SALVAR/COPIAR/PADRÃO, hitbox, régua, troca de arena.
+   **Kits nas costas (2026-11-24, pedido do usuário):** antes de usar, toda transformação fica como a Fornalha — peça de
+   costas no meio das costas, placa da frente dobrada espiando no ombro (reconhece a máquina) e alça com fivela pelo
+   peito (`RobotVis.KITS`); bola presa nas costas; raio encolhedor de pé com o prato sobre o ombro.
    PRÓXIMO: Etapa 5 controle+engenharia (S07,S08,S21,S12,S25,S27,S28) → Etapa 4 transformações (S14,S15,S16,S31,S33,S34) →
    Etapa 5 eventos (G05,G06,G11,G12,G13,G02,G03,G04,G14,G09) + matriz de conflitos. REJEITADOS (nunca reintroduzir):
    S09,S22,S23,S24,S26,S29,S30,S32; G07,G08,G15,G16,G17,G18. Testar só no Derruba/Canteiro.

@@ -2513,7 +2513,8 @@ func spells_frames(dir: String) -> void:
 		["S02", 60], ["S04", 70], ["S05", 60], ["S17", 90], ["S18", 80], ["S19", 90], ["S20", 70], ["porte", 90],
 		["S07", 90], ["S08", 70], ["S21", 120], ["S12", 110], ["S25", 90], ["S27", 90], ["S28", 90],
 		["lasercima", 70], ["gelodiag", 70], ["ganchocima", 90], ["ventocima", 80], ["fogocima", 140], ["socobaixo", 60], ["ganchocaixa", 70], ["murotteto", 80],
-		["S14", 130], ["S15", 120], ["S16", 100], ["S31", 100], ["S33", 100], ["S34", 110]]
+		["S14", 130], ["S15", 120], ["S16", 100], ["S31", 100], ["S33", 100], ["S34", 110],
+		["kitS13", 40], ["kitS14", 40], ["kitS31", 40], ["kitS33", 40], ["kitS15", 40], ["kitS34", 40]]
 	var mira_sp := {"lasercima": "S02", "gelodiag": "S03", "ganchocima": "S08", "ventocima": "S07", "fogocima": "S13", "socobaixo": "S01"}
 	for a0 in OS.get_cmdline_user_args():
 		if a0.begins_with("--so-spells="):
@@ -2553,6 +2554,8 @@ func spells_frames(dir: String) -> void:
 		elif nm == "S28":
 			sp.equip(r0, nm)
 			sp.equip(r1, "S05")
+		elif nm.begins_with("kit"):
+			sp.equip(r0, nm.substr(3))
 		elif nm == "ganchocaixa":
 			sp.equip(r0, "S08")
 			sp.drop_box("S20", Vector2(x0 + 4.0 * 64.0, fy - 40.0), false)
@@ -2611,6 +2614,8 @@ func spells_frames(dir: String) -> void:
 					a["v0"]["right"] = f >= 4 and f < 14
 					a["v0"]["down"] = f >= 20
 					a["v0"]["item"] = f == 20 or f == 21
+				"kitS13", "kitS14", "kitS31", "kitS33", "kitS15", "kitS34":
+					a["v0"]["right"] = f >= 22 and f < 36
 				"ganchocaixa":
 					a["v0"]["item"] = f == 14 or f == 15
 				"S14":
