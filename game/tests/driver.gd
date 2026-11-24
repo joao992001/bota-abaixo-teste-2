@@ -20,6 +20,10 @@ func _run() -> void:
 			await lab_shots(a.trim_prefix("--lab="))
 			get_tree().quit()
 			return
+		if a.begins_with("--prancha="):
+			await prancha_canteiro(a.trim_prefix("--prancha="))
+			get_tree().quit()
+			return
 		if a.begins_with("--pulo="):
 			await pulo_frames(a.trim_prefix("--pulo="))
 			get_tree().quit()
@@ -2420,6 +2424,84 @@ func pulo_frames(dir: String) -> void:
 		PlayerInput.virtual = {"v0": a}
 		await frames(1)
 		await grab(dir, "p")
+
+## Prancha do Canteiro (Derruba): a arte de art/out/prancha_canteiro_derruba_1/2.png + robôs desenhados pelo motor.
+func prancha_canteiro(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	var Vis = load("res://player/robot_visual.gd")
+	var root := ProjectSettings.globalize_path("res://").path_join("..").simplify_path()
+	var layer := CanvasLayer.new()
+	layer.layer = 30
+	add_child(layer)
+	var sheet := Node2D.new()
+	layer.add_child(sheet)
+	var cur := [null, 0]
+	const S := 0.75
+	var at := func(c: float, r: float) -> Vector2:
+		return Vector2(c * 64.0, r * 64.0) * S
+	sheet.draw.connect(func():
+		sheet.draw_texture_rect(cur[0], Rect2(0, 0, 1920, 1056), false)
+		sheet.draw_rect(Rect2(0, 1056, 1920, 24), Color("#e9f7f6"))
+		var heavy: Dictionary = Vis.idle_pose(0.3)
+		heavy["expr"] = "esforco"
+		heavy["hammer_ang"] = -2.75
+		heavy["hf_off"] = Vector2(-10, -22)
+		heavy["hb_off"] = Vector2(-4, -18)
+		heavy["lean"] = -0.3
+		heavy["glint"] = 1.0
+		var run: Dictionary = Vis.idle_pose(0.6)
+		run["feet"] = [Vector2(10, -8), Vector2(-9, 0)]
+		run["knee"] = [Vector2(7, 0), Vector2(1, 0)]
+		run["hb_off"] = Vector2(-9, -4)
+		run["lean"] = 0.18
+		var fly: Dictionary = Vis.idle_pose(0.2)
+		fly["expr"] = "eliminado"
+		fly["rot"] = 2.2
+		fly["hb_off"] = Vector2(-16, -22)
+		fly["hf_off"] = Vector2(14, -20)
+		fly["feet"] = [Vector2(-10, -6), Vector2(12, -4)]
+		var flip: Dictionary = Vis.idle_pose(0.4)
+		flip["expr"] = "esforco"
+		flip["rot"] = 3.3
+		flip["tuck"] = 1.0
+		flip["feet"] = [Vector2(3, -24), Vector2(8, -24)]
+		flip["knee"] = [Vector2(12, 0), Vector2(12, 0)]
+		flip["hb_off"] = Vector2(9, 6)
+		flip["hf_off"] = Vector2(6, 8)
+		flip["hammer_ang"] = 2.5
+		var looks := [{"color": 0, "model": 0}, {"color": 1, "model": 4}, {"color": 2, "model": 5}, {"color": 3, "model": 7}]
+		var xf := func(c: float, r: float, face := 1.0) -> Transform2D:
+			return Transform2D(0.0, Vector2(S * face, S), 0.0, at.call(c, r))
+		if cur[1] == 0:
+			Vis.draw_robot(sheet, looks[0], run, xf.call(12.0, 13.0))
+			Vis.draw_robot(sheet, looks[1], heavy, xf.call(21.5, 13.0, -1.0))
+			Vis.draw_robot(sheet, looks[2], Vis.idle_pose(1.0), xf.call(5.5, 10.0))
+			Vis.draw_robot(sheet, looks[3], flip, xf.call(19.5, 7.2))
+		else:
+			var lk2: Dictionary = looks[1].duplicate()
+			lk2["dmg"] = 3
+			Vis.draw_robot(sheet, looks[0], heavy, xf.call(19.0, 13.0))
+			Vis.draw_robot(sheet, lk2, fly, xf.call(36.0, 7.0))
+			var lk3: Dictionary = looks[2].duplicate()
+			lk3["dmg"] = 1
+			Vis.draw_robot(sheet, lk3, Vis.idle_pose(2.0), xf.call(14.0, 13.0))
+			Vis.draw_robot(sheet, looks[3], run, xf.call(34.5, 10.0, -1.0))
+			# rastro e riscos do arremesso do Brutamontes
+			sheet.draw_set_transform_matrix(Transform2D.IDENTITY)
+			for k in 4:
+				var p0: Vector2 = at.call(36.0 - 1.6 * (k + 1), 7.0 + 0.55 * (k + 1)) + Vector2(0, -30)
+				sheet.draw_circle(p0, 22.0 - k * 4.0, Color(0.36, 0.77, 0.36, 0.35 - k * 0.07))
+			for k in 3:
+				var y0: float = at.call(0, 6.4 + k * 0.35).y
+				sheet.draw_line(Vector2(at.call(30.0, 0).x, y0), Vector2(at.call(34.6, 0).x, y0 + 30), Color(1, 1, 1, 0.9), 4.0)
+	)
+	for i in 2:
+		var img := Image.load_from_file(root.path_join("art/out/prancha_canteiro_derruba_%d.png" % (i + 1)))
+		cur[0] = ImageTexture.create_from_image(img)
+		cur[1] = i
+		sheet.queue_redraw()
+		await frames(3)
+		await snap(dir, "prancha_canteiro_%d" % (i + 1))
 
 func anim_frames(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
