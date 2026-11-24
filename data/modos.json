@@ -466,6 +466,13 @@
         "kx_por": 4.0,
         "ky": 520,
         "ky_por": 2.4
+      },
+      "evento_carga": {
+        "dano": 14,
+        "kx": 300,
+        "kx_por": 4.0,
+        "ky": 560,
+        "ky_por": 2.6
       }
     },
     "aderencia": {
@@ -918,7 +925,7 @@
         {
           "id": "G05",
           "nome": "Operação Guindaste",
-          "dica": "uma carga desce e vira plataforma",
+          "dica": "carga com caixa de spell; marrete o gancho",
           "aviso_s": 2.5,
           "dur": 9.0,
           "fim_s": 1.0,
@@ -1009,7 +1016,7 @@
         {
           "id": "G09",
           "nome": "Inspeção de Segurança",
-          "dica": "máquinas param e a obra fica reforçada",
+          "dica": "drone conserta rachaduras e recolhe entulho",
           "aviso_s": 1.5,
           "dur": 8.0,
           "fim_s": 0.6,

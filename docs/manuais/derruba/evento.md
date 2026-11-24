@@ -63,6 +63,7 @@ Magnética, G14 Chuva de Rebites, G09 Inspeção, G10 Carga Especial.
 - Exaustores e medidor presos na borda do mapa ficavam fora da tela → usar `_vr()` (regra 6).
 - Vento empurrava robô parado para fora da arena → no chão o vento pesa 0,55 (no ar 1,2) e há teto (`vento_max`).
 - Textos flutuantes no início brigavam com a faixa do nome → não escrever por cima da faixa.
-- Guindaste (G05) e Drone (G09) ficaram com pouca função de jogo (pergunta do usuário em 2026-11-24): todo evento precisa
-  de um **motivo claro para o jogador agir** (prêmio, risco, rota nova) — não só enfeite. Propostas pendentes: carga com
-  caixa de spell em cima e que cai se marretarem o gancho; drone que conserta um estágio de rachadura e recolhe entulho.
+- Guindaste (G05) e Drone (G09) tinham pouca função de jogo → todo evento precisa de um **motivo claro para o jogador agir**
+  (prêmio, risco, rota nova), não só enfeite. Aprovado (2026-11-24): a carga traz uma caixa especial de spell em cima e
+  marretar o gancho (1 pesada ou 2 rápidas) solta a carga em quem está embaixo (crédito de quem marretou); o drone conserta
+  um estágio de rachadura das peças que carimba e recolhe o entulho com raio trator.

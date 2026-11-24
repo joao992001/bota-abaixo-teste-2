@@ -195,7 +195,14 @@ func _update_boxes(dt: float, alive: Array) -> void:
 			if b["block"][pid] <= 0.0:
 				b["block"].erase(pid)
 		var cell := Vector2i(int(b["pos"].x / T), int(floor((b["pos"].y + 30.0) / T)))
-		if lv.is_solid(cell) and b["pos"].y + 30.0 >= cell.y * T and b["vy"] >= 0.0:
+		var ev_top: float = main.events.top_at(b["pos"].x, b["pos"].y + 30.0) if main.events != null and b["vy"] >= 0.0 else -1.0
+		if ev_top >= 0.0:   # em cima da carga do guindaste / do entulho (eventos)
+			if b["vy"] > 60.0:
+				b["land_t"] = 0.0
+				Audio.play("caixote_pancada", 1.3, -10.0)
+			b["pos"].y = ev_top - 30.0
+			b["vy"] = 0.0
+		elif lv.is_solid(cell) and b["pos"].y + 30.0 >= cell.y * T and b["vy"] >= 0.0:
 			if b["vy"] > 60.0:
 				b["land_t"] = 0.0
 				main.dust(Vector2(b["pos"].x, cell.y * T), 0.6)

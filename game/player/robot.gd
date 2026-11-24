@@ -503,7 +503,7 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 		"spell_rebite": "rebite", "spell_estaca": "bate-estaca", "spell_disco": "disco de corte", "spell_bumerangue": "marreta-bumerangue",
 		"spell_mola": "canhão de molas", "spell_gancho": "gancho", "spell_carga": "carga de demolição", "spell_viga": "viga do guindaste",
 		"spell_bola": "bola de demolição", "spell_empilhadeira": "empilhadeira", "spell_broca": "broca", "spell_solda": "solda",
-		"evento_entulho": "entulho", "evento_rebite": "chuva de rebites", "evento_viga": "viga do cabo rompido"}.get(kind, kind)
+		"evento_entulho": "entulho", "evento_rebite": "chuva de rebites", "evento_viga": "viga do cabo rompido", "evento_carga": "carga do guindaste"}.get(kind, kind)
 	last_attacker = by
 	hanging = false
 	var am: Dictionary = main.demo.cfg["amassometro"]

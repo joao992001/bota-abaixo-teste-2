@@ -1451,6 +1451,32 @@ func eventos_test() -> void:
 		await frames(30)
 		check(not r0.is_on_floor() or r0.position.y > cr.position.y + 20.0, "G05: no fim a trava solta antes de a carga subir (ninguém é levado)")
 		await wait_end.call(a)
+		# 2ª vez: caixa de spell em cima da carga; marretar o gancho derruba a carga em quem está embaixo
+		reset.call()
+		main.demo.spells.boxes.clear()
+		a = await go.call("G05")
+		cr = a["d"]["rect"]
+		await wait_phase.call(a, "ativo")
+		var on_load := false
+		for i in 400:
+			await frames(1)
+			for b in main.demo.spells.boxes:
+				if b["special"] and absf(b["pos"].y - (cr.position.y - 30.0)) < 2.0 and absf(b["pos"].x - cr.get_center().x) < 40.0:
+					on_load = true
+			if on_load:
+				break
+		check(on_load, "G05: uma caixa especial de spell desce e fica EM CIMA da carga")
+		var fl0: float = a["d"]["floor"] if a["d"].has("floor") else ev._floor_under_rect(cr, null)
+		put(r1, Vector2(cr.get_center().x, fl0))
+		r1.dmg = 0.0
+		ev.hammer_hit(ev.hook_rect(a), false, 0)
+		ev.hammer_hit(ev.hook_rect(a), false, 0)
+		for i in 120:
+			await frames(1)
+			if not ev.active.has(a) or a["d"].get("state", "") == "caiu":
+				break
+		check(a["d"].get("state", "") == "caiu" and r1.dmg > 0.0 and r1.last_attacker == 0, "G05: 2 marretadas no gancho soltam a carga em quem está embaixo (crédito de quem marretou)")
+		await wait_end.call(a)
 	# G06 Entulho
 	reset.call()
 	a = await go.call("G06")
@@ -1530,8 +1556,13 @@ func eventos_test() -> void:
 		check(inband and ev.rivets.size() > 0, "G14: rebites só caem nas faixas marcadas")
 		await wait_end.call(a)
 		check(ev.rivets.size() < 60, "G14: densidade limitada")
-	# G09 Inspeção
+	# G09 Inspeção: conserta rachadura e recolhe entulho
 	reset.call()
+	var lj0: Dictionary = ct.parts.filter(func(p): return p["kind"] == "laje" and not p["nucleo"] and not p["fallen"] and p["crit_t"] <= 0.0)[0]
+	lj0["hp"] = int(lj0["max"] * 0.5)
+	lj0["state"] = 1
+	ev._drop_crate(Vector2(fx + 200.0, fy))
+	await frames(80)
 	a = await go.call("G09")
 	await wait_phase.call(a, "ativo")
 	await frames(2)
@@ -1541,6 +1572,8 @@ func eventos_test() -> void:
 	check(ev.inspecao and lj["hp"] == hp0, "G09: estrutura reforçada durante a inspeção")
 	await wait_end.call(a)
 	check(not ev.inspecao, "G09: liberado no fim")
+	check(int(lj0["state"]) == 0 and not lj0["fallen"], "G09: o drone conserta um estágio de rachadura")
+	check(ev.crates.is_empty(), "G09: o drone recolhe o entulho do chão")
 	# conflitos e simultâneos
 	await go.call("G02")
 	await go.call("G03")
@@ -2823,6 +2856,14 @@ func eventos_frames(dir: String) -> void:
 			r.invuln = 0.0
 		put(r0, Vector2(x0 + 40.0, fy))
 		put(r1, Vector2(x0 + 300.0, fy))
+		if id == "G09":
+			ev._drop_crate(Vector2(x0 + 520.0, fy))
+			ev._drop_crate(Vector2(x0 + 160.0, fy))
+			var lj: Array = main.demo.canteiro.parts.filter(func(p): return p["kind"] == "laje" and not p["nucleo"] and not p["fallen"])
+			lj[0]["hp"] = int(lj[0]["max"] * 0.3)
+			lj[0]["state"] = 2
+			for k in 50:
+				await frames(1)
 		ev.trigger(ev.ev(id))
 		var a = ev.inst(id)
 		if id == "G04" and a != null:
@@ -2834,6 +2875,9 @@ func eventos_frames(dir: String) -> void:
 			var inp := {"v0": {}, "v1": {}}
 			if id == "G05" and a["phase"] == "ativo" and a["len"] - a["t"] > 1.6 and a["len"] - a["t"] < 2.4:
 				put(r0, Vector2(a["d"]["rect"].get_center().x, a["d"]["rect"].position.y - 80.0))
+			if id == "G05" and a["phase"] == "ativo" and n == 330:
+				put(r1, Vector2(a["d"]["rect"].get_center().x + 40.0, ev._floor_under_rect(a["d"]["rect"], null)))
+				ev.hammer_hit(ev.hook_rect(a), true, 0)
 			if id in ["G03", "G02"] and n % 50 < 14:
 				inp["v0"]["jump"] = true
 			PlayerInput.virtual = inp

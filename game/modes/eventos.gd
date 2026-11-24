@@ -508,16 +508,7 @@ func _tick_ativo(a: Dictionary, dt: float, pa: float) -> void:
 				d["pulse"] -= dt
 				_magnet_pull(a, dt)
 		"G05":
-			var r: Rect2 = d["rect"]
-			var top := _pr().position.y - 260.0
-			var kd := clampf(pa / float(e["desce_s"]), 0.0, 1.0)
-			d["y"] = lerpf(top, r.position.y, 1.0 - pow(1.0 - kd, 3.0))
-			if d["body"] != null and is_instance_valid(d["body"]):
-				d["body"].position = Vector2(0, d["y"] - r.position.y)
-			if kd >= 1.0 and not d.get("locked", false):
-				d["locked"] = true
-				Audio.play("chave", 0.8, 0.0)
-				main.dust(r.get_center() + Vector2(0, 10), 0.6)
+			_crane_step(a, dt, pa)
 		"G06":
 			var spots_: Array = d["spots"]
 			var i := int(d.get("next", 0))
@@ -556,6 +547,14 @@ func _tick_ativo(a: Dictionary, dt: float, pa: float) -> void:
 					if not p["fallen"] and x >= p["rect"].get_center().x and not d["stamped"].has(p["idx"] * 10 + ["laje", "andaime", "viga"].find(p["kind"])):
 						d["stamped"][p["idx"] * 10 + ["laje", "andaime", "viga"].find(p["kind"])] = a["age"]
 						Audio.play("chave", 1.5, -8.0)
+						_repair(p)
+			for c in crates:   # recolhe o entulho que ficou no chão (raio trator)
+				if c["state"] == "chao" and absf(c["pos"].x - x) < 40.0:
+					if c["body"] != null and is_instance_valid(c["body"]):
+						c["body"].queue_free()
+					c["body"] = null
+					c["state"] = "recolhe"
+					Audio.play("vortice", 1.6, -8.0)
 
 func _tick_fim(a: Dictionary, dt: float, _pa: float) -> void:
 	var e: Dictionary = a["e"]
@@ -571,8 +570,9 @@ func _tick_fim(a: Dictionary, dt: float, _pa: float) -> void:
 			var target := clampf(1.0 - (1.0 - float(e["gravidade"])) * K(), 0.3, 0.92)
 			gravity_mult = minf(gravity_mult, lerpf(1.0, target, k))
 		"G05":
-			var top := _pr().position.y - 260.0
-			d["y"] = lerpf(top, d["rect"].position.y, k * k)
+			if d.get("state", "") != "caiu":
+				var top := _pr().position.y - 260.0
+				d["y"] = lerpf(top, d["rect"].position.y, k * k)
 		"G11":
 			for w in d["walls"]:
 				w["k"] = k
@@ -654,6 +654,14 @@ func _update_crates(dt: float) -> void:
 				body.add_child(cs)
 				add_child(body)
 				c["body"] = body
+		elif c["state"] == "recolhe":
+			var g = inst("G09")
+			var to: Vector2 = _drone_pos(g) + Vector2(0, 40) if g != null else c["pos"] + Vector2(0, -400)
+			c["pos"] = c["pos"].move_toward(to + Vector2(0, 52), 520.0 * dt)
+			c["rot"] += dt * 3.0
+			if c["pos"].distance_to(to + Vector2(0, 52)) < 8.0:
+				crates.erase(c)
+				main.spark(to, 3)
 		elif c["state"] == "chao":
 			c["life"] -= dt
 			if c["life"] <= 0.0 or not _solid_px(Vector2(c["pos"].x, c["floor"] + 8.0)):
@@ -673,7 +681,18 @@ func _break_crate(c: Dictionary) -> void:
 			"col": Color("#c98a4b") if c["kind"] == "g06_caixa" else Color("#3c9a46")})
 
 ## Marretada acerta entulho? (golpe forte quebra; 2 fracos quebram)
-func hammer_hit(r: Rect2, heavy: bool) -> bool:
+func hammer_hit(r: Rect2, heavy: bool, by := -1) -> bool:
+	var g = inst("G05")
+	if g != null and g["phase"] == "ativo" and String(g["d"].get("state", "")) == "parada" and float(g["d"].get("crack", 0.0)) <= 0.0 and hook_rect(g).intersects(r):
+		g["d"]["hook_hp"] = int(g["d"].get("hook_hp", 2)) - (2 if heavy else 1)
+		main.spark(hook_rect(g).get_center(), 6)
+		Audio.play("chave", 0.7, 0.0)
+		main.shake(3.0)
+		if int(g["d"]["hook_hp"]) <= 0:
+			g["d"]["crack"] = 0.3   # range um instante (quem está embaixo vê) e solta
+			g["d"]["by"] = by
+			Audio.play("serra", 0.6, -4.0)
+		return true
 	for c in crates.duplicate():
 		if c["state"] == "chao" and crate_rect(c).intersects(r):
 			c["hp"] -= 2 if heavy else 1
@@ -711,6 +730,96 @@ func grab_at(p: Vector2) -> bool:
 		if Rect2(br.position.x, b["d"]["y"], br.size.x, 26).grow(4).has_point(p):
 			return true
 	return false
+
+# ---------------------------------------------------------------- G09 inspeção
+## Conserta UM estágio de rachadura da peça carimbada (crítico/caindo e o que já caiu não voltam).
+func _repair(p: Dictionary) -> void:
+	if p["fallen"] or p["crit_t"] > 0.0 or p["nucleo"] or int(p["state"]) == 0:
+		return
+	var mx: int = p["max"]
+	var need := int(ceil(mx * (0.68 if int(p["state"]) == 1 else 0.35))) + 1
+	p["hp"] = clampi(maxi(int(p["hp"]), need), 0, mx)
+	var frac := float(p["hp"]) / float(mx)
+	p["state"] = 0 if frac > 0.67 else (1 if frac > 0.34 else 2)
+	var c: Vector2 = p["rect"].get_center()
+	main.float_text(c + Vector2(0, -50), "CONSERTADO", Color("#9ff7c8"))
+	for k in 6:
+		_spark_bit(Vector2(randf_range(p["rect"].position.x + 10, p["rect"].end.x - 10), p["rect"].position.y))
+
+# ---------------------------------------------------------------- G05 guindaste
+## Desce e trava; ao travar, uma caixa especial de spell desce de paraquedas EM CIMA da carga (motivo para subir).
+## Quem sobe pode MARRETAR O GANCHO (pesada quebra; 2 rápidas também): ele range e a carga despenca na faixa da sombra,
+## acertando quem estiver embaixo (crédito para quem marretou).
+func _crane_step(a: Dictionary, dt: float, pa: float) -> void:
+	var e: Dictionary = a["e"]
+	var d: Dictionary = a["d"]
+	var r: Rect2 = d["rect"]
+	match String(d.get("state", "")):
+		"", "parada":
+			var top := _pr().position.y - 260.0
+			var kd := clampf(pa / float(e["desce_s"]), 0.0, 1.0)
+			d["y"] = lerpf(top, r.position.y, 1.0 - pow(1.0 - kd, 3.0))
+			if d["body"] != null and is_instance_valid(d["body"]):
+				d["body"].position = Vector2(0, d["y"] - r.position.y)
+			if kd >= 1.0 and not d.get("locked", false):
+				d["locked"] = true
+				d["state"] = "parada"
+				Audio.play("chave", 0.8, 0.0)
+				main.dust(r.get_center() + Vector2(0, 10), 0.6)
+				if main.demo.spells != null:
+					main.demo.spells.spawn_box(Vector2(r.get_center().x, r.position.y), true)
+			if float(d.get("crack", 0.0)) > 0.0:
+				d["crack"] = float(d["crack"]) - dt
+				if randf() < 0.6:
+					_spark_bit(hook_rect(a).get_center() + Vector2(randf_range(-12, 12), 20))
+				if float(d["crack"]) <= 0.0:
+					if d["body"] != null and is_instance_valid(d["body"]):
+						d["body"].queue_free()
+					d["body"] = null
+					d["state"] = "cai"
+					d["vy"] = 0.0
+					d["floor"] = _floor_under_rect(r, null)
+					Audio.play("caixote_quebra", 0.5, 0.0)
+					main.float_text(r.get_center() + Vector2(0, -150), "SOLTOU!", Color.WHITE)
+		"cai":
+			d["vy"] = minf(float(d["vy"]) + 2600.0 * dt, 1600.0)
+			d["y"] = float(d["y"]) + float(d["vy"]) * dt
+			var fl: float = d["floor"]
+			if fl > 0.0 and float(d["y"]) + 26.0 >= fl:
+				d["y"] = fl - 26.0
+				var hr := Rect2(r.position.x, fl - 40.0, r.size.x, 40.0)
+				for rb in main.robots:
+					if rb.alive and rb.rect().intersects(hr):
+						rb.take_hit(1 if rb.position.x >= r.get_center().x else -1, "evento_carga", int(d.get("by", -1)))
+				main.shake(12.0)
+				Audio.play("terremoto", 1.6, -4.0)
+				for x in range(int(r.position.x), int(r.end.x), 48):
+					main.dust(Vector2(x + 24, fl), 1.2)
+				d["state"] = "caiu"
+				a["t"] = minf(a["t"], 0.01)   # vai para o fim: some numa nuvem de poeira
+			elif float(d["y"]) > _pr().end.y + 300.0:
+				d["state"] = "caiu"
+				a["t"] = minf(a["t"], 0.01)
+
+## Moitão (gancho) do guindaste: alvo da marretada.
+func hook_rect(a: Dictionary) -> Rect2:
+	var r: Rect2 = a["d"]["rect"]
+	return Rect2(r.get_center().x - 30.0, float(a["d"]["y"]) - 176.0, 60.0, 136.0)
+
+## Onde a caixa de spell para em cima de algo do evento (carga do guindaste, entulho, viga caída). -1 = nada.
+func top_at(x: float, y: float) -> float:
+	var g = inst("G05")
+	if g != null and g["d"].get("body") != null:
+		var r: Rect2 = g["d"]["rect"]
+		var ty := float(g["d"]["y"])
+		if x >= r.position.x and x <= r.end.x and y >= ty - 2.0 and y <= ty + 30.0:
+			return ty
+	for c in crates:
+		if c["state"] == "chao" and absf(c["pos"].x - x) < 30.0:
+			var ty2: float = crate_rect(c).position.y
+			if y >= ty2 - 2.0 and y <= ty2 + 26.0:
+				return ty2
+	return -1.0
 
 # ---------------------------------------------------------------- G13 viga
 func _beam_step(a: Dictionary, dt: float) -> void:
@@ -1194,8 +1303,20 @@ func _draw_crane(a: Dictionary) -> void:
 		var ay := r.position.y - 60.0 - absf(sin(t * 6.0)) * 14.0
 		draw_colored_polygon(PackedVector2Array([Vector2(cx - 18, ay - 22), Vector2(cx + 18, ay - 22), Vector2(cx, ay)]), YEL)
 		return
+	var st := String(d.get("state", ""))
+	if st == "caiu" or st == "cai":   # despencou: carga solta (some em poeira no fim), cabo partido lá em cima
+		var al: float = 1.0 if a["phase"] != "fim" else clampf(a["t"] / a["len"], 0.0, 1.0)
+		draw_set_transform(Vector2(cx, float(d["y"]) + 20.0), 0.06 if st == "caiu" else 0.0, Vector2.ONE)
+		draw_texture_rect(tex["g05_carga"], Rect2(-r.size.x / 2.0, -26, r.size.x, 56), false, Color(1, 1, 1, al))
+		draw_set_transform(Vector2.ZERO)
+		draw_line(Vector2(cx, pr.position.y - 300.0), Vector2(cx + sin(t * 9.0) * 20.0, r.position.y - 220.0), Color("#3a3a46"), 5.0, true)
+		return
 	# carga + moitão + correntes, com balanço que amortece
 	var sway := sin(a["age"] * 2.6) * 0.06 * exp(-maxf(a["age"] - float(a["e"]["aviso_s"]), 0.0) * 0.5)
+	if float(d.get("crack", 0.0)) > 0.0:
+		sway += sin(t * 70.0) * 0.12
+	elif int(d.get("hook_hp", 2)) < 2:
+		sway += sin(t * 40.0) * 0.04
 	var lt := Vector2(cx, d["y"])
 	var hook := lt + Vector2(0, -120)
 	draw_line(Vector2(cx, pr.position.y - 300.0), hook + Vector2(0, -40), Color("#3a3a46"), 5.0, true)
@@ -1220,7 +1341,13 @@ func _draw_crate(c: Dictionary) -> void:
 	var a := 1.0
 	if c["state"] == "chao" and c["life"] < 1.0:
 		a = 0.5 + 0.5 * float(fmod(t, 0.2) < 0.1)
-	draw_set_transform(r.get_center(), c["rot"], Vector2.ONE)
+	var sc := 1.0
+	if c["state"] == "recolhe":
+		var g = inst("G09")
+		if g != null:
+			sc = clampf(c["pos"].distance_to(_drone_pos(g)) / 160.0, 0.35, 1.0)
+			draw_line(r.get_center(), _drone_pos(g) + Vector2(0, 30), Color(0.62, 0.97, 0.78, 0.5), 10.0 * sc)
+	draw_set_transform(r.get_center(), c["rot"], Vector2(sc, sc))
 	draw_texture_rect(tex[c["kind"]], Rect2(-32, -30, 64, 56), false, Color(1, 1, 1, a) if c["flash"] <= 0.0 else Color(2, 2, 2, 1))
 	draw_set_transform(Vector2.ZERO)
 
