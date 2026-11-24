@@ -104,7 +104,7 @@ func _chega() -> void:
 		if r.alive:
 			r.invuln = maxf(r.invuln, float(cfg["invuln_chegada_s"]))
 			main.dust(r.position, 1.2)
-			if not lv.area.grow(64).has_point(r.position):   # passou do tempo e ficou fora: nasce na etapa 2
+			if not lv.area.grow(64).has_point(r.position) or r.position.y < lv.area.position.y + 140.0:   # ficou fora ou em cima do teto: nasce embaixo
 				main.demo.respawn(r)
 
 ## Nascimento na etapa atual (spawns 1–4 na etapa 1, 5–8 na etapa 2).

@@ -20,6 +20,7 @@ const ArenaFx := preload("res://modes/arena_fx.gd")
 const Canteiro := preload("res://modes/canteiro.gd")
 const Etapas := preload("res://modes/etapas.gd")
 const Cena := preload("res://modes/cena.gd")
+const Mecanismos := preload("res://modes/mecanismos.gd")
 const Spells := preload("res://modes/spells.gd")
 const Kit := preload("res://ui/kit.gd")
 var fx: Node2D = null        # mecânicas da arena (plataformas, lama, bola, esteiras)
@@ -27,6 +28,7 @@ var spells: Node2D = null     # caixas de spell, slots e efeitos (modes/spells.g
 var canteiro: Node2D = null  # estrutura destrutível do Canteiro de Obras (Derruba), quando a arena tem "canteiro: 1"
 var etapas: Node2D = null   # fase em etapas (modes/etapas.gd): virada cronometrada e queda para a etapa 2
 var cena: Node2D = null     # cena viva da fase (modes/cena.gd): fundo em camadas animado
+var mecs: Node2D = null     # mecanismos da fase (modes/mecanismos.gd)
 var arena := {}              # {id, nome, dica} da rodada atual
 var last_arena := ""
 var last_choice := ""         # rodízio: escolha da rodada anterior
@@ -147,6 +149,14 @@ func start_round() -> void:
 		main.world.move_child(cena, 0)   # atrás de tudo (mapa, estrutura, robôs)
 		cena.setup(main)
 	main.bg.visible = cena == null
+	if mecs != null and is_instance_valid(mecs):
+		mecs.queue_free()
+	mecs = null
+	if cfg.get("mecanismos", {}).has(String(main.level.prop("cena", ""))):
+		mecs = Mecanismos.new()
+		main.world.add_child(mecs)
+		main.world.move_child(mecs, 3)   # no palco, atrás dos robôs
+		mecs.setup(main)
 	if spells != null and is_instance_valid(spells):
 		spells.queue_free()
 	spells = Spells.new()
@@ -193,6 +203,8 @@ func update(dt: float) -> void:
 	main.events.update(dt)
 	if etapas != null and is_instance_valid(etapas):
 		etapas.update(dt)   # depois dos eventos: a queda mexe na gravidade do quadro
+	if mecs != null and is_instance_valid(mecs):
+		mecs.update(dt)
 	if fx != null and is_instance_valid(fx):
 		fx.update(dt, main.countdown <= 0.0)
 	if not go_played and main.countdown <= 0.6:
@@ -457,6 +469,8 @@ func attack(r, kind: String) -> bool:
 	if fx != null and is_instance_valid(fx) and fx.hammer_hit(r, hit.grow(8), heavy):
 		if not hit_robot:
 			r.hitstop = float(hs["rapido"])
+	if mecs != null and is_instance_valid(mecs) and mecs.hammer_hit(hit.grow(8), heavy, r.pid) and not hit_robot:
+		r.hitstop = float(hs["rapido"])   # controle de mecanismo da fase
 	if main.events.hammer_hit(hit.grow(8), heavy, r.pid) and not hit_robot:
 		r.hitstop = float(hs["rapido"])   # entulho do evento G06
 	if heavy and canteiro != null and is_instance_valid(canteiro):

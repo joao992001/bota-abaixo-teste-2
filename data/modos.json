@@ -473,6 +473,41 @@
         "kx_por": 4.0,
         "ky": 560,
         "ky_por": 2.6
+      },
+      "mec_tubo": {
+        "dano": 10,
+        "kx": 300,
+        "kx_por": 4.0,
+        "ky": 360,
+        "ky_por": 2.0
+      },
+      "mec_serra": {
+        "dano": 8,
+        "kx": 260,
+        "kx_por": 3.4,
+        "ky": 420,
+        "ky_por": 2.0
+      },
+      "mec_estaca": {
+        "dano": 16,
+        "kx": 220,
+        "kx_por": 3.0,
+        "ky": 200,
+        "ky_por": 1.5
+      },
+      "mec_vagonete": {
+        "dano": 10,
+        "kx": 420,
+        "kx_por": 4.5,
+        "ky": 320,
+        "ky_por": 2.0
+      },
+      "mec_choque": {
+        "dano": 6,
+        "kx": 80,
+        "kx_por": 1.0,
+        "ky": 300,
+        "ky_por": 1.5
       }
     },
     "aderencia": {
@@ -1091,6 +1126,176 @@
       "gravidade_queda": 0.6,
       "funil_vel": 900,
       "invuln_chegada_s": 1.2
+    },
+    "mecanismos": {
+      "nota": "Mecanismos de cada fase (modes/mecanismos.gd), por cena; px do mundo. alvo = retângulo que a marretada aciona.",
+      "fase1": [
+        {
+          "id": "M1",
+          "tipo": "betoneira",
+          "etapa": 1,
+          "pos": [
+            70,
+            1088
+          ],
+          "faixa": [
+            180,
+            310
+          ],
+          "chao": 1088,
+          "ciclo_s": 14,
+          "aviso_s": 1.2,
+          "fresco_s": 6,
+          "lentidao": 0.45,
+          "alvo": [
+            70,
+            1030,
+            60,
+            60
+          ],
+          "fase_s": 4
+        },
+        {
+          "id": "M2",
+          "tipo": "elevador",
+          "etapa": 1,
+          "base": [
+            2380,
+            1088
+          ],
+          "topo": 640,
+          "mastro": 2525,
+          "largura": 130,
+          "espera_s": 2.0,
+          "move_s": 2.5
+        },
+        {
+          "id": "M3",
+          "tipo": "esteira",
+          "etapa": 1,
+          "x": [
+            330,
+            505
+          ],
+          "chao": 1088,
+          "dir": -1,
+          "vel": 190,
+          "inverte_s": 7,
+          "alvo": [
+            330,
+            1040,
+            175,
+            48
+          ]
+        },
+        {
+          "id": "M4",
+          "tipo": "tubos",
+          "etapa": 1,
+          "pos": [
+            2150,
+            1088
+          ],
+          "chao": 1088,
+          "recarga_s": 20,
+          "alvo": [
+            2100,
+            940,
+            250,
+            150
+          ]
+        },
+        {
+          "id": "M5",
+          "tipo": "serra",
+          "etapa": 1,
+          "pos": [
+            596,
+            640
+          ],
+          "passarela": [
+            512,
+            680
+          ],
+          "ligada_s": 2,
+          "desligada_s": 4
+        },
+        {
+          "id": "M6",
+          "tipo": "bate_estaca",
+          "etapa": 2,
+          "x": 1568,
+          "topo": 1944,
+          "chao": 2624,
+          "ciclo_s": 5,
+          "aviso_s": 1.0,
+          "alvo": [
+            1520,
+            1924,
+            96,
+            140
+          ]
+        },
+        {
+          "id": "M7",
+          "tipo": "agua",
+          "etapa": 2,
+          "x": [
+            192,
+            2368
+          ],
+          "chao": 2624,
+          "altura": 70,
+          "ciclo_s": 18,
+          "sobe_s": 3,
+          "fica_s": 6,
+          "lentidao": 0.6,
+          "dreno_s": 6,
+          "alvo": [
+            2275,
+            2400,
+            66,
+            66
+          ],
+          "fase_s": 2
+        },
+        {
+          "id": "M8",
+          "tipo": "vagonete",
+          "etapa": 2,
+          "x": [
+            260,
+            2300
+          ],
+          "chao": 2624,
+          "vel": 300,
+          "ciclo_s": 12,
+          "aviso_s": 1.2,
+          "fase_s": 3
+        },
+        {
+          "id": "M9",
+          "tipo": "gerador",
+          "etapa": 2,
+          "pos": [
+            310,
+            2496
+          ],
+          "cabo": [
+            700,
+            2620
+          ],
+          "ciclo_s": 6,
+          "faisca_s": 1.5,
+          "desliga_s": 8,
+          "alvo": [
+            225,
+            2366,
+            170,
+            130
+          ]
+        }
+      ]
     }
   },
   "bots": {

@@ -50,6 +50,7 @@ var spin := 0.0
 var wall_sliding := false
 var stun_t := 0.0            # atordoado: ignora o controle (pisão na cabeça, marretada)
 var spell_speed := 1.0         # multiplicador de corrida de spells/transformações (modes/spells.gd)
+var env_slow := 1.0            # mecanismos da fase (concreto fresco, água): corrida e pulo mais fracos; volta a 1 sozinho
 var spell_push := 1.0          # multiplicador de empurrão recebido (armadura resiste)
 var caught := false           # Fuga: foi pego pela tela ou pela lama (esse sai de vez)
 var speed_k := 1.0            # multiplicador da corrida (Rei da Obra: o rei anda mais devagar)
@@ -236,7 +237,7 @@ func _physics_process(dt: float) -> void:
 				tgt_k = float(hp["mov_mult_preparo"])
 			elif not atk_landed and atk_t > float(hp["preparo"]) + float(hp["ativo"]):
 				tgt_k = float(hp["mov_mult_recupera_erro"])   # errou: fica exposto
-		own_vx = move_toward(own_vx, tgt_k * ix * f("max_run") * speed_k * spell_speed, a * dt)
+		own_vx = move_toward(own_vx, tgt_k * ix * f("max_run") * speed_k * spell_speed * env_slow, a * dt)
 	# pulo / parede
 	var wall_dir := 0 if on_floor else _wall_dir()
 	if on_floor:
@@ -348,7 +349,7 @@ func _ix() -> float:
 
 func _jump_speed() -> float:
 	var js := float(c["jump_speed"])
-	return js
+	return js * (0.55 + 0.45 * env_slow)
 
 ## S15 Bola de Demolição: rola com inércia (acelera devagar, freia longe), pulinho, quica na parede.
 func _ball_update(dt: float, ix: float, on_floor: bool) -> void:
@@ -503,7 +504,8 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 		"spell_rebite": "rebite", "spell_estaca": "bate-estaca", "spell_disco": "disco de corte", "spell_bumerangue": "marreta-bumerangue",
 		"spell_mola": "canhão de molas", "spell_gancho": "gancho", "spell_carga": "carga de demolição", "spell_viga": "viga do guindaste",
 		"spell_bola": "bola de demolição", "spell_empilhadeira": "empilhadeira", "spell_broca": "broca", "spell_solda": "solda",
-		"evento_entulho": "entulho", "evento_rebite": "chuva de rebites", "evento_viga": "viga do cabo rompido", "evento_carga": "carga do guindaste"}.get(kind, kind)
+		"evento_entulho": "entulho", "evento_rebite": "chuva de rebites", "evento_viga": "viga do cabo rompido", "evento_carga": "carga do guindaste",
+		"mec_tubo": "tubo rolando", "mec_serra": "serra de bancada", "mec_estaca": "bate-estaca", "mec_vagonete": "vagonete", "mec_choque": "choque"}.get(kind, kind)
 	last_attacker = by
 	hanging = false
 	var am: Dictionary = main.demo.cfg["amassometro"]

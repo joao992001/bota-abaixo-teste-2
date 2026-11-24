@@ -143,6 +143,24 @@ SPRITES = {
     "npc_carrinho": (160, 110, lambda: npc(50, 100, "#9fb9c0", "carrinho", 1.4)),
     "npc": (80, 110, lambda: npc(40, 100, "#b4a9c4", "", 1.4)),
     "npc_lanterna": (200, 110, lambda: npc(40, 100, "#55606e", "", 1.4, lamp=True)),
+    # mecanismos (posicionados e animados por modes/mecanismos.gd); chão/base na borda de baixo
+    "m_betoneira": (330, 170, lambda: f'<g transform="translate(70,160)">' + fp.betoneira(0, 0).split('<ellipse')[0] + '</g>'),
+    "m_esteira": (300, 70, lambda: fp.esteira(4, 64, 240)),
+    "m_tubo": (84, 84, lambda: E(42, 42, 38, 38, "#c4beb2", 2, dark="#9e9789") + '<circle cx="42" cy="42" r="22" fill="#7d776c"/><circle cx="42" cy="42" r="17" fill="#5a554d"/>'
+               + '<path d="M42,6 V20" stroke="#9e9789" stroke-width="4"/>'),
+    "m_serra": (76, 76, lambda: E(38, 38, 30, 30, "#c9d1d8", 1.6, dark="#8d98a4") + "".join(
+        f'<path d="M{38 + 26 * __import__("math").cos(__import__("math").radians(a)):.1f},{38 + 26 * __import__("math").sin(__import__("math").radians(a)):.1f} '
+        f'L{38 + 36 * __import__("math").cos(__import__("math").radians(a) + 0.15):.1f},{38 + 36 * __import__("math").sin(__import__("math").radians(a) + 0.15):.1f}" stroke="#8d98a4" stroke-width="5"/>'
+        for a in range(0, 360, 30)) + '<circle cx="38" cy="38" r="6" fill="#2a1a2e"/>'),
+    "m_bancada": (110, 40, lambda: R(8, 6, 94, 30, "#4a5566", 4, 1.6)),
+    "m_martelo": (140, 110, lambda: R(10, 10, 120, 80, "#6b7783", 8, 2, dark="#4d5a6e") + cd.zebra(10, 74, 120, 14)),
+    "m_vagonete": (170, 110, lambda: S("M10,20 L160,20 L140,82 L30,82 Z", "#a8582e", (8, 18, 162, 84), k=2, dark="#7a3a18")
+                   + "".join(f'<rect x="{x}" y="{4 + (i % 2) * 6}" width="30" height="22" fill="#a1988a" transform="rotate(14 {x} 10)"/>' for i, x in enumerate((40, 80, 112)))
+                   + "".join(f'<circle cx="{x}" cy="92" r="14" fill="#2a1a2e"/><circle cx="{x}" cy="92" r="5" fill="#9aa4ae"/>' for x in (50, 120))
+                   + '<circle cx="158" cy="36" r="8" fill="#fff4c8"/>'),
+    "m_gerador": (170, 130, lambda: R(10, 10, 150, 116, "#3c9a46", 8, 2.4, dark="#25682d") + "".join(
+        f'<rect x="{24 + k * 26}" y="30" width="14" height="56" rx="3" fill="#25682d"/>' for k in range(5))
+                  + '<path d="M122,52 l14,-14 l-4,12 l12,-2 l-16,18 l4,-12 Z" fill="#f2c84b"/>'),
 }
 
 

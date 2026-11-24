@@ -510,6 +510,7 @@ func demolicao_test() -> void:
 	await spells_test()
 	await eventos_test()
 	await etapas_test()
+	await mecanismos_test()
 	await imagens_test()
 
 func menus_test() -> void:
@@ -1654,6 +1655,145 @@ func etapas_test() -> void:
 	check(a2.has_point(r0.position) and a2.has_point(r1.position), "o funil leva até quem estava na ponta do térreo para dentro do buraco")
 	await frames(30)
 	check(r0.is_on_floor() and r1.is_on_floor(), "todos de pé no chão da Fundação")
+	main.event_level = 0
+
+## Mecanismos da Fase 1 (catálogo M1–M9): cada um faz o que promete e responde à marretada.
+func mecanismos_test() -> void:
+	print("== Mecanismos da Fase 1")
+	main.go_menu()
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	main.mode = "demolicao"
+	main.go_join()
+	await frames(2)
+	await tap("v0", "jump")
+	await tap("v1", "jump")
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 9
+	main.event_level = 0
+	main.arena_choice = "canteiro_obras"
+	main.start_match()
+	await demo_round()
+	var mc = main.demo.mecs
+	var r0 = main.robots[0]
+	var r1 = main.robots[1]
+	var get := func(id: String) -> Dictionary:
+		for m in mc.list:
+			if m["d"]["id"] == id:
+				return m
+		return {}
+	var calm := func() -> void:
+		for i in main.players.size():
+			main.demo.lives[i] = 9
+		for r in [r0, r1]:
+			r.dmg = 0.0
+			r.stun_t = 0.0
+			r.invuln = 0.0
+	check(mc != null and mc.list.size() == 9, "a Fase 1 tem 9 mecanismos (%d)" % (0 if mc == null else mc.list.size()))
+	# M1 betoneira
+	calm.call()
+	var m1: Dictionary = get.call("M1")
+	put(r0, Vector2(240, 1088))
+	mc.hammer_hit(Rect2(Vector2(m1["d"]["alvo"][0], m1["d"]["alvo"][1]), Vector2(20, 20)), false, 1)
+	await frames(int(float(m1["d"]["aviso_s"]) * 60.0) + 10)
+	check(float(m1["s"].get("fresh", 0.0)) > 0.0 and r0.env_slow < 1.0, "M1 betoneira: marretar a alavanca despeja concreto e quem pisa fica lento")
+	# M3 esteira
+	calm.call()
+	put(r0, Vector2(470, 1088))
+	await frames(4)
+	var x0: float = r0.position.x
+	await frames(40)
+	check(r0.position.x < x0 - 40.0, "M3 esteira: leva quem está em cima para fora")
+	# M2 elevador
+	var m2: Dictionary = get.call("M2")
+	var ys := []
+	for k in 8:
+		await frames(60)
+		ys.append(m2["s"]["y"])
+	check(ys.min() < 700.0 and ys.max() > 1080.0, "M2 elevador: sobe até o andaime e desce ao térreo")
+	# M4 tubos
+	calm.call()
+	var m4: Dictionary = get.call("M4")
+	put(r1, Vector2(2345, 1088))
+	put(r0, Vector2(2060, 1088))
+	mc.hammer_hit(Rect2(Vector2(m4["d"]["alvo"][0], m4["d"]["alvo"][1]), Vector2(40, 40)), true, 0)
+	await frames(90)
+	check(int(m4["s"]["pile"]) == 0 and r1.dmg > 0.0 and r1.last_attacker == 0, "M4 tubos: marretada solta tubos rolando que acertam (crédito de quem marretou)")
+	# M5 serra
+	calm.call()
+	var m5: Dictionary = get.call("M5")
+	put(r0, Vector2(600, 640))
+	var hurt := false
+	for k in 400:
+		await frames(1)
+		r0.invuln = 0.0
+		if r0.dmg > 0.0:
+			hurt = true
+			break
+		if not r0.alive:
+			break
+		if k % 30 == 0:
+			put(r0, Vector2(600, 640))
+	check(hurt, "M5 serra: a lâmina sobe em ciclo e machuca")
+	# etapa 2
+	var et = main.demo.etapas
+	et.t = et.virada_s()
+	et.state = "aviso"
+	et.st_t = 0.01
+	for k in 300:
+		await frames(1)
+		if et.etapa == 2 and et.state == "etapa":
+			break
+	check(et.etapa == 2, "virada para a Fundação")
+	var fl: float = main.level.etapa_rect(2).position.y + 15 * 64.0
+	# M6 bate-estaca
+	calm.call()
+	var hit6 := false
+	for k in 420:
+		await frames(1)
+		if k % 20 == 0:
+			put(r0, Vector2(1568, fl))
+		r0.invuln = 0.0
+		if r0.dmg > 0.0:
+			hit6 = true
+			break
+	check(hit6, "M6 bate-estaca: martela a faixa marcada")
+	# M7 água + M9 gerador
+	calm.call()
+	var m7: Dictionary = get.call("M7")
+	var m9: Dictionary = get.call("M9")
+	var hmax := 0.0
+	for k in 1200:
+		await frames(1)
+		hmax = maxf(hmax, float(m7["s"]["h"]))
+		if hmax > 60.0:
+			break
+	check(hmax > 60.0, "M7 alagamento: a água sobe no fundo")
+	put(r1, Vector2(900, fl))
+	var choque := false
+	for k in 420:
+		await frames(1)
+		r1.invuln = 0.0
+		if r1.dmg > 0.0:
+			choque = true
+			break
+	check(choque, "M9 gerador: faísca com água alta dá choque em quem está na água")
+	mc.hammer_hit(Rect2(Vector2(m7["d"]["alvo"][0], m7["d"]["alvo"][1]), Vector2(20, 20)), false, 0)
+	await frames(80)
+	check(float(m7["s"]["h"]) < 5.0, "M7: marretar o registro drena a água")
+	mc.hammer_hit(Rect2(Vector2(m9["d"]["alvo"][0], m9["d"]["alvo"][1]), Vector2(20, 20)), false, 0)
+	check(float(m9["s"].get("off", 0.0)) > 0.0, "M9: marretar o gerador desliga")
+	# M8 vagonete
+	calm.call()
+	var hit8 := false
+	for k in 900:
+		await frames(1)
+		if k % 30 == 0:
+			put(r0, Vector2(1300, fl))
+			r0.invuln = 0.0
+		if r0.dmg > 0.0 and r0.last_cause == "vagonete":
+			hit8 = true
+			break
+	check(hit8, "M8 vagonete: passa varrendo o piso")
 	main.event_level = 0
 
 func spells_test() -> void:
