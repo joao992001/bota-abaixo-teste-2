@@ -61,19 +61,33 @@ def icon(name, col="#ffffff"):
 
 # ---------------------------------------------------------------- caixas (96x96)
 def caixa_body(fam):
+    """Caixa de spell: engradado com moldura metálica, cantos aparafusados, alça, placa da família (forma + ícone) e '?'."""
     col, form, ic = FAM[fam]
-    dark, light = shade(col, -0.3), shade(col, 0.35)
-    if form == "espinhos":       # ataque: caixa com cantos pontudos
-        d = "M18,22 L8,10 L26,16 H70 L88,10 L78,22 V74 L88,86 L70,80 H26 L8,86 L18,74 Z"
-    elif form == "capsula":      # controle: cápsula arredondada
-        d = rect_d(10, 16, 76, 64, 30)
-    elif form == "hexagono":     # engenharia: porca sextavada
-        d = "M30,10 H66 L86,48 L66,86 H30 L10,48 Z"
-    else:                        # transformação: losango
-        d = "M48,6 L90,48 L48,90 L6,48 Z"
-    b = [shape(f"cx{fam}", d, col, 300 + len(fam), (4, 4, 92, 92), k=2.2, dark=dark, light=light)]
-    b.append(f'<g transform="translate(16,16)">{icon(ic)}</g>')
-    b.append(f'<text x="48" y="58" font-family="Fredoka, Arial" font-weight="700" font-size="0" fill="{INK}">?</text>')
+    dark, light = shade(col, -0.32), shade(col, 0.35)
+    b = []
+    # corpo do engradado (madeira pintada na cor da família) + ripas
+    b.append(shape(f"cb{fam}", rect_d(10, 20, 76, 66, 8), col, 300 + len(fam), (8, 18, 88, 88), k=2.0, dark=dark, light=light))
+    for x in (28, 48, 68):
+        b.append(f'<rect x="{x - 2}" y="22" width="4" height="62" fill="{dark}" opacity="0.45"/>')
+    # moldura metálica e cantos com parafuso
+    b.append(f'<rect x="10" y="20" width="76" height="66" rx="8" fill="none" stroke="{METAL}" stroke-width="5"/>')
+    for (x, y) in ((14, 24), (82, 24), (14, 82), (82, 82)):
+        b.append(f'<rect x="{x - 7}" y="{y - 7}" width="14" height="14" rx="3" fill="{METAL_L}"/><circle cx="{x}" cy="{y}" r="2.4" fill="{METAL_D}"/>')
+    # alça no topo
+    b.append(f'<path d="M36,20 V10 H60 V20" stroke="{METAL_D}" stroke-width="5" fill="none" stroke-linejoin="round"/>')
+    # placa da família (a FORMA muda por família) com o ícone
+    if form == "espinhos":
+        plate = "M48,30 L56,38 L66,36 L62,46 L68,54 L58,56 L54,66 L48,60 L42,66 L38,56 L28,54 L34,46 L30,36 L40,38 Z"
+    elif form == "capsula":
+        plate = rect_d(28, 34, 40, 30, 15)
+    elif form == "hexagono":
+        plate = "M38,30 H58 L68,48 L58,66 H38 L28,48 Z"
+    else:
+        plate = "M48,28 L68,48 L48,68 L28,48 Z"
+    b.append(f'<path d="{plate}" fill="#fff7ee"/>')
+    b.append(f'<g transform="translate(33,33) scale(0.47)">{icon(ic, dark)}</g>')
+    # "?" estampado no canto (a spell só aparece ao pegar)
+    b.append(f'<text x="74" y="80" font-family="Fredoka, Arial" font-weight="700" font-size="20" fill="#fff7ee" text-anchor="middle">?</text>')
     return "".join(b)
 
 
@@ -147,26 +161,58 @@ def s10_holo():
             '<path d="M24,20 L12,52 M24,20 L36,52 M96,20 L84,52 M96,20 L108,52 M168,20 L156,52 M168,20 L180,52" stroke="#3fc1c9" stroke-width="3" stroke-dasharray="6 5" opacity="0.8"/>']
 
 
-def s11_controle():
-    """Teleporte de Manutenção: controle com antena e tela — 64x64."""
-    b = [shape("s11", rect_d(14, 18, 34, 42, 8), "#4a5e9a", 51, (12, 16, 50, 62), k=1.8, dark="#2f3d6e")]
-    b.append('<rect x="19" y="24" width="24" height="14" rx="3" fill="#9ff7c8"/>')
-    b.append('<circle cx="25" cy="48" r="4" fill="#f2c84b"/><circle cx="37" cy="48" r="4" fill="#d94a5a"/>')
-    b.append(f'<path d="M40,18 L48,4" stroke="{METAL_D}" stroke-width="3" stroke-linecap="round"/><circle cx="48" cy="4" r="4" fill="#9ff7c8"/>')
+def s11_portal():
+    """Teleporte de Manutenção: escotilha de bolso (anel zebrado + miolo azul em espiral) — 80x80."""
+    b = []
+    b.append(f'<circle cx="40" cy="40" r="36" fill="{INK}"/>')
+    for k in range(12):
+        a0, a1 = k * 30, k * 30 + 15
+        r0, r1 = 36, 27
+        p = []
+        for a_, r_ in ((a0, r0), (a1, r0), (a1, r1), (a0, r1)):
+            p.append(f"{40 + r_ * math.cos(math.radians(a_)):.1f},{40 + r_ * math.sin(math.radians(a_)):.1f}")
+        b.append(f'<polygon points="{" ".join(p)}" fill="#f2c84b"/>')
+    b.append('<circle cx="40" cy="40" r="26" fill="#3fc1c9"/>')
+    for k in range(3):
+        b.append(f'<path d="M40,40 m0,-{20 - k * 6} a{20 - k * 6},{20 - k * 6} 0 1,1 -{(20 - k * 6) * 0.8:.1f},{(20 - k * 6) * 0.6:.1f}" stroke="#bff6ff" stroke-width="3" fill="none" stroke-linecap="round"/>')
+    b.append('<circle cx="40" cy="40" r="5" fill="#ffffff"/>')
+    for (x, y) in ((40, 6), (74, 40), (40, 74), (6, 40)):
+        b.append(f'<circle cx="{x}" cy="{y}" r="3.2" fill="{METAL_L}"/>')
     return b
 
 
-def s13_armadura():
-    """Armadura Fornalha: carcaça de forno com boca de fogo, rebites e chaminé — 160x150 (pés em y≈146)."""
-    b = [shape("s13a", "M24,40 C24,26 36,18 52,18 H108 C124,18 136,26 136,40 V128 C136,138 128,144 118,144 H42 C32,144 24,138 24,128 Z",
-               "#7c5a4a", 61, (22, 16, 138, 146), k=2.4, dark="#4e372d", light="#a9806a")]
-    b.append(shape("s13b", rect_d(46, 58, 68, 46, 10), INK, 62, (44, 56, 116, 106), k=2.0))
-    b.append(f'<path d="M54,100 C56,80 66,86 68,70 C74,84 84,78 86,62 C94,80 102,82 104,100 Z" fill="{FIRE}"/>')
-    b.append(f'<path d="M66,100 C68,88 74,90 76,80 C80,90 88,88 90,100 Z" fill="{FIRE_L}"/>')
-    for (x, y) in ((34, 30), (126, 30), (34, 132), (126, 132), (80, 26)):
-        b.append(f'<circle cx="{x}" cy="{y}" r="4" fill="{METAL_L}"/>')
-    b.append(shape("s13c", rect_d(104, 0, 18, 24, 3), METAL_D, 63, (102, -2, 124, 26), k=1.8))
-    b.append('<rect x="40" y="112" width="80" height="8" rx="3" fill="#f2c84b"/>')
+def s13_frente():
+    """Armadura Fornalha (frente): tronco de fornalha com VIGIA de vidro (o rosto do robô aparece nela), ombreiras,
+    grelha de fogo e rebites — 150x130 (o jogo põe sobre o corpo do robô; pés em y≈130)."""
+    b = []
+    body = "M22,34 C22,22 32,14 46,14 H104 C118,14 128,22 128,34 V104 C128,116 120,124 108,124 H42 C30,124 22,116 22,104 Z"
+    b.append(shape("a13f", body, "#7c5a4a", 61, (20, 12, 130, 126), k=2.4, dark="#4e372d", light="#a9806a"))
+    # ombreiras
+    for x0 in (4, 112):
+        b.append(shape(f"a13o{x0}", rect_d(x0, 18, 34, 26, 10), "#5f4438", 62 + x0, (x0 - 2, 16, x0 + 36, 46), k=2.0, dark="#3d2b23"))
+        b.append(f'<rect x="{x0 + 4}" y="22" width="26" height="6" rx="2" fill="#f2c84b"/>')
+    # vigia (aro de latão + vidro escuro; o jogo desenha o rosto do robô dentro)
+    b.append('<circle cx="75" cy="50" r="27" fill="#c9a03a"/><circle cx="75" cy="50" r="21" fill="#2b3d4f"/>')
+    b.append('<path d="M60,40 C64,33 70,31 76,31" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/>')
+    for k in range(8):
+        a_ = k * math.pi / 4
+        b.append(f'<circle cx="{75 + 24 * math.cos(a_):.1f}" cy="{50 + 24 * math.sin(a_):.1f}" r="2" fill="#7a5a1a"/>')
+    # grelha de fogo
+    b.append(shape("a13g", rect_d(44, 84, 62, 28, 6), INK, 63, (42, 82, 108, 114), k=1.8))
+    b.append(f'<path d="M50,110 C52,96 60,100 62,90 C68,100 76,96 78,86 C84,98 92,96 100,110 Z" fill="{FIRE}"/>')
+    b.append(f'<path d="M60,110 C62,102 68,104 70,96 C74,104 82,102 88,110 Z" fill="{FIRE_L}"/>')
+    for x in range(50, 104, 10):
+        b.append(f'<rect x="{x}" y="84" width="3" height="28" fill="#3d2b23"/>')
+    for (x, y) in ((30, 26), (120, 26), (30, 116), (120, 116)):
+        b.append(f'<circle cx="{x}" cy="{y}" r="3.4" fill="{METAL_L}"/>')
+    return b
+
+
+def s13_costas():
+    """Armadura Fornalha (costas): tanque de carvão e chaminé soltando fumaça — 150x130."""
+    b = [shape("a13c", rect_d(30, 20, 90, 96, 18), "#5f4438", 64, (28, 18, 122, 118), k=2.2, dark="#3d2b23")]
+    b.append(shape("a13ch", rect_d(92, 0, 20, 30, 3), METAL_D, 65, (90, -2, 114, 32), k=1.8))
+    b.append('<ellipse cx="102" cy="2" rx="12" ry="4" fill="#3d3340"/>')
     return b
 
 
@@ -186,7 +232,8 @@ PIECES = {  # nome: (largura, altura, função)
     "s01_canhao": (128, 64, s01_canhao), "s01_luva": (64, 50, s01_luva),
     "s03_canhao": (128, 64, s03_canhao), "s03_projetil": (64, 64, s03_projetil), "s03_gelo": (128, 24, s03_gelo),
     "s06_ima": (112, 80, s06_ima), "s10_andaime": (192, 56, s10_andaime), "s10_holo": (192, 56, s10_holo),
-    "s11_controle": (64, 64, s11_controle), "s13_armadura": (160, 150, s13_armadura), "g10_capsula": (128, 160, g10_capsula),
+    "s11_portal": (80, 80, s11_portal), "s13_frente": (150, 130, s13_frente), "s13_costas": (150, 130, s13_costas),
+    "g10_capsula": (128, 160, g10_capsula),
 }
 
 
@@ -218,11 +265,11 @@ def prancha():
         ("S06 SUPERÍMÃ", 1000, 300, lambda: (place(s06_ima, 0, 40, 1.4)
                                              + "".join(f'<path d="M{170 + k * 40},{40 + k * 6} C{230 + k * 40},{60} {230 + k * 40},{140} {170 + k * 40},{160 - k * 6}" stroke="#d94a5a" stroke-width="3" fill="none" stroke-dasharray="8 6" opacity="{0.8 - k * 0.2}"/>' for k in range(3)))),
         ("S10 ANDAIME RELÂMPAGO", 1440, 300, lambda: (place(s10_holo, 20, 40, 1.8) + place(s10_andaime, 20, 150, 1.8))),
-        ("S11 TELEPORTE", 40, 640, lambda: (place(s11_controle, 0, 40, 2.0)
+        ("S11 TELEPORTE", 40, 640, lambda: (place(s11_portal, 20, 60, 1.4) + place(s11_portal, 300, 60, 1.4)
                                             + '<path d="M150,120 h170" stroke="#9ff7c8" stroke-width="4" stroke-dasharray="10 8"/>'
                                             + '<rect x="320" y="40" width="70" height="120" rx="20" fill="#9ff7c8" fill-opacity="0.35" stroke="#3fc1c9" stroke-width="3" stroke-dasharray="8 5"/>'
                                             + "".join(f'<circle cx="{150 + k * 22}" cy="{100 + (k % 3) * 18}" r="5" fill="{METAL}"/>' for k in range(6)))),
-        ("S13 ARMADURA FORNALHA", 520, 640, lambda: (place(s13_armadura, 20, 0, 1.4)
+        ("S13 ARMADURA FORNALHA", 520, 640, lambda: (place(s13_costas, 20, 30, 1.4) + place(s13_frente, 20, 30, 1.4)
                                                      + f'<path d="M230,120 C290,90 330,130 380,104 C350,140 300,150 230,136 Z" fill="{FIRE}"/>'
                                                      + f'<path d="M232,124 C280,108 310,128 340,118 C320,136 280,140 232,132 Z" fill="{FIRE_L}"/>')),
         ("G10 CARGA ESPECIAL", 1000, 640, lambda: (place(g10_capsula, 10, 10, 1.1) + place(g10_capsula, 220, 40, 0.9)

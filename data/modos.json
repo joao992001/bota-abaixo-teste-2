@@ -32,209 +32,6 @@
         4
       ]
     },
-    "itens": {
-      "spawn_every_s": [
-        6,
-        9
-      ],
-      "max_on_map": 2,
-      "lifetime_s": 14,
-      "kinds": [
-        "dinamite",
-        "martelao",
-        "mola",
-        "foguete",
-        "furadeira",
-        "cola",
-        "ima",
-        "teletransporte",
-        "laser",
-        "vortice",
-        "soprador",
-        "congelador"
-      ],
-      "teletransporte": {
-        "demora_s": 0.28
-      },
-      "laser": {
-        "carga_s": 0.45,
-        "raio_s": 0.22,
-        "altura_px": 40,
-        "recuo": 520
-      },
-      "vortice": {
-        "throw": [
-          560,
-          360
-        ],
-        "duracao_s": 1.8,
-        "raio_px": 400,
-        "forca": 1500,
-        "explosao_px": 150
-      },
-      "soprador": {
-        "duracao_s": 2.2,
-        "alcance_px": 380,
-        "largura_px": 150,
-        "forca": 780
-      },
-      "congelador": {
-        "vel": 1100,
-        "gelo_s": 1.7,
-        "quebra_mult": 1.5
-      },
-      "ima": {
-        "duration_s": 6,
-        "raio_px": 330,
-        "forca": 1700
-      },
-      "furadeira": {
-        "dash_s": 0.34,
-        "vel": 900
-      },
-      "cola": {
-        "duration_s": 6,
-        "largura": 3,
-        "throw": [
-          540,
-          340
-        ],
-        "vel_max": 170
-      },
-      "foguete": {
-        "duration_s": 7,
-        "empuxo": 9200,
-        "sobe_max": 640
-      },
-      "dinamite": {
-        "fuse_s": 1.4,
-        "throw": [
-          620,
-          380
-        ],
-        "radius_px": 120,
-        "knock_x": 1150,
-        "knock_y": 620,
-        "stun_s": 0.7,
-        "block_damage": 3
-      },
-      "martelao": {
-        "duration_s": 8,
-        "knock_mult": 1.6,
-        "block_damage": 3
-      },
-      "mola": {
-        "duration_s": 10,
-        "jump_mult": 1.35
-      },
-      "capacete": {
-        "hits": 1
-      },
-      "estilingue": {
-        "vel": [
-          950,
-          220
-        ]
-      },
-      "patins": {
-        "duration_s": 7,
-        "vel": 1.4
-      },
-      "escudo": {
-        "duration_s": 6
-      },
-      "choque": {
-        "espera_s": 1.6,
-        "raio_px": 300
-      },
-      "laco": {
-        "alcance_px": 448
-      },
-      "barreira": {
-        "altura": 2
-      },
-      "relogio": {
-        "ganho_s": 4,
-        "perda_s": 3,
-        "minimo_s": 1.5
-      },
-      "gancho": {
-        "alcance_tiles": 7
-      },
-      "molabomba": {
-        "duration_s": 6
-      },
-      "balao": {
-        "duration_s": 5,
-        "queda_max": 140
-      },
-      "apito": {
-        "duracao_s": 4
-      },
-      "corneta": {
-        "raio_px": 260,
-        "tonto_s": 1.0
-      },
-      "fumaca": {
-        "duracao_s": 5,
-        "raio_px": 220
-      },
-      "banana": {
-        "vida_s": 12
-      },
-      "isca": {
-        "vida_s": 12,
-        "tonto_s": 1.0
-      },
-      "armadura": {
-        "duration_s": 30
-      },
-      "capacetefalso": {
-        "duracao_s": 6,
-        "tonto_s": 0.8
-      },
-      "cerca": {
-        "duracao_s": 5,
-        "raio_px": 150
-      },
-      "bumerangue": {
-        "vel": 900,
-        "ida_s": 0.55
-      },
-      "rede": {
-        "vel": 1000,
-        "preso_s": 1.5
-      },
-      "imacapacete": {
-        "forca": 950
-      },
-      "ventosa": {
-        "duration_s": 6,
-        "sobe": 380
-      },
-      "skate": {
-        "vel": 1150,
-        "dash_s": 0.5
-      },
-      "oleo": {
-        "vida_s": 10
-      },
-      "chave_atalho": {
-        "tiles": 6
-      },
-      "ancora": {
-        "alcance_px": 520,
-        "preso_s": 2.0
-      },
-      "turbo": {
-        "duration_s": 5,
-        "vel": 1.25,
-        "empurra": 900
-      },
-      "bolha": {
-        "duration_s": 40
-      }
-    },
     "stomp_immune_s": 1.4,
     "stomp_side_push": 320,
     "arenas": [
@@ -522,6 +319,27 @@
         "kx_por": 5.2,
         "ky": 220,
         "ky_por": 1.8
+      },
+      "spell_punho": {
+        "dano": 12,
+        "kx": 420,
+        "kx_por": 6.0,
+        "ky": 260,
+        "ky_por": 2.6
+      },
+      "spell_gelo": {
+        "dano": 6,
+        "kx": 160,
+        "kx_por": 1.0,
+        "ky": 90,
+        "ky_por": 0.6
+      },
+      "spell_fogo": {
+        "dano": 7,
+        "kx": 260,
+        "kx_por": 3.0,
+        "ky": 180,
+        "ky_por": 1.4
       }
     },
     "aderencia": {
@@ -539,80 +357,6 @@
       "quica": 1050,
       "aguenta": 2
     },
-    "eventos": {
-      "intervalo_s": [
-        0,
-        32,
-        20,
-        11
-      ],
-      "primeiro_s": [
-        0,
-        18,
-        14,
-        8
-      ],
-      "aviso_s": 2.0,
-      "lista": [
-        {
-          "id": "caixas",
-          "nome": "Chuva de Caixas",
-          "dica": "Caixas caem e viram chão novo",
-          "dur": 9
-        },
-        {
-          "id": "gravidade",
-          "nome": "Gravidade Baixa",
-          "dica": "Pulos flutuantes",
-          "dur": 10,
-          "mult": 0.45
-        },
-        {
-          "id": "ventania",
-          "nome": "Ventania",
-          "dica": "O vento empurra todo mundo",
-          "dur": 9,
-          "forca": 260
-        },
-        {
-          "id": "apagao",
-          "nome": "Apagão",
-          "dica": "Só as lanternas dos robôs",
-          "dur": 10
-        },
-        {
-          "id": "sabao",
-          "nome": "Chão Ensaboado",
-          "dica": "Tudo escorrega",
-          "dur": 9,
-          "atrito": 0.16
-        },
-        {
-          "id": "martelao",
-          "nome": "Hora do Martelão",
-          "dica": "Todo mundo com martelão",
-          "dur": 8
-        },
-        {
-          "id": "dinamite",
-          "nome": "Chuva de Dinamite",
-          "dica": "Dinamite caindo do céu",
-          "dur": 8
-        },
-        {
-          "id": "tremores",
-          "nome": "Tremores",
-          "dica": "Caixotes caem aqui e ali",
-          "dur": 8
-        },
-        {
-          "id": "vigas",
-          "nome": "Vigas Desgovernadas",
-          "dica": "Vigas caem nas colunas marcadas",
-          "dur": 9
-        }
-      ]
-    },
     "modos": [
       {
         "id": "derruba",
@@ -621,21 +365,6 @@
         "ok": true,
         "arenas": [
           "canteiro_obras"
-        ],
-        "itens": true,
-        "itens_lista": [
-          "dinamite",
-          "martelao",
-          "mola",
-          "foguete",
-          "furadeira",
-          "cola",
-          "ima",
-          "teletransporte",
-          "laser",
-          "vortice",
-          "soprador",
-          "congelador"
         ]
       },
       {
@@ -651,31 +380,7 @@
           "palafitas",
           "telhados"
         ],
-        "itens": true,
         "raio": 170,
-        "itens_lista": [
-          "estilingue",
-          "patins",
-          "escudo",
-          "teletransporte",
-          "relogio",
-          "ima",
-          "soprador",
-          "congelador",
-          "trocatroca",
-          "apito",
-          "corneta",
-          "molabomba",
-          "fumaca",
-          "banana",
-          "isca",
-          "balao"
-        ],
-        "itens_cada_s": [
-          3,
-          5
-        ],
-        "itens_max": 3,
         "eventos_ritmo": 0.55,
         "alavanca_auto_s": 12
       },
@@ -692,31 +397,8 @@
           "serraria_rei",
           "predio_demolicao"
         ],
-        "itens": true,
         "lento": 0.9,
         "protecao_s": 1.2,
-        "itens_lista": [
-          "choque",
-          "laco",
-          "patins",
-          "cola",
-          "congelador",
-          "soprador",
-          "mola",
-          "foguete",
-          "vortice",
-          "armadura",
-          "capacetefalso",
-          "cerca",
-          "bumerangue",
-          "rede",
-          "imacapacete"
-        ],
-        "itens_cada_s": [
-          3,
-          5
-        ],
-        "itens_max": 3,
         "eventos_ritmo": 0.55,
         "alavanca_auto_s": 12
       },
@@ -732,25 +414,6 @@
           "viaduto_obras",
           "ferro_velho",
           "pantano_sobe"
-        ],
-        "itens": true,
-        "itens_lista": [
-          "barreira",
-          "patins",
-          "foguete",
-          "mola",
-          "cola",
-          "gancho",
-          "teletransporte",
-          "congelador",
-          "soprador",
-          "ventosa",
-          "skate",
-          "oleo",
-          "chave_atalho",
-          "ancora",
-          "turbo",
-          "bolha"
         ]
       }
     ],
@@ -765,10 +428,6 @@
       "impacto_forte_vel": 1500,
       "dano_impacto_forte": 2,
       "aviso_queda_s": 1.1,
-      "primeiro_ciclo_s": 20,
-      "calma_min_s": 16,
-      "calma_max_s": 22,
-      "aviso_ciclo_s": 4.5,
       "ciclo_dano": 99
     },
     "ko_explosao": {
@@ -786,6 +445,150 @@
         240
       ],
       "zoom_max": 1.0
+    },
+    "explosao": {
+      "fuse_s": 1.4,
+      "throw": [
+        620,
+        380
+      ],
+      "radius_px": 120,
+      "knock_x": 1150,
+      "knock_y": 620,
+      "stun_s": 0.7,
+      "block_damage": 3,
+      "nota": "Explosão (TNT do mapa e bomba da Batata). Antes ficava no item dinamite, que saiu com o sistema antigo."
+    },
+    "spells": {
+      "caixa": {
+        "primeira_s": [
+          6,
+          9
+        ],
+        "intervalo_s": [
+          9,
+          14
+        ],
+        "max_mapa": 2,
+        "vida_s": 18,
+        "troca_s": 0.3,
+        "anti_recaptura_s": 1.2
+      },
+      "familias": {
+        "ataque": {
+          "peso": 40
+        },
+        "controle": {
+          "peso": 20
+        },
+        "engenharia": {
+          "peso": 20
+        },
+        "transformacao": {
+          "peso": 20
+        }
+      },
+      "raridade": {
+        "comum": 1.0,
+        "incomum": 0.6,
+        "rara": 0.3
+      },
+      "pools": {
+        "derruba": [
+          "S01",
+          "S03",
+          "S06",
+          "S10",
+          "S11",
+          "S13"
+        ]
+      },
+      "S01": {
+        "familia": "ataque",
+        "raridade": "comum",
+        "cargas": 2,
+        "preparo": 0.45,
+        "intervalo_s": 0.5,
+        "alcance_tiles": 4
+      },
+      "S03": {
+        "familia": "ataque",
+        "raridade": "comum",
+        "cargas": 3,
+        "preparo": 0.25,
+        "intervalo_s": 0.45,
+        "vel": 900,
+        "alcance_tiles": 12,
+        "lento_s": 2.5,
+        "lento_mult": 0.6,
+        "gelo_tiles": 2,
+        "gelo_s": 4.0,
+        "gelo_aderencia": 0.18
+      },
+      "S06": {
+        "familia": "controle",
+        "raridade": "incomum",
+        "cargas": 3,
+        "intervalo_s": 0.6,
+        "alcance_tiles": 6,
+        "forca": 620,
+        "levanta": 220,
+        "descontrole_s": 0.45
+      },
+      "S10": {
+        "familia": "engenharia",
+        "raridade": "comum",
+        "cargas": 2,
+        "largura_tiles": 3,
+        "duracao_s": 4.5
+      },
+      "S11": {
+        "familia": "controle",
+        "raridade": "incomum",
+        "cargas": 2,
+        "alcance_tiles": 3.5,
+        "recupera_s": 0.25
+      },
+      "S13": {
+        "familia": "transformacao",
+        "raridade": "rara",
+        "cargas": 5,
+        "duracao_s": 6.0,
+        "vel_mult": 0.7,
+        "empurrao_mult": 0.45,
+        "intervalo_s": 0.55,
+        "fogo_alcance_tiles": 2.2
+      }
+    },
+    "eventos": {
+      "primeiro_s": [
+        0,
+        28,
+        18,
+        12
+      ],
+      "intervalo_s": [
+        0,
+        30,
+        20,
+        13
+      ],
+      "lista": [
+        {
+          "id": "G01",
+          "nome": "Sirene de Demolição",
+          "dica": "um trecho marcado vai ceder",
+          "aviso_s": 2.0,
+          "dur": 5.0
+        },
+        {
+          "id": "G10",
+          "nome": "Carga Especial",
+          "dica": "2 caixas descem nos holofotes",
+          "aviso_s": 2.5,
+          "dur": 3.0
+        }
+      ]
     }
   },
   "bots": {

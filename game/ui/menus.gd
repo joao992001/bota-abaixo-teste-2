@@ -25,7 +25,7 @@ const INTRO_END := 2.6
 var shake_card := 0.0
 var arena_sel := 0
 var adj_sel := 0
-const EVENT_LEVELS := ["DESLIGADOS", "POUCOS", "NORMAL", "CAOS"]
+const EVENT_LEVELS := ["DESLIGADOS", "BAIXA", "NORMAL", "ALTA"]
 
 func setup(m: Node) -> void:
 	main = m
@@ -116,9 +116,6 @@ func update(dt: float) -> void:
 				"itens":
 					if h2 != 0 or c2:
 						main.demo.items_on = not main.demo.items_on
-				"ajuda":
-					if h2 != 0 or c2:
-						main.demo.help_losers = not main.demo.help_losers
 				"comecar":
 					if c2:
 						main.demo.cfg["rounds_to_win"] = STAR_GOALS[goal_sel]
@@ -324,10 +321,9 @@ func _draw_adjust(ci: CanvasItem) -> void:
 		"vidas": "VIDAS:  ◄ %d ►" % main.demo.lives_setting,
 		"pavio": "PAVIO:  ◄ %s ►" % ["CURTO", "NORMAL", "LONGO"][main.demo.fuse_setting],
 		"rei": "SEGUNDOS PARA VENCER:  ◄ %d ►" % main.demo.KING_GOALS[main.demo.king_setting],
-		"eventos": "EVENTOS:  ◄ %s ►" % EVENT_LEVELS[main.event_level],
+		"eventos": "EVENTOS (INTENSIDADE):  ◄ %s ►" % EVENT_LEVELS[main.event_level],
 		"escolher": "ESCOLHER EVENTOS  ▸",
-		"itens": "ITENS:  ◄ %s ►" % ("SIM" if main.demo.items_on else "NÃO"),
-		"ajuda": "AJUDA PARA QUEM PERDE:  ◄ %s ►" % ("SIM" if main.demo.help_losers else "NÃO"),
+		"itens": "SPELLS:  ◄ %s ►" % ("SIM" if main.demo.items_on else "NÃO"),
 		"comecar": "COMEÇAR  ▸",
 	}
 	var rows := adjust_rows()
@@ -343,7 +339,7 @@ func adjust_rows() -> Array:
 		"derruba": rows.append("vidas")
 		"batata": rows.append("pavio")
 		"rei": rows.append("rei")
-	rows.append_array(["eventos", "escolher", "itens", "ajuda", "comecar"])
+	rows.append_array(["eventos", "escolher", "itens", "comecar"])
 	return rows
 
 ## SORTEIO + arenas do modo escolhido (data/modos.json → modos[].arenas).
@@ -393,7 +389,7 @@ func _draw_howto(ci: CanvasItem) -> void:
 		["robo", "Derrube os outros no poço de espinhos. O último em pé ganha uma ★."],
 		["marreta", "GOLPE RÁPIDO (X/□): empurra e interrompe. MARRETADA PESADA (Y/△): demora,\nmas arremessa longe e quebra caixotes (▼ + pesada quebra o chão). Errou? Fica exposto."],
 		["pisao", "ESQUIVA (RB/R1): escapa de golpes por um instante, no chão ou 1 vez no ar.\nArremessado? Segure a direção para corrigir e use a esquiva para se salvar."],
-		["itens", "Bolhas de item (botão ITEM usa): TNT, furadeira, cola, teletransporte, raio laser,\nbomba de vórtice, soprador, raio congelante · martelão, ímã, botas de mola e foguete."],
+		["itens", "Caixas de SPELL: a cor mostra a família (ataque, controle, engenharia, transformação).\nEncoste para pegar · ESPECIAL usa · segure ESPECIAL em cima de outra caixa para trocar."],
 		["parado", "Caixote racha se você fica parado em cima. No fim da rodada, TERREMOTO!"],
 	]
 	for i in tips.size():
@@ -410,16 +406,16 @@ func _draw_howto(ci: CanvasItem) -> void:
 				po["expr"] = "susto"
 				RobotVis.draw_robot(ci, {"color": 2, "model": 2}, po, Transform2D(0.0, Vector2(0.9, 0.9), 0.0, c + Vector2(0, 60)))
 			"itens":
-				var names := ["dinamite", "martelao", "capacete", "mola"]
+				var names := ["ataque", "controle", "engenharia", "transformacao"]
 				for k in 4:
-					ci.draw_texture_rect(Data.tex("itens/" + names[k]), Rect2(c + Vector2(-70 + (k % 2) * 60, -40 + (k / 2) * 52), Vector2(54, 54)), false)
+					ci.draw_texture_rect(Data.tex("spells/caixa_" + names[k]), Rect2(c + Vector2(-70 + (k % 2) * 60, -40 + (k / 2) * 52), Vector2(54, 54)), false)
 			"parado":
 				ci.draw_texture_rect(Data.tex("cenario/caixote_0"), Rect2(c - Vector2(40, 30), Vector2(80, 80)), false)
 		ci.draw_set_transform(Vector2.ZERO)
 		var lines: PackedStringArray = String(tips[i][1]).split("\n")
 		for k in lines.size():
 			Kit.text(ci, Vector2(r.position.x + 260, y + 44 - (lines.size() - 1) * 18 + k * 40), lines[k], 32, Color("#2a1a2e"))
-	Kit.text(ci, Vector2(0, 1050), "Teclado A: WASD · Espaço pula · F golpe · R pesada · Shift esq. esquiva · G item     Teclado B: setas · Ctrl dir. pula · ponto golpe · / pesada · 0 num. esquiva · vírgula item", 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
+	Kit.text(ci, Vector2(0, 1050), "Teclado A: WASD · Espaço pula · F golpe · R pesada · Shift esq. esquiva · G especial     Teclado B: setas · Ctrl dir. pula · ponto golpe · / pesada · 0 num. esquiva · vírgula especial", 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
 
 func _draw_options(ci: CanvasItem) -> void:
 	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.45))
@@ -570,7 +566,7 @@ func _draw_pad_card(ci: CanvasItem, j: int, r: Rect2, k: int) -> void:
 	Kit.pad_btn(ci, c + Vector2(34, -40), 12, "start", st, Input.is_joy_button_pressed(j, JOY_BUTTON_START))
 	# o que faz cada botão no jogo
 	var y := r.position.y + 500
-	for line in [[["baixo"], " pula"], [["esquerda"], " golpe rápido"], [["cima"], " marretada pesada"], [["rb"], " esquiva"], [["lb"], " item"], [["start"], " pausa / começa"], [["direita"], " volta nos menus"]]:
+	for line in [[["baixo"], " pula"], [["esquerda"], " golpe rápido"], [["cima"], " marretada pesada"], [["rb"], " esquiva"], [["lb"], " especial (spell)"], [["start"], " pausa / começa"], [["direita"], " volta nos menus"]]:
 		var parts: Array = []
 		for e in line:
 			parts.append(e)
@@ -664,7 +660,7 @@ func _draw_intro(ci: CanvasItem) -> void:
 		Kit.text(ci, Vector2(0, 1030), "aperte qualquer botão", 30, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, 1920, 6, Color(0.12, 0.3, 0.33, a))
 
 # ---------------------------------------------------------------- configurar controle (aprende os sinais do controle)
-const LEARN_NAMES := {"jump": "PULAR", "hammer": "GOLPE RÁPIDO", "heavy": "MARRETADA PESADA", "dodge": "ESQUIVA", "item": "ITEM", "start": "START (começar / pausar)", "back": "VOLTAR (nos menus)",
+const LEARN_NAMES := {"jump": "PULAR", "hammer": "GOLPE RÁPIDO", "heavy": "MARRETADA PESADA", "dodge": "ESQUIVA", "item": "ESPECIAL (SPELL)", "start": "START (começar / pausar)", "back": "VOLTAR (nos menus)",
 	"left": "ESQUERDA (analógico ou direcional)", "right": "DIREITA", "up": "CIMA", "down": "BAIXO"}
 var cfg_step := -1          # -1 = esperando escolher o controle; 0..8 = ação; 9 = pronto
 var cfg_joy := -1
@@ -873,14 +869,14 @@ func _draw_scene(ci: CanvasItem, enter: Array) -> void:
 						pose["hb_off"] = Vector2(-6, -22) * sin(u * PI)
 						pose["hf_off"] = Vector2(4, -20) * sin(u * PI)
 						pose["lean"] = -0.35 * sin(u * PI)
-				2:   # botas de mola: quica sem parar
-					look["fx"] = {"mola": true}
+				2:   # armadura fornalha: quica blindado
+					look["fx"] = {"spell": "S13", "armor": true, "assemble": 1.0}
 					var b := absf(sin(now * 3.2))
 					off.y = -110.0 * b
 					pose["spring_k"] = 0.7 + 0.8 * b
 					pose["expr"] = "vitoria" if b > 0.5 else "normal"
 				3:   # TNT aceso na mão: corre no lugar, desesperado
-					look["fx"] = {"item": "dinamite"}
+					look["fx"] = {"spell": "S03"}
 					var ph := now * 18.0
 					pose["feet"] = [Vector2(cos(ph) * 8.0, -maxf(sin(ph), 0.0) * 9.0), Vector2(cos(ph + PI) * 8.0, -maxf(sin(ph + PI), 0.0) * 9.0)]
 					pose["expr"] = "susto"

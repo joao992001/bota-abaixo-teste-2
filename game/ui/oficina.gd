@@ -20,10 +20,10 @@ const ROWS := ["dar", "soltar", "evento", "arena", "recarregar", "boneco", "bot"
 func setup(m: Node) -> void:
 	main = m
 
-func kinds() -> Array:   # todos os itens de todos os modos
-	var out: Array = main.demo.cfg["itens"]["kinds"].duplicate()
-	for m in main.demo.cfg["modos"]:
-		for k in m.get("itens_lista", []):
+func kinds() -> Array:   # todas as spells liberadas (data/modos.json → demolicao.spells.pools)
+	var out := []
+	for pool in main.demo.cfg["spells"]["pools"].values():
+		for k in pool:
 			if k not in out:
 				out.append(k)
 	return out
@@ -82,14 +82,15 @@ func update() -> void:
 		"dar":
 			item_i = posmod(item_i + h, kinds().size())
 			if ok and main.robots.size() > 0:
-				main.demo.give(main.robots[0], kinds()[item_i])
+				main.demo.spells.clear(main.robots[0])
+				main.demo.spells.equip(main.robots[0], kinds()[item_i])
 				toggle()
 		"soltar":
 			drop_i = posmod(drop_i + h, kinds().size())
 			if ok:
 				var r = main.robots[0] if main.robots.size() > 0 else null
-				var col: int = int(r.position.x / 64.0) + (2 * r.facing) if r != null else 14
-				main.demo.spawn_item(kinds()[drop_i], clampi(col, 1, main.level.cols - 2))
+				var x: float = r.position.x + 128.0 * r.facing if r != null else 960.0
+				main.demo.spells.drop_box(kinds()[drop_i], Vector2(x, 0))
 				toggle()
 		"evento":
 			event_i = posmod(event_i + h, events().size())
@@ -154,8 +155,8 @@ func tick() -> void:
 
 func _label(row: String) -> String:
 	match row:
-		"dar": return "DAR ITEM:  ◄ %s ►" % _item_name(kinds()[item_i])
-		"soltar": return "SOLTAR DO CÉU:  ◄ %s ►" % _item_name(kinds()[drop_i])
+		"dar": return "DAR SPELL:  ◄ %s ►" % _item_name(kinds()[item_i])
+		"soltar": return "CAIXA DO CÉU:  ◄ %s ►" % _item_name(kinds()[drop_i])
 		"evento": return "EVENTO AGORA:  ◄ %s ►" % String(events()[event_i]["nome"]).to_upper()
 		"arena": return "ARENA:  ◄ %s ►" % String(arenas()[arena_i]["nome"]).to_upper()
 		"recarregar": return "RECARREGAR ARENA (repõe caixotes e TNT)"
@@ -170,7 +171,7 @@ func _label(row: String) -> String:
 	return row
 
 func _item_name(k: String) -> String:
-	return String(main.demo.ITEM_NAMES.get(k, k)).trim_suffix("!")
+	return k + " " + String(main.demo.spells.NOMES.get(k, k))
 
 func _count(kind: String) -> int:
 	var n := 0
@@ -197,5 +198,5 @@ func draw(ci: CanvasItem) -> void:
 		Kit.text(ci, Vector2(r.position.x + 60, y), _label(ROWS[i]), 30, Color("#2a1a2e") if on else Color("#3e5a62"))
 		if ROWS[i] in ["dar", "soltar"]:
 			var k: String = kinds()[item_i if ROWS[i] == "dar" else drop_i]
-			ci.draw_texture_rect(Data.tex("itens/" + k), Rect2(r.end.x - 110, y - 46, 56, 56), false)
+			ci.draw_texture_rect(Data.tex("spells/caixa_" + main.demo.cfg["spells"][k]["familia"]), Rect2(r.end.x - 110, y - 46, 56, 56), false)
 	Kit.text(ci, Vector2(0, 1066), "▲▼ escolher  ·  ◄► mudar  ·  PULAR confirmar  ·  START / TAB / ESC fecha", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 7)

@@ -119,7 +119,7 @@ func _ready() -> void:
 	PlayerInput.pad_changed.connect(_on_pad_changed)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens") or a.begins_with("--oficina") or a.begins_with("--parede") or a.begins_with("--intro") or a.begins_with("--maquete") or a.begins_with("--robos") or a.begins_with("--combate") or a.begins_with("--lab") or a.begins_with("--pulo") or a.begins_with("--prancha") or a.begins_with("--canteiro") or a.begins_with("--espiar"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--spells") or a.begins_with("--oficina") or a.begins_with("--parede") or a.begins_with("--intro") or a.begins_with("--maquete") or a.begins_with("--robos") or a.begins_with("--combate") or a.begins_with("--lab") or a.begins_with("--pulo") or a.begins_with("--prancha") or a.begins_with("--canteiro") or a.begins_with("--espiar"):
 			state = S.JOIN   # testes e capturas começam direto na entrada de jogadores
 			var scr: GDScript = load("res://tests/driver.gd")
 			if scr == null or not scr.can_instantiate():
@@ -644,6 +644,8 @@ func check_contacts(r: CharacterBody2D) -> void:
 func kill(r: CharacterBody2D, owner: int, pc: Node2D) -> void:
 	if not r.alive or r.finished:
 		return
+	if mode == "demolicao" and demo.spells != null:
+		demo.spells.clear(r)   # eliminado perde a spell (nada passa para o respawn)
 	if r.last_hit > 2.0 and r.fall_reason == "":
 		self_falls += 1
 	if r.last_hit > 2.0:
@@ -673,9 +675,6 @@ func finish(r: CharacterBody2D) -> void:
 	r.finish()
 	finish_order.append(r.pid)
 	float_text(r.position + Vector2(0, -100), "1º!" if finish_order.size() == 1 else "%dº" % finish_order.size(), player_color(r.pid))
-
-func use_item(r: CharacterBody2D) -> void:
-	demo.use_item(r)
 
 ## Bot entra como jogador com dispositivo virtual (o cérebro em modes/bots.gd aperta os botões).
 func add_bot() -> void:

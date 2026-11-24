@@ -92,6 +92,8 @@ func update(dt: float) -> void:
 			inp["right"] = true
 		if cmd.get("down", false):
 			inp["down"] = true
+		if cmd.get("up", false):
+			inp["up"] = true
 		var prev: Dictionary = PlayerInput.virtual.get(dev, {})
 		if st.get("release", false):
 			st["release"] = false   # solta agora; aperta no próximo quadro
@@ -132,14 +134,12 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 	var row := int((pos.y + 2.0) / 64.0)
 	var col := int(pos.x / 64.0)
 	var cmd := {"dir": 0}
-	if r.item == "teletransporte" and not r.is_on_floor() and r.velocity.y > 250.0 and pos.y > 64.0 * (L.rows - 5):
-		cmd["item"] = true   # caindo no buraco: troca de lugar com alguém
-	# 1) fugir de dinamite
-	for d in demo.dynamites:
-		if d["pos"].distance_to(center) < 220.0:
-			cmd["dir"] = 1 if center.x >= d["pos"].x else -1
-			cmd["jump"] = true
-			return _safe(r, cmd, lv)
+	var sp = demo.spells
+	var mine: String = sp.slot[r.pid]["id"] if sp != null and sp.slot.has(r.pid) else ""
+	if mine in ["S10", "S11"] and not r.is_on_floor() and r.velocity.y > 250.0 and pos.y > 64.0 * (L.rows - 5):
+		cmd["item"] = true   # caindo no buraco: andaime embaixo dos pés / teleporte para cima
+		cmd["up"] = mine == "S11"
+		return cmd
 	# 1b) máquinas da arena (chama, pistão, serra, barril): sair de perto ou pular por cima
 	var fx0 = demo.fx
 	if fx0 != null and is_instance_valid(fx0):
@@ -206,10 +206,6 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 				cmd["jump"] = true
 				cmd["jump_frames"] = 16
 			return _safe(r, cmd, lv)
-	# 1b) itens próprios dos modos (estilingue, choque, laço, barreira, cola na Fuga)
-	var mi := _mode_item(r, lv)
-	if not mi.is_empty():
-		return mi
 	# 2) Batata-Dinamite: sem a bomba, foge de quem está com ela; com ela, persegue o mais perto (encostar passa)
 	var bomb_on: bool = demo.rule() == "batata" and demo.bomb_holder >= 0 and demo.bomb_holder < main.robots.size()
 	var holder = main.robots[demo.bomb_holder] if bomb_on else null
@@ -286,33 +282,26 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 			cmd["heavy" if heavy else "hammer"] = true
 			st["hammer_cd"] = float(lv["hammer_cooldown_s"]) * (1.6 if heavy else 1.0)
 		return _safe(r, cmd, lv)
-	# 4) itens: cada um tem sua hora
-	var use_ok: bool = main.rng.randf() < float(lv["use_items"])
+	# 4) spells: cada uma tem sua hora
 	var it_ok := false
-	match r.item:
-		"cola", "vortice": it_ok = absf(dy) < 100.0 and absf(dx) > 140.0 and absf(dx) < 480.0
-		"laser", "congelador": it_ok = absf(dy) < 40.0 and absf(dx) > 90.0 and absf(dx) < 900.0
-		"soprador": it_ok = absf(dy) < 80.0 and absf(dx) < 300.0
-		"teletransporte": it_ok = main.rng.randf() < 0.04
-		"furadeira": it_ok = absf(dy) < 60.0 and absf(dx) < 220.0
-	if it_ok and use_ok:
+	match mine:
+		"S01": it_ok = absf(dy) < 50.0 and absf(dx) > 70.0 and absf(dx) < 240.0
+		"S03": it_ok = absf(dy) < 40.0 and absf(dx) > 90.0 and absf(dx) < 900.0
+		"S06": it_ok = absf(dy) < 90.0 and absf(dx) > 120.0 and absf(dx) < 300.0
+		"S13": it_ok = absf(dy) < 60.0 and absf(dx) < 150.0
+	if it_ok and main.rng.randf() < float(lv["use_items"]):
 		if signi(int(dx)) != r.facing:
 			cmd["dir"] = signi(int(dx))
 		else:
 			cmd["item"] = true
 		return cmd
-	if r.item == "dinamite" and absf(dy) < 110.0 and absf(dx) > 140.0 and absf(dx) < 430.0 and use_ok:
-		if signi(int(dx)) != r.facing:
-			cmd["dir"] = signi(int(dx))
-		else:
-			cmd["item"] = true
-		return cmd
-	# 5) pegar item se estiver mais perto que o rival
+	# 5) slot vazio: vai pegar a caixa se estiver mais perto que o rival
 	var goal: Vector2 = target.position
-	for it in demo.items:
-		if it["vy"] == 0.0 and it["pos"].distance_to(pos) < td * 1.2 and main.rng.randf() < float(lv["use_items"]):
-			goal = it["pos"] + Vector2(0, 26)
-			break
+	if sp != null and mine == "":
+		for b in sp.boxes:
+			if b["vy"] == 0.0 and not b["block"].has(r.pid) and b["pos"].distance_to(pos) < td * 1.2 and main.rng.randf() < float(lv["use_items"]):
+				goal = b["pos"] + Vector2(0, 26)
+				break
 	# 6) rival logo abaixo: quebra o chão dele (se estiver ao lado) ou cai em cima (pisão)
 	var gx := goal.x - pos.x
 	if absf(gx) > 20.0:
@@ -321,59 +310,6 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 		cmd["jump"] = true
 		cmd["jump_frames"] = 16
 	return _safe(r, cmd, lv)
-
-## Bots usando os itens de Batata, Rei e Fuga. Vazio = nada a fazer agora.
-func _mode_item(r, lv: Dictionary) -> Dictionary:
-	var demo = main.demo
-	if r.item not in ["estilingue", "choque", "laco", "barreira", "cola", "relogio", "gancho", "trocatroca", "apito", "fumaca",
-			"corneta", "banana", "isca", "capacetefalso", "cerca", "bumerangue", "rede", "imacapacete", "skate", "oleo", "chave_atalho", "ancora"] or main.rng.randf() > float(lv["use_items"]):
-		return {}
-	if r.item in ["skate", "chave_atalho"]:
-		return {"dir": 0, "item": true} if r.is_on_floor() else {}
-	if r.item in ["capacetefalso", "cerca"]:   # o rei se defende
-		return {"dir": 0, "item": true} if demo.king == r.pid else {}
-	if r.item == "imacapacete":
-		return {"dir": 0, "item": true} if demo.king < 0 else {}
-	if r.item in ["trocatroca", "apito", "fumaca"]:   # usa quando está com a bomba
-		return {"dir": 0, "item": true} if demo.bomb_holder == r.pid else {}
-	if r.item == "relogio":
-		var demo0 = main.demo
-		if demo0.bomb_holder >= 0 and (demo0.bomb_holder != r.pid or demo0.bomb_fuse < 4.0):
-			return {"dir": 0, "item": true}
-		return {}
-	if r.item == "gancho":
-		return {"dir": 0, "item": true} if r.is_on_floor() else {}
-	if r.item == "cola" and demo.rule() != "fuga":
-		return {}
-	var pos: Vector2 = r.position
-	for o in main.robots:
-		if o == r or not o.alive or o.finished:
-			continue
-		var dx: float = o.position.x - pos.x
-		var dy: float = o.position.y - pos.y
-		var ok := false
-		var face := signi(int(dx))
-		match r.item:
-			"estilingue": ok = r.pid == demo.bomb_holder and absf(dx) > 120.0 and absf(dx) < 560.0 and absf(dy) < 70.0
-			"choque": ok = absf(dx) < 220.0 and absf(dy) < 120.0
-			"laco": ok = absf(dx) > 90.0 and absf(dx) < 420.0 and absf(dy) < 60.0 and (demo.king < 0 or o.pid == demo.king)
-			"corneta": ok = absf(dx) < 220.0 and absf(dy) < 120.0
-			"ancora":
-				ok = absf(dx) < 480.0 and absf(dy) < 90.0
-				face = -signi(int(dx))
-			"bumerangue", "rede": ok = absf(dx) > 90.0 and absf(dx) < 560.0 and absf(dy) < 60.0 and (demo.king < 0 or o.pid == demo.king)
-			"banana", "isca", "oleo":
-				ok = absf(dx) < 360.0 and absf(dy) < 90.0
-				face = -signi(int(dx))
-			"barreira":   # alguém vindo atrás: larga o muro entre vocês
-				ok = absf(dx) < 360.0 and absf(dy) < 90.0
-				face = -signi(int(dx))
-			"cola": ok = absf(dx) > 140.0 and absf(dx) < 480.0 and absf(dy) < 90.0
-		if ok:
-			if face != 0 and face != r.facing and r.item not in ["choque"]:
-				return {"dir": face}
-			return {"dir": 0, "item": true}
-	return {}
 
 ## Caminho até o objetivo: distância (em pulos) de cada degrau até o degrau do objetivo, calculada de trás
 ## para a frente e guardada enquanto o objetivo não muda de célula. Devolve o próximo degrau (ou -1).

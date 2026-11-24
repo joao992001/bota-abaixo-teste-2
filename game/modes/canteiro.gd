@@ -26,7 +26,6 @@ var crumbs: Array = []         # pedrinhas {pos, vel, t}
 var prev_speed := {}
 var t := 0.0
 var cycle_state := "calma"
-var cycle_t := 0.0
 var target = null
 var tex := {}
 
@@ -45,7 +44,6 @@ func setup(m: Node, lv) -> void:
 		_add("viga", Rect2(v[0] * T, v[1] * T, v[2] * T, 26), int(cfg["viga_hp"]), false, true, i)
 	lv.extra_solid = func(c: Vector2i) -> bool: return owner_of.has(c)
 	lv.grab_solid = func(c: Vector2i) -> bool: return owner_of.has(c) and owner_of[c]["kind"] == "laje"
-	cycle_t = float(cfg["primeiro_ciclo_s"])
 
 func _add(kind: String, r: Rect2, hp: int, nucleo: bool, oneway: bool, idx: int) -> void:
 	var body := StaticBody2D.new()
@@ -191,29 +189,39 @@ func _physics_process(dt: float) -> void:
 	crumbs = crumbs.filter(func(c): return c["t"] < 1.4)
 	queue_redraw()
 
-## Ciclo da obra: calma → aviso (sirene, luzes, fita zebrada no alvo) → o alvo cede. Só trechos que podem cair.
+## Ciclo da obra = evento G01 (Sirene de Demolição, modes/eventos.gd): calma → aviso (sirene, luzes, fita zebrada
+## no alvo) → o alvo cede. Só trechos que podem cair, nunca o núcleo, nunca embaixo de quem acabou de voltar.
+func _alert_pool() -> Array:
+	var pool := []
+	for p in parts:
+		if p["fallen"] or p["nucleo"] or p["crit_t"] > 0.0 or p["warn_t"] > 0.0:
+			continue
+		var fresh := false
+		for r in main.robots:
+			if r.alive and r.invuln > 0.0 and p["rect"].grow(48).has_point(r.position):
+				fresh = true
+		if not fresh:
+			for k in (3 if p["kind"] == "laje" else 1):
+				pool.append(p)
+	return pool
+
+func can_alert() -> bool:
+	return cycle_state == "calma" and not _alert_pool().is_empty()
+
+func start_alert(warn_s: float) -> void:
+	var pool := _alert_pool()
+	if pool.is_empty():
+		return
+	target = pool[main.rng.randi() % pool.size()]
+	target["warn_t"] = warn_s
+	cycle_state = "aviso"
+
 func _update_cycle(dt: float) -> void:
 	if cycle_state == "calma":
-		cycle_t -= dt
-		if cycle_t <= 0.0:
-			var pool := []
-			for p in parts:
-				if not p["fallen"] and not p["nucleo"] and p["crit_t"] <= 0.0:
-					for k in (3 if p["kind"] == "laje" else 1):
-						pool.append(p)
-			if pool.is_empty():
-				cycle_t = 999.0
-				return
-			target = pool[main.rng.randi() % pool.size()]
-			target["warn_t"] = float(cfg["aviso_ciclo_s"])
-			cycle_state = "aviso"
-			main.demo.banner = "DEMOLIÇÃO!"
-			main.demo.banner_t = 1.6
-			Audio.play("evento", 0.8)
+		return
 	else:
 		if target == null or target["fallen"]:
 			cycle_state = "calma"
-			cycle_t = main.rng.randf_range(float(cfg["calma_min_s"]), float(cfg["calma_max_s"]))
 			return
 		target["warn_t"] -= dt
 		if fmod(t, 0.9) < dt:
@@ -222,7 +230,6 @@ func _update_cycle(dt: float) -> void:
 			target["warn_t"] = 0.0
 			damage(target, int(cfg["ciclo_dano"]), target["rect"].get_center())
 			cycle_state = "calma"
-			cycle_t = main.rng.randf_range(float(cfg["calma_min_s"]), float(cfg["calma_max_s"]))
 
 # ---------------------------------------------------------------- desenho
 func _shake_off(p: Dictionary) -> Vector2:

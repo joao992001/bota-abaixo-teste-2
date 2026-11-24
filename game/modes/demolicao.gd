@@ -13,16 +13,15 @@ var quaking := false
 var round_winner := -1
 var banner := ""
 var banner_t := 0.0
-var items: Array = []        # {kind, pos, vy, landed, t}
-var dynamites: Array = []    # {pos, vel, t, owner}
 var booms: Array = []        # explosões desenhadas {pos, t}
-var item_t := 4.0
 var canvas: Node2D           # desenha itens, dinamites e explosões no mundo
 var crumbling := false       # quebra por ter ficado parado em cima (culpa de quem estava em cima)
 const ArenaFx := preload("res://modes/arena_fx.gd")
 const Canteiro := preload("res://modes/canteiro.gd")
+const Spells := preload("res://modes/spells.gd")
 const Kit := preload("res://ui/kit.gd")
 var fx: Node2D = null        # mecânicas da arena (plataformas, lama, bola, esteiras)
+var spells: Node2D = null     # caixas de spell, slots e efeitos (modes/spells.gd)
 var canteiro: Node2D = null  # estrutura destrutível do Canteiro de Obras (Derruba), quando a arena tem "canteiro: 1"
 var arena := {}              # {id, nome, dica} da rodada atual
 var last_arena := ""
@@ -56,8 +55,7 @@ var bomb_fuse := 0.0
 var bomb_next := 0.0
 var bomb_pass_cd := 0.0
 var bomb_beep := 0.0
-var items_on := true         # AJUSTES: itens ligados
-var help_losers := true      # AJUSTES: quem está em último começa com capacete
+var items_on := true         # AJUSTES: spells ligadas
 
 ## Modo de jogo da partida (derruba, batata, rei, fuga).
 func rule() -> String:
@@ -85,8 +83,6 @@ func setup(m: Node) -> void:
 func c(key: String) -> float:
 	return float(cfg[key])
 
-func item_cfg(kind: String) -> Dictionary:
-	return cfg["itens"][kind]
 
 ## Arena da rodada: a escolhida ou, no sorteio, uma diferente da anterior.
 func pick_arena() -> Dictionary:
@@ -133,6 +129,11 @@ func start_round() -> void:
 		main.world.add_child(canteiro)
 		main.world.move_child(canteiro, 2)
 		canteiro.setup(main, main.level)
+	if spells != null and is_instance_valid(spells):
+		spells.queue_free()
+	spells = Spells.new()
+	main.world.add_child(spells)
+	spells.setup(main, self)
 	tnt_queue.clear()
 	main.level.block_hp = int(c("block_hp"))
 	for b in main.level.blocks.values():
@@ -154,30 +155,8 @@ func start_round() -> void:
 	bomb_holder = -1
 	bomb_next = 4.0
 	bomb_pass_cd = 0.0
-	items.clear()
-	dynamites.clear()
-	slings.clear()
-	dashes.clear()
-	fakes.clear()
-	fences.clear()
-	shots.clear()
-	nets.clear()
-	traps.clear()
-	clouds.clear()
-	apito_t = 0.0
-	clocks.clear()
-	rings.clear()
 	auto_lever_t = float(sub.get("alavanca_auto_s", 12.0))
-	shocks.clear()
-	ropes.clear()
-	if tools == null or not is_instance_valid(tools):
-		tools = Ferramentas.new()
-		tools.setup(main, self)
-		main.world.add_child(tools)
-	main.world.move_child(tools, -1)   # por cima dos robôs
-	tools.clear()
 	booms.clear()
-	item_t = 4.0
 	banner = String(arena["nome"]).to_upper()
 	banner_t = 2.2
 	go_played = false
@@ -189,19 +168,6 @@ func start_round() -> void:
 	for r in main.robots:
 		r.hammer_left = 999
 		r.facing = 1 if r.position.x < 960 else -1
-	# ajuda para quem está perdendo: o único em último começa com capacete de aço
-	if help_losers and main.round_no > 1:
-		var low := 99999
-		var who := []
-		for i in main.players.size():
-			var sc: int = int(main.players[i]["score"])
-			if sc < low:
-				low = sc
-				who = [i]
-			elif sc == low:
-				who.append(i)
-		if who.size() == 1 and who.size() < main.players.size():
-			main.robots[who[0]].shield = 1
 
 func update(dt: float) -> void:
 	banner_t = maxf(banner_t - dt, 0.0)
@@ -224,6 +190,7 @@ func update(dt: float) -> void:
 	t += dt
 	var lv = main.level
 	var alive: Array = main.robots.filter(func(r): return r.alive)
+	spells.update(dt, alive)
 	# pisão na cabeça (o capacete bloqueia)
 	for r in alive:
 		r.stomp_immune = maxf(r.stomp_immune - dt, 0.0)
@@ -248,19 +215,18 @@ func update(dt: float) -> void:
 				b.last_cause = "pisão"
 				b.last_attacker = a.pid
 				b.hanging = false
-				if not b.absorb():
-					b.dmg += float(cfg["amassometro"]["pisao"]["dano"])
-					b.stun_t = c("stun_stomp_s")
-					b.recover_len = float(b.c["arremesso"]["retorno_s"]) * 0.5
-					b.recover_t = b.recover_len
-					b.atk = ""
-					b.vis.hurt(0.5, 0)
-					PlayerInput.vibrate(b.pid, 0.6, 0.3, 0.18)
-					PlayerInput.vibrate(a.pid, 0.25, 0.0, 0.06)
-					Audio.voice("voz_ai", b.vis.model)
-					Audio.play("tonto", 1.0, -4.0)
-					b.vis.sq = Vector2(1.5, 0.55)
-					main.float_text(b.position + Vector2(0, -110), "PISÃO!", main.player_color(a.pid))
+				b.dmg += float(cfg["amassometro"]["pisao"]["dano"])
+				b.stun_t = c("stun_stomp_s")
+				b.recover_len = float(b.c["arremesso"]["retorno_s"]) * 0.5
+				b.recover_t = b.recover_len
+				b.atk = ""
+				b.vis.hurt(0.5, 0)
+				PlayerInput.vibrate(b.pid, 0.6, 0.3, 0.18)
+				PlayerInput.vibrate(a.pid, 0.25, 0.0, 0.06)
+				Audio.voice("voz_ai", b.vis.model)
+				Audio.play("tonto", 1.0, -4.0)
+				b.vis.sq = Vector2(1.5, 0.55)
+				main.float_text(b.position + Vector2(0, -110), "PISÃO!", main.player_color(a.pid))
 				main.spark(b.position + Vector2(0, -70), 6)
 				main.dust(b.position + Vector2(0, -60), 0.7)
 				main.shake(4.0)
@@ -309,15 +275,11 @@ func update(dt: float) -> void:
 				var k: Vector2i = keys[main.rng.randi() % keys.size()]
 				lv.blocks[k]["warn"] = c("quake_warn_s")
 				main.shake(2.0)
-	_update_items(dt, alive)
-	_update_dynamites(dt, alive)
-	tools.update(dt, alive)
 	_update_water_and_nets(dt, alive)
 	for f in feed:
 		f["t"] += dt
 	feed = feed.filter(func(f): return f["t"] < 4.5)
 	_update_bomb(dt, alive)
-	_update_mode_items(dt)
 	_update_auto_lever(dt)
 	var king_won := _update_king(dt, alive)
 	# fim da rodada: sobrou 1 (ou ninguém)
@@ -346,170 +308,15 @@ func update(dt: float) -> void:
 		banner_t = 3.0
 
 # ---------------------------------------------------------------- itens
-func _update_items(dt: float, alive: Array) -> void:
-	var ic: Dictionary = cfg["itens"]
-	item_t -= dt
-	if item_t <= 0.0:
-		var span: Array = sub.get("itens_cada_s", ic["spawn_every_s"])   # cada modo pode ter seu ritmo
-		item_t = main.rng.randf_range(float(span[0]), float(span[1]))
-		if items_on and items.size() < int(sub.get("itens_max", ic["max_on_map"])):
-			var kinds: Array = sub.get("itens_lista", ic["kinds"])   # cada modo tem os seus itens
-			spawn_item(kinds[main.rng.randi() % kinds.size()])
-	var lv = main.level
-	for it in items:
-		it["t"] += dt
-		var cell := Vector2i(int(it["pos"].x / 64.0), int(floor((it["pos"].y + 26.0) / 64.0)))
-		var plat = fx.platform_at(it["pos"] + Vector2(0, 26)) if fx != null and is_instance_valid(fx) else null
-		if plat != null and it["vy"] >= 0.0:
-			# pousou numa plataforma que se move: anda junto
-			var pp: Vector2 = plat["body"].position
-			if it.get("plat") == plat:
-				it["pos"].x += pp.x - it["plat_x"]
-			it["plat"] = plat
-			it["plat_x"] = pp.x
-			it["pos"].y = pp.y - 26.0
-			it["vy"] = 0.0
-		elif lv.extra_solid.is_valid() and lv.extra_solid.call(cell) and (canteiro == null or not is_instance_valid(canteiro)):
-			# (plataformas móveis antigas: quem segura o item é a plataforma; no Canteiro a laje é chão de verdade)
-			it["plat"] = null
-			it["vy"] = minf(it["vy"] + 900.0 * dt, 260.0)   # desce de paraquedas
-			it["pos"].y += it["vy"] * dt
-		elif lv.is_solid(cell) and it["pos"].y + 26.0 >= cell.y * 64.0:
-			if it["vy"] > 0.0:
-				it["land_t"] = 0.0
-				main.dust(Vector2(it["pos"].x, cell.y * 64.0), 0.5)
-				Audio.play("item", 0.7, -14.0)
-			it["pos"].y = cell.y * 64.0 - 26.0
-			it["vy"] = 0.0
-			it["land_t"] = it.get("land_t", 9.0) + dt
-		else:
-			it["vy"] = minf(it["vy"] + 900.0 * dt, 260.0)   # desce de paraquedas
-			it["pos"].y += it["vy"] * dt
-		for r in alive:
-			if r.rect().grow(6).has_point(it["pos"]):
-				give(r, it["kind"])
-				it["t"] = 999.0
-				break
-	items = items.filter(func(it): return it["t"] < float(ic["lifetime_s"]) and it["pos"].y < main.level.rows * 64.0 + 100.0)
-
 ## Parte do mapa em jogo: a tela, nos mapas com câmera que rola; senão, o mapa inteiro.
 func play_rect() -> Rect2:
 	if fx != null and is_instance_valid(fx) and fx.scroll_on:
 		return Rect2(fx.scroll_center - Vector2(960, 512), Vector2(1920, 1024))
 	return Rect2(0, 0, main.level.cols * 64.0, main.level.rows * 64.0)
 
-## Item desce de paraquedas logo acima de um chão onde dá para ficar de pé (dentro da tela),
-## inclusive dentro de túneis e prédios. col >= 0: força a coluna (cai do alto).
-func spawn_item(kind: String, col := -1) -> void:
-	var lv = main.level
-	var pr := play_rect()
-	if col >= 0:
-		items.append({"kind": kind, "pos": Vector2(col * 64 + 32, maxf(70.0, pr.position.y + 70.0)), "vy": 0.0, "t": 0.0})
-		return
-	var spots := []
-	for y in range(2, lv.rows):
-		for x in range(1, lv.cols - 1):
-			var c := Vector2i(x, y)
-			var ch: String = lv.ch_at(c)
-			if (lv.is_solid(c) or ch == "=") and ch != "I" and not ch in ["^", "w", "J", "F", "f", "P", "B"] \
-					and not lv.is_solid(c + Vector2i.UP) and not lv.is_solid(c + Vector2i(0, -2)) \
-					and pr.grow(-64).has_point(Vector2(c * 64) + Vector2(32, -32)):
-				spots.append(c)
-	if spots.is_empty():
-		return
-	var c: Vector2i = spots[main.rng.randi() % spots.size()]
-	var top := c.y - 1
-	while top > c.y - 4 and top > 1 and not lv.is_solid(Vector2i(c.x, top - 1)):
-		top -= 1   # começa até 3 tiles acima do chão (cai de paraquedas)
-	items.append({"kind": kind, "pos": Vector2(c.x * 64 + 32, top * 64 + 20.0), "vy": 0.0, "t": 0.0})
-
-const ITEM_NAMES := {"dinamite": "TNT!", "martelao": "MARTELÃO!", "mola": "BOTAS DE MOLA!", "capacete": "CAPACETE!",
-	"ima": "ÍMÃ!", "furadeira": "FURADEIRA!", "cola": "COLA!", "foguete": "BOTA-FOGUETE!",
-	"teletransporte": "TELETRANSPORTE!", "laser": "RAIO LASER!", "vortice": "BOMBA DE VÓRTICE!", "soprador": "SOPRADOR!",
-	"congelador": "RAIO CONGELANTE!", "estilingue": "ESTILINGUE!", "patins": "PATINS!", "escudo": "ESCUDO DE BORRACHA!",
-	"choque": "ONDA DE CHOQUE!", "laco": "LAÇO!", "barreira": "BARREIRA!", "relogio": "RELÓGIO!", "gancho": "GANCHO!",
-	"trocatroca": "TROCA-TROCA!", "apito": "APITO DO JUIZ!", "corneta": "CORNETA!", "molabomba": "MOLA ANTI-BOMBA!",
-	"fumaca": "BOMBA DE FUMAÇA!", "banana": "CASCA DE BANANA!", "isca": "BOMBA-ISCA!", "balao": "BALÃO!",
-	"armadura": "ARMADURA!", "capacetefalso": "CAPACETE FALSO!", "cerca": "CERCA ELÉTRICA!", "bumerangue": "BUMERANGUE!",
-	"rede": "LANÇA-REDE!", "imacapacete": "ÍMÃ DE CAPACETE!", "ventosa": "VENTOSA!", "skate": "SKATE!", "oleo": "MANCHA DE ÓLEO!",
-	"chave_atalho": "CHAVE DE ATALHO!", "ancora": "ÂNCORA!", "turbo": "VENTILADOR DE COSTAS!", "bolha": "BOLHA SALVA-VIDAS!"}
-const USABLE := ["dinamite", "furadeira", "cola", "teletransporte", "laser", "vortice", "soprador", "congelador",
-	"estilingue", "choque", "laco", "barreira", "relogio", "gancho", "trocatroca", "apito", "corneta", "fumaca", "banana", "isca",
-	"capacetefalso", "cerca", "bumerangue", "rede", "imacapacete", "skate", "oleo", "chave_atalho", "ancora"]
-var slings: Array = []       # Batata: dinamite arremessada com o estilingue {pos, vel, t, owner}
-var shocks: Array = []       # Rei: onda de choque carregando {pid, t}
-var ropes: Array = []        # laço e gancho {kind, pid, tgt, tip, t, dur}
-var clocks: Array = []       # relógio aparecendo em cima de quem está com a bomba {pid, t, mais}
-var rings: Array = []        # anel da onda de choque {pos, t, r}
-var traps: Array = []        # casca de banana e bomba-isca no chão {kind, pos, t, owner}
-var clouds: Array = []       # bomba de fumaça {pos, t}
-var apito_t := 0.0           # apito do juiz: pavio congelado
-var fakes: Array = []        # capacete falso {pos, t}
-var fences: Array = []       # cerca elétrica {pid, t, cd: {pid: s}}
-var shots: Array = []        # bumerangue e rede voando {kind, pos, vel, t, owner, hit: []}
-var nets: Array = []         # rede presa em alguém {pid, t, kind}
-var dashes: Array = []       # skate {pid, t, hit: []}
-const Ferramentas := preload("res://modes/ferramentas.gd")
-var tools: Node2D = null     # furadeira, cola, teletransporte, laser, vórtice, soprador, congelador, ímã (modes/ferramentas.gd)
-
-func give(r, kind: String) -> void:
-	if not ITEM_NAMES.has(kind):
-		push_warning("item desconhecido: %s" % kind)
-		return
-	match kind:
-		"martelao", "mola", "ima", "foguete", "patins", "escudo", "molabomba", "balao", "armadura", "ventosa", "turbo", "bolha": r.fx_t[kind] = float(item_cfg(kind)["duration_s"])
-		"capacete": r.shield = int(item_cfg("capacete")["hits"])
-		_: r.item = kind
-	Audio.play({"martelao": "martelao", "ima": "ima", "foguete": "foguete"}.get(kind, "item"))
-	var names := ITEM_NAMES
-	main.float_text(r.position + Vector2(0, -110), names.get(kind, kind), main.player_color(r.pid))
-	main.spark(r.rect().get_center(), 5)
-	tools.pickup_fx(r, kind)
-
-## Botão de item: usa o item guardado.
-func use_item(r) -> void:
-	var kind: String = r.item
-	if kind in ["estilingue", "choque", "laco", "barreira", "relogio", "gancho", "trocatroca", "apito", "corneta", "fumaca", "banana", "isca", "capacetefalso", "cerca", "bumerangue", "rede", "imacapacete", "skate", "oleo", "chave_atalho", "ancora"]:
-		if _use_mode_item(r, kind):
-			r.item = ""
-		else:
-			Audio.play("menu_negado", 1.0, -6.0)
-		return
-	if kind != "" and kind != "dinamite":
-		r.item = ""
-		if not tools.use(r, kind):
-			r.item = kind   # não deu para usar aqui (ex.: tábua sem espaço): continua com ele
-			Audio.play("menu_negado", 1.0, -6.0)
-		return
-	if r.item == "dinamite":
-		r.item = ""
-		Audio.play("arremesso")
-		var th: Array = item_cfg("dinamite")["throw"]
-		dynamites.append({"pos": r.rect().get_center() + Vector2(r.facing * 20, -20),
-			"vel": Vector2(r.facing * float(th[0]) + r.velocity.x * 0.3, -float(th[1])), "t": 0.0, "owner": r.pid})
-		r.vis.stretch()
-
-func _update_dynamites(dt: float, alive: Array) -> void:
-	var dc := item_cfg("dinamite")
-	var lv = main.level
-	for d in dynamites:
-		d["t"] += dt
-		d["vel"].y += 1800.0 * dt
-		d["pos"] += d["vel"] * dt
-		var hit: bool = d["t"] >= float(dc["fuse_s"]) or d["pos"].y > main.level.rows * 64.0 - 24.0
-		if d["pos"].y > 0.0 and lv.is_solid(Vector2i(int(d["pos"].x / 64.0), int(d["pos"].y / 64.0))):
-			hit = true
-		for r in alive:
-			if r.pid != d["owner"] and r.rect().grow(10).has_point(d["pos"]):
-				hit = true
-		if hit:
-			explode(d["pos"], -1.0, int(d.get("owner", -1)))
-			d["t"] = 999.0
-	dynamites = dynamites.filter(func(d): return d["t"] < 999.0)
-
 ## Explosão: destrói caixotes no raio e lança os robôs para longe (TNT tem raio maior).
 func explode(pos: Vector2, rad := -1.0, by := -1) -> void:
-	var dc := item_cfg("dinamite")
+	var dc: Dictionary = cfg["explosao"]
 	if rad < 0.0:
 		rad = float(dc["radius_px"])
 	var lv = main.level
@@ -537,7 +344,6 @@ func _update_fx(dt: float) -> void:
 
 func _draw_canvas() -> void:
 	var now := Time.get_ticks_msec() / 1000.0
-	_draw_mode_items(now)
 	if rule() == "rei":
 		var cp := crown_pos
 		var glow := 0.5 + 0.5 * sin(now * 6.0)
@@ -550,54 +356,6 @@ func _draw_canvas() -> void:
 			var a2 := now * 2.0 + k * TAU / 3.0
 			var sp := cp + Vector2(cos(a2) * 36.0, sin(a2) * 14.0 - 18.0)
 			canvas.draw_circle(sp, 3.0, Color(1, 1, 0.8, 0.9))
-	for it in items:
-		var life: float = float(cfg["itens"]["lifetime_s"]) - it["t"]
-		if life < 3.0 and fmod(now, 0.3) < 0.12:
-			continue   # pisca antes de sumir
-		var falling: bool = it["vy"] > 0.0
-		var land: float = it.get("land_t", 9.0)
-		var sq := 1.0
-		if land < 0.35:   # quique ao pousar
-			sq = 1.0 + sin(land / 0.35 * PI * 2.0) * 0.18 * (1.0 - land / 0.35)
-		var p: Vector2 = it["pos"] + Vector2(0, (sin(now * 4.0 + it["pos"].x) * 4.0) if not falling else 0.0)
-		if falling:
-			# paraquedas de pano listrado
-			var sway := sin(now * 3.0 + it["pos"].x) * 0.18
-			canvas.draw_set_transform(p, sway)
-			var dome := PackedVector2Array()
-			for k in 13:
-				dome.append(Vector2(cos(PI + k * PI / 12.0) * 42.0, -78.0 + sin(PI + k * PI / 12.0) * 26.0))
-			dome.append(Vector2(42, -78))
-			canvas.draw_colored_polygon(dome, Color("#f06aa8"))
-			for k in [3, 6, 9]:
-				var x := cos(PI + k * PI / 12.0) * 42.0
-				canvas.draw_line(Vector2(x * 0.3, -104), Vector2(x, -78), Color("#fff7ee"), 6.0)
-			for x in [-40.0, 0.0, 40.0]:
-				canvas.draw_line(Vector2(x, -78), Vector2(0, -24), Color("#5a4632"), 1.6, true)
-			canvas.draw_set_transform(Vector2.ZERO)
-		# bolha com brilho, anel pulsando e estrelinha girando
-		var pulse := 0.5 + 0.5 * sin(now * 5.0 + it["pos"].x)
-		canvas.draw_set_transform(p, 0.0, Vector2(2.0 - sq, sq))
-		canvas.draw_circle(Vector2.ZERO, 30, Color(1, 1, 1, 0.5))
-		canvas.draw_arc(Vector2.ZERO, 30, 0, TAU, 32, Color(1, 1, 1, 0.95), 3.0, true)
-		canvas.draw_arc(Vector2.ZERO, 34.0 + pulse * 6.0, 0, TAU, 32, Color(1, 0.96, 0.78, 0.5 * (1.0 - pulse)), 3.0, true)
-		canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		var ic: float = 1.0 + 0.08 * sin(now * 6.0 + it["pos"].x)
-		canvas.draw_set_transform(p, sin(now * 2.5 + it["pos"].x) * 0.15, Vector2(ic * (2.0 - sq), ic * sq))
-		canvas.draw_texture_rect(Data.tex("itens/" + it["kind"]), Rect2(-24, -24, 48, 48), false)
-		canvas.draw_set_transform(Vector2.ZERO)
-		canvas.draw_arc(p + Vector2(-10, -12), 12, PI * 1.05, PI * 1.45, 8, Color(1, 1, 1, 0.9), 3.0, true)
-		var sp_ang: float = now * 2.0 + it["pos"].x
-		var sp: Vector2 = p + Vector2.from_angle(sp_ang) * 34.0
-		var s4 := 4.0 + 2.0 * sin(now * 9.0)
-		canvas.draw_line(sp - Vector2(s4, 0), sp + Vector2(s4, 0), Color("#fff4c8"), 2.0, true)
-		canvas.draw_line(sp - Vector2(0, s4), sp + Vector2(0, s4), Color("#fff4c8"), 2.0, true)
-	for d in dynamites:
-		canvas.draw_set_transform(d["pos"], d["t"] * 9.0)
-		canvas.draw_texture_rect(Data.tex("itens/dinamite"), Rect2(-16, -16, 32, 32), false)
-		canvas.draw_set_transform(Vector2.ZERO)
-		if fmod(now, 0.16) < 0.08:
-			canvas.draw_circle(d["pos"] + Vector2(10, -16).rotated(d["t"] * 9.0), 5, Color("#fff4c8"))
 	# explosão cartoon: bolas amarelas/laranja e fumaça escura em camadas (ref. de explosões)
 	for b in booms:
 		var k: float = b["t"] / 0.6
@@ -624,9 +382,6 @@ func _draw_canvas() -> void:
 				canvas.draw_circle(hp + shake + Vector2(14, -24), 7, Color("#fff4c8"))
 			var col := Color("#d42035") if bomb_fuse < 3.0 else Color("#2a1a2e")
 			var hidden := false
-			for cl in clouds:
-				if cl["pos"].distance_to(h.position) < float(item_cfg("fumaca")["raio_px"]):
-					hidden = true
 			Kit.text(canvas, hp + Vector2(-60, -34), "?" if hidden else "%d" % ceili(bomb_fuse), 34, col, HORIZONTAL_ALIGNMENT_CENTER, 120, 8, Color("#fff7ee"))
 
 # ---------------------------------------------------------------- marreta
@@ -637,10 +392,10 @@ func _draw_canvas() -> void:
 ## O Martelão (item) fortalece só a pesada. Retorna true se acertou um robô.
 func attack(r, kind: String) -> bool:
 	var heavy := kind == "pesado"
-	var big: bool = heavy and r.fx_t["martelao"] > 0.0
+	var big := false
 	var ac: Dictionary = r.c["ataque_pesado"] if heavy else r.c["ataque_rapido"]
 	var reach := float(ac["alcance_px"]) * (1.3 if big else 1.0)
-	var mult := float(item_cfg("martelao")["knock_mult"]) if big else 1.0
+	var mult := 1.0
 	var rr: Rect2 = r.rect()
 	# a área começa DENTRO do corpo (meio): quem está colado/sobreposto também leva
 	var cx: float = rr.get_center().x
@@ -706,7 +461,7 @@ func attack(r, kind: String) -> bool:
 			Audio.play("caixote_pancada", 0.85 if big else 1.0)
 			break_reason = "chão marretado"
 			break_by = r.pid
-			lv.damage(cell, int(item_cfg("martelao")["block_damage"]) if big or rule() == "batata" else 1)   # Batata: 1 golpe quebra
+			lv.damage(cell, main.level.block_hp if rule() == "batata" else 1)   # Batata: 1 golpe quebra
 			break_reason = ""
 			break_by = -1
 			r.hitstop = float(hs["rapido"])
@@ -847,14 +602,6 @@ func intercept_kill(r) -> bool:
 		respawn(r)
 		return true   # na Oficina ninguém sai
 	if rule() == "fuga":
-		if r.caught and r.fx_t["bolha"] > 0.0:
-			r.fx_t["bolha"] = 0.0   # bolha salva-vidas: volta lá na frente, protegido
-			r.caught = false
-			respawn(r, true)
-			r.invuln = 2.0
-			main.float_text(r.position + Vector2(0, -90), "SALVO PELA BOLHA!", main.player_color(r.pid))
-			Audio.play("item")
-			return true
 		if r.caught:
 			return false   # a tela (ou a lama) pegou: está fora
 		main.float_text(r.position + Vector2(0, -90), "VOLTOU LÁ ATRÁS!", main.player_color(r.pid))
@@ -871,7 +618,6 @@ func intercept_kill(r) -> bool:
 	Audio.play("eliminado", 1.2, -4.0)
 	main.dust(r.position + Vector2(0, -30), 1.2)
 	r.dmg = 0.0
-	r.item = ""
 	respawn(r)
 	return true
 
@@ -916,13 +662,7 @@ func _update_king(dt: float, alive: Array) -> int:
 			return -1
 		king_grace = maxf(king_grace - dt, 0.0)
 		# levou golpe (marretada, pisão, explosão): o capacete voa para longe do golpe
-		if king_grace <= 0.0 and kr.last_hit < float(king_hit.get(king, 99.0)) and kr.last_hit < 0.1 and kr.fx_t["armadura"] > 0.0:
-			kr.fx_t["armadura"] = 0.0   # armadura aguenta 1 golpe
-			king_grace = 0.5
-			main.float_text(kr.position + Vector2(0, -110), "CLANG!", Color("#c9d1d8"))
-			main.spark(kr.rect().get_center(), 8)
-			Audio.play("bonk", 0.6)
-		elif king_grace <= 0.0 and kr.last_hit < float(king_hit.get(king, 99.0)) and kr.last_hit < 0.1:
+		if king_grace <= 0.0 and kr.last_hit < float(king_hit.get(king, 99.0)) and kr.last_hit < 0.1:
 			var away: float = -1.0 if kr.velocity.x < 0.0 else 1.0
 			_drop_crown(Vector2(away * 260.0, -620.0))
 			main.float_text(kr.position + Vector2(0, -110), "PERDEU A COROA!", main.player_color(kr.pid))
@@ -1002,10 +742,7 @@ func _update_bomb(dt: float, alive: Array) -> void:
 			if o != holder and o.invuln <= 0.0 and hr.intersects(o.rect()):
 				pass_bomb(holder.pid, o.pid)
 				break
-	if apito_t > 0.0:
-		apito_t -= dt   # apito do juiz: pavio parado
-	else:
-		bomb_fuse -= dt
+	bomb_fuse -= dt
 	bomb_beep -= dt
 	if bomb_beep <= 0.0:
 		bomb_beep = clampf(bomb_fuse / 6.0, 0.12, 1.0)
@@ -1037,565 +774,9 @@ func _update_auto_lever(dt: float) -> void:
 		fx.pull_lever(-1)
 		Audio.play("alavanca")
 
-## Itens próprios dos modos (Batata, Rei, Fuga). true = usou.
-func _use_mode_item(r, kind: String) -> bool:
-	var c: Vector2 = r.rect().get_center()
-	match kind:
-		"estilingue":   # só serve com a dinamite na mão: arremessa (se errar, ela volta para você)
-			if r.pid != bomb_holder:
-				return false
-			var v: Array = item_cfg("estilingue")["vel"]
-			slings.append({"pos": c + Vector2(r.facing * 24, -10), "vel": Vector2(r.facing * float(v[0]), -float(v[1])), "t": 0.0, "owner": r.pid})
-			tools._anim(r.pid, "estilingue", 0.4, 0.0)
-			Audio.play("arremesso", 1.2)
-			r.vis.stretch()
-			return true
-		"choque":   # fica intocável um instante e depois joga todo mundo longe
-			var wait := float(item_cfg("choque")["espera_s"])
-			r.invuln = wait + 0.2
-			if king == r.pid:
-				king_grace = wait + 0.2
-			shocks.append({"pid": r.pid, "t": wait})
-			Audio.play("laser_carga", 0.8)
-			return true
-		"laco":   # puxa o primeiro rival à frente; se for o rei, o capacete vem voando
-			var reach := float(item_cfg("laco")["alcance_px"])
-			var best = null
-			var bd := 1e9
-			for o in main.robots:
-				if o != r and o.alive:
-					var oc: Vector2 = o.rect().get_center()
-					var dx: float = (oc.x - c.x) * r.facing
-					if dx > 0.0 and dx < reach and absf(oc.y - c.y) < 80.0 and dx < bd and _clear_line(c, oc):
-						bd = dx
-						best = o
-			var tip: Vector2 = c + Vector2(r.facing * (bd if best != null else reach), 0)
-			ropes.append({"kind": "laco", "pid": r.pid, "tgt": best.pid if best != null else -1, "tip": tip, "t": 0.0, "dur": 0.5})
-			tools._anim(r.pid, "laco", 0.5, 0.0)
-			Audio.play("gancho")
-			if best != null:
-				if best.pid == king:
-					_drop_crown(((c - best.rect().get_center()).normalized() * 560.0) + Vector2(0, -420))
-				best.stun_t = maxf(best.stun_t, 0.8)   # laçado: fica tonto e é puxado até colar em você
-			return true
-		"barreira":   # muro de 2 caixotes atrás de você
-			var lv = main.level
-			var bx := int((r.position.x - r.facing * 100.0) / 64.0)
-			var by := int((r.position.y - 4.0) / 64.0)
-			var made := false
-			for k in int(item_cfg("barreira")["altura"]):
-				if lv.add_block(Vector2i(bx, by - k)):
-					lv.blocks[Vector2i(bx, by - k)]["hp"] = lv.block_hp
-					made = true
-			if made:
-				for k in int(item_cfg("barreira")["altura"]):
-					var bc := Vector2(bx * 64 + 32, (by - k) * 64 + 32)
-					main.spark(bc, 6)
-					main.dust(bc + Vector2(0, 30), 0.9)
-				main.shake(4.0)
-				Audio.play("caixote_pancada", 0.8)
-			return made
-		"capacetefalso":   # capacete de mentira num chão qualquer
-			var spots := []
-			var lv = main.level
-			for y in range(2, lv.rows):
-				for x in range(1, lv.cols - 1):
-					var cc := Vector2i(x, y)
-					if lv.is_solid(cc) and lv.ch_at(cc) != "I" and not lv.is_solid(cc + Vector2i.UP) and not lv.is_solid(cc + Vector2i(0, -2)):
-						spots.append(cc)
-			if spots.is_empty():
-				return false
-			var sp: Vector2i = spots[main.rng.randi() % spots.size()]
-			fakes.append({"pos": Vector2(sp.x * 64 + 32, sp.y * 64 - 4), "t": 0.0})
-			Audio.play("item")
-			return true
-		"cerca":
-			fences.append({"pid": r.pid, "t": 0.0, "cd": {}})
-			Audio.play("laser_carga", 1.3)
-			return true
-		"bumerangue", "rede":
-			var v := float(item_cfg(kind)["vel"])
-			shots.append({"kind": kind, "pos": c + Vector2(r.facing * 30, -6), "vel": Vector2(r.facing * v, 0), "t": 0.0, "owner": r.pid, "hit": []})
-			Audio.play("arremesso", 1.1)
-			r.vis.stretch()
-			return true
-		"imacapacete":   # puxa o capacete solto até você
-			if king >= 0:
-				return false
-			crown_vel = (c - crown_pos).normalized() * float(item_cfg("imacapacete")["forca"]) + Vector2(0, -300)
-			rings.append({"pos": crown_pos, "t": 0.0, "r": 80.0})
-			Audio.play("ima")
-			return true
-		"skate":   # arrancada longa que atropela
-			var sc := item_cfg("skate")
-			r.velocity.x = r.facing * float(sc["vel"])
-			r.own_vx = r.velocity.x
-			dashes.append({"pid": r.pid, "t": 0.0, "hit": []})
-			Audio.play("foguete", 1.4)
-			return true
-		"oleo":
-			traps.append({"kind": "oleo", "pos": Vector2(r.position.x - r.facing * 80.0, r.position.y), "t": 0.0, "owner": r.pid, "cd": {}})
-			Audio.play("lama", 0.8)
-			return true
-		"chave_atalho":   # teletransporta para a frente, num chão livre
-			var lv = main.level
-			var col := int(r.position.x / 64.0)
-			var row := int((r.position.y + 2.0) / 64.0)
-			var n := int(item_cfg("chave_atalho")["tiles"])
-			for dx in range(n, 1, -1):
-				for dy in [0, -1, 1, -2, 2, -3, 3]:
-					var cc := Vector2i(col + dx * r.facing, row + dy)
-					if lv.is_solid(cc) and lv.ch_at(cc) != "I" and not lv.is_solid(cc + Vector2i.UP) and not lv.is_solid(cc + Vector2i(0, -2)):
-						rings.append({"pos": c, "t": 0.0, "r": 70.0})
-						r.position = Vector2(cc.x * 64 + 32, cc.y * 64)
-						r.reset_physics_interpolation()
-						r.velocity = Vector2.ZERO
-						rings.append({"pos": r.rect().get_center(), "t": 0.0, "r": 70.0})
-						Audio.play("teleporte")
-						return true
-			return false
-		"ancora":   # prende o rival mais próximo atrás de você
-			var best = null
-			var bd := float(item_cfg("ancora")["alcance_px"])
-			for o in main.robots:
-				if o != r and o.alive:
-					var dd: float = o.position.distance_to(r.position)
-					if (o.position.x - r.position.x) * r.facing < 0.0 and dd < bd:
-						bd = dd
-						best = o
-			if best == null:
-				return false
-			best.stun_t = maxf(best.stun_t, float(item_cfg("ancora")["preso_s"]))
-			best.velocity = Vector2.ZERO
-			nets.append({"pid": best.pid, "t": 0.0, "kind": "ancora"})
-			ropes.append({"kind": "gancho", "pid": r.pid, "tgt": -1, "tip": best.rect().get_center(), "t": 0.0, "dur": 0.35})
-			Audio.play("gancho", 0.7)
-			return true
-		"trocatroca":   # a bomba pula para um jogador sorteado (pode voltar para você)
-			if bomb_holder < 0:
-				return false
-			var cand: Array = main.robots.filter(func(o): return o.alive and o.pid != bomb_holder)
-			if cand.is_empty():
-				return false
-			var nw = cand[main.rng.randi() % cand.size()]
-			rings.append({"pos": main.robots[bomb_holder].rect().get_center(), "t": 0.0, "r": 120.0})
-			bomb_holder = nw.pid
-			bomb_pass_cd = 0.8
-			main.float_text(nw.position + Vector2(0, -130), "SOBROU PRA VOCÊ!", main.player_color(nw.pid))
-			Audio.play("teleporte")
-			return true
-		"apito":   # congela o pavio de todo mundo
-			if bomb_holder < 0:
-				return false
-			apito_t = float(item_cfg("apito")["duracao_s"])
-			main.float_text(r.position + Vector2(0, -130), "PRIIII!", main.player_color(r.pid))
-			Audio.play("alarme", 1.6)
-			return true
-		"corneta":   # deixa tonto quem está perto
-			var cc := item_cfg("corneta")
-			for o in main.robots:
-				if o != r and o.alive and o.rect().get_center().distance_to(c) < float(cc["raio_px"]):
-					o.stun_t = maxf(o.stun_t, float(cc["tonto_s"]))
-					main.float_text(o.position + Vector2(0, -110), "@_@", Color.WHITE)
-			rings.append({"pos": c, "t": 0.0, "r": float(cc["raio_px"])})
-			Audio.play("buzina" if Audio._index.has("buzina") else "alarme", 0.7)
-			return true
-		"fumaca":
-			clouds.append({"pos": c, "t": 0.0})
-			Audio.play("vento" if Audio._index.has("vento") else "bola_vento")
-			return true
-		"banana", "isca":   # larga no chão atrás de você
-			var fp := Vector2(r.position.x - r.facing * 70.0, r.position.y)
-			traps.append({"kind": kind, "pos": fp, "t": 0.0, "owner": r.pid})
-			Audio.play("caixote_pancada", 1.4, -6.0)
-			return true
-		"relogio":   # com a bomba: mais pavio; sem ela: encurta o pavio de quem está
-			if bomb_holder < 0:
-				return false
-			var rc := item_cfg("relogio")
-			if r.pid == bomb_holder:
-				bomb_fuse += float(rc["ganho_s"])
-				main.float_text(r.position + Vector2(0, -150), "+%d s" % int(rc["ganho_s"]), main.player_color(r.pid))
-			else:
-				bomb_fuse = maxf(float(rc["minimo_s"]), bomb_fuse - float(rc["perda_s"]))
-				main.float_text(main.robots[bomb_holder].position + Vector2(0, -150), "-%d s!" % int(rc["perda_s"]), main.player_color(r.pid))
-			clocks.append({"pid": bomb_holder, "t": 0.0, "mais": r.pid == bomb_holder})
-			tools._anim(r.pid, "relogio", 0.6)
-			Audio.play("contagem", 1.4)
-			return true
-		"gancho":   # puxa você até a beirada mais alta à frente
-			var lv = main.level
-			var col := int(r.position.x / 64.0)
-			var row := int((r.position.y + 2.0) / 64.0)
-			var reach := int(item_cfg("gancho")["alcance_tiles"])
-			var tgt := Vector2i(-1, -1)
-			for dy in range(reach, 1, -1):
-				for dx in range(0, 5):
-					var cc := Vector2i(col + dx * r.facing, row - dy)
-					if (lv.is_solid(cc) or lv.ch_at(cc) == "=") and lv.ch_at(cc) != "I" and not lv.is_solid(cc + Vector2i.UP) and not lv.is_solid(cc + Vector2i(0, -2)):
-						tgt = cc
-						break
-				if tgt.x >= 0:
-					break
-			if tgt.x < 0:
-				return false
-			var g: float = r.f("gravity")
-			var h: float = r.position.y - tgt.y * 64.0 + 40.0
-			var vy := sqrt(2.0 * g * h)
-			r.velocity = Vector2((tgt.x * 64.0 + 32.0 - r.position.x) / (vy / g), -vy)
-			r.own_vx = r.velocity.x
-			r.var_jump = 0.0
-			ropes.append({"kind": "gancho", "pid": r.pid, "tgt": -1, "tip": Vector2(tgt.x * 64.0 + 32.0, tgt.y * 64.0 + 6.0), "t": 0.0, "dur": 0.55})
-			tools._anim(r.pid, "gancho", 0.45, 0.0)
-			Audio.play("gancho")
-			return true
-	return false
-
-## Desenho dos itens dos modos: estilingue, laço, gancho, choque, relógio, escudo, patins.
-func _draw_mode_items(now: float) -> void:
-	for sl in slings:   # dinamite girando no ar
-		canvas.draw_set_transform(sl["pos"], sl["t"] * 14.0)
-		canvas.draw_texture_rect(Data.tex("itens/dinamite"), Rect2(-18, -18, 36, 36), false)
-		canvas.draw_set_transform(Vector2.ZERO)
-		if fmod(now, 0.12) < 0.06:
-			canvas.draw_circle(sl["pos"] + Vector2(10, -14).rotated(sl["t"] * 14.0), 5, Color("#fff4c8"))
-	for rp in ropes:
-		if rp["pid"] >= main.robots.size():
-			continue
-		var me = main.robots[rp["pid"]]
-		var hand: Vector2 = me.position + Vector2(me.facing * 30.0, -46.0)
-		var k := clampf(rp["t"] / 0.12, 0.0, 1.0)   # corda saindo
-		var tip: Vector2 = hand.lerp(rp["tip"], k)
-		var slack := (1.0 - k) * 26.0 + (8.0 if rp["kind"] == "laco" and rp["tgt"] < 0 else 0.0)
-		var pts := PackedVector2Array()
-		for i in 13:
-			var u := i / 12.0
-			var wave := sin(u * PI * 3.0 + now * 30.0) * 5.0 * (1.0 - k)
-			pts.append(hand.lerp(tip, u) + Vector2(0, sin(u * PI) * slack + wave))
-		canvas.draw_polyline(pts, Color("#5a3d1c"), 7.0, true)
-		canvas.draw_polyline(pts, Color("#c99252") if rp["kind"] == "laco" else Color("#8a96a3"), 4.0, true)
-		if rp["kind"] == "laco":
-			var lr := 16.0 if rp["tgt"] < 0 else 30.0
-			canvas.draw_set_transform(tip, 0.0, Vector2(1.0, 0.45))
-			canvas.draw_arc(Vector2.ZERO, lr, 0, TAU, 20, Color("#5a3d1c"), 7.0, true)
-			canvas.draw_arc(Vector2.ZERO, lr, 0, TAU, 20, Color("#c99252"), 4.0, true)
-			canvas.draw_set_transform(Vector2.ZERO)
-		else:
-			var ang := (tip - hand).angle() + PI / 4.0
-			canvas.draw_set_transform(tip, ang)
-			canvas.draw_texture_rect(Data.tex("itens/gancho"), Rect2(-22, -22, 44, 44), false)
-			canvas.draw_set_transform(Vector2.ZERO)
-	for sh in shocks:   # carregando: raios elétricos em volta
-		if sh["pid"] < main.robots.size():
-			var cc: Vector2 = main.robots[sh["pid"]].rect().get_center()
-			var k: float = 1.0 - sh["t"] / float(item_cfg("choque")["espera_s"])
-			canvas.draw_circle(cc, 46.0 + k * 20.0, Color(1.0, 0.9, 0.3, 0.12 + 0.18 * k))
-			for b in 4:
-				var a0 := randf() * TAU
-				var zz := PackedVector2Array()
-				for j in 5:
-					zz.append(cc + Vector2.from_angle(a0 + j * 0.28) * (34.0 + 26.0 * k + randf_range(-8, 8)))
-				canvas.draw_polyline(zz, Color("#fff4a0"), 3.0, true)
-	for rg in rings:   # estouro: anel de choque se espalhando
-		var k: float = rg["t"] / 0.45
-		canvas.draw_arc(rg["pos"], rg["r"] * k, 0, TAU, 48, Color(1.0, 0.85, 0.3, 1.0 - k), 14.0 * (1.0 - k) + 2.0, true)
-		canvas.draw_arc(rg["pos"], rg["r"] * k * 0.92, 0, TAU, 48, Color(1, 1, 1, 0.8 * (1.0 - k)), 4.0, true)
-	for fk in fakes:
-		var glow := 0.5 + 0.5 * sin(now * 6.0)
-		canvas.draw_circle(fk["pos"] + Vector2(0, -26), 40.0 + glow * 8.0, Color(1.0, 0.85, 0.3, 0.18 + glow * 0.12))
-		canvas.draw_texture_rect(Data.tex("itens/capacete"), Rect2(fk["pos"] + Vector2(-30, -56), Vector2(60, 60)), false, Color(1.0, 0.82, 0.25))
-	for fe in fences:
-		if fe["pid"] < main.robots.size():
-			var oc: Vector2 = main.robots[fe["pid"]].rect().get_center()
-			var rad := float(item_cfg("cerca")["raio_px"])
-			canvas.draw_arc(oc, rad, 0, TAU, 40, Color("#2b2233"), 7.0, true)
-			canvas.draw_arc(oc, rad, 0, TAU, 40, Color("#ffcf3a"), 3.5, true)
-			for k in 10:
-				var a0 := k * TAU / 10.0 + now * 0.6
-				var p0 := oc + Vector2.from_angle(a0) * rad
-				canvas.draw_line(p0, p0 + Vector2.from_angle(a0) * 16.0 + Vector2(randf_range(-6, 6), randf_range(-6, 6)), Color("#fff4a0"), 3.0, true)
-	for sh in shots:
-		canvas.draw_set_transform(sh["pos"], sh["t"] * (18.0 if sh["kind"] == "bumerangue" else 0.0))
-		canvas.draw_texture_rect(Data.tex("itens/" + sh["kind"]), Rect2(-24, -24, 48, 48), false)
-		canvas.draw_set_transform(Vector2.ZERO)
-	for nt in nets:
-		if nt["pid"] < main.robots.size():
-			var nc: Vector2 = main.robots[nt["pid"]].rect().get_center()
-			canvas.draw_texture_rect(Data.tex("itens/rede"), Rect2(nc - Vector2(44, 50), Vector2(88, 96)), false, Color(1, 1, 1, 0.9))
-	for r in main.robots:
-		if r.alive and r.fx_t["armadura"] > 0.0:
-			canvas.draw_texture_rect(Data.tex("itens/armadura"), Rect2(r.rect().get_center() + Vector2(-20, -18), Vector2(40, 40)), false)
-	for nt in nets:
-		if nt.get("kind", "") == "ancora" and nt["pid"] < main.robots.size():
-			canvas.draw_texture_rect(Data.tex("itens/ancora"), Rect2(main.robots[nt["pid"]].position + Vector2(-26, -40), Vector2(52, 52)), false)
-	for ds in dashes:
-		var me = main.robots[ds["pid"]]
-		canvas.draw_texture_rect(Data.tex("itens/skate"), Rect2(me.position + Vector2(-34, -24), Vector2(68, 68)), false)
-	for r in main.robots:
-		if not r.alive:
-			continue
-		if r.fx_t["turbo"] > 0.0:
-			canvas.draw_texture_rect(Data.tex("itens/turbo"), Rect2(r.position + Vector2(-r.facing * 46.0 - 20.0, -70), Vector2(40, 40)), false)
-			for i in 3:
-				var x0: float = r.position.x - r.facing * (70.0 + fmod(now * 300.0 + i * 25.0, 60.0))
-				canvas.draw_line(Vector2(x0, r.position.y - 40 - i * 12), Vector2(x0 - r.facing * 22.0, r.position.y - 40 - i * 12), Color(1, 1, 1, 0.8), 3.0, true)
-		if r.fx_t["bolha"] > 0.0:
-			var cc3: Vector2 = r.rect().get_center()
-			canvas.draw_arc(cc3, 58.0 + sin(now * 4.0) * 3.0, 0, TAU, 40, Color(0.55, 0.85, 1.0, 0.7), 3.0, true)
-			canvas.draw_arc(cc3, 46.0, PI * 1.15, PI * 1.4, 8, Color(1, 1, 1, 0.8), 3.0, true)
-		if r.fx_t["ventosa"] > 0.0:
-			canvas.draw_texture_rect(Data.tex("itens/ventosa"), Rect2(r.position + Vector2(r.facing * 22.0 - 14.0, -62), Vector2(28, 28)), false)
-	for tp in traps:
-		if tp["kind"] == "oleo":
-			canvas.draw_set_transform(tp["pos"] + Vector2(0, -2), 0.0, Vector2(1.0, 0.22))
-			canvas.draw_circle(Vector2.ZERO, 74.0, Color("#2b2233"))
-			canvas.draw_circle(Vector2.ZERO, 68.0, Color("#3e3550"))
-			canvas.draw_circle(Vector2(-20, -10), 22.0, Color(0.6, 0.5, 0.9, 0.5))
-			canvas.draw_set_transform(Vector2.ZERO)
-			continue
-	for tp in traps:
-		if tp["kind"] == "oleo":
-			continue
-		var tex: String = "itens/banana" if tp["kind"] == "banana" else "itens/dinamite"
-		canvas.draw_texture_rect(Data.tex(tex), Rect2(tp["pos"] + Vector2(-20, -38), Vector2(40, 40)), false)
-	for cl in clouds:   # nuvem de fumaça (some com o tempo)
-		var a: float = clampf((float(item_cfg("fumaca")["duracao_s"]) - cl["t"]) / 1.0, 0.0, 1.0)
-		var rad := float(item_cfg("fumaca")["raio_px"])
-		for k in 9:
-			var off := Vector2.from_angle(k * 0.7 + cl["t"] * 0.4) * rad * (0.25 + 0.5 * fposmod(k * 0.37, 1.0))
-			canvas.draw_circle(cl["pos"] + off, rad * 0.45, Color(0.82, 0.79, 0.86, 0.85 * a))
-	for r in main.robots:
-		if r.alive and r.fx_t["balao"] > 0.0:   # balão preso nas costas
-			var top: Vector2 = r.position + Vector2(-r.facing * 10.0, -150.0 + sin(now * 3.0) * 4.0)
-			canvas.draw_line(r.position + Vector2(-r.facing * 8.0, -60), top + Vector2(0, 26), Color("#2b2233"), 2.0, true)
-			canvas.draw_set_transform(top, 0.0, Vector2(0.85, 1.0))
-			canvas.draw_circle(Vector2.ZERO, 28.0, Color("#2b2233"))
-			canvas.draw_circle(Vector2.ZERO, 25.0, Color("#f06aa8"))
-			canvas.draw_set_transform(Vector2.ZERO)
-			canvas.draw_arc(top + Vector2(-8, -8), 10.0, PI, PI * 1.5, 6, Color(1, 1, 1, 0.8), 3.0, true)
-		if r.alive and r.fx_t["molabomba"] > 0.0:   # mola em volta do corpo
-			var cc2: Vector2 = r.rect().get_center()
-			for k in 4:
-				var yy: float = cc2.y - 30.0 + k * 16.0 + sin(now * 10.0) * 3.0
-				canvas.draw_arc(Vector2(cc2.x, yy), 34.0, -0.3, PI + 0.3, 12, Color("#c9d1d8"), 4.0, true)
-	if apito_t > 0.0 and bomb_holder >= 0 and bomb_holder < main.robots.size():
-		Kit.text(canvas, main.robots[bomb_holder].position + Vector2(-80, -205), "PAVIO PARADO", 22, Color("#3a8fd9"), HORIZONTAL_ALIGNMENT_CENTER, 160, 6, Color("#fff7ee"))
-	for ck in clocks:   # relógio em cima de quem está com a bomba
-		if ck["pid"] < main.robots.size():
-			var h = main.robots[ck["pid"]]
-			var pop := minf(1.0, ck["t"] / 0.15) * (1.0 - maxf(0.0, ck["t"] - 0.8) / 0.2)
-			var cp: Vector2 = h.position + Vector2(0, -190)
-			canvas.draw_circle(cp, 26.0 * pop + 3.0, Color("#2a1a2e"))
-			canvas.draw_circle(cp, 26.0 * pop, Color("#e8503a") if not ck["mais"] else Color("#2f9e5b"))
-			canvas.draw_circle(cp, 19.0 * pop, Color("#fff4dc"))
-			var sgn := 1.0 if ck["mais"] else -1.0
-			canvas.draw_line(cp, cp + Vector2.from_angle(-PI / 2.0 + sgn * ck["t"] * 14.0) * 15.0 * pop, Color("#2a1a2e"), 3.0, true)
-			canvas.draw_line(cp, cp + Vector2.from_angle(-PI / 2.0 + sgn * ck["t"] * 3.0) * 9.0 * pop, Color("#2a1a2e"), 3.0, true)
-	for r in main.robots:
-		if not r.alive:
-			continue
-		if r.fx_t["escudo"] > 0.0 and (r.fx_t["escudo"] > 1.5 or fmod(now, 0.2) < 0.13):
-			var cc: Vector2 = r.rect().get_center()
-			var pulse := 1.0 + sin(now * 6.0) * 0.04
-			canvas.draw_circle(cc, 54.0 * pulse, Color(0.45, 0.72, 1.0, 0.18))
-			canvas.draw_arc(cc, 54.0 * pulse, 0, TAU, 40, Color("#2a1a2e"), 6.0, true)
-			canvas.draw_arc(cc, 54.0 * pulse, 0, TAU, 40, Color("#7fc4ff"), 3.5, true)
-			canvas.draw_arc(cc, 42.0, PI * 1.1, PI * 1.45, 10, Color(1, 1, 1, 0.85), 4.0, true)
-			canvas.draw_arc(cc, 42.0, PI * 1.55, PI * 1.62, 4, Color(1, 1, 1, 0.85), 4.0, true)
-		if r.fx_t["patins"] > 0.0 and absf(r.velocity.x) > 300.0:
-			var back := -signf(r.velocity.x)
-			for i in 3:
-				var y: float = r.position.y - 18.0 - i * 20.0
-				var x0: float = r.position.x + back * (30.0 + fmod(now * 400.0 + i * 37.0, 30.0))
-				canvas.draw_line(Vector2(x0, y), Vector2(x0 + back * (26.0 + i * 6.0), y), Color(1, 1, 1, 0.75), 3.0, true)
-
-## Há caminho livre (sem bloco sólido) em linha reta entre dois pontos? (laço não atravessa parede)
-func _clear_line(a: Vector2, b: Vector2) -> bool:
-	var n := int(a.distance_to(b) / 24.0) + 1
-	for i in n:
-		var p := a.lerp(b, float(i) / n)
-		if main.level.is_solid(Vector2i(int(p.x / 64.0), int(p.y / 64.0))):
-			return false
-	return true
-
-## Estilingue de TNT voando, onda de choque carregando, laço e gancho.
-func _update_mode_items(dt: float) -> void:
-	for sl in slings:
-		sl["t"] += dt
-		sl["vel"].y += 1500.0 * dt
-		sl["pos"] += sl["vel"] * dt
-		for o in main.robots:
-			if o.alive and o.pid != sl["owner"] and o.rect().grow(8).has_point(sl["pos"]) and o.fx_t["escudo"] <= 0.0:
-				bomb_holder = o.pid
-				bomb_pass_cd = 0.8
-				main.float_text(o.position + Vector2(0, -110), "TOMA!", main.player_color(sl["owner"]))
-				Audio.play("bonk")
-				sl["dead"] = true
-				break
-		var cell := Vector2i(int(sl["pos"].x / 64.0), int(sl["pos"].y / 64.0))
-		if not sl.get("dead", false) and (sl["t"] > 1.4 or main.level.is_solid(cell)):
-			sl["dead"] = true
-			if sl["owner"] < main.robots.size() and main.robots[sl["owner"]].alive:
-				main.float_text(main.robots[sl["owner"]].position + Vector2(0, -110), "ERROU!", main.player_color(sl["owner"]))
-	slings = slings.filter(func(x): return not x.get("dead", false))
-	for sh in shocks:
-		sh["t"] -= dt
-		if sh["t"] <= 0.0 and sh["pid"] < main.robots.size():
-			var me = main.robots[sh["pid"]]
-			var c0: Vector2 = me.rect().get_center()
-			var rad := float(item_cfg("choque")["raio_px"])
-			for o in main.robots:
-				if o != me and o.alive and o.rect().get_center().distance_to(c0) < rad:
-					o.take_hit(1 if o.rect().get_center().x >= c0.x else -1, "choque", me.pid)
-			rings.append({"pos": c0, "t": 0.0, "r": rad})
-			for k in 16:
-				tools._part(c0, Vector2.from_angle(k * TAU / 16.0) * 520.0, 0.4, "estrela", Color("#ffe066"), 6)
-			main.shake(10.0)
-			Audio.play("explosao", 1.3, -4.0)
-	shocks = shocks.filter(func(x): return x["t"] > 0.0)
-	for rp in ropes:
-		rp["t"] += dt
-		var me = main.robots[rp["pid"]] if rp["pid"] < main.robots.size() else null
-		if rp["kind"] == "laco" and rp["tgt"] >= 0 and me != null and rp["t"] > 0.1 and rp["t"] < 0.4:
-			var o = main.robots[rp["tgt"]]
-			if o.alive:   # puxa até colar na sua frente
-				var want: Vector2 = me.position + Vector2(me.facing * 58.0, 0)
-				o.position = o.position.lerp(want, clampf(dt * 14.0, 0.0, 1.0))
-				o.velocity = Vector2.ZERO
-				o.own_vx = 0.0
-				rp["tip"] = o.rect().get_center()
-		if rp["kind"] == "gancho" and rp["t"] < 0.06:
-			for k in 6:
-				tools._part(rp["tip"], Vector2.from_angle(randf() * TAU) * randf_range(120, 260), 0.35, "estrela", Color("#fff4c8"), 4)
-	ropes = ropes.filter(func(x): return x["t"] < x["dur"])
-	for fk in fakes:   # capacete falso: quem encostar fica tonto
-		fk["t"] += dt
-		for o in main.robots:
-			if o.alive and o.rect().grow(8).has_point(fk["pos"]):
-				o.stun_t = maxf(o.stun_t, float(item_cfg("capacetefalso")["tonto_s"]))
-				main.float_text(o.position + Vector2(0, -110), "FALSO!", Color("#ffd23a"))
-				main.dust(fk["pos"], 1.0)
-				Audio.play("bonk")
-				fk["t"] = 999.0
-				break
-	fakes = fakes.filter(func(x): return x["t"] < float(item_cfg("capacetefalso")["duracao_s"]))
-	for fe in fences:   # cerca elétrica: anel em volta do dono
-		fe["t"] += dt
-		if fe["pid"] >= main.robots.size():
-			continue
-		var own = main.robots[fe["pid"]]
-		var oc: Vector2 = own.rect().get_center()
-		var rad := float(item_cfg("cerca")["raio_px"])
-		for o in main.robots:
-			if o != own and o.alive and o.rect().get_center().distance_to(oc) < rad and fe["cd"].get(o.pid, 0.0) <= 0.0:
-				o.take_hit(1 if o.rect().get_center().x >= oc.x else -1, "choque", own.pid)
-				fe["cd"][o.pid] = 0.6
-				main.spark(o.rect().get_center(), 6)
-		for k2 in fe["cd"].keys():
-			fe["cd"][k2] -= dt
-	fences = fences.filter(func(x): return x["t"] < float(item_cfg("cerca")["duracao_s"]))
-	for sh in shots:   # bumerangue (vai e volta) e rede (reta)
-		sh["t"] += dt
-		var own = main.robots[sh["owner"]] if sh["owner"] < main.robots.size() else null
-		if sh["kind"] == "bumerangue" and sh["t"] > float(item_cfg("bumerangue")["ida_s"]) and own != null:
-			sh["vel"] = sh["vel"].lerp((own.rect().get_center() - sh["pos"]).normalized() * float(item_cfg("bumerangue")["vel"]), clampf(dt * 6.0, 0.0, 1.0))
-			if sh["pos"].distance_to(own.rect().get_center()) < 50.0:
-				sh["t"] = 999.0   # voltou para a mão
-		sh["pos"] += sh["vel"] * dt
-		if main.level.is_solid(Vector2i(int(sh["pos"].x / 64.0), int(sh["pos"].y / 64.0))):
-			if sh["kind"] == "rede":
-				sh["t"] = 999.0
-			elif sh["t"] < float(item_cfg("bumerangue")["ida_s"]):
-				sh["t"] = float(item_cfg("bumerangue")["ida_s"])   # bateu: volta
-		for o in main.robots:
-			if o.alive and o.pid != sh["owner"] and not (o.pid in sh["hit"]) and o.rect().grow(10).has_point(sh["pos"]):
-				sh["hit"].append(o.pid)
-				if sh["kind"] == "rede":
-					o.stun_t = maxf(o.stun_t, float(item_cfg("rede")["preso_s"]))
-					o.velocity = Vector2.ZERO
-					nets.append({"pid": o.pid, "t": 0.0})
-					sh["t"] = 999.0
-					Audio.play("cola")
-				else:
-					o.take_hit(signi(int(sh["vel"].x)) if sh["vel"].x != 0.0 else 1, "rapido", sh["owner"])
-					Audio.play("bonk")
-				break
-		if sh["t"] > 3.0:
-			sh["t"] = 999.0
-	shots = shots.filter(func(x): return x["t"] < 999.0)
-	for nt in nets:
-		nt["t"] += dt
-	nets = nets.filter(func(x): return x["t"] < float(item_cfg(x.get("kind", "rede"))["preso_s"]))
-	for ds in dashes:   # skate atropelando
-		ds["t"] += dt
-		var me = main.robots[ds["pid"]]
-		for o in main.robots:
-			if o != me and o.alive and not (o.pid in ds["hit"]) and o.rect().intersects(me.rect().grow(6)):
-				ds["hit"].append(o.pid)
-				o.knock(me.facing, 700.0, 320.0, 0.5)
-				Audio.play("bonk")
-		if randf() < 0.5:
-			tools._part(me.position, Vector2(-me.facing * 200, -60), 0.3, "estrela", Color("#fff4c8"), 3)
-	dashes = dashes.filter(func(x): return x["t"] < float(item_cfg("skate")["dash_s"]))
-	for r in main.robots:   # ventilador de costas: empurra quem está colado atrás
-		if r.alive and r.fx_t["turbo"] > 0.0:
-			for o in main.robots:
-				var bx2: float = (o.position.x - r.position.x) * r.facing
-				if o != r and o.alive and bx2 < 0.0 and bx2 > -160.0 and absf(o.position.y - r.position.y) < 80.0:
-					o.velocity.x -= r.facing * float(item_cfg("turbo")["empurra"]) * dt
-	for tp in traps:   # casca de banana e bomba-isca
-		tp["t"] += dt
-		if tp["kind"] == "oleo":
-			for o in main.robots:
-				if o.alive and o.pid != tp["owner"] and absf(o.position.x - tp["pos"].x) < 70.0 and absf(o.position.y - tp["pos"].y) < 12.0 \
-						and tp["cd"].get(o.pid, 0.0) <= 0.0:
-					o.knock(1 if o.velocity.x >= 0.0 else -1, 560.0, 60.0, 0.6)
-					tp["cd"][o.pid] = 1.2
-					main.float_text(o.position + Vector2(0, -110), "ÓLEO!", Color.WHITE)
-			for k3 in tp["cd"].keys():
-				tp["cd"][k3] -= dt
-			continue
-		for o in main.robots:
-			if o.alive and (o.pid != tp["owner"] or tp["t"] > 1.0) and o.rect().grow(4).has_point(tp["pos"] + Vector2(0, -10)):
-				if tp["kind"] == "banana":
-					o.knock(o.facing if absf(o.velocity.x) > 10.0 else 1, 760.0, 260.0, 0.9)
-					main.float_text(o.position + Vector2(0, -110), "ESCORREGOU!", Color.WHITE)
-					Audio.play("lama")
-				else:
-					o.stun_t = maxf(o.stun_t, float(item_cfg("isca")["tonto_s"]))
-					main.float_text(o.position + Vector2(0, -110), "ERA FALSA!", Color.WHITE)
-					main.dust(tp["pos"], 1.2)
-					Audio.play("bonk")
-				tp["t"] = 999.0
-				break
-	traps = traps.filter(func(x): return x["t"] < float(item_cfg(x["kind"])["vida_s"]))
-	for cl in clouds:
-		cl["t"] += dt
-	clouds = clouds.filter(func(x): return x["t"] < float(item_cfg("fumaca")["duracao_s"]))
-	for ck in clocks:
-		ck["t"] += dt
-	clocks = clocks.filter(func(x): return x["t"] < 1.0)
-	for rg in rings:
-		rg["t"] += dt
-	rings = rings.filter(func(x): return x["t"] < 0.45)
-	for sl in slings:   # rastro de faíscas da dinamite voando
-		if randf() < 0.6:
-			tools._part(sl["pos"], -sl["vel"] * 0.08 + Vector2(randf_range(-40, 40), randf_range(-40, 40)), 0.35, "estrela", Color("#ffcf3a"), 3.5)
-
 ## Batata: a marretada passa a dinamite para quem levou o golpe.
 func pass_bomb(from_pid: int, to_pid: int) -> void:
 	if rule() != "batata" or from_pid != bomb_holder or bomb_pass_cd > 0.0:
-		return
-	if to_pid < main.robots.size() and main.robots[to_pid].fx_t["molabomba"] > 0.0:
-		var fr = main.robots[from_pid]
-		main.float_text(main.robots[to_pid].position + Vector2(0, -110), "BOING!", main.player_color(to_pid))
-		fr.knock(-fr.facing, 420.0, 300.0, 0.4)   # a bomba quica de volta e empurra quem tentou passar
-		Audio.play("pulo_mola")
-		bomb_pass_cd = 0.6
-		return
-	if to_pid < main.robots.size() and main.robots[to_pid].fx_t["escudo"] > 0.0:
-		main.float_text(main.robots[to_pid].position + Vector2(0, -110), "ESCUDO!", main.player_color(to_pid))
-		bomb_pass_cd = 0.4
 		return
 	bomb_holder = to_pid
 	bomb_pass_cd = 0.8

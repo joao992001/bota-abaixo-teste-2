@@ -49,12 +49,24 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
    - Ordem: KO + câmera + animação de KO → laje em trechos → gatilhos/ciclo → andaimes/viga → remover fases/EM BREVE →
      testes 2–4 jogadores + bots → GIF + .exe. Priorizar animação/visual da destruição (é a referência dos mapas).
    - Entrega final no formato da seção 11 do relatório (estado anterior, mudanças, parâmetros, testes, pendências, como testar).
+4. **Spells + eventos — Relatório 04** (arquivo do usuário; decisões abaixo). Itens e eventos antigos APAGADOS (código, arte,
+   testes; sobraram só `itens/dinamite.png` da Batata e `itens/capacete.png` do Rei). **Etapa 1 FEITA (2026-11-24):**
+   `game/modes/spells.gd` (caixa mostra a FAMÍLIA, sorteio família→spell com raridade, slot único, encostar pega com slot
+   vazio, SEGURAR especial ~0,3 s sobre outra caixa troca e a antiga cai com as cargas e anti-recaptura, toque = usa, eliminação
+   limpa) + S01 Punho Pneumático, S03 Canhão Criogênico, S06 Superímã, S10 Andaime Relâmpago, S11 Teleporte, S13 Armadura
+   Fornalha (o robô veste a fornalha, rosto na vigia). `game/modes/eventos.gd` novo: aviso→ativo→término, intensidade
+   DESLIGADOS/BAIXA/NORMAL/ALTA; G01 Sirene de Demolição (= ciclo do Canteiro, agora disparado pelo evento) e G10 Carga
+   Especial (holofotes + 2 cápsulas de paraquedas). Números: `modos.json → demolicao.spells`, `demolicao.eventos`,
+   `amassometro.spell_*`. Arte: `art/src/efeitos/spells.py`. Testes `--so=spells` (26). Vitrine `-- --spells=DIR`.
+   PRÓXIMO (só com aprovação da arte/jogo da Etapa 1 pelo usuário): Etapa 2 ataque (S02,S04,S05,S17,S18,S19,S20) →
+   Etapa 3 controle+engenharia (S07,S08,S21,S12,S25,S27,S28) → Etapa 4 transformações (S14,S15,S16,S31,S33,S34) →
+   Etapa 5 eventos (G05,G06,G11,G12,G13,G02,G03,G04,G14,G09) + matriz de conflitos. REJEITADOS (nunca reintroduzir):
+   S09,S22,S23,S24,S26,S29,S30,S32; G07,G08,G15,G16,G17,G18. Testar só no Derruba/Canteiro.
 **Economia (pedido do usuário):** uma sessão nova por mudança grande; sessão principal faz tudo (agentes só para lotes grandes
 de arte em paralelo); rodar só a parte dos testes que mudou (`--so=`) e a bateria completa 1× no fim; poucas capturas.
 **Ambiente na nuvem:** Godot 4.7.1 + modelos de exportação não vêm instalados; baixe de github.com/godotengine/godot/releases
 (`Godot_v4.7.1-stable_linux.x86_64.zip` e `..._export_templates.tpz`, extrair só `windows_release_x86_64.exe`,
 `linux_release.x86_64` e `version.txt` para `~/.local/share/godot/export_templates/4.7.1.stable/`). Arte: `pip install cairosvg`.
-Falha conhecida na bateria: "Skate: atropela quem está na frente" (Fuga, lote 2c incompleto).
 
 ## O que é hoje
 Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controles), com bots. Tudo roda no modo interno
@@ -66,10 +78,9 @@ Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controle
   - **Fuga** (tela/lama persegue; cair só atrasa; pego pela tela sai; elevador `E` vence): Torre, Obra Subindo, Descida da Fundição (tela desce), Viaduto em Obras, Ferro-Velho, Pântano Subindo.
   - Regras e listas em `data/modos.json` (`demolicao.modos`); bots sabem cada modo (`modes/bots.gd`: `_climb` + busca de caminho `_nav_step`).
   - Fases geradas por `tools/mapas/` (gerar.py, variedade.py, fuga2.py). Antigas (Paiol, Galpão, Andaime, Bola, Laje, Pirâmide, Ponte, Maré) ficam em levels/ mas fora das listas.
-- **Itens por modo** (`itens_lista` em modos.json): Batata 8 (estilingue, patins, escudo, teletransporte, relógio, ímã, soprador, congelador) · Rei 9 (choque, laço, patins, cola, congelador, soprador, mola, foguete, vórtice) · Fuga 9 (barreira, patins, foguete, mola, cola, gancho, teletransporte, congelador, soprador).
-- **Derruba, 12 itens:** TNT, furadeira, cola, teletransporte, raio laser, bomba de vórtice, soprador, raio congelante (botão ITEM) ·
-  martelão, ímã, botas de mola, bota-foguete (automáticos). Ferramentas aparecem na mão ao usar.
-- **9 eventos** configuráveis; Amassômetro (dano % aumenta o empurrão); aderência limitada na parede/borda com medidor.
+- **Spells (Relatório 04, Etapa 1):** caixas por família (ataque/controle/engenharia/transformação), 1 slot, botão ESPECIAL;
+  6 spells (S01, S03, S06, S10, S11, S13). **Eventos:** G01 Sirene de Demolição e G10 Carga Especial, intensidade nos AJUSTES.
+  Amassômetro (dano % aumenta o empurrão); aderência limitada na parede/borda com medidor.
 - **Temas de arena:** Canteiro, Fábrica, Porto e Cidade à noite (blocos, tábuas e fundo animado por tema; `tema:` no .lvl).
 - **Robôs: 8 modelos só de aparência** (Lata, TV, Baixinho, Pescoção, Brutamontes, Varapau, Barril, Bolha), na cor do jogador; ▲▼ na entrada.
   Garagem, chapéus, padrões, itens de rosto e ferramentas foram removidos (2026-11-23). Prancha: `-- --robos=DIR`.
@@ -85,8 +96,8 @@ Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controle
 
 ## Como rodar e testar
 - Jogar: `godot --path game` · bateria de testes: `godot --headless --path game --fixed-fps 60 -- --autotest` (199 verificações, 0 falhas).
-- Só uma parte: `-- --autotest --so=itens_novos,parede,controle_real` · ritmo com bots: `-- --stats=4`.
-- Capturas: `-- --espiar=DIR,arena,modo,segundos` (bots, foto a cada 10 s), `-- --menus=DIR`, `--itens=DIR`, `--parede=DIR`, `--intro=DIR`, `--oficina=DIR` (com xvfb-run e `--rendering-driver opengl3`).
+- Só uma parte: `-- --autotest --so=spells,canteiro,parede` · ritmo com bots: `-- --stats=4`.
+- Capturas: `-- --espiar=DIR,arena,modo,segundos` (bots, foto a cada 10 s), `-- --menus=DIR`, `--spells=DIR`, `--parede=DIR`, `--intro=DIR`, `--oficina=DIR` (com xvfb-run e `--rendering-driver opengl3`).
 
 ## Como gerar o executável (IMPORTANTE)
 - Exportar com a **mesma versão da Godot do editor do usuário: 4.7.1**. Exportado na 4.3, o controle DualShock/DualSense
@@ -98,9 +109,8 @@ Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controle
 
 ## Pendências e próximos passos
 1. Reforma do `teste-2` (ver "Retomar aqui").
-2. Terminar o lote 2c da Fuga (teste do skate) — ou descartar, se os itens mudarem na reforma.
-3. Rodada de teste com amigos → lista de ajustes; fechar o escopo do beta.
-4. Atualizar o `docs/plano.md` (ainda descreve os 4 marcos do jogo antigo de peças) e o `docs/estilo_visual.md` (seções de robôs e
+2. Rodada de teste com amigos → lista de ajustes; fechar o escopo do beta.
+3. Atualizar o `docs/plano.md` (ainda descreve os 4 marcos do jogo antigo de peças) e o `docs/estilo_visual.md` (seções de robôs e
    contorno são da v2; a verdade atual está no topo dele e nas skills).
-5. Depois do beta: inglês, Steam, demo/Next Fest, online por convite (Steamworks/GodotSteam). Online ainda proibido no `CLAUDE.md`
+4. Depois do beta: inglês, Steam, demo/Next Fest, online por convite (Steamworks/GodotSteam). Online ainda proibido no `CLAUDE.md`
    até o usuário liberar.

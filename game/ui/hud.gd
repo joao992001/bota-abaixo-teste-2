@@ -19,7 +19,7 @@ var _banner_age := 0.0
 var _heads: Array = []          # retratos redondos (nós com recorte), reaproveitados a cada quadro
 var _heads_used := 0
 var _heads_root := Node2D.new()
-var _over := Node2D.new()       # desenhos por cima dos retratos (selo do item, "FORA!")
+var _over := Node2D.new()       # desenhos por cima dos retratos (slot da spell, "FORA!")
 var _over_cmds: Array = []
 
 func _ready() -> void:
@@ -187,22 +187,24 @@ func _card(i: int, r: Rect2) -> void:
 			var dc: Color = main.dmg_color(robot.dmg)
 			Kit.text(self, Vector2(r.position.x, r.position.y + 45), "%d%%" % int(robot.dmg), 32, Color(dc, a), HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 12, 8, oc)
 		if robot != null and main.state == S.RUN and robot.alive:
-			var fx: Dictionary = robot.fx_flags()
-			var held: String = String(fx["item"])
-			if held != "":
+			var info: Dictionary = main.demo.spells.hud_info(i) if main.demo.spells != null else {}
+			if not info.is_empty():
+				# slot da spell: ícone na cor da família + cargas (pontinhos) ou barra da transformação
 				var hc := r.position + Vector2(50, r.size.y - 10)
+				var fc: Color = main.demo.spells.FAM_COR[info["fam"]]
+				var tex := Data.tex("spells/icone_" + info["fam"])
+				var ch: int = info["charges"]
+				var frac: float = info["frac"]
 				_over_cmds.append(func(ci: CanvasItem):
-					ci.draw_circle(hc, 13, Color(Kit.INK, a))
-					ci.draw_circle(hc, 11, Color(1, 1, 1, a))
-					ci.draw_texture_rect(Data.tex("itens/" + held), Rect2(hc - Vector2(9, 9), Vector2(18, 18)), false, Color(1, 1, 1, a)))
-			var ix: float = r.position.x + 14.0
-			for k in ["martelao", "capacete", "mola", "ima", "foguete"]:
-				if fx[k]:
-					var ic := Vector2(ix, r.end.y + 16)
-					draw_circle(ic, 12, Color(Kit.INK, a))
-					draw_circle(ic, 10, Color(Kit.CREAM, a))
-					draw_texture_rect(Data.tex("itens/" + k), Rect2(ic - Vector2(9, 9), Vector2(18, 18)), false, Color(1, 1, 1, a))
-					ix += 28.0
+					ci.draw_circle(hc, 17, Color(Kit.INK, a))
+					ci.draw_circle(hc, 14.5, Color(fc, a))
+					if frac < 1.0:
+						ci.draw_arc(hc, 17.5, -PI / 2.0, -PI / 2.0 + TAU * frac, 24, Color(1, 1, 1, a), 3.5, true)
+					ci.draw_texture_rect(tex, Rect2(hc - Vector2(11, 11), Vector2(22, 22)), false, Color(1, 1, 1, a))
+					for k in ch:
+						var dp := hc + Vector2(24 + k * 10.0, 8)
+						ci.draw_circle(dp, 4.6, Color(Kit.INK, a))
+						ci.draw_circle(dp, 3.2, Color(fc.lightened(0.3), a)))
 		if main.state in [S.RUN, S.SCORE]:
 			_draw_sub_badge(i, r)
 	if out:

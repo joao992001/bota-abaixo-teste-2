@@ -49,20 +49,17 @@ var was_on_floor := true
 var spin := 0.0
 var wall_sliding := false
 var stun_t := 0.0            # atordoado: ignora o controle (pisão na cabeça, marretada)
-var item := ""               # item guardado (dinamite), usado com o botão de item
-var fx_t := {"martelao": 0.0, "mola": 0.0, "ima": 0.0, "foguete": 0.0, "patins": 0.0, "escudo": 0.0, "molabomba": 0.0, "balao": 0.0, "armadura": 0.0, "ventosa": 0.0, "turbo": 0.0, "bolha": 0.0}   # efeitos com tempo
-var glue_t := 0.0             # pisou na cola: lento
+var spell_speed := 1.0         # multiplicador de corrida de spells/transformações (modes/spells.gd)
+var spell_push := 1.0          # multiplicador de empurrão recebido (armadura resiste)
 var caught := false           # Fuga: foi pego pela tela ou pela lama (esse sai de vez)
 var speed_k := 1.0            # multiplicador da corrida (Rei da Obra: o rei anda mais devagar)
 var forced_t := 0.0           # movimento forçado (investida da furadeira, carga do laser, teletransporte)
 var forced_vel := Vector2.ZERO
-var thrusting := false        # bota-foguete ligada neste quadro (desenho da chama)
 var grip := 1.0               # aderência na parede/borda (1 = cheia); gasta segurando, recarrega no chão
 var wall_side := 0            # lado da parede em que está escorregando (desenho)
-var frozen_t := 0.0           # congelado (raio congelante): indefeso, desliza
+var slow_t := 0.0             # lentidão (S03 Canhão Criogênico): corre mais devagar, nunca imobiliza
 var god := false              # Oficina: invencível (não leva golpe)
 var push_vx := 0.0            # empurrão externo deste quadro (ímã); zera a cada quadro
-var shield := 0              # capacete de aço: golpes que ainda aguenta
 var fall_reason := ""
 var last_hit := 99.0
 var stomp_immune := 0.0
@@ -139,7 +136,7 @@ func _physics_process(dt: float) -> void:
 	heavy_cd = maxf(heavy_cd - dt, 0.0)
 	dodge_cd = maxf(dodge_cd - dt, 0.0)
 	guard_t = maxf(guard_t - dt, 0.0)
-	frozen_t = maxf(frozen_t - dt, 0.0)
+	slow_t = maxf(slow_t - dt, 0.0)
 	invuln = maxf(invuln - dt, 0.0)
 	drop_t = maxf(drop_t - dt, 0.0) if not is_on_floor() else 0.0
 	# ▼ em cima de uma tábua fina: desce por ela (desliga a colisão de mão única por um instante)
@@ -182,10 +179,8 @@ func _physics_process(dt: float) -> void:
 		_dodge_update(dt)
 		vis.tick(self, dt)
 		return
-	for k in fx_t:
-		fx_t[k] = maxf(fx_t[k] - dt, 0.0)
-	if _pressed("item") and item != "":
-		main.use_item(self)
+	if _pressed("item") and main.demo.spells != null:
+		main.demo.spells.press(self)   # botão de especial (spell equipada / troca segurando sobre a caixa)
 	# timers
 	coyote = maxf(coyote - dt, 0.0)
 	buffer = maxf(buffer - dt, 0.0)
@@ -210,6 +205,8 @@ func _physics_process(dt: float) -> void:
 		var a := f("accel_ground") if ix != 0.0 else f("decel_ground")
 		if not on_floor:
 			a *= f("air_mult")
+		elif main.mode == "demolicao" and main.demo.spells != null:
+			a *= main.demo.spells.grip_at(self)   # gelo do canhão criogênico: escorrega
 		var tgt_k := 1.0
 		if stun_t > 0.0:
 			a *= 0.15   # arremessado, sem controle: segue o impulso
@@ -225,9 +222,7 @@ func _physics_process(dt: float) -> void:
 				tgt_k = float(hp["mov_mult_preparo"])
 			elif not atk_landed and atk_t > float(hp["preparo"]) + float(hp["ativo"]):
 				tgt_k = float(hp["mov_mult_recupera_erro"])   # errou: fica exposto
-		if on_floor and main.events != null:
-			a *= main.events.slip   # evento Sabão: chão escorregadio
-		own_vx = move_toward(own_vx, tgt_k * ix * f("max_run") * speed_k * (float(main.demo.item_cfg("patins")["vel"]) if fx_t["patins"] > 0.0 else 1.0) * (float(main.demo.item_cfg("turbo")["vel"]) if fx_t["turbo"] > 0.0 else 1.0), a * dt)
+		own_vx = move_toward(own_vx, tgt_k * ix * f("max_run") * speed_k * spell_speed * (float(main.demo.cfg["spells"]["S03"]["lento_mult"]) if slow_t > 0.0 and main.mode == "demolicao" else 1.0), a * dt)
 	# pulo / parede
 	var wall_dir := 0 if on_floor else _wall_dir()
 	if on_floor:
@@ -257,31 +252,9 @@ func _physics_process(dt: float) -> void:
 		if not spring and _held("jump") and absf(velocity.y) < f("half_grav_threshold"):
 			g *= 0.5
 		velocity.y += g * dt
-	thrusting = false
-	if fx_t["foguete"] > 0.0 and not on_floor and _held("jump") and var_jump <= 0.0 and velocity.y > -300.0:
-		thrusting = true
-		var fc: Dictionary = main.demo.item_cfg("foguete")
-		if velocity.y > -float(fc["sobe_max"]):
-			velocity.y -= float(fc["empuxo"]) * dt   # bota-foguete: segura PULAR no ar
-		if Engine.get_physics_frames() % 4 == 0:
-			main.spark(position + Vector2(0, 4), 1)
-		if Engine.get_physics_frames() % 18 == 0:
-			Audio.play("foguete", _pitch(), -8.0)
-	if glue_t > 0.0:
-		glue_t -= dt
-		var vmax: float = float(main.demo.item_cfg("cola")["vel_max"])
-		own_vx = clampf(own_vx, -vmax, vmax)
-		if velocity.y < -560.0 and on_floor == false and var_jump > 0.0:
-			velocity.y = -560.0
 	if spring and velocity.y >= 0.0:
 		spring = false
 	var max_fall := f("fast_max_fall") if _held("down") else f("max_fall")
-	if fx_t["balao"] > 0.0:
-		max_fall = float(main.demo.item_cfg("balao")["queda_max"])   # balão: cai devagar
-	if fx_t["ventosa"] > 0.0:
-		grip = 1.0   # ventosa: gruda sem cansar
-		if wall_dir != 0 and _held("up"):
-			velocity.y = -float(main.demo.item_cfg("ventosa")["sobe"])   # sobe pela parede
 	wall_sliding = wall_dir != 0 and int(signf(ix)) == wall_dir and velocity.y > 0.0 and grip > 0.0
 	wall_side = wall_dir if wall_sliding else 0
 	if main.mode == "demolicao":
@@ -361,26 +334,11 @@ func _ix() -> float:
 
 func _jump_speed() -> float:
 	var js := float(c["jump_speed"])
-	if fx_t["mola"] > 0.0:
-		js *= float(main.demo.item_cfg("mola")["jump_mult"])
 	return js
 
-## O capacete de aço aguenta o golpe? (gasta o escudo)
-func absorb() -> bool:
-	if shield <= 0:
-		return false
-	shield -= 1
-	Audio.play("capacete")
-	main.spark(rect().get_center() + Vector2(0, -30), 8)
-	main.float_text(position + Vector2(0, -110), "BLOQUEOU!", Color.WHITE)
-	vis.land()
-	return true
-
+## Estado visual da spell (arma na mão, transformação…), montado por modes/spells.gd.
 func fx_flags() -> Dictionary:
-	return {"martelao": fx_t["martelao"] > 0.0, "mola": fx_t["mola"] > 0.0, "capacete": shield > 0, "item": item,
-		"ima": fx_t["ima"] > 0.0, "foguete": fx_t["foguete"] > 0.0, "patins": fx_t["patins"] > 0.0, "escudo": fx_t["escudo"] > 0.0, "foguete_on": thrusting, "cola": glue_t > 0.0,
-		"furando": main.demo.tools != null and main.demo.tools.drilling(pid) if main.mode == "demolicao" else false,
-		"usando": main.demo.tools.using(pid) if main.mode == "demolicao" and main.demo.tools != null else {}}
+	return main.demo.spells.flags(self) if main.mode == "demolicao" and main.demo.spells != null else {}
 
 ## Pulo duplo do propulsor (um no ar; recarrega no chão, na parede e na borda).
 func _air_jump(ix: float) -> void:
@@ -484,7 +442,8 @@ func _climb_update(dt: float) -> void:
 
 ## Golpe com o Amassômetro: soma dano e o empurrão cresce com ele. kind = chave em demolicao.amassometro.
 ## Retorna false se não pegou (invulnerável ou capacete).
-const ROBOT_HITS := ["rapido", "pesado", "martelao", "marretada", "combo", "combo_final", "cima", "baixo", "corrida"]
+const ROBOT_HITS := ["rapido", "pesado", "martelao", "marretada", "combo", "combo_final", "cima", "baixo", "corrida",
+	"spell_punho", "spell_gelo", "spell_fogo"]
 
 func take_hit(dir: int, kind: String, by := -1) -> bool:
 	if invuln > 0.0 or god:
@@ -493,29 +452,22 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 		_dodged()
 		return false
 	last_hit = 0.0
-	last_cause = {"marretada": "marretada", "martelao": "marretada", "explosao": "explosão", "bola": "bola"}.get(kind, kind)
+	last_cause = {"marretada": "marretada", "martelao": "marretada", "explosao": "explosão", "bola": "bola",
+		"spell_punho": "punho pneumático", "spell_gelo": "canhão criogênico", "spell_fogo": "armadura fornalha"}.get(kind, kind)
 	last_attacker = by
 	hanging = false
-	if absorb():
-		return false
 	var am: Dictionary = main.demo.cfg["amassometro"]
 	var k: Dictionary = am[kind]
 	dmg += float(k["dano"])
 	var kx := minf(float(k["kx"]) + dmg * float(k["kx_por"]), float(am["max_kx"]))
 	var ky := float(k["ky"]) + dmg * float(k["ky_por"])
+	kx *= spell_push   # armadura: empurrão bem menor
+	ky *= spell_push
 	if main.demo.rule() == "fuga":   # na Fuga o empurrão atrapalha, mas não decide sozinho
 		kx *= 0.6
 		ky *= 0.7
 	var ar: Dictionary = c["arremesso"]
 	var stun := minf(float(ar["sem_controle_base"]) + dmg * float(ar["sem_controle_por"]), float(ar["sem_controle_max"]))
-	if frozen_t > 0.0:
-		# pancada em quem está congelado: o gelo estilhaça e o empurrão é maior
-		var mult := float(main.demo.item_cfg("congelador")["quebra_mult"])
-		kx = minf(kx * mult, float(am["max_kx"]) * 1.2)
-		ky *= mult
-		frozen_t = 0.0
-		stun_t = 0.0
-		main.demo.tools.shatter(rect().get_center())
 	main.float_text(position + Vector2(0, -100), "+%d%%" % int(k["dano"]), main.dmg_color(dmg))
 	_apply_knock(dir, kx, ky, stun)
 	vis.hurt(clampf((kx + ky) / 1400.0, 0.25, 1.0), dir)
@@ -528,8 +480,6 @@ func knock(dir: int, vx: float, vy: float, stun: float) -> void:
 		return
 	last_hit = 0.0
 	hanging = false
-	if absorb():
-		return
 	_apply_knock(dir, vx, vy, stun)
 
 func _apply_knock(dir: int, vx: float, vy: float, stun: float) -> void:
@@ -555,7 +505,7 @@ func _pitch() -> float:
 	return 0.92 + pid * 0.08
 
 func _jump(ix: float) -> void:
-	Audio.play("pulo_mola" if fx_t["mola"] > 0.0 else "pulo", _pitch())
+	Audio.play("pulo", _pitch())
 	velocity.y = -_jump_speed()
 	own_vx += ix * f("jump_h_boost")
 	var_jump = f("var_jump_time")
@@ -713,7 +663,7 @@ func _attack_update(dt: float, on_floor: bool) -> void:
 		atk_cd = float(c["ataque_rapido"]["recarga"])
 
 func _can_dodge(on_floor: bool) -> bool:
-	if dodge_cd > 0.0 or stun_t > 0.0 or frozen_t > 0.0 or hanging or climb_t >= 0.0:
+	if dodge_cd > 0.0 or stun_t > 0.0 or hanging or climb_t >= 0.0:
 		return false
 	# a esquiva cancela o PREPARO da marretada (finta); depois do impacto, não
 	if (atk == "pesado" and atk_hit and not atk_landed) or (atk == "rapido" and not atk_hit):
