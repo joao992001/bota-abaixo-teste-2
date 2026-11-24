@@ -8,6 +8,10 @@ Repositórios (GitHub privado, ramo `main`): `joao992001/bota-abaixo` = versão 
 **MANUAIS DE CRIAÇÃO (2026-11-24):** `docs/manuais/` — `personagem.md` (universal), `derruba/spell.md`,
 `derruba/evento.md`. Seguir SEMPRE ao criar robô/spell/evento e atualizar quando algo novo for aprovado. Mapa: ainda sem manual
 (o usuário acha que o mapa do Derruba não está fechado).
+**CARTILHA DO MAPA (PROPOSTA, 2026-11-24):** `docs/manuais/derruba/mapa_cartilha.md` + esquema `art/out/cartilha_mapa_derruba.png`.
+Fase = cena viva em 2 atos com virada cinematográfica; camadas C0–C4; palco Z1–Z8; mecanismos por fase; composições.
+Aguardando o usuário aprovar e escolher a virada do Canteiro (A: obra cede → subsolo · B: grua iça → cobertura).
+G05/G09 ganharam função (caixa na carga + gancho que solta; drone conserta e recolhe) — FEITO.
 **ÚLTIMO (2026-11-24): ELENCO NOVO DE 5 ROBÔS** (pedido do usuário: os 8 modelos "olhavam para a câmera e batiam com
 uma mão"). Marretão (marreta de 2 mãos), Picareta (pernas de pássaro), Chave (mecânico, chave inglesa), Britadeira
 (baixinho, monta na britadeira), Pá (cabeça de cabine; a Garra-veículo foi vetada: SEMPRE humanoides). Fonte única:
@@ -19,7 +23,7 @@ descida começa dentro do preparo (no impacto a ferramenta já está a 60–65% 
 Britadeira sobe na britadeira, Picareta dá mortal para trás na esquiva, Pá salta apoiada na pá, Marretão dispara agachado
 com a marreta de escudo. Regras do golpe iguais para todos. Vitrine: `-- --elenco=DIR [--so-elenco=0+3]`; prancha do motor:
 `--robos=DIR`. `robos.py` agora só gera luva/bota/parafuso/marreta (a da spell S19). Aguardando o usuário jogar.
-Pendentes de resposta: Guindaste (G05) e Drone (G09) com função mais clara; Carga Remota (S12) "acerta em tudo".
+Pendente de resposta: Carga Remota (S12) "acerta em tudo".
 
 Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, nesta ordem:
 1. **Robôs: 8 modelos só de aparência** no lugar da Garagem — FEITO (commit 6b089e1); TROCADOS pelo elenco de 5 (acima).

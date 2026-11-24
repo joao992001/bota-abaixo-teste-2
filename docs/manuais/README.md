@@ -9,7 +9,7 @@ o usuário reprovou) nas entregas de 2026-11-24.
 | Um robô (personagem jogável) | [`personagem.md`](personagem.md) | o jogo todo (todos os modos) |
 | Uma spell (item da caixa) | [`derruba/spell.md`](derruba/spell.md) | modo **Derruba** |
 | Um evento global | [`derruba/evento.md`](derruba/evento.md) | modo **Derruba** |
-| Um mapa / arena | *ainda não existe* — o usuário considera o mapa do Derruba ainda não fechado; siga `docs/ESTADO.md` e a skill `mapas` | — |
+| Um mapa / arena | **proposta em aprovação:** [`derruba/mapa_cartilha.md`](derruba/mapa_cartilha.md) (cena viva em atos, camadas C0–C4, elementos Z1–Z8, mecanismos, composições). Vira manual `mapa.md` depois do Canteiro refeito | modo **Derruba** |
 
 ## Regras que valem para os três
 1. **Aprovação antes de código grande.** Arte e comportamento novos começam por uma prancha (imagem) ou descrição curta
