@@ -1574,6 +1574,103 @@ func spells_test() -> void:
 	vset("v0", "item", false)
 	await frames(2)
 	check(r0.spell_speed == 1.0 and r0.spell_push == 1.0 and sp.hud_info(0).is_empty(), "S13: combustível acabou, a armadura explode e o slot esvazia")
+	# ===== Etapa 2 (ataque)
+	sp.boxes.clear()
+	# S02 laser: preparo com linha de mira, feixe atravessa robôs
+	place.call(6.0)
+	sp.clear(r0)
+	sp.equip(r0, "S02")
+	await frames(2)
+	await tap("v0", "item")
+	check(sp.flags(r0)["prep"] >= 0.0, "S02: mira antes de disparar")
+	await frames(int(float(sp.sc("S02")["preparo"]) * 60.0) + 4)
+	check(r1.dmg > 0.0 and sp.hud_info(0)["charges"] == 2, "S02: feixe acerta à distância (dano %d%%)" % int(r1.dmg))
+	# S04 marreta sísmica: no ar não gasta; no chão a onda pega quem está apoiado no mesmo trecho
+	place.call(3.0)
+	sp.clear(r0)
+	sp.equip(r0, "S04")
+	r0.position.y -= 120.0
+	r0.velocity.y = -100.0
+	await frames(1)
+	await tap("v0", "item")
+	check(sp.hud_info(0).get("charges", 0) == 1 and sp.flags(r0)["prep"] < 0.0, "S04: no ar avisa e não gasta")
+	place.call(3.0)
+	await frames(30)
+	await tap("v0", "item")
+	await frames(int(float(sp.sc("S04")["preparo"]) * 60.0) + 25)
+	check(r1.dmg > 0.0 and r1.velocity.y < 0.0 or r1.dmg > 0.0, "S04: a onda tira o rival do chão (dano %d%%)" % int(r1.dmg))
+	place.call(3.0)
+	sp.equip(r0, "S04")
+	await frames(2)
+	await tap("v0", "item")
+	await frames(int(float(sp.sc("S04")["preparo"]) * 60.0) + 1)
+	r1.velocity.y = -900.0   # pula na hora certa (a onda ainda está chegando)
+	await frames(20)
+	check(r1.dmg == 0.0, "S04: quem pulou escapa da onda (%s, %d%%)" % [r1.last_cause, int(r1.dmg)])
+	# S05 rebiteira: tiro rápido, acerta e some
+	place.call(5.0)
+	sp.clear(r0)
+	sp.equip(r0, "S05")
+	await frames(2)
+	await tap("v0", "item")
+	await frames(25)
+	check(r1.dmg > 0.0 and sp.hud_info(0)["charges"] == 3, "S05: rebite acerta (dano %d%%)" % int(r1.dmg))
+	# ricochete: atira de costas para a parede de longe e o rebite volta
+	var rv_test := {"owner": 0, "pos": Vector2(x0, floor_y - 40.0), "vel": Vector2(0, 900.0), "bounces": 0, "t": 0.0, "hit": [], "trail": []}
+	sp.rivets.append(rv_test)
+	await frames(10)
+	check(rv_test["bounces"] >= 1 and rv_test["vel"].y < 0.0, "S05: rebite ricocheteia no chão (%d)" % rv_test["bounces"])
+	# S17 bate-estaca: marca, desce e lança para cima
+	place.call(2.6)
+	sp.clear(r0)
+	sp.equip(r0, "S17")
+	await frames(2)
+	await tap("v0", "item")
+	check(sp.piles.size() == 1 and r1.dmg == 0.0, "S17: marca a faixa antes de descer")
+	var y_before: float = r1.position.y
+	var top_y: float = y_before
+	for k in int(float(sp.sc("S17")["marca_s"]) * 60.0) + 40:
+		await frames(1)
+		top_y = minf(top_y, r1.position.y)
+	check(r1.dmg > 0.0 and y_before - top_y > 2.0 * 64.0, "S17: estaca lança o rival para cima (%.1f tiles, %s)" % [(y_before - top_y) / 64.0, r1.last_cause])
+	# S18 disco: rola, acerta e volta para a mão
+	place.call(4.0)
+	sp.clear(r0)
+	sp.equip(r0, "S18")
+	await frames(2)
+	await tap("v0", "item")
+	await frames(30)
+	check(r1.dmg > 0.0, "S18: disco acerta rolando no chão (dano %d%%)" % int(r1.dmg))
+	var back := 0
+	while sp.discs.size() > 0 and back < 300:
+		await frames(1)
+		back += 1
+	check(sp.discs.is_empty() and back < 200, "S18: disco volta para a mão (%d quadros)" % back)
+	# S19 marreta-bumerangue: sem pesada enquanto voa, volta garantido
+	place.call(3.5)
+	sp.clear(r0)
+	sp.equip(r0, "S19")
+	await frames(2)
+	await tap("v0", "item")
+	await frames(3)
+	check(r0.hammer_out and not r0.vis.has_hammer, "S19: a marreta sai da mão")
+	await tap("v0", "heavy")
+	check(r0.atk != "pesado", "S19: sem marretada pesada enquanto ela voa")
+	var ret := 0
+	while r0.hammer_out and ret < 300:
+		await frames(1)
+		ret += 1
+	check(not r0.hammer_out and r1.dmg > 0.0, "S19: acerta na ida/volta e volta para a mão (%d quadros, dano %d%%)" % [ret, int(r1.dmg)])
+	# S20 canhão de molas: BOING forte no primeiro alvo
+	place.call(4.0)
+	sp.clear(r0)
+	sp.equip(r0, "S20")
+	await frames(2)
+	await tap("v0", "item")
+	var x_b: float = r1.position.x
+	await frames(int(float(sp.sc("S20")["preparo"]) * 60.0) + 60)
+	check(r1.dmg > 0.0 and r1.position.x - x_b > 3.0 * 64.0, "S20: BOING arremessa longe (%.1f tiles)" % ((r1.position.x - x_b) / 64.0))
+	sp.clear(r0)
 	# G10 carga especial: holofotes em 2 pontos e duas cápsulas descem
 	main.event_level = 2
 	main.events.manual = true
@@ -2140,7 +2237,11 @@ func spells_frames(dir: String) -> void:
 	var fy: float = nuc[0]["rect"].position.y
 	var x0: float = nuc[0]["rect"].position.x + 40.0
 	_frame_no = 0
-	var segs := [["caixas", 50], ["S01", 60], ["S03", 120], ["S06", 90], ["S10", 70], ["S11", 70], ["S13", 300], ["troca", 60]]
+	var segs := [["caixas", 50], ["S01", 60], ["S03", 120], ["S06", 90], ["S10", 70], ["S11", 70], ["S13", 300], ["troca", 60],
+		["S02", 60], ["S04", 70], ["S05", 60], ["S17", 90], ["S18", 80], ["S19", 90], ["S20", 70]]
+	for a0 in OS.get_cmdline_user_args():
+		if a0.begins_with("--so-spells="):
+			segs = segs.filter(func(x): return x[0] in a0.substr(12).split("+"))
 	for sg in segs:
 		var nm: String = sg[0]
 		for r in [r0, r1]:
@@ -2152,7 +2253,7 @@ func spells_frames(dir: String) -> void:
 			sp.clear(r)
 		sp.boxes.clear()
 		put(r0, Vector2(x0, fy))
-		put(r1, Vector2(x0 + (3.0 if nm in ["S01", "S13"] else 5.5) * 64.0, fy))
+		put(r1, Vector2(x0 + ({"S01": 3.0, "S13": 3.0, "S04": 3.0, "S17": 2.6, "S19": 3.5, "S18": 4.0, "S20": 4.0}.get(nm, 5.5)) * 64.0, fy))
 		r0.facing = 1
 		r1.facing = -1
 		if nm == "caixas":
@@ -2169,8 +2270,11 @@ func spells_frames(dir: String) -> void:
 			match nm:
 				"troca":
 					a["v0"]["item"] = f >= 30 and f < 52
-				"S01", "S10":
+				"S01", "S10", "S02", "S04", "S17", "S18", "S19", "S20":
 					a["v0"]["item"] = f == 14 or f == 15
+				"S05":
+					a["v0"]["item"] = f in [14, 15, 30, 31]
+					a["v0"]["up"] = f >= 28 and f < 33
 				"S03":
 					a["v0"]["item"] = f == 14 or f == 15
 					if f > 60:   # o congelado agita para sair

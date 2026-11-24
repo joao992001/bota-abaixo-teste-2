@@ -243,12 +243,76 @@ def g10_capsula():
     return b
 
 
+# ---------------------------------------------------------------- Etapa 2 (ataque)
+def s02_laser():
+    """Laser de Corte: corpo de maçarico com aletas, lente incandescente na ponta — 128x64."""
+    b = [shape("s2c", rect_d(8, 16, 76, 30, 8), "#4a5566", 81, (6, 14, 86, 48), k=2.0, dark="#2e3642", light="#71829a")]
+    for x in (20, 30, 40, 50):
+        b.append(f'<rect x="{x}" y="10" width="5" height="42" rx="2" fill="#71829a"/>')
+    b.append(shape("s2b", rect_d(80, 22, 28, 18, 4), METAL, 82, (78, 20, 110, 42), k=1.6, dark=METAL_D))
+    b.append('<circle cx="112" cy="31" r="12" fill="#c9a03a"/><circle cx="112" cy="31" r="8" fill="#ff5a3a"/>')
+    b.append('<circle cx="109" cy="28" r="3" fill="#ffe2b0"/>')
+    b.append(f'<rect x="12" y="44" width="14" height="16" rx="3" fill="{INK}"/>')
+    b.append('<path d="M60,20 H74" stroke="#f2c84b" stroke-width="4" stroke-linecap="round"/>')
+    return b
+
+
+def s05_rebiteira():
+    """Rebiteira Ricochete: pistola pneumática com mangueira e cano curto — 128x64."""
+    b = [shape("s5c", "M10,18 C10,12 16,10 24,10 H86 C94,10 98,16 98,22 V32 C98,38 94,40 86,40 H24 C16,40 10,36 10,30 Z",
+               "#e0b040", 83, (8, 8, 100, 42), k=2.0, dark="#a87a20", light="#ffe08a")]
+    b.append(shape("s5p", rect_d(96, 18, 26, 14, 3), METAL, 84, (94, 16, 124, 34), k=1.6, dark=METAL_D))
+    b.append(f'<rect x="30" y="38" width="16" height="22" rx="4" fill="{INK}"/>')
+    b.append('<path d="M14,30 C2,40 4,56 18,60" stroke="#3e4752" stroke-width="5" fill="none" stroke-linecap="round"/>')
+    for x in (52, 62, 72):
+        b.append(f'<circle cx="{x}" cy="25" r="3.4" fill="{METAL_L}"/>')
+    return b
+
+
+def s18_disco():
+    """Disco de Corte: serra circular com dentes, furo central e reflexo — 64x64."""
+    pts = []
+    for k in range(24):
+        a = k * math.pi * 2 / 24
+        r = 31 if k % 2 == 0 else 26
+        pts.append(f"{32 + r * math.cos(a):.1f},{32 + r * math.sin(a):.1f}")
+    b = [f'<polygon points="{" ".join(pts)}" fill="{METAL_D}"/>']
+    b.append(shape("s18", ellipse_d(32, 32, 24, 24), METAL_L, 85, (6, 6, 58, 58), k=1.6, dark=METAL))
+    b.append('<circle cx="32" cy="32" r="9" fill="#d9622b"/><circle cx="32" cy="32" r="4" fill="#2a1a2e"/>')
+    b.append('<path d="M18,22 C22,15 30,12 38,13" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.8"/>')
+    return b
+
+
+def s20_canhao():
+    """Canhão de Molas: cano largo vermelho com boca de bumbo e janela mostrando a mola — 128x64."""
+    b = [shape("s20", rect_d(6, 12, 92, 40, 10), "#d94a3a", 86, (4, 10, 100, 54), k=2.0, dark="#9e2a20", light="#ff8a6a")]
+    b.append(shape("s20b", rect_d(94, 6, 28, 52, 8), "#f2c84b", 87, (92, 4, 124, 60), k=1.6, dark="#c49a2a"))
+    b.append(f'<rect x="28" y="22" width="52" height="20" rx="4" fill="{INK}"/>')
+    b.append('<path d="M32,32 L36,24 L40,40 L44,24 L48,40 L52,24 L56,40 L60,24 L64,40 L68,24 L72,40 L76,32" stroke="#c9d1d8" stroke-width="3" fill="none"/>')
+    b.append(f'<rect x="16" y="50" width="16" height="12" rx="3" fill="{INK}"/>')
+    return b
+
+
+def s17_estaca():
+    """Bate-Estaca: caixa do pistão (em cima) + estaca de aço com ponta zebrada — 64x192 (a estaca é esticada pelo jogo)."""
+    b = [shape("s17h", rect_d(4, 2, 56, 46, 8), "#f2c84b", 88, (2, 0, 62, 50), k=2.0, dark="#c49a2a")]
+    for x in range(6, 58, 12):
+        b.append(f'<path d="M{x},40 L{x + 6},48 L{x + 12},48 L{x + 6},40 Z" fill="{INK}"/>')
+    b.append('<circle cx="16" cy="14" r="4" fill="#d94a3a"/><circle cx="48" cy="14" r="4" fill="#d94a3a"/>')
+    b.append(shape("s17p", rect_d(18, 46, 28, 120, 3), METAL, 89, (16, 44, 48, 168), k=1.8, dark=METAL_D, light=METAL_L))
+    b.append(f'<rect x="22" y="60" width="4" height="96" fill="{METAL_L}"/>')
+    b.append(shape("s17t", "M12,164 H52 L48,190 H16 Z", "#4a5566", 90, (10, 162, 54, 192), k=1.6, dark="#2e3642"))
+    return b
+
+
 PIECES = {  # nome: (largura, altura, função)
     "s01_canhao": (128, 64, s01_canhao), "s01_luva": (64, 50, s01_luva),
     "s03_canhao": (128, 64, s03_canhao),
     "s06_ima": (112, 80, s06_ima), "s10_tabua": (192, 24, s10_tabua), "s10_trouxa": (48, 32, s10_trouxa),
     "s13_frente": (150, 130, s13_frente), "s13_costas": (150, 130, s13_costas),
     "g10_capsula": (128, 160, g10_capsula),
+    "s02_laser": (128, 64, s02_laser), "s05_rebiteira": (128, 64, s05_rebiteira), "s18_disco": (64, 64, s18_disco),
+    "s20_canhao": (128, 64, s20_canhao), "s17_estaca": (64, 192, s17_estaca),
 }
 
 

@@ -65,8 +65,13 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
    `amassometro.spell_*`. Arte: `art/src/efeitos/spells.py`. Testes `--so=spells` (26). Vitrine `-- --spells=DIR`.
    LABORATÓRIO absorveu a Oficina (removida): DAR SPELL, CAIXA DO CÉU, CAIXAS AUTOMÁTICAS, EVENTO AGORA, ARENA, BOT e os
    números das spells ao vivo; medidores escondem com VOLTAR (B/○, Backspace) ou H.
-   PRÓXIMO (só com aprovação da arte/jogo da Etapa 1 pelo usuário): Etapa 2 ataque (S02,S04,S05,S17,S18,S19,S20) →
-   Etapa 3 controle+engenharia (S07,S08,S21,S12,S25,S27,S28) → Etapa 4 transformações (S14,S15,S16,S31,S33,S34) →
+   **Etapa 1 APROVADA pelo usuário (2026-11-24, "todos muito aprovados").**
+   **Etapa 2 FEITA (2026-11-24), aguardando aprovação:** S02 Laser de Corte (mira tracejada → feixe que atravessa robôs, solda
+   na parede), S04 Marreta Sísmica (só no chão; marreta gigante dourada; onda pela superfície contínua, para em buraco/parede;
+   pular escapa), S05 Rebiteira (rebite reto, ▲/▼ 45°, até 2 ricochetes), S17 Bate-Estaca (faixa zebrada → estaca desce e
+   lança para cima, danifica peça do Canteiro), S18 Disco de Corte (rola no chão, bate e volta para a mão), S19
+   Marreta-Bumerangue (sem pesada enquanto voa, volta garantido), S20 Canhão de Molas (mola saltitante, BOING forte).
+   PRÓXIMO: Etapa 3 controle+engenharia (S07,S08,S21,S12,S25,S27,S28) → Etapa 4 transformações (S14,S15,S16,S31,S33,S34) →
    Etapa 5 eventos (G05,G06,G11,G12,G13,G02,G03,G04,G14,G09) + matriz de conflitos. REJEITADOS (nunca reintroduzir):
    S09,S22,S23,S24,S26,S29,S30,S32; G07,G08,G15,G16,G17,G18. Testar só no Derruba/Canteiro.
 **Economia (pedido do usuário):** uma sessão nova por mudança grande; sessão principal faz tudo (agentes só para lotes grandes

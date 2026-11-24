@@ -58,6 +58,7 @@ var forced_vel := Vector2.ZERO
 var grip := 1.0               # aderência na parede/borda (1 = cheia); gasta segurando, recarrega no chão
 var wall_side := 0            # lado da parede em que está escorregando (desenho)
 var frozen_t := 0.0           # congelado (S03 Canhão Criogênico): preso no gelo; agitar o direcional quebra mais rápido
+var hammer_out := false       # S19: a marreta está voando (sem marretada pesada até voltar)
 var spell_lock := false       # mirando/viajando (S11 Teleporte): ignora movimento, pulo e golpes
 var god := false              # Laboratório: invencível (não leva golpe)
 var push_vx := 0.0            # empurrão externo deste quadro (ímã); zera a cada quadro
@@ -279,7 +280,7 @@ func _physics_process(dt: float) -> void:
 		return
 	if atk == "" and atk_cd <= 0.0:
 		if _pressed("heavy"):
-			if heavy_cd <= 0.0:
+			if heavy_cd <= 0.0 and not hammer_out:
 				_start_attack("pesado")
 			else:
 				vis.denied()   # ainda recarregando: a marreta treme e faz "clanc"
@@ -441,7 +442,8 @@ func _climb_update(dt: float) -> void:
 ## Golpe com o Amassômetro: soma dano e o empurrão cresce com ele. kind = chave em demolicao.amassometro.
 ## Retorna false se não pegou (invulnerável ou capacete).
 const ROBOT_HITS := ["rapido", "pesado", "martelao", "marretada", "combo", "combo_final", "cima", "baixo", "corrida",
-	"spell_punho", "spell_gelo", "spell_fogo", "spell_explosao"]
+	"spell_punho", "spell_gelo", "spell_fogo", "spell_explosao",
+	"spell_laser", "spell_sismo", "spell_rebite", "spell_estaca", "spell_disco", "spell_bumerangue", "spell_mola"]
 
 func take_hit(dir: int, kind: String, by := -1) -> bool:
 	if invuln > 0.0 or god:
@@ -452,7 +454,9 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 	last_hit = 0.0
 	last_cause = {"marretada": "marretada", "martelao": "marretada", "explosao": "explosão", "bola": "bola",
 		"spell_punho": "punho pneumático", "spell_gelo": "canhão criogênico", "spell_fogo": "armadura fornalha",
-		"spell_explosao": "fornalha explodiu"}.get(kind, kind)
+		"spell_explosao": "fornalha explodiu", "spell_laser": "laser de corte", "spell_sismo": "marreta sísmica",
+		"spell_rebite": "rebite", "spell_estaca": "bate-estaca", "spell_disco": "disco de corte", "spell_bumerangue": "marreta-bumerangue",
+		"spell_mola": "canhão de molas"}.get(kind, kind)
 	last_attacker = by
 	hanging = false
 	var am: Dictionary = main.demo.cfg["amassometro"]

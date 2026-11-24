@@ -347,6 +347,55 @@
         "kx_por": 4.0,
         "ky": 420,
         "ky_por": 2.4
+      },
+      "spell_laser": {
+        "dano": 9,
+        "kx": 300,
+        "kx_por": 3.0,
+        "ky": 160,
+        "ky_por": 1.2
+      },
+      "spell_sismo": {
+        "dano": 10,
+        "kx": 260,
+        "kx_por": 2.5,
+        "ky": 1000,
+        "ky_por": 4.0
+      },
+      "spell_rebite": {
+        "dano": 4,
+        "kx": 150,
+        "kx_por": 1.6,
+        "ky": 90,
+        "ky_por": 0.6
+      },
+      "spell_estaca": {
+        "dano": 12,
+        "kx": 120,
+        "kx_por": 1.0,
+        "ky": 1650,
+        "ky_por": 6.0
+      },
+      "spell_disco": {
+        "dano": 8,
+        "kx": 280,
+        "kx_por": 2.6,
+        "ky": 200,
+        "ky_por": 1.2
+      },
+      "spell_bumerangue": {
+        "dano": 10,
+        "kx": 380,
+        "kx_por": 4.0,
+        "ky": 240,
+        "ky_por": 1.8
+      },
+      "spell_mola": {
+        "dano": 8,
+        "kx": 1050,
+        "kx_por": 4.0,
+        "ky": 480,
+        "ky_por": 2.0
       }
     },
     "aderencia": {
@@ -503,11 +552,18 @@
       "pools": {
         "derruba": [
           "S01",
+          "S02",
           "S03",
+          "S04",
+          "S05",
           "S06",
           "S10",
           "S11",
-          "S13"
+          "S13",
+          "S17",
+          "S18",
+          "S19",
+          "S20"
         ]
       },
       "S01": {
@@ -567,6 +623,67 @@
         "fogo_alcance_tiles": 3.2,
         "fogo_tick_s": 0.22,
         "explosao_raio_tiles": 2.4
+      },
+      "S02": {
+        "familia": "ataque",
+        "raridade": "incomum",
+        "cargas": 3,
+        "preparo": 0.5,
+        "intervalo_s": 0.5,
+        "alcance_tiles": 14
+      },
+      "S04": {
+        "familia": "ataque",
+        "raridade": "comum",
+        "cargas": 1,
+        "preparo": 0.45,
+        "alcance_tiles": 5,
+        "vel": 950
+      },
+      "S05": {
+        "familia": "ataque",
+        "raridade": "comum",
+        "cargas": 4,
+        "intervalo_s": 0.32,
+        "vel": 1150,
+        "ricochetes": 2,
+        "perda": 0.78,
+        "vida_s": 1.2
+      },
+      "S17": {
+        "familia": "ataque",
+        "raridade": "incomum",
+        "cargas": 1,
+        "distancia_tiles": 2.6,
+        "largura_tiles": 1.2,
+        "marca_s": 0.65
+      },
+      "S18": {
+        "familia": "ataque",
+        "raridade": "incomum",
+        "cargas": 2,
+        "vel": 720,
+        "alcance_tiles": 7,
+        "volta_vel": 950,
+        "max_s": 2.6
+      },
+      "S19": {
+        "familia": "ataque",
+        "raridade": "comum",
+        "cargas": 2,
+        "vel": 1050,
+        "alcance_tiles": 5,
+        "max_s": 2.4
+      },
+      "S20": {
+        "familia": "ataque",
+        "raridade": "rara",
+        "cargas": 1,
+        "preparo": 0.3,
+        "vel": 760,
+        "subida": 320,
+        "quique": 0.72,
+        "vida_s": 1.8
       }
     },
     "eventos": {

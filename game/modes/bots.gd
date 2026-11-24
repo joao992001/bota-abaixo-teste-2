@@ -289,6 +289,13 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 		"S03": it_ok = absf(dy) < 40.0 and absf(dx) > 90.0 and absf(dx) < 900.0
 		"S06": it_ok = absf(dy) < 90.0 and absf(dx) > 120.0 and absf(dx) < 300.0
 		"S13": it_ok = absf(dy) < 60.0 and absf(dx) < 150.0
+		"S02": it_ok = absf(dy) < 30.0 and absf(dx) > 120.0 and absf(dx) < 800.0
+		"S04": it_ok = r.is_on_floor() and target.is_on_floor() and absf(dy) < 8.0 and absf(dx) < 280.0
+		"S05": it_ok = absf(dy) < 40.0 and absf(dx) > 80.0 and absf(dx) < 600.0
+		"S17": it_ok = absf(absf(dx) - 166.0) < 40.0 and absf(dy) < 90.0
+		"S18": it_ok = absf(dy) < 30.0 and target.is_on_floor() and absf(dx) > 90.0 and absf(dx) < 420.0
+		"S19": it_ok = absf(dy) < 70.0 and absf(dx) > 90.0 and absf(dx) < 300.0
+		"S20": it_ok = absf(dy) < 60.0 and absf(dx) > 100.0 and absf(dx) < 420.0
 	if it_ok and main.rng.randf() < float(lv["use_items"]):
 		if signi(int(dx)) != r.facing:
 			cmd["dir"] = signi(int(dx))

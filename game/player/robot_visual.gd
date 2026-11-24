@@ -14,8 +14,10 @@ const HAMMER_REST := 0.35
 const STRIDE := 46.0
 ## Spells (modes/spells.gd): textura, tamanho na mão e ponto de pega (em px da arte de design, que é 2x a textura/2)
 const SPELL_TOOLS := {"S01": ["s01_canhao", Vector2(52, 26), Vector2(30, 34)], "S03": ["s03_canhao", Vector2(54, 27), Vector2(26, 40)],
-	"S06": ["s06_ima", Vector2(42, 30), Vector2(14, 40)]}
-const SPELL_HELD := {"S01": "s01_canhao", "S03": "s03_canhao", "S06": "s06_ima", "S10": "icone_engenharia", "S11": "icone_controle",
+	"S06": ["s06_ima", Vector2(42, 30), Vector2(14, 40)], "S02": ["s02_laser", Vector2(54, 27), Vector2(19, 50)],
+	"S05": ["s05_rebiteira", Vector2(50, 25), Vector2(38, 50)], "S20": ["s20_canhao", Vector2(58, 29), Vector2(24, 54)]}
+const SPELL_HELD := {"S01": "s01_canhao", "S03": "s03_canhao", "S06": "s06_ima", "S10": "icone_engenharia", "S11": "icone_controle", "S02": "s02_laser", "S04": "icone_ataque",
+	"S05": "s05_rebiteira", "S17": "icone_ataque", "S18": "s18_disco", "S19": "icone_ataque", "S20": "s20_canhao",
 	"S13": "icone_transformacao"}
 
 # aparência
@@ -249,7 +251,7 @@ func tick(r, dt: float) -> void:
 				Audio.play("passo", 0.92 + r.pid * 0.08, -8.0)   # 1 passo por passada, baixinho
 			if spd > 300.0:
 				r.main.dust(r.position + Vector2(-r.facing * 10, 0), 0.45)
-	has_hammer = r.hammer_left > 0 or r.atk != ""
+	has_hammer = (r.hammer_left > 0 or r.atk != "") and not r.hammer_out
 	# marretada pesada recarregou: brilho na marreta + "plim"
 	if heavy_was_cd and r.heavy_cd <= 0.0:
 		r.main.spark(r.position + Vector2(r.facing * 22, -78), 3)
@@ -606,7 +608,26 @@ func current_pose() -> Dictionary:
 				p["hb_abs"] = Vector2(18, -37) + hold_buzz
 				p["tool"] = "S06"
 				lean = lerpf(lean, -0.2, 0.4)
-			"S03", "S06":
+			"S04":   # marreta sísmica: ergue bem alto e crava no chão
+				if prep >= 0.0:
+					p["hammer_ang"] = lerpf(-0.6, -2.7, ease(prep, 0.4))
+					p["hf_abs"] = Vector2(4, -62) + buzz
+					p["hb_abs"] = Vector2(-2, -60) + buzz
+					lean = lerpf(lean, -0.18 * prep, 0.5)
+				else:
+					p["hammer_ang"] = 1.75
+					p["hf_abs"] = Vector2(24, -18)
+					p["hb_abs"] = Vector2(18, -16)
+					lean = lerpf(lean, 0.3, 0.6)
+				for i in 2:
+					feet[i] = feet[i].lerp(Vector2(-12.0 + i * 20.0, 0), 0.7)
+			"S18", "S19":   # arremesso: braço vem de trás e solta à frente
+				var u := clampf(fire / 0.2, 0.0, 1.0)
+				p["hf_abs"] = Vector2(-16, -52).lerp(Vector2(28, -38), ease(u, 0.3))
+				lean = lerpf(lean, -0.1 + 0.25 * u, 0.5)
+			"S17":   # aponta para onde a estaca vai cair
+				p["hf_abs"] = Vector2(26, -30)
+			"S03", "S06", "S02", "S05", "S20":
 				p["hf_abs"] = Vector2(21 - 9.0 * kick, -38 - 4.0 * kick) + buzz
 				p["hb_abs"] = Vector2(13 - 7.0 * kick, -35 - 3.0 * kick) + buzz * 0.6
 				p["tool"] = sid
@@ -954,9 +975,11 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 		lw *= 1.0 + 0.9 * asm
 		limb = limb.lerp(Color("#5f4438"), 0.75 * asm)
 	if lk.get("hammer", true) and tool == "" and not armor:
-		ci.draw_set_transform_matrix(base * Transform2D(pose["hammer_ang"], q, 0.0, hf))
-		var hcol := Color(0.58, 0.62, 0.72) if lk.get("ham_cd", false) else Color.WHITE
-		ci.draw_texture(Data.tex("robo/marreta"), -GRIP * 4.0, hcol)
+		var seis: bool = sf.get("spell", "") == "S04" and (float(sf.get("prep", -1.0)) >= 0.0 or (float(sf.get("fire", -1.0)) >= 0.0 and float(sf.get("fire", -1.0)) < 0.32))
+		if not seis:   # na marretada sísmica a marreta gigante é desenhada por modes/spells.gd
+			ci.draw_set_transform_matrix(base * Transform2D(pose["hammer_ang"], q, 0.0, hf))
+			var hcol := Color(0.58, 0.62, 0.72) if lk.get("ham_cd", false) else Color.WHITE
+			ci.draw_texture(Data.tex("robo/marreta"), -GRIP * 4.0, hcol)
 	var eye: Vector2 = (_v(g["eyes"][0]) + _v(g["eyes"][1])) / 2.0
 	if armor:   # costas da armadura (tanque + chaminé) atrás do corpo
 		_armor_piece(ci, base * bx, "s13_costas", asm, eye + Vector2(-5, 0), sf)
