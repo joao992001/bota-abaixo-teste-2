@@ -1,28 +1,31 @@
 ---
 name: godot
-description: "Projeto Godot 4 de Bota-Abaixo: configuração 1920x1080, estrutura de cenas, carregar mapas .lvl, importar arte SVG, animação cut-out dos robôs com AnimationPlayer e debug. Use ao criar o projeto, importar arte ou montar animações."
+description: "Projeto Godot 4.7 de Bota-Abaixo: configuração 1920x1080, estrutura de pastas e cenas reais, autoloads, animação do robô por código, testes automáticos e capturas, exportação do .exe. Use ao mexer na estrutura do projeto, importar arte, montar animações, testar ou exportar."
 ---
 
 # Godot
 
 ## Configuração
-- Janela 1920×1080; `stretch/mode = canvas_items`, `aspect = keep`; 60 ticks de física.
-- Câmera fixa mostrando a arena 1920×1024 + faixa de placar de 56 px no topo.
-- Autoloads: `PlayerInput`, `Round`, `Scoring`, `Audio`.
+Godot **4.7.1** (a mesma do editor do usuário; exportar em versão menor quebra controles PlayStation). 1920×1080,
+`canvas_items`/`keep`, 60 ticks, renderizador Compatibility. Autoloads: `Data` (lê `../data` e `../levels`, texturas),
+`PlayerInput`, `Audio`.
 
-## Estrutura sugerida
-`game/player/` (robô, controle, animação) · `game/pieces/` (base + uma por peça) · `game/level/` (carregador de .lvl, arena) · `game/ui/` (entrada, esteira, cursores, placar, vitória) · `game/assets/` (arte e sons importados).
+## Estrutura real (`game/`)
+`main.gd`/`main.tscn` (estados, entrada, partida) · `player/robot.gd` (física e controle) · `player/robot_visual.gd` (desenho e
+animação) · `modes/` (demolicao, ferramentas, eventos, arena_fx, bots) · `level/` (level.gd lê o .lvl; background.gd) · `ui/`
+(menus, hud, oficina, kit, retrato) · `fx/debris.gd` · `tests/driver.gd` · `assets/` (cópia de `art/out/game`).
 
-## Mapas
-`level_loader.gd` lê `../levels/<id>.lvl`, cria colisões por tile e aplica o tema visual (blocos do mapa). Não monte mapas à mão no editor.
-
-## Arte
-- SVG importa direto como textura; ajuste a escala de import para a nitidez certa a 1080p.
-- **Robô cut-out:** partes separadas (corpo, olhos, pupilas, boca, braços, mãos, pés, marreta, acessório) como `Sprite2D` filhos de um esqueleto simples; `AnimationPlayer` com idle, corrida, pulo, queda, aterrissagem, parede, marretada, eliminação, vitória. Cor do jogador por `modulate` no corpo ou por versões coloridas do SVG.
-- Acessório: nó filho do ponto da cabeça; acompanha o squash/stretch.
-
-## Debug (tecla F1)
-Pular rodada, colocar qualquer peça como qualquer jogador, mostrar hitboxes, câmera lenta.
+## Animação do robô
+Toda por código em `robot_visual.gd`: lê o estado do robô a cada quadro e monta uma **pose** (corpo, inclinação, pés, joelhos,
+mãos, marreta, antena, expressão); braços e pernas são curvas desenhadas, partes são PNGs 4× (128×128, pés em (64,120)).
+Medidas por modelo em `assets/robo/modelos.json`. **Nunca** deixar a animação atrasar o controle; hitbox não muda.
 
 ## Testar
-Rode o projeto e jogue. Sem tela disponível: `godot --headless --path game --quit` só confere se abre sem erros; diga isso claramente.
+- Bateria: `godot --headless --path game --fixed-fps 60 -- --autotest` · só uma parte: `-- --autotest --so=<nomes>`.
+- Capturas (com `xvfb-run -a` e `--rendering-driver opengl3`): `--robos=DIR`, `--menus=DIR`, `--arenas=DIR`, `--espiar=DIR,arena,modo,s`,
+  `--itens=DIR`, `--parede=DIR`, `--oficina=DIR`, `--intro=DIR`. Ritmo: `--stats=N`.
+- Diga sempre o que rodou e o que não rodou.
+
+## Exportar
+`GODOT=/caminho/godot-4.7.1 tools/exportar.sh` → `out/build/windows/Bota-Abaixo.exe` (arquivo único) e Linux; instalador só com
+`makensis`. Depois rode a bateria no executável Linux.

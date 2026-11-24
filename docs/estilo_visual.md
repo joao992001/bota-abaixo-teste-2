@@ -1,5 +1,11 @@
 # Estilo visual — cartoon vetorial próximo das referências
 
+> **Atual (2026-11-24) — vale por cima do resto deste arquivo:** personagens e cenário são **papel e giz** (formas recortadas
+> sem contorno preto, textura de giz/rabisco, bordas tremidas, sombra de um lado), decidido com o usuário em 2026-11-20 a partir
+> das refs 2–4. **Contorno grosso só na interface** (`game/ui/kit.gd`). Robôs: 8 modelos só de aparência, sem acessórios
+> (`.claude/skills/personagens-e-acessorios`). Não há mais peças com dono nem "cor do dono"; os mapas Andaimes/Cais Noturno
+> viraram 12 temas (`art/src/cenarios/temas*.py`). O resto abaixo é a v2 original, para consulta das referências.
+
 **Meta:** quem olhar uma captura de Bota-Abaixo ao lado das referências deve achar que é "da mesma família": mesmo traço, mesmas formas gordinhas, mesma vivacidade. **Personagens, emblemas e nomes são nossos.**
 
 ## O que tirar de cada referência (`docs/referencias/`)

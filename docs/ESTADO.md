@@ -1,11 +1,27 @@
-# Bota-Abaixo — estado do projeto (2026-11-20)
+# Bota-Abaixo — estado do projeto (2026-11-24)
 
 Leia isto primeiro ao retomar o projeto numa sessão nova. Histórico de decisões: `docs/decisoes.md`.
-Backup: GitHub privado `joao992001/bota-abaixo` (ramo `main`).
+Repositórios (GitHub privado, ramo `main`): `joao992001/bota-abaixo` = versão estável (não mexer) ·
+**`joao992001/bota-abaixo-teste-2` = cópia para as mudanças estruturais grandes (trabalhe aqui).**
+
+## ▶ Retomar aqui (sessão nova)
+Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, nesta ordem:
+1. **Robôs: 8 modelos só de aparência** no lugar da Garagem — **FEITO** (commit 6b089e1).
+2. **Movimento, combate e animação** — PRÓXIMO. Movimentos novos e animações muito mais fluidas (andar, pular, atacar…).
+   O usuário vai mandar um relatório com os detalhes: leia-o inteiro e devolva um plano curto antes de mexer no código.
+3. **Fases e câmera** — DEPOIS do movimento (as medidas do pulo/golpe definem as fases). Retirar as 24 arenas atuais
+   (+ antigas, `tools/mapas/`, prévias `game/assets/ui/arena_*.png`), deixando 1 arena-base provisória por modo para o jogo
+   abrir e os testes rodarem; depois criar um modelo de fase padrão, com câmera e regras próprias por modo.
+**Economia (pedido do usuário):** uma sessão nova por mudança grande; sessão principal faz tudo (agentes só para lotes grandes
+de arte em paralelo); rodar só a parte dos testes que mudou (`--so=`) e a bateria completa 1× no fim; poucas capturas.
+**Ambiente na nuvem:** Godot 4.7.1 + modelos de exportação não vêm instalados; baixe de github.com/godotengine/godot/releases
+(`Godot_v4.7.1-stable_linux.x86_64.zip` e `..._export_templates.tpz`, extrair só `windows_release_x86_64.exe`,
+`linux_release.x86_64` e `version.txt` para `~/.local/share/godot/export_templates/4.7.1.stable/`). Arte: `pip install cairosvg`.
+Falha conhecida na bateria: "Skate: atropela quem está na frente" (Fuga, lote 2c incompleto).
 
 ## O que é hoje
-Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controles), com bots. Modo principal **Demolição**
-(o modo antigo de peças/construção ainda existe como "Clássico", mas o GDD.md ainda descreve só ele — desatualizado).
+Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controles), com bots. Tudo roda no modo interno
+`demolicao` (código em `game/modes/demolicao.gd`); o antigo modo de peças com dono foi removido em 2026-11-20.
 - **4 modos (sem submodos; o Clássico de peças foi removido):** fluxo Modo → Arena do modo → Ajustes do modo → Entrada.
   - **Derruba** (vidas 1–5, dano %): Canteiro, Guindastes, Gangorras (serraria), Esteiras, Prensa (ferro-velho), Fornalha (fundição).
   - **Batata-Dinamite** (pavio curto/normal/longo; encostar ou marretar passa; 44×24, sem espinho): Obra de Concreto (portas que trocam), Galerias da Mina (túneis e tubos), Prédio Velho (alçapões), Sob o Viaduto (plataformas e ventilador), Palafitas (gangorras), Telhados (trampolins).
@@ -26,7 +42,9 @@ Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controle
   `ui/retrato.gd`, estrelas, % grande, item no selo; ficam translúcidos quando um robô passa por trás). Placar em ranking,
   vitória com o nome do robô. Captura de apoio para novas propostas: `-- --maquete=DIR`.
 - **Menus:** intro animada, cenário próprio do menu, OFICINA (painel de testes), opções (vibração, testar/configurar controle).
-- **Arte:** estilo papel e giz (gerada por código em `art/src`, cópias em `game/assets`). **Som:** `tools/sfxforge.py` (efeitos, com acabamento) e `tools/musica.py` (compositor de músicas longas).
+- **Arte:** personagens e cenário em **papel e giz** (recorte sem contorno preto, textura de giz, bordas tremidas; definido no chat
+  de 2026-11-20 com versoes.png). Só a **interface** usa contorno grosso e sombra dura (`ui/kit.gd`). Tudo gerado por código em
+  `art/src` (SVG → PNG pelo Chromium, `tools/render_svg.js`), cópias em `game/assets`. **Som:** `tools/sfxforge.py` (efeitos, com acabamento) e `tools/musica.py` (compositor de músicas longas).
 
 ## Como rodar e testar
 - Jogar: `godot --path game` · bateria de testes: `godot --headless --path game --fixed-fps 60 -- --autotest` (199 verificações, 0 falhas).
@@ -41,9 +59,11 @@ Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controle
 - Windows: `exportar_windows.bat` (ajustar o caminho da Godot dentro dele).
 - Depois de exportar: rodar a bateria no executável Linux numa pasta vazia (`./Bota-Abaixo.x86_64 --headless --fixed-fps 60 -- --autotest`).
 
-## Pendências e próximos passos (combinados com o usuário)
-1. Rodada de teste com amigos → lista de ajustes.
-2. Fechar o escopo do beta (lista do que precisa ter) e testar ~1 mês.
-3. Atualizar o GDD.md para a Demolição; atualizar `CLAUDE.md` (hoje proíbe online, mas online é o objetivo do usuário).
-4. Em paralelo: atualizar o documento-base (geral → específico) usado para criar este jogo, para novos jogos.
-5. Depois do beta: inglês, página na Steam, demo/Next Fest, online por convite (Steamworks/GodotSteam).
+## Pendências e próximos passos
+1. Reforma do `teste-2` (ver "Retomar aqui").
+2. Terminar o lote 2c da Fuga (teste do skate) — ou descartar, se os itens mudarem na reforma.
+3. Rodada de teste com amigos → lista de ajustes; fechar o escopo do beta.
+4. Atualizar o `docs/plano.md` (ainda descreve os 4 marcos do jogo antigo de peças) e o `docs/estilo_visual.md` (seções de robôs e
+   contorno são da v2; a verdade atual está no topo dele e nas skills).
+5. Depois do beta: inglês, Steam, demo/Next Fest, online por convite (Steamworks/GodotSteam). Online ainda proibido no `CLAUDE.md`
+   até o usuário liberar.

@@ -1,26 +1,27 @@
 ---
 name: regras-do-jogo
-description: "Regras de Bota-Abaixo: rodada (escolha, construção, corrida, placar), peças com dono de data/pieces.json, marreta e pontuação de data/scoring.json. Use ao implementar, mudar ou ajustar regras, peças ou pontuação."
+description: "Regras de Bota-Abaixo: os 4 modos (Derruba, Batata-Dinamite, Rei da Obra, Fuga), rodada e placar, golpe/marreta, dano % (Amassômetro), itens por modo e eventos, tudo lido de data/modos.json. Use ao implementar, mudar ou ajustar regras, modos, itens ou pontuação."
 ---
 
 # Regras do jogo
 
-## Máquina de estados da rodada
-`ENTRADA → ESCOLHA (10 s) → CONSTRUÇÃO (20 s) → CORRIDA (60 s) → PLACAR (5 s) → próxima rodada ou VITÓRIA`. Tempos em `data/scoring.json`.
+Fluxo: Menu → Modo → Arena do modo → Ajustes → Entrada (2–4, bots) → rodadas → placar → vitória (★ para vencer).
 
-- **Escolha:** esteira com `jogadores + 2` peças sorteadas (só as liberadas no marco atual: campo `marco`); quem tem menos pontos escolhe primeiro.
-- **Construção:** um cursor por jogador, grade de 64 px; não pode sobre sólido, outra peça ou célula `x` (exceto a dinamite P12). Peça não colocada no tempo é perdida.
-- **Corrida:** todos saem juntos; tocar perigo rival = eliminado; chegar ao `E` registra a ordem. Robôs não colidem entre si.
-- **Placar:** aplica `data/scoring.json`.
+## Onde fica
+- **Números e listas:** `data/modos.json` → `demolicao` (`modos[]` com `id`, `arenas`, `itens_lista`; `itens`, `eventos`,
+  `amassometro`, `aderencia`, `recuperacao`, golpe `knock_x/knock_y`, `stun_*`, `stomp_*`…). Nunca números fixos no código.
+- **Código:** `game/modes/demolicao.gd` (regras dos 4 modos, rodada, placar) · `modes/ferramentas.gd` (itens) ·
+  `modes/eventos.gd` (9 eventos) · `modes/arena_fx.gd` (máquinas do cenário) · `modes/bots.gd` (bots sabem cada modo) ·
+  `main.gd` (estados, entrada, partida).
 
-## Peças com dono
-- Toda consulta passa o jogador: `is_solid_for(player)`, `is_hazard_for(player)`, `force_for(player)`. Isso é o coração do jogo.
-- Nunca eliminam o dono. Para o dono são neutras ou dão vantagem.
-- Visual: faixa e ícone na cor do dono; estado "dono" e "rival" diferentes (a serra recolhe os dentes para o dono).
-- Uma classe base `Piece` + uma cena por peça; números em `data/pieces.json`.
+## Os modos
+- **Derruba:** vidas 1–5 e dano %; quanto mais dano, mais longe o golpe joga. Cai fora = perde vida.
+- **Batata-Dinamite:** quem está com a TNT quando o pavio acaba sai; encostar ou marretar passa a bomba. Arena sem poço.
+- **Rei da Obra:** segure o capacete de ouro (`K`) por X s; golpe derruba o rei; 1,2 s de proteção após pegar.
+- **Fuga:** a tela/lama persegue; cair só atrasa; pego pela tela sai; chegar ao elevador `E` vence.
 
-## Marreta
-1 uso por rodada; destrói uma peça rival encostada à frente; não afeta peças próprias nem o mapa; a animação não trava o movimento.
-
-## Teste rápido de cada peça
-Com o debug, coloque a peça como P1, jogue com P1 e com P2 e confira: dono como descrito em "para_o_dono", rival como em "para_rivais". Anote o que diverge.
+## Regras de ouro
+- Toda regra nova entra em `modos.json` com nome claro e entra nos **Ajustes** se o jogador precisar mudar.
+- Cada modo tem os próprios itens (`itens_lista`); item de dano é da Derruba.
+- Mudou regra → atualize os bots (`bots.gd`) e um teste em `game/tests/driver.gd`; rode `-- --autotest --so=<parte>`.
+- Medir ritmo: `-- --stats=4 [--sub=<modo>] [--so-arenas=a,b]`.

@@ -1,15 +1,17 @@
 # Bota-Abaixo — regras do projeto
 
-Plataforma competitivo, **multiplayer local 2–4**, Godot 4. Party game de robôs de demolição com **modos independentes** (Derruba, Batata-Dinamite, Rei da Obra, Fuga), cada um com suas arenas. (O antigo modo de peças com dono foi removido em 2026-11-20.) Detalhes: `docs/GDD.md`. Visual: `docs/estilo_visual.md` + `docs/referencias/`. Plano: `docs/plano.md`.
+Plataforma competitivo, **multiplayer local 2–4**, Godot 4. Party game de robôs de demolição com **modos independentes** (Derruba, Batata-Dinamite, Rei da Obra, Fuga), cada um com suas arenas. (O antigo modo de peças com dono foi removido em 2026-11-20.) **Comece lendo `docs/ESTADO.md`** (estado atual e o que fazer a seguir). Detalhes: `docs/GDD.md`. Visual: topo de `docs/estilo_visual.md` + `docs/referencias/`.
 
 ## Prioridades (nesta ordem)
-1. **Jogável cedo** — a rodada completa roda no Marco 1, mesmo com formas simples.
+1. **Sempre jogável** — cada etapa termina com o jogo abrindo, testes rodando e commit.
 2. **Visual muito próximo das referências** — personagens e cenário são a vitrine do jogo. Compare sempre lado a lado com `docs/referencias/`.
 3. **Controle responsivo** — nunca sacrifique resposta do controle por animação.
 4. **Caos legível** — cada jogador entende em 1 s o que é perigoso para ele.
 
 ## Economia de uso (obrigatório)
-- **A sessão principal faz o código, os mapas e as regras.** Subagentes só para: arte (`artista-personagens`, `artista-cenarios`, podem rodar em paralelo) e `revisor` (uma vez no fim de cada marco). Máximo 3 ao mesmo tempo.
+- **A sessão principal faz tudo** (código, mapas, regras e arte ligada ao código). Subagentes só para lotes grandes de arte em paralelo (`artista-personagens`, `artista-cenarios`) e `revisor` no fim de uma etapa grande. Máximo 3 ao mesmo tempo.
+- **Uma sessão nova por mudança grande**; antes de encerrar, atualize "Retomar aqui" em `docs/ESTADO.md`.
+- Testes: só a parte mexida (`--autotest --so=...`) durante o trabalho; a bateria completa 1× no fim. Poucas capturas de tela.
 - Delegue com 3 linhas: objetivo · arquivos que pode mexer · como saber que ficou pronto.
 - **Não construa ferramentas antecipadamente.** Escreva um script só quando o mesmo problema aparecer duas vezes.
 - Não releia arquivos grandes sem necessidade; carregue skills só quando a tarefa pedir.
