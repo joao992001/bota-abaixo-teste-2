@@ -21,6 +21,7 @@ var belts: Array = []       # esteiras do mapa: {body, dir, cells}
 var belt_speed := 192.0
 var belt_warn := false      # esteiras piscando antes de inverter
 var extra_solid := Callable()   # sólidos que se movem (plataformas do guindaste), para bots e itens
+var grab_solid := Callable()    # bordas extras que dá para agarrar (laje do Canteiro)
 var anim_t := 0.0
 ## Tema visual da arena (cabeçalho "tema:" do .lvl): troca blocos, bloco fixo, tábuas e fundo (assets/temas/<tema>/).
 const THEMES := {
@@ -91,6 +92,8 @@ func ch_at(c: Vector2i) -> String:
 	return String(grid[c.y])[c.x]
 
 func is_solid(c: Vector2i) -> bool:
+	if (c.x < 0 or c.y < 0 or c.x >= cols or c.y >= rows) and props.has("ko"):
+		return false   # arena com zona de KO: fora do mapa é vazio (abismo), não parede
 	if ch_at(c) in ["#", "o", "I", "d", "T", "<", ">", "F", "f", "P", "B", "a", "D", "J"]:
 		return true
 	return extra_solid.is_valid() and extra_solid.call(c)
@@ -136,6 +139,18 @@ func set_cell_char(c: Vector2i, ch: String) -> void:
 	var row := String(grid[c.y])
 	grid[c.y] = row.substr(0, c.x) + ch + row.substr(c.x + 1)
 	queue_redraw()
+
+## Zona de KO no MUNDO (prop "ko: esq,cima,dir,baixo" em tiles além das bordas). Rect2() vazio = sem zona (regra antiga).
+func ko_rect() -> Rect2:
+	var k = props.get("ko", "")
+	if String(k) == "":
+		return Rect2()
+	var v := String(k).split(",")
+	var l := float(v[0]) * T
+	var tp := float(v[1]) * T
+	var r := float(v[2]) * T
+	var b := float(v[3]) * T
+	return Rect2(-l, -tp, cols * T + l + r, rows * T + tp + b)
 
 func prop(key: String, default = null):
 	return props.get(key, default)

@@ -239,22 +239,16 @@
     "stomp_side_push": 320,
     "arenas": [
       {
+        "id": "canteiro_obras",
+        "musica": "partida",
+        "nome": "Canteiro de Obras",
+        "dica": "A laje vai caindo! Só o meio aguenta."
+      },
+      {
         "id": "demolicao",
         "musica": "partida",
         "nome": "Canteiro",
         "dica": "Ilhas de caixotes. Terremoto no fim!"
-      },
-      {
-        "id": "esteiras",
-        "musica": "fabrica",
-        "nome": "Fábrica de Esteiras",
-        "dica": "As esteiras invertem a cada 7 s!"
-      },
-      {
-        "id": "guindastes",
-        "musica": "altura",
-        "nome": "Guindastes",
-        "dica": "Plataformas que se movem!"
       },
       {
         "id": "mare",
@@ -263,64 +257,10 @@
         "dica": "A lama sobe! Chegue ao elevador lá em cima."
       },
       {
-        "id": "bola",
-        "musica": "caos",
-        "nome": "Bola de Demolição",
-        "dica": "Pegue o capacete no alto. Cuidado com a bola!"
-      },
-      {
-        "id": "paiol",
-        "musica": "caos",
-        "nome": "Paiol de TNT",
-        "dica": "Sala fechada: só a dinamite elimina!"
-      },
-      {
         "id": "torre",
         "musica": "altura",
         "nome": "Torre em Ruínas",
         "dica": "A câmera sobe: o elevador está no topo!"
-      },
-      {
-        "id": "ponte",
-        "musica": "altura",
-        "nome": "Ponte Quebradiça",
-        "dica": "A câmera avança: o elevador está no fim!"
-      },
-      {
-        "id": "gangorras",
-        "musica": "partida",
-        "nome": "Gangorras",
-        "dica": "O peso inclina a tábua!"
-      },
-      {
-        "id": "prensa",
-        "musica": "fabrica",
-        "nome": "Prensa da Fábrica",
-        "dica": "Pistões! Alavanca abre o alçapão."
-      },
-      {
-        "id": "fornalha",
-        "musica": "fabrica",
-        "nome": "Fornalha",
-        "dica": "Chamas no chão e barris rolando!"
-      },
-      {
-        "id": "galpao",
-        "nome": "Galpão de Cargas",
-        "dica": "Dê a volta pelo túnel embaixo!",
-        "musica": "caos"
-      },
-      {
-        "id": "andaime",
-        "nome": "Andaime do Elevador",
-        "dica": "Fuja pelo elevador do meio!",
-        "musica": "altura"
-      },
-      {
-        "id": "laje",
-        "nome": "Laje do Prédio",
-        "dica": "O trono é a caixa-d'água!",
-        "musica": "altura"
       },
       {
         "id": "piramide",
@@ -432,8 +372,20 @@
       }
     ],
     "amassometro": {
-      "rapido": {"dano": 6, "kx": 190, "kx_por": 3.6, "ky": 170, "ky_por": 1.6},
-      "pesado": {"dano": 14, "kx": 320, "kx_por": 7.2, "ky": 280, "ky_por": 3.1},
+      "rapido": {
+        "dano": 6,
+        "kx": 190,
+        "kx_por": 3.6,
+        "ky": 170,
+        "ky_por": 1.6
+      },
+      "pesado": {
+        "dano": 14,
+        "kx": 320,
+        "kx_por": 7.2,
+        "ky": 280,
+        "ky_por": 3.1
+      },
       "nota": "empurrão = base + dano% × por; atordoamento = stun_base + dano% × stun_por (máx stun_max)",
       "chama": {
         "dano": 14,
@@ -633,12 +585,7 @@
         "dica": "Tire os rivais da plataforma.\nCada um tem 3 vidas.",
         "ok": true,
         "arenas": [
-          "demolicao",
-          "guindastes",
-          "gangorras",
-          "esteiras",
-          "prensa",
-          "fornalha"
+          "canteiro_obras"
         ],
         "itens": true,
         "itens_lista": [
@@ -660,7 +607,7 @@
         "id": "batata",
         "nome": "BATATA-DINAMITE",
         "dica": "Passe a dinamite\nantes que ela exploda!",
-        "ok": true,
+        "ok": false,
         "arenas": [
           "obra_concreto",
           "galerias_mina",
@@ -701,7 +648,7 @@
         "id": "rei",
         "nome": "REI DA OBRA",
         "dica": "Segure o capacete de ouro.\nUma marretada derruba!",
-        "ok": true,
+        "ok": false,
         "arenas": [
           "canteiro_rei",
           "linha_montagem",
@@ -742,7 +689,7 @@
         "id": "fuga",
         "nome": "FUGA",
         "dica": "Corra até o elevador!\nQuem ficar para trás, sai.",
-        "ok": true,
+        "ok": false,
         "arenas": [
           "torre",
           "obra_subindo",
@@ -771,7 +718,40 @@
           "bolha"
         ]
       }
-    ]
+    ],
+    "canteiro": {
+      "nota": "Canteiro de Obras (Derruba): demolição progressiva. VALORES INICIAIS para calibrar no LABORATÓRIO/jogando.",
+      "laje_hp": 4,
+      "andaime_hp": 3,
+      "viga_hp": 2,
+      "dano_pesada": 1,
+      "impacto_vel": 950,
+      "dano_impacto": 1,
+      "impacto_forte_vel": 1500,
+      "dano_impacto_forte": 2,
+      "aviso_queda_s": 1.1,
+      "primeiro_ciclo_s": 20,
+      "calma_min_s": 16,
+      "calma_max_s": 22,
+      "aviso_ciclo_s": 4.5,
+      "ciclo_dano": 99
+    },
+    "ko_explosao": {
+      "nota": "KO pela borda: força do tremor e duração da explosão",
+      "tremor": 14,
+      "duracao_s": 0.55
+    },
+    "camera": {
+      "nota": "Câmera adaptativa (arenas com 'camera: adaptativa'): antecipação do arremesso em s, margens esq/cima/dir/baixo em px, zoom máximo",
+      "antecipa_s": 0.3,
+      "margem": [
+        420,
+        300,
+        420,
+        240
+      ],
+      "zoom_max": 1.0
+    }
   },
   "bots": {
     "nota": "react_s = tempo de reação; hammer_acc = chance de marretar quando dá; safety = chance de checar buraco antes de andar",

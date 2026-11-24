@@ -182,6 +182,15 @@ def viga_body(x, y, w, seed):
 
 
 # ---------------------------------------------------------------- fundo
+def viga_solo(x, y, w, seed):
+    """Só a viga (sem os cabos, que o jogo desenha e pode romper)."""
+    b = [shape(f"vs{seed}", rect_d(x, y, w, 26, 3), "#8796ab", seed, (x, y, x + w, y + 28), k=2.6, dark=STEEL_D)]
+    b.append(f'<rect x="{x}" y="{y}" width="{w}" height="6" fill="#a9b6c7"/><rect x="{x}" y="{y + 20}" width="{w}" height="6" fill="{STEEL_D}"/>')
+    for ex in (x, x + w - 30):
+        b.append(zebra(ex, y + 7, 30, 12))
+    return "".join(b)
+
+
 def fundo_body():
     rnd = random.Random(7)
     b = [f'<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{SKY0}"/>'
@@ -320,6 +329,16 @@ def main():
     for n in range(6):
         queue(pedaco_svg(n), f"{SRC}/laje_pedaco_{n}.svg", f"{OUT}/laje_pedaco_{n}.png", 96, 80, K)
     queue(wrap(W, H, fundo_body(), 8, 0.6), f"{SRC}/fundo.svg", f"{OUT}/fundo.png", W, H, 0.75)
+    # peças avulsas (o jogo desenha, derruba e anima cada uma): coordenadas a partir de (pad, pad)
+    pad = 10
+    pieces = {
+        "andaime": (5 * T, 12 * T, lambda: andaime_body(pad, pad, 5 * T, 12 * T, 401)),
+        "viga": (8 * T, 26, lambda: viga_body(pad, pad, 8 * T, 501).split('<path d="M' + str(pad + 40), 1)[0] if False else viga_solo(pad, pad, 8 * T, 501)),
+        "pilar": (2 * T - 16, 8 * T, lambda: pilar_body(pad, pad, 2 * T - 16, 8 * T, 317)),
+        "escora": (4 * T, 8 * T, lambda: escora_body(pad, pad, 8 * T, 321)),
+    }
+    for name, (pw, ph, fn) in pieces.items():
+        queue(wrap(pw + 2 * pad, ph + 2 * pad, fn(), 600 + len(name)), f"{SRC}/{name}.svg", f"{OUT}/{name}.png", pw + 2 * pad, ph + 2 * pad, 2)
     # prancha 1: arena íntegra e arena no meio da rodada (2 segmentos caídos, 1 crítico, andaime esquerdo caído)
     queue(wrap(W, H, arena_body(), 9, 1.0), f"{SRC}/arena_integra.svg", f"{PRANCHA}/prancha_canteiro_derruba_1.png", W, H, 0.75)
     queue(wrap(W, H, arena_body([3, 1, 0, 0, 2, 3]), 9, 1.0), f"{SRC}/arena_meio.svg", f"{PRANCHA}/prancha_canteiro_derruba_2.png", W, H, 0.75)

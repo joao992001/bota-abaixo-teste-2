@@ -392,7 +392,7 @@ func _try_grab(ix: float) -> void:
 	var dir := int(signf(ix))
 	var lv = main.level
 	var cell := Vector2i(int(floor((position.x + dir * 32.0) / 64.0)), int(floor((position.y - 66.0) / 64.0)))
-	if not (lv.ch_at(cell) in GRAB_CHARS) or not _room_above(cell):
+	if not (lv.ch_at(cell) in GRAB_CHARS or (lv.grab_solid.is_valid() and lv.grab_solid.call(cell))) or not _room_above(cell):
 		return
 	var top := cell.y * 64.0
 	var head := position.y - 72.0

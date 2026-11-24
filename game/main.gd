@@ -119,7 +119,7 @@ func _ready() -> void:
 	PlayerInput.pad_changed.connect(_on_pad_changed)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens") or a.begins_with("--oficina") or a.begins_with("--parede") or a.begins_with("--intro") or a.begins_with("--maquete") or a.begins_with("--robos") or a.begins_with("--combate") or a.begins_with("--lab") or a.begins_with("--pulo") or a.begins_with("--prancha") or a.begins_with("--espiar"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens") or a.begins_with("--oficina") or a.begins_with("--parede") or a.begins_with("--intro") or a.begins_with("--maquete") or a.begins_with("--robos") or a.begins_with("--combate") or a.begins_with("--lab") or a.begins_with("--pulo") or a.begins_with("--prancha") or a.begins_with("--canteiro") or a.begins_with("--espiar"):
 			state = S.JOIN   # testes e capturas começam direto na entrada de jogadores
 			var scr: GDScript = load("res://tests/driver.gd")
 			if scr == null or not scr.can_instantiate():
@@ -354,7 +354,7 @@ func _physics_process(dt: float) -> void:
 	puffs = puffs.filter(func(x): return x["t"] < 0.45)
 	for im in impacts:
 		im["t"] += dt
-	impacts = impacts.filter(func(x): return x["t"] < 0.2)
+	impacts = impacts.filter(func(x): return x["t"] < float(x.get("life", 0.2)))
 	for s in sparks:
 		s["t"] += dt
 		s["pos"] += s["vel"] * dt
@@ -400,6 +400,22 @@ func _update_camera(dt: float) -> void:
 			tc = cam_center
 		tz = zmin   # arena inteira na tela, sempre (pedido: ver tudo, mesmo com poucos jogadores)
 		tc = Vector2(lw, lh) / 2.0
+		if String(level.prop("camera", "")) == "adaptativa":
+			# câmera adaptativa (Derruba novo): enquadra todos os robôs vivos + para onde estão voando (antecipa arremesso)
+			var cb := Rect2()
+			var cf := true
+			for r in robots:
+				if r.alive and not r.finished and r.visible:
+					var p: Vector2 = r.rect().get_center()
+					for q in [p, p + r.velocity * float(demo.cfg.get("camera", {}).get("antecipa_s", 0.3))]:
+						cb = Rect2(q, Vector2.ZERO) if cf else cb.expand(q)
+						cf = false
+			if not cf:
+				var mg: Array = demo.cfg.get("camera", {}).get("margem", [420, 300, 420, 240])
+				cb = cb.grow_individual(mg[0], mg[1], mg[2], mg[3])
+				var zmax: float = float(demo.cfg.get("camera", {}).get("zoom_max", 1.0))
+				tz = clampf(minf(1920.0 / cb.size.x, 1024.0 / cb.size.y), zmin, zmax)
+				tc = cb.get_center()
 		if demo != null and demo.fx != null and is_instance_valid(demo.fx) and demo.fx.scroll_on:
 			# câmera que rola: a arena manda (Torre sobe, Ponte avança); quem sai da tela está fora
 			tz = demo.fx.scroll_zoom
@@ -616,6 +632,11 @@ func check_contacts(r: CharacterBody2D) -> void:
 			return
 	if level.elevator_cell != Vector2i(-1, -1) and demo.rule() == "fuga" and rr.intersects(level.goal_rect):
 		finish(r)   # Fuga: chegou ao elevador primeiro
+	elif level.ko_rect().has_area():
+		# KO no MUNDO (independente da câmera): saiu da zona em qualquer direção → explode na borda
+		if not level.ko_rect().has_point(r.position + Vector2(0, -36)):
+			ko_blast(r)
+			kill(r, -1, null)
 	elif r.position.y > level.rows * T + 100:
 		kill(r, -1, null)
 
@@ -719,6 +740,21 @@ func spark(pos: Vector2, n := 5) -> void:
 func impact_fx(pos: Vector2, dir: int, s: float) -> void:
 	impacts.append({"pos": pos, "dir": dir, "s": s, "t": 0.0, "rot": rng.randf_range(0, TAU)})
 
+## KO pela borda: explosão cartoon onde o robô cruzou o limite, trazida para dentro do que a câmera mostra,
+## e as peças do robô voltando para o meio da tela.
+func ko_blast(r: CharacterBody2D) -> void:
+	var view := Rect2(camera.position - Vector2(960, 540) / cam_zoom, Vector2(1920, 1080) / cam_zoom).grow(-60.0 / cam_zoom)
+	var p: Vector2 = r.position + Vector2(0, -36)
+	var at := Vector2(clampf(p.x, view.position.x, view.end.x), clampf(p.y, view.position.y, view.end.y))
+	var dir := (p - view.get_center()).normalized()
+	var kc: Dictionary = demo.cfg.get("ko_explosao", {"tremor": 14, "duracao_s": 0.55})
+	impacts.append({"pos": at, "dir": 0, "s": 1.0, "t": 0.0, "rot": rng.randf_range(0, TAU), "ko": true, "aim": dir, "life": float(kc["duracao_s"])})
+	r.position = at + Vector2(0, 36)
+	r.velocity = -dir * 900.0
+	shake(float(kc["tremor"]))
+	Audio.play("explosao", 0.9, 2.0)
+	PlayerInput.vibrate(r.pid, 1.0, 1.0, 0.5)
+
 ## Anel de ar (pulo duplo, recuperou o equilíbrio no ar).
 func ring_fx(pos: Vector2, s: float) -> void:
 	impacts.append({"pos": pos, "dir": 0, "s": s, "t": 0.0, "rot": 0.0, "ring": true})
@@ -733,6 +769,35 @@ func pop_bolt(pos: Vector2, dir: int) -> void:
 func shake(amount: float) -> void:
 	if shake_on:
 		shake_amt = maxf(shake_amt, amount)
+
+## Explosão do KO (estilo da referência de explosões): fumaça escura, laranja, amarelo e miolo branco, crescendo e sumindo,
+## com um facho apontando para dentro da tela.
+func _draw_ko(im: Dictionary) -> void:
+	var life: float = im.get("life", 0.55)
+	var k: float = im["t"] / life
+	var grow := 1.0 - pow(1.0 - minf(k / 0.35, 1.0), 3.0)
+	var fade := clampf((1.0 - k) / 0.4, 0.0, 1.0)
+	var c: Vector2 = im["pos"]
+	var aim: Vector2 = im.get("aim", Vector2.RIGHT)
+	# facho para dentro da tela
+	var side := Vector2(-aim.y, aim.x)
+	overlay.draw_colored_polygon(PackedVector2Array([c - side * 40.0 * grow, c - aim * 520.0 * grow, c + side * 40.0 * grow]), Color(1.0, 0.95, 0.7, 0.45 * fade))
+	var layers := [[Color("#3d3340"), 190.0], [Color("#f08a3d"), 150.0], [Color("#f2c84b"), 110.0], [Color("#fff4c8"), 58.0]]
+	for li in layers.size():
+		var col: Color = layers[li][0]
+		col.a = fade
+		var R: float = layers[li][1] * grow * (1.0 + 0.15 * k)
+		var pts := PackedVector2Array()
+		for i in 28:
+			var a: float = float(im["rot"]) + li * 0.2 + i * TAU / 28.0
+			var rr := R * (1.0 if i % 2 == 0 else 0.7)
+			pts.append(c + Vector2.from_angle(a) * rr * Vector2(1.15, 1.0))
+		overlay.draw_colored_polygon(pts, col)
+	# bolhas de fumaça subindo
+	for i in 6:
+		var a: float = float(im["rot"]) + i
+		var pp := c + Vector2.from_angle(a) * (150.0 + 90.0 * k) * grow - Vector2(0, 80.0 * k)
+		overlay.draw_circle(pp, (26.0 + i * 3.0) * grow, Color(0.24, 0.2, 0.25, 0.7 * fade))
 
 ## Robô eliminado desmonta: partes voando + poeira + estrelas.
 func break_robot(r: CharacterBody2D) -> void:
@@ -752,6 +817,9 @@ func _draw_overlay() -> void:
 	for im in impacts:
 		var k: float = im["t"] / 0.2
 		var e := 1.0 - pow(1.0 - k, 3.0)
+		if im.get("ko", false):
+			_draw_ko(im)
+			continue
 		if im.get("ring", false):
 			var rr2: float = (20.0 + 40.0 * e) * float(im["s"])
 			overlay.draw_set_transform(im["pos"], 0.0, Vector2(1.0, 0.38))

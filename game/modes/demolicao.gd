@@ -20,8 +20,10 @@ var item_t := 4.0
 var canvas: Node2D           # desenha itens, dinamites e explosões no mundo
 var crumbling := false       # quebra por ter ficado parado em cima (culpa de quem estava em cima)
 const ArenaFx := preload("res://modes/arena_fx.gd")
+const Canteiro := preload("res://modes/canteiro.gd")
 const Kit := preload("res://ui/kit.gd")
 var fx: Node2D = null        # mecânicas da arena (plataformas, lama, bola, esteiras)
+var canteiro: Node2D = null  # estrutura destrutível do Canteiro de Obras (Derruba), quando a arena tem "canteiro: 1"
 var arena := {}              # {id, nome, dica} da rodada atual
 var last_arena := ""
 var last_choice := ""         # rodízio: escolha da rodada anterior
@@ -123,6 +125,14 @@ func start_round() -> void:
 	main.world.add_child(fx)
 	main.world.move_child(fx, 1)
 	fx.setup(main, main.level)
+	if canteiro != null and is_instance_valid(canteiro):
+		canteiro.queue_free()
+	canteiro = null
+	if String(main.level.prop("canteiro", "")) != "":
+		canteiro = Canteiro.new()
+		main.world.add_child(canteiro)
+		main.world.move_child(canteiro, 2)
+		canteiro.setup(main, main.level)
 	tnt_queue.clear()
 	main.level.block_hp = int(c("block_hp"))
 	for b in main.level.blocks.values():
@@ -651,6 +661,10 @@ func attack(r, kind: String) -> bool:
 	if fx != null and is_instance_valid(fx) and fx.hammer_hit(r, hit.grow(8), heavy):
 		if not hit_robot:
 			r.hitstop = float(hs["rapido"])
+	if heavy and canteiro != null and is_instance_valid(canteiro):
+		if canteiro.hammer(r, hit, PlayerInput.held(r.pid, "down")) and not hit_robot:
+			r.hitstop = float(hs["rapido"])
+			main.shake(6.0)
 	if hit_robot or not heavy:
 		return hit_robot
 	var lv = main.level

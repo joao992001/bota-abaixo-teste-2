@@ -23,7 +23,13 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
 2b. **LABORATÓRIO** (menu principal) — FEITO (2026-11-24): `game/ui/laboratorio.gd` + `levels/laboratorio.lvl`. Medidores,
    bonecos com comportamento, 32 números ajustáveis ao vivo; o usuário calibra jogando e manda os valores (COPIAR) para virar
    o padrão nos JSON. Ajustes salvos ficam em `user://laboratorio.json` e valem no jogo todo (PADRÃO apaga). Testes: `--so=lab`.
-3. **Fases e câmera — Relatório 02** (`docs/relatorio_02_cameras_arenas.md`) — PRÓXIMO. Decisões do usuário (2026-11-24):
+3. **Fases e câmera — Relatório 02** (`docs/relatorio_02_cameras_arenas.md`) — FEITO o núcleo (2026-11-24): `levels/canteiro_obras.lvl`
+   + `game/modes/canteiro.gd` (laje/andaimes/viga, estados, colisão, pedaços, ciclo), KO no mundo (`level.ko_rect`, `main.ko_blast`,
+   explosão `_draw_ko`), câmera adaptativa (`camera: adaptativa`, números em `demolicao.camera`), fases antigas apagadas,
+   Batata/Rei/Fuga EM BREVE. Testes `--so=canteiro` (13). Vitrine `--canteiro=DIR`. PENDENTE: IA dos bots em arena aberta
+   (caem sozinhos ~40-70% das mortes: freiam tarde na beira, ficam em trecho que cai, recuperação fora do palco); indicador de
+   robô fora da tela (só se o teste pedir); calibrar números jogando. Fases só de teste: demolicao, canteiro, mare, piramide.
+   Decisões do usuário (2026-11-24):
    - Apagar TODAS as fases do Derruba no teste-2 (e `tools/mapas/`, prévias `ui/arena_*.png`); Batata, Rei e Fuga ficam
      "EM BREVE" no menu (bloqueados). OFICINA e LABORATÓRIO continuam. Fazer a remoção JUNTO com a entrada do Canteiro.
    - Arena-piloto **Canteiro de Obras** (Derruba), **opção A**: mundo 40x22 tiles (~1,3x a tela), câmera ADAPTATIVA

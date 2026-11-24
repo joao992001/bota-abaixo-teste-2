@@ -25,3 +25,10 @@ Nome e dica de cada arena: `data/modos.json` → `demolicao.arenas`.
 - `gangorras: x,y,largura; ...` (x,y = topo do apoio, em tiles; x pode ter ,5) · `serras: x1,y,x2,periodo; ...` (serra no trilho embutida no chão da linha y)
 - Máquinas no mapa: `F` ventilador (`ventilador_ciclo: ligado,desligado`, `ventilador_alcance`) · `f` bico de chama (`chama_ciclo: apagada,aviso,acesa`) · `P` pistão no teto (`pistao_ciclo`) · `B` calha de barris (`barril_cada`, `barril_vel`; rola para o centro) · `L` alavanca + `a` alçapão (`alcapao_s`; marretada na alavanca abre todos)
 - `musica` de cada arena: `data/modos.json` → `demolicao.arenas` (partida, fabrica, altura, caos).
+
+## Derruba novo (Relatório 02, 2026-11-24)
+- `camera: adaptativa` — câmera que enquadra todos os robôs vivos e antecipa arremessos (sem a linha: arena inteira fixa).
+- `ko: esq,cima,dir,baixo` — zona de KO no MUNDO, em tiles além das bordas do mapa (a câmera nunca decide o KO). Sem paredes `I`.
+- `canteiro: 1` — liga a estrutura destrutível do Canteiro de Obras (`game/modes/canteiro.gd`): laje em 6 trechos (núcleo fixo),
+  andaimes e viga que caem de vez. Números em `data/modos.json` → `demolicao.canteiro`.
+- Fases SÓ DE TESTE (fora dos menus, usadas pela bateria automática): `demolicao`, `canteiro`, `mare`, `piramide`.

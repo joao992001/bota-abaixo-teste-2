@@ -1,0 +1,311 @@
+extends Node2D
+## CANTEIRO DE OBRAS (Derruba): estrutura destrutível montada por código (não por tiles). Relatório 02.
+## - Laje central em 6 trechos de 4x2 tiles (cols 8..31, topo na linha 13). Os 2 do meio (núcleo, sobre pilares) NUNCA caem;
+##   os 4 de fora (sobre escoras) caem DE VEZ. Andaimes (topo 3 tiles acima da laje) e viga pendurada (5 acima) também.
+## - Estados: íntegro → rachado → crítico (fita zebrada, treme, solta pedrinha) → desaba (pedaços com física).
+##   A colisão some no MESMO quadro em que o trecho começa a cair (nunca antes, nunca depois).
+## - Dano: só golpes fortes (marretada pesada) e robô arremessado batendo forte; e o CICLO DA OBRA (calma → sirene e fita
+##   zebrada marcando o trecho → ele cede). Números: data/modos.json → demolicao.canteiro.
+
+const T := 64
+const SEG_X := [8, 12, 16, 20, 24, 28]
+const NUCLEO := [2, 3]
+const LAJE_Y := 13
+const ANDAIMES := [[3, 10, 5], [32, 10, 5]]
+const VIGA := [16, 8, 8]
+const PILARES := [17, 22]
+
+var main: Node
+var cfg: Dictionary
+var parts: Array = []          # {kind, rect, hp, max, nucleo, body, state, crit_t, warn_t, fallen, shake, idx}
+var owner_of := {}             # Vector2i -> part (para bots e para agarrar a borda)
+var debris: Array = []         # pedaços caindo {tex, rect, pos, vel, rot, spin, t}
+var crumbs: Array = []         # pedrinhas {pos, vel, t}
+var prev_speed := {}
+var t := 0.0
+var cycle_state := "calma"
+var cycle_t := 0.0
+var target = null
+var tex := {}
+
+func setup(m: Node, lv) -> void:
+	main = m
+	cfg = m.demo.cfg["canteiro"]
+	for k in ["laje_0", "laje_1", "laje_2", "andaime", "viga", "pilar", "escora"]:
+		tex[k] = Data.tex("canteiro/" + k)
+	for i in SEG_X.size():
+		_add("laje", Rect2(SEG_X[i] * T, LAJE_Y * T, 4 * T, 2 * T), int(cfg["laje_hp"]), i in NUCLEO, false, i)
+	for i in ANDAIMES.size():
+		var a: Array = ANDAIMES[i]
+		_add("andaime", Rect2(a[0] * T - 6, a[1] * T, a[2] * T + 12, 20), int(cfg["andaime_hp"]), false, true, i)
+	_add("viga", Rect2(VIGA[0] * T, VIGA[1] * T, VIGA[2] * T, 26), int(cfg["viga_hp"]), false, true, 0)
+	lv.extra_solid = func(c: Vector2i) -> bool: return owner_of.has(c)
+	lv.grab_solid = func(c: Vector2i) -> bool: return owner_of.has(c) and owner_of[c]["kind"] == "laje"
+	cycle_t = float(cfg["primeiro_ciclo_s"])
+
+func _add(kind: String, r: Rect2, hp: int, nucleo: bool, oneway: bool, idx: int) -> void:
+	var body := StaticBody2D.new()
+	body.collision_layer = 2 if oneway else 1
+	body.collision_mask = 0
+	var cs := CollisionShape2D.new()
+	var shp := RectangleShape2D.new()
+	shp.size = r.size
+	cs.shape = shp
+	cs.position = r.get_center()
+	cs.one_way_collision = oneway
+	body.add_child(cs)
+	add_child(body)
+	var p := {"kind": kind, "rect": r, "hp": hp, "max": hp, "nucleo": nucleo, "body": body, "state": 0, "crit_t": 0.0,
+		"warn_t": 0.0, "fallen": false, "shake": 0.0, "idx": idx}
+	body.set_meta("canteiro", p)
+	parts.append(p)
+	for x in range(int(r.position.x / T), int(ceil(r.end.x / T))):
+		for y in range(int(r.position.y / T), int(ceil(r.end.y / T))):
+			owner_of[Vector2i(x, y)] = p
+
+# ---------------------------------------------------------------- dano
+## Aplica dano estrutural. O núcleo só treme e solta poeira.
+func damage(p: Dictionary, amount: int, at: Vector2) -> void:
+	if p["fallen"] or p["crit_t"] > 0.0:
+		return
+	p["shake"] = 0.3
+	main.dust(at, 0.9)
+	if p["nucleo"]:
+		Audio.play("caixote_pancada", 0.6, -4.0)
+		return
+	p["hp"] = maxi(int(p["hp"]) - amount, 0)
+	var frac := float(p["hp"]) / float(p["max"])
+	p["state"] = 0 if frac > 0.67 else (1 if frac > 0.34 else 2)
+	Audio.play("caixote_pancada", 0.55 + 0.1 * p["state"], -1.0)
+	main.spark(at, 3 + 2 * p["state"])
+	for k in 4 + 4 * p["state"]:
+		_crumb(p)
+	if p["hp"] <= 0:
+		p["state"] = 2
+		p["crit_t"] = float(cfg["aviso_queda_s"])   # aviso final: range, treme forte, pedrinhas caindo
+		Audio.play("terremoto", 1.5, -4.0)
+
+## Marretada pesada: acerta o trecho à frente (no chão onde a marreta bate) ou, com ▼, o trecho embaixo dos pés.
+func hammer(r, hit: Rect2, down: bool) -> bool:
+	if down and r.is_on_floor():
+		var c := Vector2i(int(r.position.x / T), int((r.position.y + 6.0) / T))
+		if owner_of.has(c):
+			damage(owner_of[c], int(cfg["dano_pesada"]), r.position)
+			return true
+	var reach := hit.grow_individual(0, 0, 0, 16)
+	for p in parts:
+		if not p["fallen"] and reach.intersects(p["rect"]):
+			var at := Vector2(clampf(reach.get_center().x, p["rect"].position.x, p["rect"].end.x), p["rect"].position.y)
+			damage(p, int(cfg["dano_pesada"]), at)
+			return true
+	return false
+
+func _collapse(p: Dictionary) -> void:
+	p["fallen"] = true
+	if is_instance_valid(p["body"]):
+		p["body"].queue_free()   # a colisão some agora, junto com o começo da queda
+	for c in owner_of.keys():
+		if owner_of[c] == p:
+			owner_of.erase(c)
+	if p == target:
+		target = null
+	var r: Rect2 = p["rect"]
+	main.shake(12.0 if p["kind"] == "laje" else 8.0)
+	Audio.play("caixote_quebra", 0.6, 3.0)
+	Audio.play("explosao", 0.7, -6.0)
+	for x in range(int(r.position.x), int(r.end.x), 48):
+		main.dust(Vector2(x + 24, r.position.y + 10), 1.4)
+	var mid: float = r.get_center().x
+	var out := -1.0 if mid < 20 * T else 1.0
+	match p["kind"]:
+		"laje":
+			for k in 8:
+				var px := r.position.x + 20 + (k % 4) * 64 + randf_range(-8, 8)
+				var py := r.position.y + 24 + (k / 4) * 56
+				debris.append({"tex": Data.tex("canteiro/laje_pedaco_%d" % (k % 6)), "size": Vector2(96, 80) * randf_range(0.9, 1.3),
+					"pos": Vector2(px, py), "vel": Vector2(out * randf_range(20, 160) + (px - mid) * 0.6, randf_range(-260, -60)),
+					"rot": randf_range(-0.3, 0.3), "spin": randf_range(-5, 5), "t": 0.0})
+			if not p["nucleo"]:   # as escoras vão junto, tombando
+				debris.append({"tex": tex["escora"], "size": Vector2(276, 532), "pos": Vector2(mid, r.end.y + 250),
+					"vel": Vector2(out * 90, 40), "rot": 0.0, "spin": out * 1.4, "t": 0.0})
+			main.float_text(r.get_center() + Vector2(0, -80), "DESABOU!", Color("#f2c84b"))
+		"andaime":
+			# a torre tomba para fora e cai
+			debris.append({"tex": tex["andaime"], "size": Vector2(340, 788), "pos": Vector2(mid, r.position.y + 384),
+				"vel": Vector2(out * 140, -40), "rot": 0.0, "spin": out * 1.1, "t": 0.0})
+		"viga":
+			debris.append({"tex": tex["viga"], "size": Vector2(532, 46), "pos": r.get_center(), "vel": Vector2(0, 60),
+				"rot": 0.0, "spin": 2.2, "t": 0.0})
+			main.float_text(r.get_center() + Vector2(0, -60), "CABO ROMPEU!", Color.WHITE)
+
+func _crumb(p: Dictionary) -> void:
+	var r: Rect2 = p["rect"]
+	crumbs.append({"pos": Vector2(randf_range(r.position.x + 8, r.end.x - 8), r.end.y - 4), "vel": Vector2(randf_range(-30, 30), randf_range(20, 120)), "t": 0.0})
+
+# ---------------------------------------------------------------- quadro a quadro
+func _physics_process(dt: float) -> void:
+	if main == null or main.paused:
+		return
+	t += dt
+	# robô arremessado batendo forte na estrutura
+	for r in main.robots:
+		if not r.alive:
+			continue
+		var spd: float = prev_speed.get(r, 0.0)
+		var launched: bool = r.stun_t > 0.0 or r.recover_t > 0.0
+		if launched and spd >= float(cfg["impacto_vel"]):
+			for i in r.get_slide_collision_count():
+				var col: Object = r.get_slide_collision(i).get_collider()
+				if col != null and col.has_meta("canteiro"):
+					var strong := spd >= float(cfg["impacto_forte_vel"])
+					damage(col.get_meta("canteiro"), int(cfg["dano_impacto_forte"] if strong else cfg["dano_impacto"]), r.position)
+					main.impact_fx(r.position + Vector2(0, -10), 0, 0.6 if strong else 0.4)
+					spd = 0.0
+					break
+		prev_speed[r] = r.velocity.length() if spd > 0.0 or launched else 0.0
+	for p in parts:
+		p["shake"] = maxf(p["shake"] - dt, 0.0)
+		if p["crit_t"] > 0.0 and not p["fallen"]:
+			p["crit_t"] -= dt
+			if randf() < 0.5:
+				_crumb(p)
+			if p["crit_t"] <= 0.0:
+				_collapse(p)
+		elif p["state"] == 2 and not p["fallen"] and randf() < 0.06:
+			_crumb(p)
+	_update_cycle(dt)
+	for d in debris:
+		d["t"] += dt
+		d["vel"].y += 1500.0 * dt
+		d["pos"] += d["vel"] * dt
+		d["rot"] += d["spin"] * dt
+	debris = debris.filter(func(d): return d["t"] < 2.5)
+	for c in crumbs:
+		c["t"] += dt
+		c["vel"].y += 900.0 * dt
+		c["pos"] += c["vel"] * dt
+	crumbs = crumbs.filter(func(c): return c["t"] < 1.4)
+	queue_redraw()
+
+## Ciclo da obra: calma → aviso (sirene, luzes, fita zebrada no alvo) → o alvo cede. Só trechos que podem cair.
+func _update_cycle(dt: float) -> void:
+	if cycle_state == "calma":
+		cycle_t -= dt
+		if cycle_t <= 0.0:
+			var pool := []
+			for p in parts:
+				if not p["fallen"] and not p["nucleo"] and p["crit_t"] <= 0.0:
+					for k in (3 if p["kind"] == "laje" else 1):
+						pool.append(p)
+			if pool.is_empty():
+				cycle_t = 999.0
+				return
+			target = pool[main.rng.randi() % pool.size()]
+			target["warn_t"] = float(cfg["aviso_ciclo_s"])
+			cycle_state = "aviso"
+			main.demo.banner = "DEMOLIÇÃO!"
+			main.demo.banner_t = 1.6
+			Audio.play("evento", 0.8)
+	else:
+		if target == null or target["fallen"]:
+			cycle_state = "calma"
+			cycle_t = main.rng.randf_range(float(cfg["calma_min_s"]), float(cfg["calma_max_s"]))
+			return
+		target["warn_t"] -= dt
+		if fmod(t, 0.9) < dt:
+			Audio.play("pistao_aviso", 0.8, -6.0)   # sirene da obra
+		if target["warn_t"] <= 0.0:
+			target["warn_t"] = 0.0
+			damage(target, int(cfg["ciclo_dano"]), target["rect"].get_center())
+			cycle_state = "calma"
+			cycle_t = main.rng.randf_range(float(cfg["calma_min_s"]), float(cfg["calma_max_s"]))
+
+# ---------------------------------------------------------------- desenho
+func _shake_off(p: Dictionary) -> Vector2:
+	var k: float = p["shake"] / 0.3
+	if p["crit_t"] > 0.0:
+		k = 1.6
+	elif p["warn_t"] > 0.0:
+		k = maxf(k, 0.35)
+	return Vector2(sin(t * 71.0 + p["idx"]), cos(t * 53.0 + p["idx"] * 2.0)) * 3.0 * k
+
+func _draw() -> void:
+	var ly := LAJE_Y * T
+	# escoras (atrás) e pilares do núcleo
+	for p in parts:
+		if p["kind"] == "laje" and not p["nucleo"] and not p["fallen"]:
+			draw_texture_rect(tex["escora"], Rect2(Vector2(p["rect"].position.x - 10, ly + 2 * T - 16) + _shake_off(p) * 0.5, Vector2(276, 532)), false)
+	for col in PILARES:
+		draw_texture_rect(tex["pilar"], Rect2(col * T + 8 - 10, ly + 2 * T - 14, 132, 532), false)
+	# andaimes e viga
+	for p in parts:
+		if p["fallen"]:
+			continue
+		var o := _shake_off(p)
+		if p["kind"] == "andaime":
+			draw_texture_rect(tex["andaime"], Rect2(p["rect"].position + Vector2(-4, -10) + o, Vector2(340, 788)), false)
+		elif p["kind"] == "viga":
+			var r: Rect2 = p["rect"]
+			for cx in [r.position.x + 40, r.end.x - 40]:
+				draw_line(Vector2(cx, -500), Vector2(cx, r.position.y) + o, Color("#5a4a3a"), 4.0, true)
+			draw_texture_rect(tex["viga"], Rect2(r.position + Vector2(-10, -10) + o, Vector2(532, 46)), false)
+	# laje
+	for p in parts:
+		if p["kind"] != "laje" or p["fallen"]:
+			continue
+		var sag := Vector2(0, 3.0 * (1.0 - p["crit_t"] / maxf(float(cfg["aviso_queda_s"]), 0.01))) if p["crit_t"] > 0.0 else Vector2.ZERO
+		draw_texture_rect(tex["laje_%d" % int(p["state"])], Rect2(p["rect"].position + Vector2(-12, -12) + _shake_off(p) + sag, Vector2(280, 160)), false)
+	# aviso do ciclo: fita zebrada correndo no topo do alvo + contorno piscando + luzes
+	for p in parts:
+		if p["warn_t"] > 0.0 and not p["fallen"]:
+			_draw_warning(p)
+	if cycle_state == "aviso":
+		_draw_sirens()
+	# pedaços e pedrinhas
+	for d in debris:
+		var a := clampf(2.5 - d["t"], 0.0, 1.0)
+		draw_set_transform(d["pos"], d["rot"])
+		draw_texture_rect(d["tex"], Rect2(-d["size"] / 2.0, d["size"]), false, Color(1, 1, 1, a))
+	draw_set_transform(Vector2.ZERO)
+	for c in crumbs:
+		draw_circle(c["pos"], 3.5, Color("#a1988a"))
+
+func _draw_warning(p: Dictionary) -> void:
+	var r: Rect2 = p["rect"]
+	var o := _shake_off(p)
+	var blink := 0.5 + 0.5 * sin(t * 12.0)
+	draw_rect(Rect2(r.position + o - Vector2(4, 4), r.size + Vector2(8, 8)), Color(0.95, 0.78, 0.29, 0.35 + 0.4 * blink), false, 5.0)
+	var tape := Rect2(r.position.x + 4, r.position.y - 12, r.size.x - 8, 10)
+	draw_rect(tape, Color("#f2c84b"))
+	var s := fmod(t * 60.0, 22.0)
+	var x := tape.position.x - 22.0 + s
+	while x < tape.end.x:
+		var x0 := maxf(x, tape.position.x)
+		var x1 := minf(x + 10.0, tape.end.x)
+		if x1 > x0:
+			draw_rect(Rect2(x0, tape.position.y, x1 - x0, tape.size.y), Color("#2a1a2e"))
+		x += 22.0
+	if p["warn_t"] < 1.5 and randf() < 0.3:
+		_crumb(p)
+
+func _draw_sirens() -> void:
+	var on := fmod(t, 0.5) < 0.25
+	var spots := [Vector2(PILARES[0] * T + 64, LAJE_Y * T + 2 * T + 20), Vector2(PILARES[1] * T + 64, LAJE_Y * T + 2 * T + 20)]
+	for p in parts:
+		if p["kind"] == "andaime" and not p["fallen"]:
+			spots.append(p["rect"].position + Vector2(12, -6))
+			spots.append(Vector2(p["rect"].end.x - 12, p["rect"].position.y - 6))
+	for sp in spots:
+		draw_circle(sp, 9.0, Color("#f08a3d") if on else Color("#8a4a2a"))
+		if on:
+			draw_circle(sp, 26.0, Color(1.0, 0.6, 0.2, 0.25))
+			var ang := t * 8.0
+			draw_colored_polygon(PackedVector2Array([sp, sp + Vector2.from_angle(ang - 0.25) * 120.0, sp + Vector2.from_angle(ang + 0.25) * 120.0]), Color(1.0, 0.75, 0.3, 0.18))
+
+## Quantos trechos/peças ainda de pé (testes e bots).
+func standing(kind := "") -> int:
+	var n := 0
+	for p in parts:
+		if not p["fallen"] and (kind == "" or p["kind"] == kind):
+			n += 1
+	return n

@@ -20,6 +20,10 @@ func _run() -> void:
 			await lab_shots(a.trim_prefix("--lab="))
 			get_tree().quit()
 			return
+		if a.begins_with("--canteiro="):
+			await canteiro_frames(a.trim_prefix("--canteiro="))
+			get_tree().quit()
+			return
 		if a.begins_with("--prancha="):
 			await prancha_canteiro(a.trim_prefix("--prancha="))
 			get_tree().quit()
@@ -523,6 +527,7 @@ func demolicao_test() -> void:
 	await robos_test()
 	await combate_test()
 	await lab_test()
+	await canteiro_test()
 	await imagens_test()
 
 func menus_test() -> void:
@@ -534,7 +539,7 @@ func menus_test() -> void:
 	check(main.state == S.MENU and main.players.is_empty(), "volta ao menu principal sem jogadores")
 	await tap("v0", "jump")
 	check(main.state == S.MODES, "JOGAR abre a seleção de modo")
-	check(main.demo.cfg["modos"].all(func(m): return m["ok"]) and main.demo.cfg["modos"].size() == 4, "4 modos prontos: Derruba, Batata, Rei, Fuga")
+	check(main.demo.cfg["modos"].size() == 4 and main.demo.cfg["modos"].filter(func(m): return m["ok"]).map(func(m): return m["id"]) == ["derruba"], "Derruba jogável; Batata, Rei e Fuga EM BREVE")
 	for k in 3:
 		await tap("v0", "right")
 	check(main.menus.mode_sel == 3, "◄► passa pelos modos")
@@ -543,10 +548,8 @@ func menus_test() -> void:
 	await tap("v0", "jump")
 	check(main.state == S.ARENAS and main.game_mode == "derruba", "DERRUBA escolhido → arenas do modo")
 	check(main.menus.arena_list().size() == 1 + main.demo.find_mode("derruba")["arenas"].size(), "só as arenas da Derruba (+ sorteio)")
-	await tap("v0", "right")
-	await tap("v0", "right")
 	await tap("v0", "jump")
-	check(main.state == S.AJUSTES and main.arena_choice == "esteiras", "arena Fábrica de Esteiras → AJUSTES")
+	check(main.state == S.AJUSTES and main.arena_choice in ["canteiro_obras", "sorteio"], "arena do Derruba → AJUSTES (%s)" % main.arena_choice)
 	await tap("v0", "left")
 	await tap("v0", "down")
 	var lives0: int = main.demo.lives_setting
@@ -779,66 +782,6 @@ func maquinas_test() -> void:
 	fx.scroll_center.y = 600.0
 	await frames(3)
 	check(not main.robots[0].alive and main.demo.death_log[-1]["cause"] == "ficou para trás", "Torre: quem ficou para trás saiu (%s)" % main.demo.death_log[-1]["cause"])
-	# Ponte: ninguém passa da frente da tela
-	await arena_round("ponte")
-	fx = main.demo.fx
-	put(main.robots[0], Vector2(1950, 576))
-	await frames(2)
-	check(main.robots[0].position.x <= fx.scroll_center.x + 960.0 - 27.0, "Ponte: a frente da tela segura o robô (x %.0f)" % main.robots[0].position.x)
-	# Gangorras: o peso inclina a tábua
-	await arena_round("gangorras")
-	fx = main.demo.fx
-	var g: Dictionary = fx.seesaws[1]
-	put(main.robots[0], g["pivot"] + Vector2(190, -30))
-	put(main.robots[1], Vector2(col_x(2), 200))
-	await frames(70)
-	check(g["ang"] > 0.08, "Gangorras: peso na direita inclina para a direita (%.2f rad)" % g["ang"])
-	# Prensa: alavanca abre o alçapão; pistão desce e acerta
-	await arena_round("prensa")
-	fx = main.demo.fx
-	var r0 = main.robots[0]
-	var r1 = main.robots[1]
-	put(r0, Vector2(col_x(3), 704))
-	r0.facing = -1
-	put(r1, Vector2(col_x(13), 704))
-	await frames(3)
-	main.demo.attack(r0, "pesado")
-	await frames(2)
-	check(main.level.ch_at(Vector2i(13, 11)) == "A" and fx.traps_open_t > 0.0, "Prensa: marretada na alavanca abre os alçapões")
-	await frames(20)
-	check(r1.position.y > 740.0 and r1.last_cause == "alçapão" and r1.last_attacker == 0, "Prensa: quem estava em cima caiu (culpa de P1)")
-	await arena_round("prensa")
-	fx = main.demo.fx
-	fx.pull_lever(0)
-	await frames(2)
-	var opened: bool = main.level.ch_at(Vector2i(13, 11)) == "A"
-	await frames(int(float(main.level.prop("alcapao_s", "3")) * 60.0) + 20)
-	check(opened and main.level.ch_at(Vector2i(13, 11)) == "a", "Prensa: os alçapões fecham sozinhos")
-	r1 = main.robots[1]
-	put(r1, Vector2(col_x(7), 704))
-	var pc := float(main.level.prop("pistao_ciclo", "4.5"))
-	fx.t = pc - 2.0 + 0.8 - fx.pistons[0]["off"] + 0.02
-	await frames(10)
-	check(r1.dmg > 0.0 and r1.last_cause == "prensa", "Prensa: o pistão desce e acerta (%d%%)" % int(r1.dmg))
-	# Fornalha: chama acende e empurra; barril rola e derruba
-	await arena_round("fornalha")
-	fx = main.demo.fx
-	r0 = main.robots[0]
-	r1 = main.robots[1]
-	var fl: Dictionary = fx.flames[0]
-	var cc := String(main.level.prop("chama_ciclo", "2.4,0.8,1.3")).split(",")
-	var per := float(cc[0]) + float(cc[1]) + float(cc[2])
-	fx.t = float(cc[0]) + float(cc[1]) + 0.1 - fl["off"] * per
-	put(r1, Vector2(fl["rect"].get_center().x, fl["rect"].end.y))
-	await frames(4)
-	check(r1.last_cause == "chama" and r1.dmg > 0.0, "Fornalha: a chama acerta quem está em cima")
-	r0.invuln = 0.0
-	put(r0, Vector2(col_x(20), 576))
-	await frames(2)
-	fx.barrels.append({"pos": Vector2(col_x(17), 576 - 27), "vx": 300.0, "vy": 0.0, "by": 1, "bounces": 0, "rot": 0.0})
-	var d0: float = r0.dmg
-	await frames(40)
-	check(r0.dmg > d0 and r0.last_cause == "barril" and r0.last_attacker == 1, "Fornalha: barril rola e acerta (culpa de quem marretou)")
 
 func itens_novos_test() -> void:
 	print("== Itens")
@@ -1487,7 +1430,7 @@ func oficina_test() -> void:
 	ofi.arena_i = ofi.arenas().map(func(a): return a["id"]).find("prensa")
 	await tap("v0", "jump")
 	await frames(3)
-	check(main.level.id == "prensa" and main.robots.size() == 3 and main.sandbox, "painel: trocar de arena mantém todos")
+	check(main.level.id != "oficina" and main.robots.size() == 3 and main.sandbox, "painel: trocar de arena mantém todos")
 	await tap("v0", "start")
 	ofi.sel = ofi.ROWS.find("sair")
 	await tap("v0", "jump")
@@ -1792,6 +1735,94 @@ func lab_shots(dir: String) -> void:
 	main.lab.scroll = main.lab.sel - 4
 	await frames(4)
 	await snap(dir, "lab_painel")
+
+## CANTEIRO DE OBRAS (Relatório 02): KO no mundo nos 4 lados, laje em trechos (núcleo fixo), gatilhos e ciclo da obra.
+func canteiro_test() -> void:
+	print("== Canteiro de Obras (Derruba)")
+	main.go_menu()
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	main.mode = "demolicao"
+	main.go_join()
+	await frames(2)
+	await tap("v0", "jump")
+	await tap("v1", "jump")
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 5
+	main.event_level = 0
+	main.arena_choice = "canteiro_obras"
+	main.start_match()
+	await demo_round()
+	main.demo.item_t = 999.0
+	var ct = main.demo.canteiro
+	check(ct != null and main.level.id == "canteiro_obras" and ct.standing() == 9, "Canteiro monta laje (6), andaimes (2) e viga (%s)" % [ct.standing() if ct != null else -1])
+	ct.cycle_t = 999.0
+	var r0 = main.robots[0]
+	var r1 = main.robots[1]
+	put(r1, Vector2(col_x(30), 13 * 64))
+	# marretada pesada no trecho 0 (cols 8-11) até desabar
+	var seg = ct.parts[0]
+	var hits := 0
+	for k in 12:
+		put(r0, Vector2(col_x(9), 13 * 64))
+		r0.facing = 1
+		r0.heavy_cd = 0.0
+		await frames(2)
+		await tap("v0", "heavy")
+		await frames(66)   # marretada que não acerta robô dura ~1 s (preparo + recuperação longa)
+		hits += 1
+		if seg["fallen"] or seg["crit_t"] > 0.0:
+			break
+	check(seg["crit_t"] > 0.0 or seg["fallen"], "marretadas pesadas levam o trecho ao aviso final (%d golpes)" % hits)
+	put(r0, Vector2(col_x(10), 12 * 64))
+	await frames(80)
+	check(seg["fallen"] and not main.level.is_solid(Vector2i(9, 13)), "o trecho desaba e a colisão some junto")
+	check(r0.position.y > 13 * 64 + 40 or main.demo.lives.get(0, 5) < 5, "quem estava em cima cai")
+	# núcleo nunca cai
+	var nuc = ct.parts[2]
+	for k in 20:
+		ct.damage(nuc, 99, nuc["rect"].get_center())
+	await frames(90)
+	check(not nuc["fallen"], "o núcleo (trechos do meio) nunca cai")
+	# golpe rápido não danifica
+	await demo_round()
+	ct = main.demo.canteiro
+	ct.cycle_t = 999.0
+	r0 = main.robots[0]
+	put(r0, Vector2(col_x(26), 13 * 64))
+	r0.facing = 1
+	await frames(2)
+	await tap("v0", "hammer")
+	await frames(20)
+	check(ct.parts[4]["hp"] == ct.parts[4]["max"] and ct.parts[5]["hp"] == ct.parts[5]["max"], "golpe rápido não danifica a laje")
+	# ciclo da obra: aviso e depois o alvo cede
+	ct.cycle_t = 0.0
+	await frames(3)
+	var alvo = ct.target
+	check(ct.cycle_state == "aviso" and alvo != null and not alvo["nucleo"] and alvo["warn_t"] > 0.0, "ciclo da obra marca um trecho com aviso (sirene + fita)")
+	await frames(int((float(ct.cfg["aviso_ciclo_s"]) + float(ct.cfg["aviso_queda_s"])) * 60.0) + 20)
+	check(alvo != null and alvo["fallen"] and ct.cycle_state == "calma", "depois do aviso, o alvo do ciclo cede e volta a calma")
+	# KO no mundo nos 4 lados (independente da câmera)
+	var ko: Rect2 = main.level.ko_rect()
+	var dirs := {"esquerda": Vector2(ko.position.x - 40, 600), "direita": Vector2(ko.end.x + 40, 600), "cima": Vector2(1200, ko.position.y - 40), "baixo": Vector2(1200, ko.end.y + 80)}
+	for nome in dirs:
+		await demo_round()
+		r1 = main.robots[1]
+		var lives0: int = main.demo.lives.get(1, 5)
+		main.cam_lock = [1.0, Vector2(1280, 700)]
+		put(r1, dirs[nome])
+		await frames(3)
+		check(main.demo.lives.get(1, 5) < lives0 or not r1.alive, "KO pela borda: %s" % nome)
+	main.cam_lock = []
+	# dentro da zona mas fora da tela (câmera bem fechada) NÃO elimina
+	await demo_round()
+	r1 = main.robots[1]
+	main.cam_lock = [2.0, Vector2(600, 600)]
+	put(r1, Vector2(ko.end.x - 200, 900))
+	await frames(3)
+	check(r1.alive and main.demo.lives.get(1, 5) == 5, "fora da tela mas dentro da zona: segue vivo (a câmera não decide o KO)")
+	main.cam_lock = []
+	main.go_menu()
+	await frames(20)
 
 ## Toda imagem pedida no código existe (a lama da Maré faltava e enchia o log de erros, travando o jogo).
 func imagens_test() -> void:
@@ -2503,6 +2534,62 @@ func prancha_canteiro(dir: String) -> void:
 		await frames(3)
 		await snap(dir, "prancha_canteiro_%d" % (i + 1))
 
+## Vitrine do Canteiro (--canteiro=DIR): P1 marreta um trecho até desabar, o ciclo da obra dispara,
+## P2 (amassado) é arremessado para fora e explode na borda. Quadros a cada 2 físicos.
+func canteiro_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	PlayerInput.virtual = {"v0": {}, "v1": {}, "v2": {}}
+	main.mode = "demolicao"
+	main.go_join()
+	await frames(2)
+	for d in ["v0", "v1", "v2"]:
+		await tap(d, "jump")
+	main.players[1]["model"] = 4
+	main.players[2]["model"] = 5
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 3
+	main.event_level = 0
+	main.arena_choice = "canteiro_obras"
+	main.start_match()
+	await demo_round()
+	main.demo.item_t = 999.0
+	var ct = main.demo.canteiro
+	var r0 = main.robots[0]
+	var r1 = main.robots[1]
+	var r2 = main.robots[2]
+	put(r0, Vector2(col_x(10), 13 * 64))
+	put(r1, Vector2(col_x(22), 13 * 64))
+	put(r2, Vector2(col_x(18), 13 * 64))
+	r0.facing = 1
+	ct.cycle_t = 999.0
+	_frame_no = 0
+	for f in 600:
+		var a := {"v0": {}, "v1": {}, "v2": {}}
+		# P1 marreta o trecho 2 (cols 8-11) de cima, com ▼, até desabar (pula para o trecho do lado antes)
+		if f < 330 and f % 72 == 4:
+			r0.heavy_cd = 0.0
+			a["v0"]["heavy"] = true
+			a["v0"]["down"] = true
+		if f >= 300 and f < 318:
+			a["v0"]["right"] = true
+		if f == 340:
+			ct.cycle_t = 0.0   # ciclo da obra agora (sirene + fita zebrada)
+		if f == 470:
+			put(r1, Vector2(col_x(27), 13 * 64))
+			r1.dmg = 160.0
+			put(r0, Vector2(col_x(26), 13 * 64))
+			r0.facing = 1
+			r0.heavy_cd = 0.0
+		if f >= 474 and f < 477:
+			a["v0"]["heavy"] = true
+		PlayerInput.virtual = a
+		for r in main.robots:
+			r.invuln = 0.0
+		await frames(1)
+		if f % 2 == 0:
+			await grab(dir, "k")
+	print("quadros: ", _frame_no, " de pé: ", ct.standing(), " P2 vivo: ", r1.alive, " vidas: ", main.demo.lives)
+
 func anim_frames(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	get_window().size = Vector2i(1920, 1080)
@@ -2682,68 +2769,14 @@ func arenas_test() -> void:
 		await arena_round(a["id"])
 		await frames(30)
 		check(main.level.id == a["id"] and main.robots.size() == 2, "arena %s carrega e roda" % a["nome"])
-	# esteiras: carregam e invertem
-	await arena_round("esteiras")
-	var r0 = main.robots[0]
-	put(main.robots[1], Vector2(col_x(15), 448))
-	put(r0, Vector2(col_x(7), 448))
-	var x0: float = r0.position.x
-	await frames(20)
-	var moved: float = r0.position.x - x0
-	main.demo.fx.flip_t = 0.01
-	await frames(4)
-	var x1: float = r0.position.x
-	await frames(20)
-	check(moved > 40.0 and r0.position.x - x1 < -40.0, "esteira carrega (%.0f px) e depois inverte (%.0f px)" % [moved, r0.position.x - x1])
-	# guindastes: robô em cima da plataforma anda junto
-	await arena_round("guindastes")
-	r0 = main.robots[0]
-	await frames(2)
-	var p0: Dictionary = main.demo.fx.plats[0]
-	var pp: Vector2 = p0["body"].position
-	put(r0, pp + Vector2(96, -2))
-	await frames(10)
-	var dx_robot: float = r0.position.x
-	var dx_plat: float = p0["body"].position.x
-	await frames(40)
-	check(r0.alive and r0.is_on_floor() and absf((r0.position.x - dx_robot) - (p0["body"].position.x - dx_plat)) < 6.0 and absf(p0["body"].position.x - dx_plat) > 20.0, "plataforma do guindaste carrega o robô")
 	# maré: lama sobe e elimina quem ficou embaixo
 	await arena_round("mare")
-	r0 = main.robots[0]
+	var r0 = main.robots[0]
 	main.demo.t = float(main.level.prop("mare_inicio", "6"))
 	main.demo.fx.goo_y = 820.0
 	put(r0, Vector2(col_x(3), 832))
 	await frames(60)
 	check(not r0.alive, "a lama alcança e elimina")
-	# bola: quem está no caminho é arremessado
-	await arena_round("bola")
-	r0 = main.robots[0]
-	var r1 = main.robots[1]
-	put(r1, Vector2(col_x(26), 384))
-	var hit := false
-	for i in 300:
-		await frames(1)
-		var bp: Vector2 = main.demo.fx.ball["pos"]
-		if i == 0 or r0.stun_t <= 0.0:
-			put(r0, Vector2(clampf(bp.x, col_x(6), col_x(23)), 576))
-		if r0.stun_t > 0.3 and absf(r0.velocity.y) > 0.0:
-			hit = true
-			break
-	check(hit, "bola de demolição arremessa o robô")
-	# paiol: quebrar 1 TNT explode os vizinhos em cadeia
-	await arena_round("paiol")
-	put(main.robots[0], Vector2(col_x(2), 768))
-	put(main.robots[1], Vector2(col_x(27), 768))
-	var before: int = main.level.blocks.size()
-	main.level.break_block(Vector2i(5, 7))
-	await frames(40)
-	var tnt_left := 0
-	for c in [Vector2i(7, 7)]:
-		if main.level.blocks.has(c):
-			tnt_left += 1
-	check(before - main.level.blocks.size() >= 5 and tnt_left == 0, "TNT explode em cadeia (%d caixotes destruídos)" % (before - main.level.blocks.size()))
-
-# ---------------------------------------------------------------- miniaturas e capturas das arenas
 ## --arenas=DIR[,id:modo,...]: miniatura de cada arena (o mapa inteiro) e uma foto jogando com 4 bots.
 func arenas_frames(arg: String) -> void:
 	var parts := arg.split(",")
@@ -3186,6 +3219,6 @@ func stats_run(rounds_per_arena: int) -> void:
 			await get_tree().physics_frame
 			await get_tree().physics_frame
 	var fa := FileAccess.open("user://stats.json", FileAccess.WRITE)
-	fa.store_string(JSON.stringify({"rounds": out, "deaths": main.demo.death_log}))
+	fa.store_string(JSON.stringify({"rounds": out, "deaths": main.demo.death_log, "quedas": main.fall_log}))
 	fa.close()
 	print("STATS_FILE ", ProjectSettings.globalize_path("user://stats.json"))

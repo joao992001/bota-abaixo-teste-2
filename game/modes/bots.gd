@@ -114,6 +114,10 @@ func update(dt: float) -> void:
 		_recover(r, st, inp, prev, dt)
 		PlayerInput.virtual[dev] = inp
 
+func demo_canteiro():
+	var c = main.demo.canteiro if main.demo != null else null
+	return c if c != null and is_instance_valid(c) else null
+
 func _robot_of(dev: String):
 	var i: int = PlayerInput.slots.find(dev)
 	if i < 0 or i >= main.robots.size():
@@ -156,6 +160,17 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 					cmd["hammer"] = true
 					st["hammer_cd"] = float(lv["hammer_cooldown_s"])
 				return cmd
+	# 1b) Canteiro: o trecho/andaime embaixo está marcado para cair (aviso do ciclo ou crítico): correr para o núcleo
+	var ct = demo.canteiro
+	if ct != null and is_instance_valid(ct):
+		var under_c := Vector2i(int(pos.x / 64.0), int((pos.y + 6.0) / 64.0))
+		if ct.owner_of.has(under_c):
+			var part: Dictionary = ct.owner_of[under_c]
+			if part["warn_t"] > 0.0 or part["crit_t"] > 0.0 or (part["state"] == 2 and part["kind"] != "laje"):
+				cmd["dir"] = 1 if pos.x < 20.0 * 64.0 else -1
+				if part["kind"] != "laje":
+					cmd["jump"] = true
+				return _safe(r, cmd, lv)
 	# 2) caixote embaixo rachando / tremendo: sair dele
 	var under := Vector2i(col, row)
 	if r.is_on_floor() and L.blocks.has(under):
