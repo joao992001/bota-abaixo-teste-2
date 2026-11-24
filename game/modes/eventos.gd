@@ -50,6 +50,7 @@ func setup(m: Node) -> void:
 	for k in ["g02_exaustor", "g02_helice", "g02_grade", "g04_bobina", "g05_carga", "g05_moitao", "g06_caixa", "g06_sucata",
 			"g11_tapume", "g14_rebite", "g09_drone"]:
 		tex[k] = Data.tex("spells/" + k)
+	tex["pedaco"] = Data.tex("canteiro/laje_pedaco_1")
 	front = Node2D.new()
 	front.z_index = 2
 	front.draw.connect(_draw_front)
@@ -117,6 +118,24 @@ func _vr() -> Rect2:
 	var pr := _pr()
 	return v.intersection(pr) if v.intersects(pr) else pr
 
+func _etapa() -> int:
+	var et = main.demo.etapas if main.demo != null else null
+	return et.etapa if et != null and is_instance_valid(et) else 1
+
+## Mecanismo de água ativo nesta etapa (V3 Enchente).
+func _agua():
+	var mc = main.demo.mecs if main.demo != null else null
+	if mc == null or not is_instance_valid(mc):
+		return null
+	return mc._find("agua")
+
+## Chão embaixo do buraco do teto (V2 Desmoronamento).
+func _hole_spots() -> Array:
+	var et = main.demo.etapas
+	if et == null or not is_instance_valid(et):
+		return []
+	return _ground_spots(2).filter(func(p): return p.x > et.hole.x + 40.0 and p.x < et.hole.y - 40.0)
+
 func _solid_px(p: Vector2) -> bool:
 	return main.level.is_solid(Vector2i(int(floor(p.x / T)), int(floor(p.y / T))))
 
@@ -137,8 +156,21 @@ func conflict(x: String, y: String) -> bool:
 func eligible(e: Dictionary) -> bool:
 	if not enabled.get(e["id"], true) or main.demo == null:
 		return false
+	# eventos são DA FASE: a fase lista quais valem em cada etapa (demolicao.eventos.por_fase.<cena>)
+	var por: Dictionary = cfg.get("por_fase", {}).get(String(main.level.prop("cena", "")), {})
+	if por.is_empty():
+		if String(e["id"]).begins_with("V"):
+			return false   # V# = eventos específicos de fase
+	elif not (e["id"] in por.get(str(_etapa()), [])):
+		return false
 	var ct = _canteiro()
 	match e["id"]:
+		"V1":
+			return ct != null and _ground_spots(2).size() >= 2
+		"V2":
+			return _etapa() == 2 and not _hole_spots().is_empty()
+		"V3":
+			return _agua() != null
 		"G01":
 			return ct != null and ct.can_alert() and not inspecao
 		"G10":
@@ -165,6 +197,8 @@ func update(dt: float) -> void:
 	t += dt
 	queue_redraw()
 	front.queue_redraw()
+	for r in main.robots:
+		r.env_slow = 1.0   # lentidão do ambiente: eventos e mecanismos somam neste quadro
 	_update_bits(dt)
 	_update_crates(dt)
 	_update_rivets(dt)
@@ -279,6 +313,37 @@ func _on_aviso(a: Dictionary) -> bool:
 			d["rect"] = r
 			d["y"] = _pr().position.y - 260.0
 			Audio.play("alarme", 1.3, -6.0)
+		"V1":
+			var pts := _ground_spots(2)
+			pts.shuffle()
+			var strips := []
+			for p in pts:
+				if strips.size() >= 2:
+					break
+				if strips.all(func(r): return absf(r.get_center().x - p.x) > 360.0):
+					strips.append(Rect2(p.x - 90.0, p.y - 12.0, 180.0, 12.0))
+			if strips.size() < 2:
+				return false
+			d["strips"] = strips
+			Audio.play("alarme", 1.1, -6.0)
+		"V2":
+			var pts2 := _hole_spots()
+			pts2.shuffle()
+			var pick2 := []
+			for p in pts2:
+				if pick2.size() >= maxi(int(round(float(e["pedacos"]) * K())), 2):
+					break
+				if pick2.all(func(q): return absf(q.x - p.x) > 170.0):
+					pick2.append(p)
+			if pick2.size() < 2:
+				return false
+			d["spots"] = pick2
+			d["dur"] = pick2.size() * 0.35 + 1.2
+			Audio.play("terremoto", 1.4, -6.0)
+		"V3":
+			if _agua() == null:
+				return false
+			Audio.play("alarme", 0.7, -2.0)
 		"G06":
 			var n := maxi(int(round(float(e["caixas"]) * K())), 2)
 			var pts := _ground_spots(2)
@@ -405,6 +470,16 @@ func _on_ativo(a: Dictionary) -> void:
 				d["state"] = "sumiu"
 		"G14":
 			pass
+		"V1":
+			d["fresh"] = float(e["fresco_s"])
+			Audio.play("lama", 0.7, 0.0)
+			for st in d["strips"]:
+				main.dust(st.get_center(), 1.2)
+		"V3":
+			var ag = _agua()
+			if ag != null:
+				ag["s"]["enchente"] = float(e["dur"])
+				ag["s"]["enchente_mult"] = float(e["altura_mult"])
 		"G09":
 			d["stamped"] = {}
 
@@ -520,13 +595,21 @@ func _tick_ativo(a: Dictionary, dt: float, pa: float) -> void:
 				_magnet_pull(a, dt)
 		"G05":
 			_crane_step(a, dt, pa)
-		"G06":
+		"G06", "V2":
 			var spots_: Array = d["spots"]
+			var gap := 0.28 if a["id"] == "G06" else 0.35
 			var i := int(d.get("next", 0))
-			if i < spots_.size() and pa >= i * 0.28:
+			if i < spots_.size() and pa >= i * gap:
 				var p: Vector2 = spots_[i]
-				_drop_crate(p)
+				_drop_crate(p, "pedaco" if a["id"] == "V2" else "")
 				d["next"] = i + 1
+		"V1":
+			d["fresh"] = maxf(float(d["fresh"]) - dt, 0.0)
+			for r in main.robots:
+				if r.alive and r.is_on_floor():
+					for st in d["strips"]:
+						if r.position.x > st.position.x and r.position.x < st.end.x and absf(r.position.y - st.end.y) < 14.0:
+							r.env_slow = minf(r.env_slow, float(e["lentidao"]))
 		"G11":
 			for w in d["walls"]:
 				w["k"] = clampf(pa / 0.35, 0.0, 1.0)
@@ -620,11 +703,13 @@ func _magnet_pull(a: Dictionary, dt: float) -> void:
 				b["pos"].x += signf(v2.x) * 60.0 * dt
 
 # ---------------------------------------------------------------- G06 entulho
-func _drop_crate(p: Vector2) -> void:
+func _drop_crate(p: Vector2, kind := "") -> void:
 	var e := ev("G06")
 	while crates.filter(func(c): return c["state"] != "quebrou").size() >= int(e["max_objetos"]):
 		_break_crate(crates[0])
-	crates.append({"pos": Vector2(p.x, _pr().position.y - 90.0), "vy": 0.0, "floor": p.y, "kind": "g06_caixa" if randf() < 0.55 else "g06_sucata",
+	if kind == "":
+		kind = "g06_caixa" if randf() < 0.55 else "g06_sucata"
+	crates.append({"pos": Vector2(p.x, _pr().position.y - 90.0), "vy": 0.0, "floor": p.y, "kind": kind,
 		"state": "cai", "life": float(e["vida_s"]), "hp": 2, "body": null, "flash": 0.0, "rot": randf_range(-0.3, 0.3)})
 	Audio.play("arremesso", 0.7, -6.0)
 
@@ -1167,8 +1252,17 @@ func _draw() -> void:
 				_draw_coil(a)
 			"G05":
 				_draw_crane(a)
-			"G06":
+			"G06", "V2":
 				_draw_crate_shadows(a)
+			"V1":
+				_draw_concrete(a)
+			"V3":
+				if a["phase"] == "aviso":
+					var ag = _agua()
+					if ag != null and fmod(t, 0.3) < 0.18:
+						var ad: Dictionary = ag["d"]
+						var top := float(ad["chao"]) - float(ad["altura"]) * float(a["e"]["altura_mult"])
+						draw_rect(Rect2(float(ad["x"][0]), top, float(ad["x"][1]) - float(ad["x"][0]), 8), Color(0.31, 0.53, 0.66, 0.8))
 			"G11":
 				_draw_walls(a)
 			"G12":
@@ -1347,6 +1441,20 @@ func _draw_crane(a: Dictionary) -> void:
 			draw_set_transform(Vector2.ZERO)
 	draw_texture_rect(tex["g05_carga"], Rect2(r.position.x, d["y"] - 6, r.size.x, 56), false, Color(1, 0.6, 0.6) if blink_end else Color.WHITE)
 
+## V1 Concretagem: faixas marcadas no aviso; depois concreto fresco brilhando (endurece no fim).
+func _draw_concrete(a: Dictionary) -> void:
+	var d: Dictionary = a["d"]
+	for st in d["strips"]:
+		var r: Rect2 = st
+		if a["phase"] == "aviso":
+			var on := fmod(t, 0.4) < 0.25
+			_hatch(Rect2(r.position.x, r.end.y - 8, r.size.x, 8), YEL, INK, 12.0, t * 60.0)
+			draw_circle(r.get_center() + Vector2(0, -2), 50.0 * (1.0 - a["t"] / a["len"]) + 10.0, Color(0, 0, 0, 0.18 if on else 0.1))
+		else:
+			var k := clampf(float(d.get("fresh", 0.0)) / 1.5, 0.0, 1.0)
+			draw_rect(Rect2(r.position.x, r.end.y - 14, r.size.x, 14), Color(0.72, 0.7, 0.66, 0.4 + 0.6 * k))
+			draw_line(Vector2(r.position.x + 12, r.end.y - 10), Vector2(r.end.x - 12, r.end.y - 10), Color(1, 1, 1, 0.5 * k), 3.0)
+
 func _draw_crate(c: Dictionary) -> void:
 	var r := crate_rect(c)
 	var a := 1.0
@@ -1359,7 +1467,7 @@ func _draw_crate(c: Dictionary) -> void:
 			sc = clampf(c["pos"].distance_to(_drone_pos(g)) / 160.0, 0.35, 1.0)
 			draw_line(r.get_center(), _drone_pos(g) + Vector2(0, 30), Color(0.62, 0.97, 0.78, 0.5), 10.0 * sc)
 	draw_set_transform(r.get_center(), c["rot"], Vector2(sc, sc))
-	draw_texture_rect(tex[c["kind"]], Rect2(-32, -30, 64, 56), false, Color(1, 1, 1, a) if c["flash"] <= 0.0 else Color(2, 2, 2, 1))
+	draw_texture_rect(tex[c["kind"]], Rect2(-32, -30, 64, 56) if c["kind"] != "pedaco" else Rect2(-40, -34, 80, 66), false, Color(1, 1, 1, a) if c["flash"] <= 0.0 else Color(2, 2, 2, 1))
 	draw_set_transform(Vector2.ZERO)
 
 ## G06: sombras listradas que crescem antes de cada queda (e durante a queda, até tocar o chão).

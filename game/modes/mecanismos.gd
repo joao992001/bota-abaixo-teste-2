@@ -79,8 +79,6 @@ func _robots() -> Array:
 
 func update(dt: float) -> void:
 	t += dt
-	for r in main.robots:
-		r.env_slow = 1.0
 	if main.state != main.S.RUN or main.countdown > 0.0:
 		queue_redraw()
 		return
@@ -281,6 +279,14 @@ func _agua(inst: Dictionary, dt: float) -> void:
 	var d: Dictionary = inst["d"]
 	var s: Dictionary = inst["s"]
 	var cyc := float(d["ciclo_s"])
+	if float(s.get("enchente", 0.0)) > 0.0:   # V3 Enchente: a bomba falha e a água sobe bem alto
+		s["enchente"] = float(s["enchente"]) - dt
+		s["h"] = move_toward(float(s["h"]), float(d["altura"]) * float(s.get("enchente_mult", 2.4)), float(d["altura"]) * dt)
+		var top0 := float(d["chao"]) - float(s["h"])
+		for r in _robots():
+			if r.position.x > float(d["x"][0]) and r.position.x < float(d["x"][1]) and r.position.y > top0:
+				r.env_slow = minf(r.env_slow, float(d["lentidao"]))
+		return
 	if float(s.get("dreno", 0.0)) > 0.0:
 		s["dreno"] = float(s["dreno"]) - dt
 		s["h"] = move_toward(float(s["h"]), 0.0, float(d["altura"]) / 1.0 * dt)

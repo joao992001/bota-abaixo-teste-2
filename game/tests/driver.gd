@@ -1379,6 +1379,10 @@ func eventos_test() -> void:
 	var ev = main.events
 	var ct = main.demo.canteiro
 	main.demo.spells.spawn_t = 999.0
+	var por_fase: Dictionary = ev.cfg["por_fase"]
+	main.event_level = 2
+	check(not ev.eligible(ev.ev("G03")) and ev.eligible(ev.ev("V1")) and not ev.eligible(ev.ev("V3")), "eventos da fase: no Térreo vale V1 e não G03/V3 (lista por etapa)")
+	ev.cfg["por_fase"] = {}   # daqui em diante testa a BIBLIOTECA inteira (cada evento isolado)
 	var r0 = main.robots[0]
 	var r1 = main.robots[1]
 	var nuc: Array = ct.parts.filter(func(p): return p["nucleo"])
@@ -1613,6 +1617,7 @@ func eventos_test() -> void:
 	main.event_level = 0
 	ev.manual = false
 	ev.reset_round()
+	ev.cfg["por_fase"] = por_fase
 
 ## Fase em etapas (cartilha do mapa): a virada cronometrada — aviso, tudo desaba, queda sem KO e chegada na etapa 2.
 func etapas_test() -> void:
@@ -1742,6 +1747,22 @@ func mecanismos_test() -> void:
 		if k % 30 == 0:
 			put(r0, Vector2(600, 640))
 	check(hurt, "M5 serra: a lâmina sobe em ciclo e machuca")
+	# V1 Concretagem (evento da Etapa 1)
+	calm.call()
+	main.event_level = 2
+	main.events.manual = true
+	main.events.trigger(main.events.ev("V1"))
+	await frames(3)
+	var v1 = main.events.inst("V1")
+	check(v1 != null and v1["d"]["strips"].size() == 2, "V1 Concretagem: marca 2 faixas no chão")
+	if v1 != null:
+		var st: Rect2 = v1["d"]["strips"][0]
+		put(r0, Vector2(st.get_center().x, st.end.y))
+		for k in 200:
+			await frames(1)
+			if v1["phase"] == "ativo" and r0.env_slow < 1.0:
+				break
+		check(r0.env_slow < 1.0, "V1: quem pisa no concreto fresco fica lento")
 	mc.hammer_hit(Rect2(560, 630, 40, 30), true, 0)
 	check(m5["s"].get("broken", false), "D6 passarela: marretada pesada parte a passarela")
 	# etapa 2
@@ -1813,6 +1834,14 @@ func mecanismos_test() -> void:
 	check(float(m7["s"]["h"]) < 5.0, "M7: marretar o registro drena a água")
 	mc.hammer_hit(Rect2(Vector2(m9["d"]["alvo"][0], m9["d"]["alvo"][1]), Vector2(20, 20)), false, 0)
 	check(float(m9["s"].get("off", 0.0)) > 0.0, "M9: marretar o gerador desliga")
+	main.events.trigger(main.events.ev("V3"))
+	var hv := 0.0
+	for k in 600:
+		await frames(1)
+		hv = maxf(hv, float(m7["s"]["h"]))
+	check(hv > float(m7["d"]["altura"]) * 1.5, "V3 Enchente: a água sobe bem mais alto que o normal (%.0f)" % hv)
+	main.events.manual = false
+	main.events.reset_round()
 	# M8 vagonete
 	calm.call()
 	var hit8 := false

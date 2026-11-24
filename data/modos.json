@@ -1067,6 +1067,31 @@
           "dica": "2 caixas descem nos holofotes",
           "aviso_s": 2.5,
           "dur": 3.0
+        },
+        {
+          "id": "V1",
+          "nome": "Concretagem",
+          "dica": "a grua despeja concreto: quem pisa fica lento",
+          "aviso_s": 2.0,
+          "dur": 7.0,
+          "fresco_s": 6.0,
+          "lentidao": 0.45
+        },
+        {
+          "id": "V2",
+          "nome": "Desmoronamento",
+          "dica": "pedaços do térreo caem pelo buraco",
+          "aviso_s": 2.0,
+          "dur": 2.0,
+          "pedacos": 4
+        },
+        {
+          "id": "V3",
+          "nome": "Enchente",
+          "dica": "a bomba falha e a água sobe alto",
+          "aviso_s": 2.2,
+          "dur": 7.0,
+          "altura_mult": 2.4
         }
       ],
       "intensidade": [
@@ -1118,9 +1143,48 @@
         [
           "G11",
           "G06"
+        ],
+        [
+          "V1",
+          "G05"
+        ],
+        [
+          "V2",
+          "G14"
+        ],
+        [
+          "V2",
+          "G06"
         ]
       ],
-      "conflitos_nota": "Pares que nunca rodam juntos (Relatório 04 §6.5 + segurança de geometria). Até max_simultaneos[intensidade] eventos compatíveis ao mesmo tempo."
+      "conflitos_nota": "Pares que nunca rodam juntos (Relatório 04 §6.5 + segurança de geometria). Até max_simultaneos[intensidade] eventos compatíveis ao mesmo tempo.",
+      "por_fase": {
+        "nota": "Eventos são DA FASE: por cena (prop 'cena' do .lvl) e por etapa, quais eventos da biblioteca valem; V# = específicos.",
+        "fase1": {
+          "1": [
+            "G01",
+            "G05",
+            "G06",
+            "G10",
+            "G12",
+            "G13",
+            "G02",
+            "G09",
+            "V1"
+          ],
+          "2": [
+            "G14",
+            "G04",
+            "G06",
+            "G10",
+            "G03",
+            "G11",
+            "G09",
+            "V2",
+            "V3"
+          ]
+        }
+      }
     },
     "etapas": {
       "nota": "Fase em etapas (cartilha do mapa): virada cronometrada (roteiro fixo). virada_s = tempo de rodada até a obra ceder; aviso_s = sirene antes; na queda a gravidade fica mais leve e um funil puxa todos para o buraco.",
