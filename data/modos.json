@@ -328,18 +328,25 @@
         "ky_por": 2.6
       },
       "spell_gelo": {
-        "dano": 6,
-        "kx": 160,
-        "kx_por": 1.0,
-        "ky": 90,
-        "ky_por": 0.6
+        "dano": 5,
+        "kx": 40,
+        "kx_por": 0.2,
+        "ky": 20,
+        "ky_por": 0.0
       },
       "spell_fogo": {
-        "dano": 7,
-        "kx": 260,
-        "kx_por": 3.0,
-        "ky": 180,
-        "ky_por": 1.4
+        "dano": 4,
+        "kx": 200,
+        "kx_por": 2.0,
+        "ky": 110,
+        "ky_por": 0.8
+      },
+      "spell_explosao": {
+        "dano": 14,
+        "kx": 520,
+        "kx_por": 4.0,
+        "ky": 420,
+        "ky_por": 2.4
       }
     },
     "aderencia": {
@@ -507,33 +514,31 @@
         "familia": "ataque",
         "raridade": "comum",
         "cargas": 2,
-        "preparo": 0.45,
-        "intervalo_s": 0.5,
+        "preparo": 0.4,
+        "intervalo_s": 0.45,
         "alcance_tiles": 4
       },
       "S03": {
         "familia": "ataque",
         "raridade": "comum",
         "cargas": 3,
-        "preparo": 0.25,
-        "intervalo_s": 0.45,
-        "vel": 900,
-        "alcance_tiles": 12,
-        "lento_s": 2.5,
-        "lento_mult": 0.6,
-        "gelo_tiles": 2,
-        "gelo_s": 4.0,
-        "gelo_aderencia": 0.18
+        "preparo": 0.28,
+        "intervalo_s": 0.5,
+        "vel": 1050,
+        "alcance_tiles": 14,
+        "congela_s": 2.6,
+        "agitar_reduz_s": 0.18,
+        "quebra_mult": 1.5
       },
       "S06": {
         "familia": "controle",
         "raridade": "incomum",
-        "cargas": 3,
-        "intervalo_s": 0.6,
-        "alcance_tiles": 6,
-        "forca": 620,
-        "levanta": 220,
-        "descontrole_s": 0.45
+        "cargas": 1,
+        "energia_s": 2.4,
+        "alcance_tiles": 7,
+        "forca": 3200,
+        "vel_max": 620,
+        "dono_vel_mult": 0.3
       },
       "S10": {
         "familia": "engenharia",
@@ -546,18 +551,22 @@
         "familia": "controle",
         "raridade": "incomum",
         "cargas": 2,
-        "alcance_tiles": 3.5,
-        "recupera_s": 0.25
+        "alcance_tiles": 5,
+        "mira_vel": 760,
+        "mira_max_s": 1.6,
+        "recupera_s": 0.2
       },
       "S13": {
         "familia": "transformacao",
         "raridade": "rara",
-        "cargas": 5,
-        "duracao_s": 6.0,
+        "cargas": 1,
+        "duracao_s": 10.0,
+        "combustivel_s": 3.0,
         "vel_mult": 0.7,
         "empurrao_mult": 0.45,
-        "intervalo_s": 0.55,
-        "fogo_alcance_tiles": 2.2
+        "fogo_alcance_tiles": 3.2,
+        "fogo_tick_s": 0.22,
+        "explosao_raio_tiles": 2.4
       }
     },
     "eventos": {

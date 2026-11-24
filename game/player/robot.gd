@@ -57,7 +57,8 @@ var forced_t := 0.0           # movimento forçado (investida da furadeira, carg
 var forced_vel := Vector2.ZERO
 var grip := 1.0               # aderência na parede/borda (1 = cheia); gasta segurando, recarrega no chão
 var wall_side := 0            # lado da parede em que está escorregando (desenho)
-var slow_t := 0.0             # lentidão (S03 Canhão Criogênico): corre mais devagar, nunca imobiliza
+var frozen_t := 0.0           # congelado (S03 Canhão Criogênico): preso no gelo; agitar o direcional quebra mais rápido
+var spell_lock := false       # mirando/viajando (S11 Teleporte): ignora movimento, pulo e golpes
 var god := false              # Laboratório: invencível (não leva golpe)
 var push_vx := 0.0            # empurrão externo deste quadro (ímã); zera a cada quadro
 var fall_reason := ""
@@ -136,7 +137,6 @@ func _physics_process(dt: float) -> void:
 	heavy_cd = maxf(heavy_cd - dt, 0.0)
 	dodge_cd = maxf(dodge_cd - dt, 0.0)
 	guard_t = maxf(guard_t - dt, 0.0)
-	slow_t = maxf(slow_t - dt, 0.0)
 	invuln = maxf(invuln - dt, 0.0)
 	drop_t = maxf(drop_t - dt, 0.0) if not is_on_floor() else 0.0
 	# ▼ em cima de uma tábua fina: desce por ela (desliga a colisão de mão única por um instante)
@@ -205,8 +205,6 @@ func _physics_process(dt: float) -> void:
 		var a := f("accel_ground") if ix != 0.0 else f("decel_ground")
 		if not on_floor:
 			a *= f("air_mult")
-		elif main.mode == "demolicao" and main.demo.spells != null:
-			a *= main.demo.spells.grip_at(self)   # gelo do canhão criogênico: escorrega
 		var tgt_k := 1.0
 		if stun_t > 0.0:
 			a *= 0.15   # arremessado, sem controle: segue o impulso
@@ -222,7 +220,7 @@ func _physics_process(dt: float) -> void:
 				tgt_k = float(hp["mov_mult_preparo"])
 			elif not atk_landed and atk_t > float(hp["preparo"]) + float(hp["ativo"]):
 				tgt_k = float(hp["mov_mult_recupera_erro"])   # errou: fica exposto
-		own_vx = move_toward(own_vx, tgt_k * ix * f("max_run") * speed_k * spell_speed * (float(main.demo.cfg["spells"]["S03"]["lento_mult"]) if slow_t > 0.0 and main.mode == "demolicao" else 1.0), a * dt)
+		own_vx = move_toward(own_vx, tgt_k * ix * f("max_run") * speed_k * spell_speed, a * dt)
 	# pulo / parede
 	var wall_dir := 0 if on_floor else _wall_dir()
 	if on_floor:
@@ -324,13 +322,13 @@ func _physics_process(dt: float) -> void:
 	vis.tick(self, dt)
 
 func _held(a: String) -> bool:
-	return stun_t <= 0.0 and PlayerInput.held(pid, a)
+	return stun_t <= 0.0 and not spell_lock and PlayerInput.held(pid, a)
 
 func _pressed(a: String) -> bool:
-	return stun_t <= 0.0 and PlayerInput.pressed(pid, a)
+	return stun_t <= 0.0 and not spell_lock and PlayerInput.pressed(pid, a)
 
 func _ix() -> float:
-	return 0.0 if stun_t > 0.0 else PlayerInput.axis_x(pid)
+	return 0.0 if stun_t > 0.0 or spell_lock else PlayerInput.axis_x(pid)
 
 func _jump_speed() -> float:
 	var js := float(c["jump_speed"])
@@ -443,7 +441,7 @@ func _climb_update(dt: float) -> void:
 ## Golpe com o Amassômetro: soma dano e o empurrão cresce com ele. kind = chave em demolicao.amassometro.
 ## Retorna false se não pegou (invulnerável ou capacete).
 const ROBOT_HITS := ["rapido", "pesado", "martelao", "marretada", "combo", "combo_final", "cima", "baixo", "corrida",
-	"spell_punho", "spell_gelo", "spell_fogo"]
+	"spell_punho", "spell_gelo", "spell_fogo", "spell_explosao"]
 
 func take_hit(dir: int, kind: String, by := -1) -> bool:
 	if invuln > 0.0 or god:
@@ -453,7 +451,8 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 		return false
 	last_hit = 0.0
 	last_cause = {"marretada": "marretada", "martelao": "marretada", "explosao": "explosão", "bola": "bola",
-		"spell_punho": "punho pneumático", "spell_gelo": "canhão criogênico", "spell_fogo": "armadura fornalha"}.get(kind, kind)
+		"spell_punho": "punho pneumático", "spell_gelo": "canhão criogênico", "spell_fogo": "armadura fornalha",
+		"spell_explosao": "fornalha explodiu"}.get(kind, kind)
 	last_attacker = by
 	hanging = false
 	var am: Dictionary = main.demo.cfg["amassometro"]
@@ -463,6 +462,12 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 	var ky := float(k["ky"]) + dmg * float(k["ky_por"])
 	kx *= spell_push   # armadura: empurrão bem menor
 	ky *= spell_push
+	if frozen_t > 0.0 and main.demo.spells != null:
+		# pancada em quem está congelado: o gelo estilhaça e o empurrão é maior
+		var mult := float(main.demo.cfg["spells"]["S03"]["quebra_mult"])
+		kx = minf(kx * mult, float(am["max_kx"]) * 1.2)
+		ky *= mult
+		main.demo.spells.shatter(self)
 	if main.demo.rule() == "fuga":   # na Fuga o empurrão atrapalha, mas não decide sozinho
 		kx *= 0.6
 		ky *= 0.7

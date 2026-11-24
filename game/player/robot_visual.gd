@@ -15,7 +15,7 @@ const STRIDE := 46.0
 ## Spells (modes/spells.gd): textura, tamanho na mão e ponto de pega (em px da arte de design, que é 2x a textura/2)
 const SPELL_TOOLS := {"S01": ["s01_canhao", Vector2(52, 26), Vector2(30, 34)], "S03": ["s03_canhao", Vector2(54, 27), Vector2(26, 40)],
 	"S06": ["s06_ima", Vector2(42, 30), Vector2(14, 40)]}
-const SPELL_HELD := {"S01": "s01_canhao", "S03": "s03_canhao", "S06": "s06_ima", "S10": "icone_engenharia", "S11": "s11_portal",
+const SPELL_HELD := {"S01": "s01_canhao", "S03": "s03_canhao", "S06": "s06_ima", "S10": "icone_engenharia", "S11": "icone_controle",
 	"S13": "icone_transformacao"}
 
 # aparência
@@ -202,6 +202,11 @@ func tick(r, dt: float) -> void:
 		var amp := 3.0 if hurt_t > 0.0 else 1.0
 		position = hang_snap + Vector2(randf_range(-amp, amp), randf_range(-amp, amp) * 0.5)
 		flash_t = maxf(flash_t - dt * 0.3, 0.0)
+		queue_redraw()
+		return
+	if r.get("frozen_t") != null and r.frozen_t > 0.0:
+		# congelado: pose travada, azulado (o bloco de gelo é desenhado por modes/spells.gd)
+		modulate = Color(0.62, 0.84, 1.0)
 		queue_redraw()
 		return
 	t += dt
@@ -580,7 +585,7 @@ func current_pose() -> Dictionary:
 	var sid: String = sf.get("spell", "")
 	var prep: float = sf.get("prep", -1.0)
 	var fire: float = sf.get("fire", -1.0)
-	var aiming := prep >= 0.0 or (fire >= 0.0 and fire < 0.32)
+	var aiming: bool = prep >= 0.0 or (fire >= 0.0 and fire < 0.32) or (sf.get("channel", false) and sid in ["S06", "S11"])
 	if sid != "" and aiming and not sf.get("armor", false):
 		var kick := clampf(1.0 - fire / 0.22, 0.0, 1.0) if fire >= 0.0 and prep < 0.0 else 0.0
 		var buzz := Vector2(sin(t * 80.0), cos(t * 71.0)) * 1.4 * maxf(prep, 0.0)   # treme carregando
@@ -595,6 +600,12 @@ func current_pose() -> Dictionary:
 					p["hb_abs"] = Vector2(-10, -32)
 					lean = lerpf(lean, 0.18 * kick + 0.04, 0.6)
 				p["tool"] = "S01"
+			"S06" when sf.get("channel", false):   # segurando o ímã: braços esticados, corpo puxando para trás
+				var hold_buzz := Vector2(sin(t * 70.0), cos(t * 61.0)) * 1.6
+				p["hf_abs"] = Vector2(24, -40) + hold_buzz
+				p["hb_abs"] = Vector2(18, -37) + hold_buzz
+				p["tool"] = "S06"
+				lean = lerpf(lean, -0.2, 0.4)
 			"S03", "S06":
 				p["hf_abs"] = Vector2(21 - 9.0 * kick, -38 - 4.0 * kick) + buzz
 				p["hb_abs"] = Vector2(13 - 7.0 * kick, -35 - 3.0 * kick) + buzz * 0.6
@@ -603,14 +614,22 @@ func current_pose() -> Dictionary:
 				lean = lerpf(lean, 0.06 - 0.14 * kick, 0.5)
 			"S10":   # aponta onde o andaime abre
 				p["hf_abs"] = Vector2(24, -46 - 10.0 * kick)
-			"S11":   # estala os dedos para cima
-				p["hf_abs"] = Vector2(10, -62 + 6.0 * kick)
-				p["hb_abs"] = Vector2(-8, -60 + 6.0 * kick)
+			"S11":   # mirando: dedos na testa, concentrado; ao ir, estala os dedos para cima
+				if sf.get("channel", false):
+					p["hf_abs"] = Vector2(8, -66) + Vector2(sin(t * 50.0), 0) * 1.2
+					p["hb_abs"] = Vector2(-10, -64)
+				else:
+					p["hf_abs"] = Vector2(10, -62 + 6.0 * kick)
+					p["hb_abs"] = Vector2(-8, -60 + 6.0 * kick)
 		for i in 2:
 			feet[i] = feet[i].lerp(Vector2(-6.0 + i * 10.0, 0), 0.6)   # pés firmes
-	elif sf.get("armor", false) and fire >= 0.0 and fire < 0.3:
-		lean = lerpf(lean, -0.1 * (1.0 - fire / 0.3), 0.5)   # coice do jato de fogo
-		p["hf_abs"] = Vector2(22, -40)
+	elif sf.get("armor", false) and float(sf.get("flame", 0.0)) > 0.05:
+		var fk := float(sf.get("flame", 0.0))
+		lean = lerpf(lean, -0.14 * fk, 0.5)   # segurando o jato: corpo jogado para trás, tremendo
+		p["hf_abs"] = Vector2(20, -34) + Vector2(sin(t * 60.0), cos(t * 55.0)) * 1.5 * fk
+		p["hb_abs"] = Vector2(-14, -30)
+		for i in 2:
+			feet[i] = feet[i].lerp(Vector2(-10.0 + i * 14.0, 0), 0.6)
 	# subindo na borda: empurra a quina com as mãos e levanta o joelho
 	if robot != null and robot.climb_t >= 0.0:
 		var k: float = robot.climb_t

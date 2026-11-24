@@ -103,9 +103,14 @@ def s01_canhao():
 
 
 def s01_luva():
-    d = "M8,10 C8,4 14,2 22,2 L44,2 C52,2 56,8 56,16 L56,36 C56,44 50,48 42,48 L18,48 C12,48 8,44 8,38 Z"
-    b = [shape("s1l", d, "#e8503a", 13, (6, 0, 58, 50), k=2.0, dark="#a8301f", light="#ff8a6a")]
-    b.append(f'<path d="M20,4 V22 M32,3 V22 M44,4 V22" stroke="#a8301f" stroke-width="3"/>')
+    """Luva de boxe da ponta do braço de tesoura (aponta para a direita) — 64x50: punho de metal, luva, polegar e brilho."""
+    b = [shape("s1k", rect_d(1, 14, 14, 22, 3), METAL, 13, (0, 12, 16, 38), k=1.6, dark=METAL_D)]
+    body = "M14,12 C14,4 22,1 34,1 C52,1 63,10 63,25 C63,40 52,49 34,49 C22,49 14,46 14,38 Z"
+    b.append(shape("s1l", body, "#e8503a", 14, (12, 0, 64, 50), k=2.0, dark="#a8301f", light="#ff8a6a"))
+    b.append('<path d="M22,30 C22,24 30,22 38,25 C44,27 44,34 38,36 C32,38 24,37 22,30 Z" fill="#c93a2a"/>')
+    b.append('<path d="M30,7 C40,5 52,9 57,17" stroke="#ffffff" stroke-width="3.4" fill="none" stroke-linecap="round" opacity="0.75"/>')
+    b.append('<path d="M14,16 H18 M14,34 H18" stroke="#a8301f" stroke-width="3"/>')
+    b.append(f'<circle cx="7" cy="25" r="3" fill="{METAL_L}"/>')
     return b
 
 
@@ -144,21 +149,31 @@ def s06_ima():
     return b
 
 
-def s10_andaime():
-    """Andaime Relâmpago: plataforma dobrável com pés articulados — 192x56 (3 tiles)."""
-    b = [shape("s10", rect_d(4, 4, 184, 16, 4), "#d9a05e", 41, (2, 2, 190, 22), k=2.0, dark="#8f5a2c")]
-    for x in (24, 96, 168):
-        b.append(f'<path d="M{x},20 L{x - 12},52 M{x},20 L{x + 12},52" stroke="#71829a" stroke-width="5" stroke-linecap="round"/>')
-    b.append('<rect x="10" y="20" width="172" height="6" fill="#f2c84b"/>')
-    for x in range(14, 182, 20):
-        b.append(f'<rect x="{x}" y="20" width="10" height="6" fill="{INK}"/>')
+def s10_tabua():
+    """Andaime Relâmpago: deque (192x24) em 3 pedaços (o jogo desliza as abas): tábuas de madeira, ponteiras de
+    metal, rodapé zebrado e parafusos. Cortado em terços pelo jogo."""
+    b = [shape("s10a", rect_d(1, 1, 190, 16, 3), "#d9a05e", 41, (0, 0, 192, 18), k=1.6, dark="#8f5a2c", light="#f0c487")]
+    for x in (64, 128):
+        b.append(f'<rect x="{x - 1}" y="1" width="2" height="16" fill="#8f5a2c"/>')
+    for x0 in (8, 72, 136):
+        b.append(f'<path d="M{x0},6 C{x0 + 14},4 {x0 + 30},8 {x0 + 48},5 M{x0 + 4},12 C{x0 + 20},10 {x0 + 34},13 {x0 + 50},11" stroke="#b47a3e" stroke-width="1.4" fill="none"/>')
+    b.append('<rect x="1" y="17" width="190" height="6" fill="#f2c84b"/>')
+    for x in range(4, 190, 12):
+        b.append(f'<path d="M{x},23 L{x + 6},17 L{x + 10},17 L{x + 4},23 Z" fill="{INK}"/>')
+    for x0 in (0, 184):
+        b.append(f'<rect x="{x0}" y="0" width="8" height="24" rx="2" fill="#71829a"/>')
+    for x in (32, 96, 160):
+        b.append(f'<circle cx="{x}" cy="9" r="2.2" fill="{METAL_L}"/>')
     return b
 
 
-def s10_holo():
-    """Prévia holográfica (contorno tracejado ciano) — 192x56."""
-    return [f'<rect x="4" y="4" width="184" height="16" rx="4" fill="#3fc1c9" fill-opacity="0.25" stroke="#3fc1c9" stroke-width="3" stroke-dasharray="10 6"/>',
-            '<path d="M24,20 L12,52 M24,20 L36,52 M96,20 L84,52 M96,20 L108,52 M168,20 L156,52 M168,20 L180,52" stroke="#3fc1c9" stroke-width="3" stroke-dasharray="6 5" opacity="0.8"/>']
+def s10_trouxa():
+    """Andaime dobrado (a 'trouxa' que o robô arremessa) — 48x32: tábuas empilhadas, tubos e cinta amarela."""
+    b = [shape("s10t", rect_d(4, 8, 40, 18, 3), "#d9a05e", 44, (2, 6, 46, 28), k=1.6, dark="#8f5a2c")]
+    b.append('<path d="M2,10 L46,6 M2,26 L46,22" stroke="#71829a" stroke-width="4" stroke-linecap="round"/>')
+    b.append('<rect x="20" y="4" width="8" height="26" rx="2" fill="#f2c84b"/>')
+    b.append(f'<path d="M21,8 H27 M21,14 H27 M21,20 H27" stroke="{INK}" stroke-width="2"/>')
+    return b
 
 
 def s11_portal():
@@ -230,9 +245,9 @@ def g10_capsula():
 
 PIECES = {  # nome: (largura, altura, função)
     "s01_canhao": (128, 64, s01_canhao), "s01_luva": (64, 50, s01_luva),
-    "s03_canhao": (128, 64, s03_canhao), "s03_projetil": (64, 64, s03_projetil), "s03_gelo": (128, 24, s03_gelo),
-    "s06_ima": (112, 80, s06_ima), "s10_andaime": (192, 56, s10_andaime), "s10_holo": (192, 56, s10_holo),
-    "s11_portal": (80, 80, s11_portal), "s13_frente": (150, 130, s13_frente), "s13_costas": (150, 130, s13_costas),
+    "s03_canhao": (128, 64, s03_canhao),
+    "s06_ima": (112, 80, s06_ima), "s10_tabua": (192, 24, s10_tabua), "s10_trouxa": (48, 32, s10_trouxa),
+    "s13_frente": (150, 130, s13_frente), "s13_costas": (150, 130, s13_costas),
     "g10_capsula": (128, 160, g10_capsula),
 }
 
@@ -264,7 +279,7 @@ def prancha():
                                                       + place(s03_gelo, 20, 160, 2.2))),
         ("S06 SUPERÍMÃ", 1000, 300, lambda: (place(s06_ima, 0, 40, 1.4)
                                              + "".join(f'<path d="M{170 + k * 40},{40 + k * 6} C{230 + k * 40},{60} {230 + k * 40},{140} {170 + k * 40},{160 - k * 6}" stroke="#d94a5a" stroke-width="3" fill="none" stroke-dasharray="8 6" opacity="{0.8 - k * 0.2}"/>' for k in range(3)))),
-        ("S10 ANDAIME RELÂMPAGO", 1440, 300, lambda: (place(s10_holo, 20, 40, 1.8) + place(s10_andaime, 20, 150, 1.8))),
+        ("S10 ANDAIME RELÂMPAGO", 1440, 300, lambda: (place(s10_trouxa, 20, 40, 2.4) + place(s10_tabua, 20, 150, 1.8))),
         ("S11 TELEPORTE", 40, 640, lambda: (place(s11_portal, 20, 60, 1.4) + place(s11_portal, 300, 60, 1.4)
                                             + '<path d="M150,120 h170" stroke="#9ff7c8" stroke-width="4" stroke-dasharray="10 8"/>'
                                             + '<rect x="320" y="40" width="70" height="120" rx="20" fill="#9ff7c8" fill-opacity="0.35" stroke="#3fc1c9" stroke-width="3" stroke-dasharray="8 5"/>'

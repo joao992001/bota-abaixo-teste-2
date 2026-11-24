@@ -54,7 +54,12 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
    `game/modes/spells.gd` (caixa mostra a FAMÍLIA, sorteio família→spell com raridade, slot único, encostar pega com slot
    vazio, SEGURAR especial ~0,3 s sobre outra caixa troca e a antiga cai com as cargas e anti-recaptura, toque = usa, eliminação
    limpa) + S01 Punho Pneumático, S03 Canhão Criogênico, S06 Superímã, S10 Andaime Relâmpago, S11 Teleporte, S13 Armadura
-   Fornalha (o robô veste a fornalha, rosto na vigia). `game/modes/eventos.gd` novo: aviso→ativo→término, intensidade
+   Fornalha (o robô veste a fornalha, rosto na vigia). **Revisão 1 do usuário (2026-11-24) aplicada:** punho com braço de
+   tesoura + luva (sai com mola, achata no impacto); canhão volta a CONGELAR (bloco de gelo facetado, agitar ◄► quebra mais
+   rápido, golpe no congelado estilhaça com empurrão extra; gelo no chão removido); ímã = 1 carga, SEGURAR puxa todos à frente
+   (redemoinho) enquanto a barra dura; andaime arremessado como trouxa que desdobra (tábua em 3 partes + pernas tubulares);
+   teleporte = SEGURAR mira (holograma do robô) e SOLTAR vai (vira fio de luz e se remonta); armadura: toque veste, SEGURAR
+   solta um jato contínuo com barra de combustível e, acabou, EXPLODE. `game/modes/eventos.gd` novo: aviso→ativo→término, intensidade
    DESLIGADOS/BAIXA/NORMAL/ALTA; G01 Sirene de Demolição (= ciclo do Canteiro, agora disparado pelo evento) e G10 Carga
    Especial (holofotes + 2 cápsulas de paraquedas). Números: `modos.json → demolicao.spells`, `demolicao.eventos`,
    `amassometro.spell_*`. Arte: `art/src/efeitos/spells.py`. Testes `--so=spells` (26). Vitrine `-- --spells=DIR`.
