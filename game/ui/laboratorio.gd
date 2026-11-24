@@ -254,6 +254,8 @@ func update() -> void:
 				main.demo.spells.clear(main.robots[0])
 				main.demo.spells.equip(main.robots[0], spells()[spell_i])
 				toggle()
+				if spells()[spell_i] == "S27" and main.demo.canteiro == null:
+					_say("S27 usa as vigas do guindaste: troque a ARENA para CANTEIRO")
 		"caixa":
 			spell_i = posmod(spell_i + h, spells().size())
 			if ok and main.robots.size() > 0:

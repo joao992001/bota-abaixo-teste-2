@@ -396,15 +396,29 @@ def s27_controle():
 
 
 def s28_placa():
-    """Escudo de Solda: chapa de aço com cordões de solda brilhantes e rebites — 48x96."""
-    b = [shape("s28", rect_d(2, 2, 44, 92, 4), METAL, 113, (0, 0, 48, 96), k=2.0, dark=METAL_D, light=METAL_L)]
-    b.append('<path d="M2,32 H46 M2,64 H46" stroke="#f2a23a" stroke-width="3"/>')
-    b.append('<path d="M2,32 H46 M2,64 H46" stroke="#fff1b8" stroke-width="1.2"/>')
-    for (x, y) in ((8, 8), (40, 8), (8, 88), (40, 88), (8, 48), (40, 48)):
-        b.append(f'<circle cx="{x}" cy="{y}" r="2.6" fill="{METAL_L}"/>')
-    b.append('<rect x="2" y="2" width="44" height="6" fill="#f2c84b"/>')
-    for x in range(4, 44, 8):
-        b.append(f'<path d="M{x},8 L{x + 4},2 L{x + 6},2 L{x + 2},8 Z" fill="{INK}"/>')
+    """(antiga, mantida para a prancha) chapa simples — 48x96."""
+    return [shape("s28", rect_d(2, 2, 44, 92, 4), METAL, 113, (0, 0, 48, 96), k=2.0, dark=METAL_D, light=METAL_L)]
+
+
+def s28_painel():
+    """Escudo de Solda: painel de aço (3 empilhados formam o muro) — 64x40: moldura grossa, chapa com X de reforço,
+    parafusos nos cantos e um amassado; o jogo desenha o cordão de solda entre os painéis."""
+    b = [shape("s28f", rect_d(1, 1, 62, 38, 4), "#4a5566", 117, (0, 0, 64, 40), k=1.8, dark="#2e3642", light="#71829a")]
+    b.append(shape("s28c", rect_d(7, 6, 50, 28, 2), METAL, 118, (6, 5, 58, 35), k=1.8, dark=METAL_D, light=METAL_L))
+    b.append(f'<path d="M9,8 L55,32 M55,8 L9,32" stroke="{METAL_D}" stroke-width="5" stroke-linecap="round"/>')
+    b.append(f'<path d="M9,8 L55,32 M55,8 L9,32" stroke="{METAL_L}" stroke-width="1.6" stroke-linecap="round"/>')
+    for (x, y) in ((5, 5), (59, 5), (5, 35), (59, 35)):
+        b.append(f'<circle cx="{x}" cy="{y}" r="2.8" fill="#f2c84b"/><circle cx="{x}" cy="{y}" r="1.1" fill="{INK}"/>')
+    b.append('<path d="M40,12 C44,14 46,18 44,22" stroke="#6b7783" stroke-width="2" fill="none"/>')
+    return b
+
+
+def s28_topo():
+    """Topo do muro (64x16): faixa zebrada de aviso com cantoneiras."""
+    b = [shape("s28t", rect_d(1, 2, 62, 12, 2), "#f2c84b", 119, (0, 0, 64, 16), k=1.6, dark="#c49a2a")]
+    for x in range(2, 62, 10):
+        b.append(f'<path d="M{x},14 L{x + 6},2 L{x + 10},2 L{x + 4},14 Z" fill="{INK}"/>')
+    b.append(f'<rect x="0" y="0" width="6" height="16" rx="1" fill="#4a5566"/><rect x="58" y="0" width="6" height="16" rx="1" fill="#4a5566"/>')
     return b
 
 
@@ -438,7 +452,7 @@ PIECES = {  # nome: (largura, altura, função)
     "s02_laser": (128, 64, s02_laser), "s05_rebiteira": (128, 64, s05_rebiteira), "s18_disco": (64, 64, s18_disco),
     "s20_canhao": (128, 64, s20_canhao), "s17_estaca": (64, 192, s17_estaca), "s04_marreta": (64, 128, s04_marreta),
     "s07_ventilador": (128, 64, s07_ventilador), "s08_gancho": (128, 64, s08_gancho), "s21_laco": (128, 64, s21_laco),
-    "s12_carga": (64, 48, s12_carga), "s27_controle": (48, 64, s27_controle), "s28_placa": (48, 96, s28_placa),
+    "s12_carga": (64, 48, s12_carga), "s27_controle": (48, 64, s27_controle), "s28_placa": (48, 96, s28_placa), "s28_painel": (64, 40, s28_painel), "s28_topo": (64, 16, s28_topo),
     "s28_macarico": (64, 32, s28_macarico), "s25_tabua": (64, 20, s25_tabua),
 }
 

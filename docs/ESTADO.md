@@ -100,6 +100,13 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
    puxa ambos), S12 Carga Remota (instala, arma em 0,5 s, 2º toque detona; danifica o Canteiro), S25 Ponte Dobrável (painéis
    desdobrando sobre o vão, prévia), S27 Controle Remoto (derruba a viga pendurada mais perto; acerta quem está embaixo),
    S28 Escudo de Solda (placa soldada que bloqueia tiros, 3 acertos). Empurrões suaves via `ext_v` → `push_vx`.
+   **Revisão 3 (2026-11-24) aplicada:** gancho puxa QUASE TUDO (robô vem arrastado até você, caixa de spell e bomba vêm
+   voando para a mão, estrutura puxa você), corrente de elos e garra que abre/fecha; laço com ventosa de borracha, elástico
+   com barriga quando frouxo e vibrando quando esticado, estalo ao soltar; muro de solda em 3 painéis que encaixam um por um
+   (cordão de solda esfriando, maçarico com faíscas, racha e cai em pedaços; teto abre do meio para os lados); ventilador com
+   anéis de pressão, sucata voando, hélice girando, dono escorregando e rival tremulando; ponte encosta na altura exata do
+   chão (dá para andar sem pular); controle remoto mostra receptor piscando em cada viga + dica; no Laboratório avisa para
+   trocar a arena para CANTEIRO.
    PRÓXIMO: Etapa 4 controle+engenharia (S07,S08,S21,S12,S25,S27,S28) → Etapa 4 transformações (S14,S15,S16,S31,S33,S34) →
    Etapa 5 eventos (G05,G06,G11,G12,G13,G02,G03,G04,G14,G09) + matriz de conflitos. REJEITADOS (nunca reintroduzir):
    S09,S22,S23,S24,S26,S29,S30,S32; G07,G08,G15,G16,G17,G18. Testar só no Derruba/Canteiro.

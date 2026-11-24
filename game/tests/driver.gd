@@ -1780,6 +1780,13 @@ func spells_test() -> void:
 		check(tg != null and tg["fallen"], "S27: o cabo estala e a viga despenca")
 	sp.clear(r0)
 	# ===== Mira em 8 direções e regra das plataformas
+	sp.shields.clear()   # o muro do teste anterior ficaria na frente
+	# beirada de laje que ainda existe (os testes anteriores derrubam trechos)
+	var edge_x := 8 * 64.0 + 30.0
+	for pt in ct.parts:
+		if pt["kind"] == "laje" and not pt["fallen"] and not sp._hard_at(Vector2(pt["rect"].position.x - 20.0, floor_y + 20.0)):
+			edge_x = pt["rect"].position.x + 30.0
+			break
 	var and0: Dictionary = ct.parts.filter(func(p): return p["kind"] == "andaime")[0]
 	check(not sp._hard_at(and0["rect"].get_center()) and sp._grab_at(and0["rect"].get_center()) and sp._hard_at(nuc[0]["rect"].get_center()),
 		"plataforma vazada não para tiro (mas o gancho agarra); a laje para")
@@ -1845,7 +1852,7 @@ func spells_test() -> void:
 	check(sp.springs.size() > 0 and sp.springs[0]["vel"].y < -600.0, "▲: canhão de molas em arco alto")
 	await frames(60)
 	sp.clear(r0)
-	put(r0, Vector2(8 * 64.0 + 30.0, floor_y))
+	put(r0, Vector2(edge_x, floor_y))
 	r0.facing = -1
 	sp.equip(r0, "S25")
 	await frames(3)
@@ -1855,6 +1862,23 @@ func spells_test() -> void:
 	vset("v0", "up", false)
 	vset("v0", "left", false)
 	check(sp.bridges.size() > 0 and float(sp.bridges[-1].get("slope", 0.0)) > 0.3, "▲: ponte vira rampa")
+	sp.clear(r0)
+	# ponte: dá para ANDAR do chão para a ponte sem pular
+	sp.clear(r0)
+	for b in sp.bridges:
+		b["body"].free()
+	sp.bridges.clear()
+	put(r0, Vector2(edge_x + 10.0, floor_y))
+	r0.facing = -1
+	sp.equip(r0, "S25")
+	await frames(4)
+	await tap("v0", "item")
+	await frames(25)
+	var xb: float = r0.position.x
+	vset("v0", "left", true)
+	await frames(24)
+	vset("v0", "left", false)
+	check(xb - r0.position.x > 150.0 and absf(r0.position.y - floor_y) < 4.0 and r0.is_on_floor(), "ponte: anda do chão para a ponte sem pular (%.0f px, y %.0f)" % [xb - r0.position.x, r0.position.y])
 	sp.clear(r0)
 	# G10 carga especial: holofotes em 2 pontos e duas cápsulas descem
 	main.event_level = 2
@@ -2425,7 +2449,7 @@ func spells_frames(dir: String) -> void:
 	var segs := [["caixas", 50], ["S01", 60], ["S03", 120], ["S06", 90], ["S10", 70], ["S11", 70], ["S13", 300], ["troca", 60],
 		["S02", 60], ["S04", 70], ["S05", 60], ["S17", 90], ["S18", 80], ["S19", 90], ["S20", 70], ["porte", 90],
 		["S07", 90], ["S08", 70], ["S21", 120], ["S12", 110], ["S25", 90], ["S27", 90], ["S28", 90],
-		["lasercima", 70], ["gelodiag", 70], ["ganchocima", 90], ["ventocima", 80], ["fogocima", 140], ["socobaixo", 60]]
+		["lasercima", 70], ["gelodiag", 70], ["ganchocima", 90], ["ventocima", 80], ["fogocima", 140], ["socobaixo", 60], ["ganchocaixa", 70], ["murotteto", 80]]
 	var mira_sp := {"lasercima": "S02", "gelodiag": "S03", "ganchocima": "S08", "ventocima": "S07", "fogocima": "S13", "socobaixo": "S01"}
 	for a0 in OS.get_cmdline_user_args():
 		if a0.begins_with("--so-spells="):
@@ -2464,6 +2488,12 @@ func spells_frames(dir: String) -> void:
 		elif nm == "S28":
 			sp.equip(r0, nm)
 			sp.equip(r1, "S05")
+		elif nm == "ganchocaixa":
+			sp.equip(r0, "S08")
+			sp.drop_box("S20", Vector2(x0 + 4.0 * 64.0, fy - 40.0), false)
+			put(r1, Vector2(x0 + 9.0 * 64.0, fy))
+		elif nm == "murotteto":
+			sp.equip(r0, "S28")
 		elif mira_sp.has(nm):
 			sp.equip(r0, mira_sp[nm])
 			if nm == "ganchocima":
@@ -2516,6 +2546,11 @@ func spells_frames(dir: String) -> void:
 					a["v0"]["right"] = f >= 4 and f < 14
 					a["v0"]["down"] = f >= 20
 					a["v0"]["item"] = f == 20 or f == 21
+				"ganchocaixa":
+					a["v0"]["item"] = f == 14 or f == 15
+				"murotteto":
+					a["v0"]["up"] = f >= 40
+					a["v0"]["item"] = f in [10, 11, 44, 45]
 				"porte":
 					a["v0"]["right"] = f >= 10 and f < 40
 					a["v0"]["hammer"] = f in [55, 56]
