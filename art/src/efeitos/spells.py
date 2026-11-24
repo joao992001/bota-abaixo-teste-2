@@ -655,6 +655,152 @@ def a16_jato():
     return b
 
 
+# ---------------------------------------------------------------- Etapa 5 (eventos globais)
+def _parafusos(pts, r=3.2, col=None):
+    col = col or METAL_D
+    return "".join(f'<circle cx="{x}" cy="{y}" r="{r}" fill="{col}"/><circle cx="{x - 0.8}" cy="{y - 0.8}" r="{r * 0.4}" fill="{METAL_L}"/>' for x, y in pts)
+
+
+def g02_exaustor():
+    """Ventania: carcaça de exaustor industrial (quadrada, aro zebrado, grade redonda) — 160x160; a hélice gira à parte."""
+    b = [shape("g2a", rect_d(6, 6, 148, 148, 18), "#4a5566", 201, (4, 4, 156, 156), k=2.2, dark="#2e3642", light="#71829a")]
+    b.append(f'<circle cx="80" cy="80" r="66" fill="#f2c84b"/>')
+    for k in range(16):
+        a = k * math.tau / 16
+        b.append(f'<path d="M{80 + 58 * math.cos(a):.1f},{80 + 58 * math.sin(a):.1f} L{80 + 66 * math.cos(a + 0.22):.1f},{80 + 66 * math.sin(a + 0.22):.1f} '
+                 f'L{80 + 66 * math.cos(a + 0.42):.1f},{80 + 66 * math.sin(a + 0.42):.1f} L{80 + 58 * math.cos(a + 0.2):.1f},{80 + 58 * math.sin(a + 0.2):.1f} Z" fill="{INK}"/>')
+    b.append(f'<circle cx="80" cy="80" r="57" fill="#232a33"/>')
+    b.append(_parafusos([(20, 20), (140, 20), (20, 140), (140, 140)], 5))
+    return b
+
+
+def g02_grade():
+    """Grade da frente do exaustor (desenhada por cima da hélice) — 160x160."""
+    b = []
+    for r in (18, 34, 50):
+        b.append(f'<circle cx="80" cy="80" r="{r}" fill="none" stroke="{METAL}" stroke-width="3.2"/>')
+    b.append(f'<path d="M80,24 V136 M24,80 H136" stroke="{METAL}" stroke-width="3.2"/>')
+    b.append(f'<circle cx="80" cy="80" r="11" fill="{METAL_D}"/><circle cx="77" cy="77" r="4" fill="{METAL_L}"/>')
+    return b
+
+
+def g02_helice():
+    """Hélice do exaustor: 5 pás gordinhas — 128x128 (o jogo gira)."""
+    b = []
+    for k in range(5):
+        a = k * 72
+        b.append(f'<g transform="rotate({a} 64 64)">' + shape(f"g2h{k}", "M64,64 C58,40 60,14 76,8 C96,4 98,30 84,48 C78,56 70,60 64,64 Z",
+                 "#c9d1d8", 210 + k, (54, 2, 100, 66), k=1.6, dark="#8d98a4") + '</g>')
+    b.append(f'<circle cx="64" cy="64" r="12" fill="{METAL_D}"/>')
+    return b
+
+
+def g04_bobina():
+    """Sobrecarga Magnética: bobina de Tesla de obra — base de aço zebrada, núcleo de cobre enrolado, cúpula
+    com esfera — 112x160 (pés embaixo)."""
+    b = [shape("g4b", rect_d(8, 128, 96, 30, 6), "#4a5566", 220, (6, 126, 106, 160), k=1.8, dark="#2e3642", light="#71829a")]
+    for k in range(6):
+        b.append(f'<path d="M{14 + k * 16},{132} l8,0 l-8,22 l-8,0 Z" fill="#f2c84b" opacity="0.95"/>')
+    b.append(shape("g4c", rect_d(26, 48, 60, 84, 10), "#c9733a", 221, (24, 46, 88, 134), k=1.8, dark="#8e4a22", light="#f0a066"))
+    for y in range(54, 128, 9):
+        b.append(f'<path d="M26,{y} C40,{y + 5} 72,{y + 5} 86,{y}" stroke="#7a3a18" stroke-width="2.6" fill="none"/>')
+        b.append(f'<path d="M30,{y + 3} C44,{y + 6} 66,{y + 6} 80,{y + 3}" stroke="#ffc08a" stroke-width="1.2" fill="none" opacity="0.7"/>')
+    b.append(shape("g4t", "M14,52 C14,36 34,30 56,30 C78,30 98,36 98,52 C98,58 80,60 56,60 C32,60 14,58 14,52 Z", METAL, 222, (12, 28, 100, 62), k=1.8, dark=METAL_D, light=METAL_L))
+    b.append(f'<rect x="52" y="12" width="8" height="22" fill="{METAL_D}"/>')
+    b.append(f'<circle cx="56" cy="14" r="12" fill="#8a63d2"/><circle cx="52" cy="10" r="4" fill="#d9c8ff"/>')
+    b.append(f'<path d="M40,96 l12,-14 l-2,10 l10,-2 l-12,16 l2,-10 Z" fill="#f2c84b" stroke="{INK}" stroke-width="1.5"/>')
+    return b
+
+
+def g05_carga():
+    """Operação Guindaste: fardo de 3 vigas I pintadas, amarradas com 2 cintas amarelas — 256x56 (topo = piso)."""
+    b = []
+    for i, (y, h) in enumerate(((2, 18), (20, 16), (36, 16))):
+        x0 = 4 + (i % 2) * 6
+        b.append(shape(f"g5v{i}", rect_d(x0, y, 248 - (i % 2) * 12, h, 3), "#d9643a", 230 + i, (x0 - 2, y - 2, 254, y + h + 2), k=1.8, dark="#9e3f17", light="#f08a5d"))
+        b.append(f'<rect x="{x0 + 4}" y="{y + h / 2 - 2:.0f}" width="{236 - (i % 2) * 12}" height="4" fill="#9e3f17" opacity="0.6"/>')
+    for x in (52, 188):
+        b.append(shape(f"g5c{x}", rect_d(x, 0, 16, 56, 3), "#f2c84b", 235 + x, (x - 2, -2, x + 18, 58), k=1.4, dark="#c49a2a"))
+        b.append(f'<rect x="{x + 3}" y="24" width="10" height="8" rx="2" fill="{METAL_D}"/>')
+    return b
+
+
+def g05_moitao():
+    """Moitão do guindaste: caixa amarela com roldana, giroflex laranja em cima e gancho embaixo — 80x112."""
+    b = [f'<rect x="34" y="0" width="12" height="18" fill="{METAL_D}"/>']
+    b.append(shape("g5m", rect_d(10, 14, 60, 56, 10), "#f2c84b", 240, (8, 12, 72, 72), k=1.8, dark="#c49a2a", light="#ffe28a"))
+    b.append(f'<circle cx="40" cy="40" r="17" fill="{METAL_D}"/><circle cx="40" cy="40" r="11" fill="{METAL}"/><circle cx="40" cy="40" r="4" fill="{INK}"/>')
+    b.append(_parafusos([(18, 22), (62, 22), (18, 62), (62, 62)], 3))
+    for k in range(4):
+        b.append(f'<path d="M{12 + k * 16},66 l8,0 l-6,6 l-8,0 Z" fill="{INK}"/>')
+    b.append(f'<rect x="35" y="70" width="10" height="12" fill="{METAL_D}"/>')
+    b.append(shape("g5g", "M40,80 C54,80 58,92 56,100 C54,110 40,112 32,106 L38,100 C42,104 48,102 48,96 C48,90 44,88 40,88 Z", METAL, 241, (30, 78, 60, 112), k=1.4, dark=METAL_D, light=METAL_L))
+    return b
+
+
+def g06_caixa():
+    """Entrega de Entulho: engradado de madeira cheio de tijolos — 64x56."""
+    b = []
+    for i, x in enumerate((8, 22, 36)):
+        b.append(shape(f"g6t{i}", rect_d(x, 2 + (i % 2) * 4, 18, 12, 2), "#c4573a", 250 + i, (x - 2, 0, x + 20, 20), k=1.2, dark="#8e3420"))
+    b.append(shape("g6c", rect_d(2, 12, 60, 42, 4), "#c98a4b", 253, (0, 10, 64, 56), k=1.6, dark="#8a5a2b", light="#e8b27a"))
+    for y in (22, 34, 46):
+        b.append(f'<path d="M4,{y} H60" stroke="#8a5a2b" stroke-width="2"/>')
+    b.append(f'<path d="M6,16 L58,52 M58,16 L6,52" stroke="#a8703a" stroke-width="5" stroke-linecap="round"/>')
+    for (x, y) in ((2, 12), (52, 12), (2, 44), (52, 44)):
+        b.append(f'<rect x="{x}" y="{y}" width="10" height="10" rx="2" fill="{METAL_D}"/>')
+    return b
+
+
+def g06_sucata():
+    """Entrega de Entulho: tambor amassado com canos e chapa torta — 64x56."""
+    b = [shape("g6s", "M10,14 C10,8 20,6 32,6 C44,6 54,8 54,14 L52,48 C52,54 42,56 32,56 C22,56 12,54 12,48 Z", "#3c9a46", 255, (8, 4, 56, 58), k=1.6, dark="#25682d", light="#6cc476")]
+    b.append(f'<path d="M12,24 C24,28 40,28 53,24 M12,38 C24,42 40,42 52,38" stroke="#25682d" stroke-width="3" fill="none"/>')
+    b.append(f'<path d="M30,20 l6,6 l-8,4 Z" fill="#25682d"/>')
+    b.append(shape("g6p", rect_d(40, 0, 22, 9, 3), METAL, 256, (38, -2, 64, 11), k=1.2, dark=METAL_D))
+    b.append(shape("g6q", rect_d(0, 30, 16, 8, 3), METAL, 257, (-2, 28, 18, 40), k=1.2, dark=METAL_D))
+    b.append(f'<path d="M22,12 C26,10 30,10 34,12" stroke="#ffffff" stroke-width="2" opacity="0.6" fill="none"/>')
+    return b
+
+
+def g11_tapume():
+    """Interdição de Área: tapume metálico ondulado com listras laranja/branco, moldura e pé — 64x160 (pé embaixo)."""
+    b = [shape("g11m", rect_d(2, 8, 60, 140, 4), "#ffffff", 260, (0, 6, 64, 150), k=1.8, dark="#c9c9c9")]
+    for k in range(-3, 6):
+        y = 8 + k * 32
+        b.append(f'<path d="M2,{y + 32} L62,{y} L62,{y + 16} L2,{y + 48} Z" fill="#f08a3d" clip-path="url(#g11m)"/>')
+    for x in (12, 24, 36, 48):
+        b.append(f'<path d="M{x},10 V146" stroke="#000000" stroke-width="2" opacity="0.12"/>')
+    b.append(f'<rect x="0" y="4" width="64" height="8" rx="2" fill="{METAL_D}"/><rect x="0" y="144" width="64" height="8" rx="2" fill="{METAL_D}"/>')
+    b.append(f'<rect x="6" y="150" width="20" height="10" rx="2" fill="{INK}"/><rect x="38" y="150" width="20" height="10" rx="2" fill="{INK}"/>')
+    b.append(_parafusos([(6, 8), (58, 8), (6, 148), (58, 148)], 2.4))
+    return b
+
+
+def g14_rebite():
+    """Chuva de Rebites: rebite caindo (cabeça em cima, ponta em brasa) — 16x32."""
+    return [shape("g14", "M2,8 C2,2 14,2 14,8 L14,10 L11,10 L11,26 C11,30 5,30 5,26 L5,10 L2,10 Z", METAL, 270, (0, 0, 16, 32), k=1.0, dark=METAL_D, light=METAL_L),
+            '<path d="M5,22 L11,22 L11,26 C11,30 5,30 5,26 Z" fill="#f08a3d"/><path d="M4,4 C6,3 8,3 9,4" stroke="#ffffff" stroke-width="1.4" fill="none"/>']
+
+
+def g09_drone():
+    """Inspeção de Segurança: drone vistoriador (corpo verde, capacete branco, olho, prancheta) — 112x88."""
+    b = []
+    for x in (6, 76):
+        b.append(f'<rect x="{x + 12}" y="10" width="6" height="14" fill="{METAL_D}"/>')
+        b.append(shape(f"g9h{x}", ellipse_d(x + 15, 8, 16, 4), METAL_L, 280 + x, (x - 2, 2, x + 32, 14), k=1.0))
+    b.append(f'<path d="M18,24 H94" stroke="{METAL_D}" stroke-width="5" stroke-linecap="round"/>')
+    b.append(shape("g9c", ellipse_d(56, 48, 30, 24), "#3c9a46", 283, (24, 22, 88, 74), k=1.6, dark="#25682d", light="#6cc476"))
+    b.append(shape("g9k", "M30,38 C30,20 82,20 82,38 Z", "#ffffff", 284, (28, 18, 84, 40), k=1.4, dark="#c9c9c9"))
+    b.append(f'<rect x="26" y="36" width="60" height="5" rx="2" fill="#f2c84b"/>')
+    b.append(f'<circle cx="56" cy="54" r="11" fill="{INK}"/><circle cx="56" cy="54" r="6" fill="#9ff7c8"/><circle cx="53" cy="51" r="2.4" fill="#ffffff"/>')
+    b.append(f'<path d="M82,58 L96,66" stroke="{METAL_D}" stroke-width="4" stroke-linecap="round"/>')
+    b.append(shape("g9p", rect_d(88, 56, 22, 30, 3), "#c98a4b", 285, (86, 54, 112, 88), k=1.2, dark="#8a5a2b"))
+    b.append(f'<rect x="91" y="62" width="16" height="21" fill="#ffffff"/><path d="M94,68 h10 M94,73 h10 M94,78 h6" stroke="#9aa4ae" stroke-width="1.6"/>')
+    b.append(f'<rect x="95" y="53" width="8" height="5" rx="1" fill="{METAL_D}"/>')
+    return b
+
+
 PIECES = {  # nome: (largura, altura, função)
     "s01_canhao": (128, 64, s01_canhao), "s01_luva": (64, 50, s01_luva),
     "s03_canhao": (128, 64, s03_canhao),
@@ -673,6 +819,10 @@ PIECES = {  # nome: (largura, altura, função)
     "a33_frente": (150, 130, a33_frente), "a33_costas": (150, 130, a33_costas), "a33_tocha": (96, 40, a33_tocha),
     "a34_raio": (72, 48, a34_raio), "a16_jato": (72, 84, a16_jato),
     "s28_macarico": (64, 32, s28_macarico), "s25_tabua": (64, 20, s25_tabua),
+    "g02_exaustor": (160, 160, g02_exaustor), "g02_grade": (160, 160, g02_grade), "g02_helice": (128, 128, g02_helice),
+    "g04_bobina": (112, 160, g04_bobina), "g05_carga": (256, 56, g05_carga), "g05_moitao": (80, 112, g05_moitao),
+    "g06_caixa": (64, 56, g06_caixa), "g06_sucata": (64, 56, g06_sucata), "g11_tapume": (64, 160, g11_tapume),
+    "g14_rebite": (16, 32, g14_rebite), "g09_drone": (112, 88, g09_drone),
 }
 
 

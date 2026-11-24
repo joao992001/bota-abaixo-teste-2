@@ -60,7 +60,9 @@ func setup(m: Node, lv) -> void:
 	lv.grab_solid = func(c: Vector2i) -> bool: return owner_of.has(c) and owner_of[c]["kind"] == "laje"
 
 func _add(kind: String, r: Rect2, hp: int, nucleo: bool, oneway: bool, idx: int) -> void:
-	var body := StaticBody2D.new()
+	var body: StaticBody2D = AnimatableBody2D.new() if kind == "andaime" else StaticBody2D.new()   # andaime: G12 move o deque
+	if body is AnimatableBody2D:
+		body.sync_to_physics = false
 	body.collision_layer = 2 if oneway else 1
 	body.collision_mask = 0
 	var cs := CollisionShape2D.new()
@@ -72,17 +74,74 @@ func _add(kind: String, r: Rect2, hp: int, nucleo: bool, oneway: bool, idx: int)
 	body.add_child(cs)
 	add_child(body)
 	var p := {"kind": kind, "rect": r, "hp": hp, "max": hp, "nucleo": nucleo, "body": body, "state": 0, "crit_t": 0.0,
-		"warn_t": 0.0, "fallen": false, "shake": 0.0, "idx": idx}
+		"warn_t": 0.0, "fallen": false, "shake": 0.0, "idx": idx, "evt": "", "y0": r.position.y, "oneway": oneway}
 	body.set_meta("canteiro", p)
 	parts.append(p)
+	_claim(p)
+
+func _claim(p: Dictionary) -> void:
+	var r: Rect2 = p["rect"]
 	for x in range(int(r.position.x / T), int(ceil(r.end.x / T))):
 		for y in range(int(r.position.y / T), int(ceil(r.end.y / T))):
 			owner_of[Vector2i(x, y)] = p
 
+func _unclaim(p: Dictionary) -> void:
+	for c in owner_of.keys():
+		if owner_of[c] == p:
+			owner_of.erase(c)
+
+## Eventos: G12 sobe/desce o deque do andaime (o corpo anda junto, quem está em cima vai junto).
+func move_part(p: Dictionary, y: float) -> void:
+	if p["fallen"] or not is_instance_valid(p["body"]):
+		return
+	p["body"].position.y = y - p["y0"]
+	if absf(p["rect"].position.y - y) < 0.01:
+		return
+	var old_row := int(p["rect"].position.y / T)
+	p["rect"].position.y = y
+	if int(y / T) != old_row:
+		_unclaim(p)
+		_claim(p)
+
+## G13: o cabo rompe — a viga perde a colisão (o evento cuida da queda e do desenho).
+func drop_body(p: Dictionary) -> void:
+	if is_instance_valid(p["body"]):
+		p["body"].queue_free()
+	_unclaim(p)
+	if p == target:
+		target = null
+
+## G13 fim: o guindaste pendura a viga de volta no lugar.
+func restore_body(p: Dictionary, r: Rect2) -> void:
+	if is_instance_valid(p["body"]):
+		p["body"].queue_free()
+	p["rect"] = r
+	var body := StaticBody2D.new()
+	body.collision_layer = 2 if p["oneway"] else 1
+	body.collision_mask = 0
+	var cs := CollisionShape2D.new()
+	var shp := RectangleShape2D.new()
+	shp.size = r.size
+	cs.shape = shp
+	cs.position = r.get_center()
+	cs.one_way_collision = p["oneway"]
+	body.add_child(cs)
+	add_child(body)
+	body.set_meta("canteiro", p)
+	p["body"] = body
+	p["y0"] = r.position.y
+	_claim(p)
+
 # ---------------------------------------------------------------- dano
 ## Aplica dano estrutural. O núcleo só treme e solta poeira.
 func damage(p: Dictionary, amount: int, at: Vector2) -> void:
-	if p["fallen"] or p["crit_t"] > 0.0:
+	if p["fallen"] or p["crit_t"] > 0.0 or p["evt"] != "":
+		return
+	if main.events != null and main.events.inspecao:
+		# G09 Inspeção: estrutura reforçada (treme e faísca, não racha)
+		p["shake"] = 0.2
+		main.spark(at, 3)
+		Audio.play("chave", 0.8, -4.0)
 		return
 	p["shake"] = 0.3
 	main.dust(at, 0.9)
@@ -208,7 +267,7 @@ func _physics_process(dt: float) -> void:
 func _alert_pool() -> Array:
 	var pool := []
 	for p in parts:
-		if p["fallen"] or p["nucleo"] or p["crit_t"] > 0.0 or p["warn_t"] > 0.0:
+		if p["fallen"] or p["nucleo"] or p["crit_t"] > 0.0 or p["warn_t"] > 0.0 or p["evt"] != "":
 			continue
 		var fresh := false
 		for r in main.robots:
@@ -264,7 +323,7 @@ func _draw() -> void:
 		draw_texture_rect(tex["pilar"], Rect2(col * T + 8 - 10, ly + 2 * T - 14, 132, 532), false)
 	# andaimes e viga
 	for p in parts:
-		if p["fallen"]:
+		if p["fallen"] or p["evt"] == "G13":
 			continue
 		var o := _shake_off(p)
 		if p["kind"] == "andaime":

@@ -253,16 +253,17 @@ func _heart(c: Vector2, s: float, full: bool) -> void:   # s = meia largura
 ## Evento ativo (nome + barra de tempo), no canto de cima à esquerda.
 func _draw_event_note() -> void:
 	var ev = main.events
-	if ev.phase == "":
-		return
-	var r := Rect2(960 - 180, 58, 360, 44)
-	var warn: bool = ev.phase == "aviso"
-	Kit.chunk(self, r, Color("#ffd0c8") if warn else Kit.CREAM, 18, 4, 3.0)
-	var nm := String(ev.current.get("nome", "")).to_upper()
-	fit_text(Vector2(r.position.x + 12, r.position.y + (30 if warn else 26)), ("EM BREVE: " if warn else "") + nm, 22, Color("#d42035") if warn else DARK, r.size.x - 24, 0, HORIZONTAL_ALIGNMENT_CENTER)
-	if not warn:
-		var k: float = clampf(ev.phase_t / float(ev.current.get("dur", 1)), 0.0, 1.0)
-		draw_rect(Rect2(r.position.x + 20, r.position.y + 33, (r.size.x - 40) * k, 6), Color("#f2c84b"))
+	var n: int = ev.active.size()
+	for i in n:
+		var a: Dictionary = ev.active[i]
+		var r := Rect2(960 - 185 * n + i * 370 + 5, 58, 360, 44)
+		var warn: bool = a["phase"] == "aviso"
+		Kit.chunk(self, r, Color("#ffd0c8") if warn else Kit.CREAM, 18, 4, 3.0)
+		var nm := String(a["e"].get("nome", "")).to_upper()
+		fit_text(Vector2(r.position.x + 12, r.position.y + (30 if warn else 26)), ("EM BREVE: " if warn else "") + nm, 22, Color("#d42035") if warn else DARK, r.size.x - 24, 0, HORIZONTAL_ALIGNMENT_CENTER)
+		if a["phase"] == "ativo":
+			var k: float = clampf(a["t"] / maxf(a["len"], 0.01), 0.0, 1.0)
+			draw_rect(Rect2(r.position.x + 20, r.position.y + 33, (r.size.x - 40) * k, 6), Color("#f2c84b"))
 
 ## Avisos de controle conectado/desconectado (canto de baixo, à esquerda).
 func _draw_toasts() -> void:

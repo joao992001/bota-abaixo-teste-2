@@ -122,9 +122,19 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
    **Kits nas costas (2026-11-24, pedido do usuário):** antes de usar, toda transformação fica como a Fornalha — peça de
    costas no meio das costas, placa da frente dobrada espiando no ombro (reconhece a máquina) e alça com fivela pelo
    peito (`RobotVis.KITS`); bola presa nas costas; raio encolhedor de pé com o prato sobre o ombro.
-   PRÓXIMO: Etapa 5 controle+engenharia (S07,S08,S21,S12,S25,S27,S28) → Etapa 4 transformações (S14,S15,S16,S31,S33,S34) →
-   Etapa 5 eventos (G05,G06,G11,G12,G13,G02,G03,G04,G14,G09) + matriz de conflitos. REJEITADOS (nunca reintroduzir):
-   S09,S22,S23,S24,S26,S29,S30,S32; G07,G08,G15,G16,G17,G18. Testar só no Derruba/Canteiro.
+   **Etapa 5 — eventos globais (2026-11-24):** os 12 eventos em `modes/eventos.gd` (aviso com o LUGAR marcado → ativo →
+   fim/restauração). Agendador com até `max_simultaneos` (baixa 1, normal/alta 2) eventos COMPATÍVEIS (matriz `conflitos`
+   em `demolicao.eventos`) e `intensidade` [0, .7, 1, 1.35] que escala força/quantidade. Estrutura (Canteiro): G05 carga do
+   guindaste desce e vira plataforma (trava solta antes de subir); G12 deques dos andaimes sobem/descem com correntes
+   (`canteiro.move_part`, corpo AnimatableBody2D); G13 viga cai na faixa vermelha, vira plataforma no chão e o guindaste
+   pendura de volta; G09 drone vistoriador carimba ✓, estrutura reforçada (`canteiro.damage` ignora) e máquinas da arena
+   param. Universais: G06 entulho cai nas sombras e vira cobertura (marreta quebra, some em 14 s); G11 tapume sobe na faixa
+   zebrada (empurra quem está dentro, bloqueia tiros via `events.hard_at`); G02 3 exaustores na borda da CÂMERA + setas
+   (vento com teto; no chão pesa 0,55); G03 medidor G + porcas flutuando; G04 bobina com campo e pulsos (teto com o ímã);
+   G14 faixas vermelhas por onda (≤45% da tela, 1 acerto por robô por onda). Golpes do ambiente: `evento_*` no Amassômetro,
+   sempre `by = -1`. HUD mostra até 2 avisos lado a lado. Teste: `--so=eventos`; vitrine: `--eventos=DIR --so-eventos=G02+G05`.
+   Arte: g02_exaustor/helice/grade, g04_bobina, g05_carga/moitao, g06_caixa/sucata, g11_tapume, g14_rebite, g09_drone.
+   Aguardando aprovação. REJEITADOS (nunca reintroduzir): S09,S22,S23,S24,S26,S29,S30,S32; G07,G08,G15,G16,G17,G18.
 **Economia (pedido do usuário):** uma sessão nova por mudança grande; sessão principal faz tudo (agentes só para lotes grandes
 de arte em paralelo); rodar só a parte dos testes que mudou (`--so=`) e a bateria completa 1× no fim; poucas capturas.
 **Ambiente na nuvem:** Godot 4.7.1 + modelos de exportação não vêm instalados; baixe de github.com/godotengine/godot/releases

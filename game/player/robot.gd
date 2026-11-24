@@ -213,7 +213,7 @@ func _physics_process(dt: float) -> void:
 	ext_vx += push_vx
 	push_vx = 0.0
 	if main.events != null and main.events.wind != 0.0 and hanging == false:
-		ext_vx += main.events.wind * (1.0 if on_floor else 1.3)   # evento Ventania
+		ext_vx += main.events.wind * (0.55 if on_floor else 1.2)   # evento Ventania (no chão segura mais)
 	# horizontal
 	if wall_lock <= 0.0:
 		if ix != 0.0:
@@ -502,7 +502,8 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 		"spell_explosao": "fornalha explodiu", "spell_laser": "laser de corte", "spell_sismo": "marreta sísmica",
 		"spell_rebite": "rebite", "spell_estaca": "bate-estaca", "spell_disco": "disco de corte", "spell_bumerangue": "marreta-bumerangue",
 		"spell_mola": "canhão de molas", "spell_gancho": "gancho", "spell_carga": "carga de demolição", "spell_viga": "viga do guindaste",
-		"spell_bola": "bola de demolição", "spell_empilhadeira": "empilhadeira", "spell_broca": "broca", "spell_solda": "solda"}.get(kind, kind)
+		"spell_bola": "bola de demolição", "spell_empilhadeira": "empilhadeira", "spell_broca": "broca", "spell_solda": "solda",
+		"evento_entulho": "entulho", "evento_rebite": "chuva de rebites", "evento_viga": "viga do cabo rompido"}.get(kind, kind)
 	last_attacker = by
 	hanging = false
 	var am: Dictionary = main.demo.cfg["amassometro"]

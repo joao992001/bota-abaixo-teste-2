@@ -405,6 +405,8 @@ func _hard_at(p: Vector2) -> bool:
 		return not lv.props.has("ko")
 	if lv.ch_at(c) in HARD_CH:
 		return true
+	if main.events != null and main.events.hard_at(p):
+		return true   # entulho e tapumes (eventos) são cobertura
 	var ct = demo.canteiro
 	if ct != null and is_instance_valid(ct):
 		for pt in ct.parts:
@@ -415,6 +417,8 @@ func _hard_at(p: Vector2) -> bool:
 ## Onde a garra do gancho/carga grudam: sólido de verdade OU qualquer plataforma (é assim que se sobe).
 func _grab_at(p: Vector2) -> bool:
 	if _hard_at(p) or _solid_at(p) or main.level.ch_at(Vector2i(int(floor(p.x / T)), int(floor(p.y / T)))) == "=":
+		return true
+	if main.events != null and main.events.grab_at(p):
 		return true
 	for pl in platforms:
 		if pl["rect"].grow(4).has_point(p):
@@ -2400,7 +2404,7 @@ func remote_target(r):
 	var cands := []
 	var maxd := float(sc("S27")["alcance_tiles"]) * T
 	for p in ct.parts:
-		if p["kind"] != "viga" or p["fallen"] or p["crit_t"] > 0.0:
+		if p["kind"] != "viga" or p["fallen"] or p["crit_t"] > 0.0 or p["evt"] != "":
 			continue
 		var d: float = p["rect"].get_center().distance_to(r.position)
 		if d < maxd:
@@ -2827,7 +2831,7 @@ func _draw_etapa3() -> void:
 			var ct2 = demo.canteiro
 			if ct2 != null and is_instance_valid(ct2):
 				for pv in ct2.parts:
-					if pv["kind"] == "viga" and not pv["fallen"] and pv["crit_t"] <= 0.0:
+					if pv["kind"] == "viga" and not pv["fallen"] and pv["crit_t"] <= 0.0 and pv["evt"] == "":
 						var top: Vector2 = Vector2(pv["rect"].get_center().x, pv["rect"].position.y - 30.0)
 						draw_rect(Rect2(top - Vector2(10, 8), Vector2(20, 16)), INK)
 						draw_rect(Rect2(top - Vector2(8, 6), Vector2(16, 12)), Color("#f2c84b"))

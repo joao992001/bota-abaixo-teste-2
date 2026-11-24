@@ -435,6 +435,8 @@ func attack(r, kind: String) -> bool:
 	if fx != null and is_instance_valid(fx) and fx.hammer_hit(r, hit.grow(8), heavy):
 		if not hit_robot:
 			r.hitstop = float(hs["rapido"])
+	if main.events.hammer_hit(hit.grow(8), heavy) and not hit_robot:
+		r.hitstop = float(hs["rapido"])   # entulho do evento G06
 	if heavy and canteiro != null and is_instance_valid(canteiro):
 		if canteiro.hammer(r, hit, PlayerInput.held(r.pid, "down")) and not hit_robot:
 			r.hitstop = float(hs["rapido"])

@@ -32,6 +32,10 @@ func _run() -> void:
 			await pulo_frames(a.trim_prefix("--pulo="))
 			get_tree().quit()
 			return
+		if a.begins_with("--eventos="):
+			await eventos_frames(a.trim_prefix("--eventos="))
+			get_tree().quit()
+			return
 		if a.begins_with("--spells="):
 			await spells_frames(a.trim_prefix("--spells="))
 			get_tree().quit()
@@ -494,6 +498,7 @@ func demolicao_test() -> void:
 	await lab_test()
 	await canteiro_test()
 	await spells_test()
+	await eventos_test()
 	await imagens_test()
 
 func menus_test() -> void:
@@ -1168,6 +1173,8 @@ func lab_test() -> void:
 	lab.event_i = 0
 	await tap("v0", "jump")
 	check(main.events.phase == "aviso" and main.demo.canteiro.cycle_state == "aviso", "menu: EVENTO dispara (G01 funciona na fase do Laboratório)")
+	var nel: Array = main.events.cfg["lista"].filter(func(e): return not main.events.eligible(e) and e["id"] != "G01")
+	check(nel.is_empty(), "todos os eventos funcionam na fase do Laboratório (fora: %s)" % str(nel.map(func(e): return e["id"])))
 	await tap("v0", "start")
 	lab.sel = lab.rows().find("bot")
 	var nb: int = main.robots.size()
@@ -1306,7 +1313,7 @@ func canteiro_test() -> void:
 	await frames(3)
 	var alvo = ct.target
 	check(main.events.phase == "aviso" and ct.cycle_state == "aviso" and alvo != null and not alvo["nucleo"] and alvo["warn_t"] > 0.0, "G01 Sirene de Demolição marca um trecho com aviso (sirene + fita)")
-	await frames(int((0.8 + float(g01["dur"]) * 0.5 + float(ct.cfg["aviso_queda_s"])) * 60.0) + 20)
+	await frames(int((minf(float(g01["aviso_s"]), 1.2) + float(g01["dur"]) * 0.5 + float(ct.cfg["aviso_queda_s"])) * 60.0) + 20)
 	check(alvo != null and alvo["fallen"] and ct.cycle_state == "calma" and main.events.phase == "", "depois do aviso o trecho cede e o evento termina")
 	main.events.manual = false
 	main.event_level = 0
@@ -1334,6 +1341,227 @@ func canteiro_test() -> void:
 	await frames(20)
 
 ## Relatório 04, Etapa 1: caixas por família, slot único, troca segurando, limpeza na eliminação e as 6 spells; G10.
+## Etapa 5: os 12 eventos globais (aviso → ativo → fim), até 2 juntos, matriz de conflitos e intensidade.
+func eventos_test() -> void:
+	print("== Eventos globais (Etapa 5)")
+	main.go_menu()
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	main.mode = "demolicao"
+	main.go_join()
+	await frames(2)
+	await tap("v0", "jump")
+	await tap("v1", "jump")
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 5
+	main.event_level = 0
+	main.arena_choice = "canteiro_obras"
+	main.start_match()
+	await demo_round()
+	var ev = main.events
+	var ct = main.demo.canteiro
+	main.demo.spells.spawn_t = 999.0
+	var r0 = main.robots[0]
+	var r1 = main.robots[1]
+	var nuc: Array = ct.parts.filter(func(p): return p["nucleo"])
+	var fy: float = nuc[0]["rect"].position.y
+	var fx: float = nuc[0]["rect"].position.x
+	var reset := func() -> void:
+		for i in main.players.size():
+			main.demo.lives[i] = 99
+		for r in [r0, r1]:
+			r.dmg = 0.0
+			r.stun_t = 0.0
+			r.recover_t = 0.0
+			r.invuln = 0.0
+			r.velocity = Vector2.ZERO
+		put(r0, Vector2(fx + 40.0, fy))
+		put(r1, Vector2(fx + 440.0, fy))
+	main.event_level = 2
+	ev.manual = true
+	var go := func(id: String) -> Dictionary:
+		ev.trigger(ev.ev(id))
+		await frames(2)
+		return ev.inst(id) if ev.inst(id) != null else {}
+	var wait_phase := func(a: Dictionary, ph: String) -> void:
+		for i in 1200:
+			if a.is_empty() or a["phase"] == ph or not ev.active.has(a):
+				return
+			await frames(1)
+	var wait_end := func(a: Dictionary) -> void:
+		for i in 2400:
+			if not ev.active.has(a):
+				return
+			await frames(1)
+	# G02 Ventania
+	reset.call()
+	var a: Dictionary = await go.call("G02")
+	check(not a.is_empty() and a["phase"] == "aviso" and ev.wind == 0.0, "G02: aviso primeiro (exaustores e setas), sem vento ainda")
+	await wait_phase.call(a, "ativo")
+	await frames(45)
+	var x0: float = r0.position.x
+	await frames(40)
+	check(signf(ev.wind) == float(a["d"]["dir"]) and absf(ev.wind) <= float(ev.cfg["vento_max"]) and signf(r0.position.x - x0) == float(a["d"]["dir"]), "G02: vento empurra para o lado anunciado (%.0f px/s), com teto" % ev.wind)
+	await wait_end.call(a)
+	check(ev.wind == 0.0, "G02: vento acaba no fim")
+	# G03 Gravidade
+	a = await go.call("G03")
+	await wait_phase.call(a, "ativo")
+	await frames(40)
+	check(ev.gravity_mult < 0.7, "G03: gravidade baixa no ativo (%.2f)" % ev.gravity_mult)
+	await wait_phase.call(a, "fim")
+	await frames(20)
+	var mid_g: float = ev.gravity_mult
+	await wait_end.call(a)
+	check(mid_g > 0.55 and mid_g < 1.0 and ev.gravity_mult == 1.0, "G03: volta aos poucos ao normal (%.2f → 1)" % mid_g)
+	# G04 Sobrecarga
+	reset.call()
+	a = await go.call("G04")
+	check(not a.is_empty(), "G04: bobina escolhe um lugar no chão")
+	var coil: Vector2 = a["d"]["pos"] if not a.is_empty() else Vector2.ZERO
+	put(r0, Vector2(coil.x - 300.0, fy))
+	await wait_phase.call(a, "ativo")
+	var d0: float = absf(r0.position.x - coil.x)
+	await frames(60)
+	check(absf(r0.position.x - coil.x) < d0 - 20.0, "G04: pulso puxa quem está no círculo (%.0f → %.0f)" % [d0, absf(r0.position.x - coil.x)])
+	await wait_end.call(a)
+	# G05 Guindaste
+	reset.call()
+	a = await go.call("G05")
+	check(not a.is_empty(), "G05: acha lugar para a carga (com espaço em cima e embaixo)")
+	if not a.is_empty():
+		var cr: Rect2 = a["d"]["rect"]
+		await wait_phase.call(a, "ativo")
+		await frames(int(float(a["e"]["desce_s"]) * 60.0) + 10)
+		check(a["d"]["body"] != null and absf(a["d"]["y"] - cr.position.y) < 1.0, "G05: a carga desce e trava no lugar anunciado")
+		put(r0, Vector2(cr.get_center().x, cr.position.y - 60.0))
+		await frames(40)
+		check(r0.is_on_floor() and absf(r0.position.y - cr.position.y) < 6.0, "G05: dá para subir na carga (plataforma nova)")
+		await wait_phase.call(a, "fim")
+		await frames(30)
+		check(not r0.is_on_floor() or r0.position.y > cr.position.y + 20.0, "G05: no fim a trava solta antes de a carga subir (ninguém é levado)")
+		await wait_end.call(a)
+	# G06 Entulho
+	reset.call()
+	a = await go.call("G06")
+	var andm: Array = ct.parts.filter(func(p): return p["kind"] == "andaime")
+	put(r0, Vector2(andm[0]["rect"].get_center().x, andm[0]["rect"].position.y))
+	put(r1, Vector2(andm[1]["rect"].get_center().x, andm[1]["rect"].position.y))
+	check(not a.is_empty() and a["d"]["spots"].size() >= 2, "G06: marca %d sombras listradas" % (0 if a.is_empty() else a["d"]["spots"].size()))
+	await wait_end.call(a)
+	await frames(60)
+	var solid: Array = ev.crates.filter(func(c): return c["state"] == "chao")
+	check(solid.size() >= 2 and solid.all(func(c): return c["body"] != null), "G06: o entulho cai e vira obstáculo (%d)" % solid.size())
+	var spawns_ok: bool = solid.all(func(c): return main.level.spawns.values().all(func(s): return absf(s.x - c["pos"].x) >= 120.0 or absf(s.y - c["floor"]) > 90.0))
+	check(spawns_ok, "G06: nunca cai em cima de nascimento")
+	if not solid.is_empty():
+		var c0: Dictionary = solid[0]
+		check(main.demo.spells._hard_at(ev.crate_rect(c0).get_center()), "G06: entulho é cobertura (para tiros)")
+		ev.hammer_hit(ev.crate_rect(c0), true)
+		check(not ev.crates.has(c0), "G06: marretada forte quebra o entulho")
+	# G11 Interdição
+	reset.call()
+	a = await go.call("G11")
+	check(not a.is_empty(), "G11: escolhe uma faixa no chão")
+	if not a.is_empty():
+		var w: Dictionary = a["d"]["walls"][0]
+		put(r0, Vector2(w["x"] + 40.0, w["y"]))
+		await wait_phase.call(a, "ativo")
+		await frames(20)
+		var wr := Rect2(w["x"], w["y"] - w["h"], w["w"], w["h"])
+		check(w["body"] != null and not r0.rect().intersects(wr.grow(-2)), "G11: tapume sobe sem prender ninguém (empurra para fora)")
+		check(main.demo.spells._hard_at(wr.get_center()), "G11: tapume bloqueia tiro")
+		await wait_end.call(a)
+		check(w["body"] == null, "G11: tapumes descem no fim")
+	# G12 Andaimes
+	reset.call()
+	a = await go.call("G12")
+	check(not a.is_empty() and a["d"]["moves"].size() >= 1, "G12: andaimes marcados com o destino")
+	if not a.is_empty():
+		var m: Dictionary = a["d"]["moves"][0]
+		await wait_phase.call(a, "ativo")
+		await frames(int(float(a["e"]["mover_s"]) * 60.0) + 5)
+		var moved: bool = absf(m["p"]["rect"].position.y - (m["base"] + m["dy"])) < 1.0
+		check(moved and ct.owner_of.has(Vector2i(int(m["p"]["rect"].get_center().x / 64.0), int(m["p"]["rect"].position.y / 64.0))), "G12: o deque muda de altura (%.0f px) e a colisão vai junto" % m["dy"])
+		await wait_end.call(a)
+		check(absf(m["p"]["rect"].position.y - m["base"]) < 0.5 and m["p"]["evt"] == "", "G12: volta ao lugar no fim")
+	# G13 Cabo Rompido
+	reset.call()
+	a = await go.call("G13")
+	check(not a.is_empty(), "G13: escolhe uma viga com chão embaixo")
+	if not a.is_empty():
+		var p: Dictionary = a["d"]["p"]
+		var base: Rect2 = a["d"]["base"]
+		put(r1, Vector2(base.get_center().x, a["d"]["floor"]))
+		r1.god = false
+		await wait_phase.call(a, "ativo")
+		for i in 120:
+			if a["d"]["state"] != "cai":
+				break
+			await frames(1)
+		check(a["d"]["state"] == "chao" and a["d"]["body"] != null, "G13: a viga cai e vira plataforma no chão")
+		check(r1.dmg > 0.0 and r1.last_attacker == -1, "G13: quem ficou na faixa vermelha leva o golpe (do ambiente, não de jogador)")
+		await wait_end.call(a)
+		check(not p["fallen"] and p["rect"] == base and is_instance_valid(p["body"]) and p["evt"] == "", "G13: o guindaste pendura a viga de volta")
+	# G14 Rebites
+	reset.call()
+	a = await go.call("G14")
+	if not a.is_empty():
+		var b: Rect2 = a["d"]["bands"][0]
+		put(r0, Vector2(b.get_center().x, fy) if b.get_center().x > fx - 200.0 else Vector2(b.get_center().x, r0.position.y))
+		await wait_phase.call(a, "ativo")
+		var safe := true
+		var inband := true
+		for i in 60:
+			for rv in ev.rivets:
+				if rv["state"] == "cai" and not a["d"]["bands"].any(func(bb): return rv["pos"].x >= bb.position.x - 2.0 and rv["pos"].x <= bb.end.x + 2.0):
+					inband = false
+			await frames(1)
+		check(inband and ev.rivets.size() > 0, "G14: rebites só caem nas faixas marcadas")
+		await wait_end.call(a)
+		check(ev.rivets.size() < 60, "G14: densidade limitada")
+	# G09 Inspeção
+	reset.call()
+	a = await go.call("G09")
+	await wait_phase.call(a, "ativo")
+	await frames(2)
+	var lj: Dictionary = ct.parts.filter(func(p): return p["kind"] == "laje" and not p["nucleo"] and not p["fallen"])[0]
+	var hp0: int = lj["hp"]
+	ct.damage(lj, 3, lj["rect"].get_center())
+	check(ev.inspecao and lj["hp"] == hp0, "G09: estrutura reforçada durante a inspeção")
+	await wait_end.call(a)
+	check(not ev.inspecao, "G09: liberado no fim")
+	# conflitos e simultâneos
+	await go.call("G02")
+	await go.call("G03")
+	check(ev.is_active("G03") and not ev.is_active("G02"), "matriz: G03 tira G02 (não rodam juntos)")
+	await go.call("G14")
+	check(ev.active.size() == 2, "dois eventos compatíveis juntos (G03 + G14)")
+	await go.call("G06")
+	check(ev.active.size() <= 2, "nunca mais de 2 ao mesmo tempo")
+	ev.reset_round()
+	ev.manual = false
+	main.event_level = 3
+	ev.timer = 0.01
+	var maxn := 0
+	var bad := false
+	var seen := {}
+	for i in 60 * 70:
+		await frames(1)
+		for i2 in main.players.size():
+			main.demo.lives[i2] = 99
+		maxn = maxi(maxn, ev.active.size())
+		for x in ev.active:
+			seen[x["id"]] = true
+			for y in ev.active:
+				if x != y and ev.conflict(x["id"], y["id"]):
+					bad = true
+		if main.state != S.RUN:
+			break
+	check(maxn <= 2 and not bad and seen.size() >= 3, "agendador (alta): até 2 juntos, sem conflito (%d eventos vistos: %s)" % [seen.size(), str(seen.keys())])
+	main.event_level = 0
+	ev.manual = false
+	ev.reset_round()
+
 func spells_test() -> void:
 	print("== Spells (Etapa 1) e eventos G01/G10")
 	main.go_menu()
@@ -1947,10 +2175,10 @@ func spells_test() -> void:
 	main.event_level = 2
 	main.events.manual = true
 	sp.boxes.clear()
-	main.events.trigger(main.events.cfg["lista"][1])
+	main.events.trigger(main.events.ev("G10"))
 	await frames(3)
 	check(main.events.phase == "aviso" and main.events.spots.size() == 2 and main.events.spots[0].distance_to(main.events.spots[1]) > 200.0, "G10: anuncia 2 pontos afastados (holofotes)")
-	await frames(60)
+	await frames(85)
 	check(sp.boxes.size() == 2 and sp.boxes.all(func(b): return b["special"]), "G10: duas cápsulas de spell descem")
 	main.events.manual = false
 	main.event_level = 0
@@ -2484,6 +2712,67 @@ func combate_frames(dir: String) -> void:
 	print("quadros: ", _frame_no)
 
 ## Vitrine das spells da Etapa 1 no Canteiro (--spells=DIR): caixas, cada spell em uso e a troca. 30 quadros/s.
+## Vitrine dos eventos (--eventos=DIR, --so-eventos=G02+G05): cada evento do aviso ao fim, 1 quadro a cada 3.
+func eventos_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	main.mode = "demolicao"
+	main.go_join()
+	await frames(2)
+	for d in ["v0", "v1"]:
+		await tap(d, "jump")
+	main.players[0]["model"] = 0
+	main.players[1]["model"] = 4
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 5
+	main.event_level = 2
+	main.arena_choice = "canteiro_obras"
+	main.start_match()
+	await demo_round()
+	main.demo.spells.spawn_t = 999.0
+	var ev = main.events
+	ev.manual = true
+	var r0 = main.robots[0]
+	var r1 = main.robots[1]
+	var nuc: Array = main.demo.canteiro.parts.filter(func(p): return p["nucleo"])
+	var fy: float = nuc[0]["rect"].position.y
+	var x0: float = nuc[0]["rect"].position.x
+	_frame_no = 0
+	var ids := ["G02", "G03", "G04", "G05", "G06", "G11", "G12", "G13", "G14", "G09"]
+	for a0 in OS.get_cmdline_user_args():
+		if a0.begins_with("--so-eventos="):
+			ids = ids.filter(func(x): return x in a0.substr(13).split("+"))
+	for id in ids:
+		for i in main.players.size():
+			main.demo.lives[i] = 99
+		for r in [r0, r1]:
+			r.dmg = 0.0
+			r.stun_t = 0.0
+			r.invuln = 0.0
+		put(r0, Vector2(x0 + 40.0, fy))
+		put(r1, Vector2(x0 + 300.0, fy))
+		ev.trigger(ev.ev(id))
+		var a = ev.inst(id)
+		if id == "G04" and a != null:
+			put(r0, Vector2(a["d"]["pos"].x - 280.0, fy))
+		if id == "G13" and a != null:
+			put(r1, Vector2(a["d"]["base"].get_center().x + 90.0, a["d"]["floor"]))
+		var n := 0
+		while ev.active.has(a) and n < 900:
+			var inp := {"v0": {}, "v1": {}}
+			if id == "G05" and a["phase"] == "ativo" and a["len"] - a["t"] > 1.6 and a["len"] - a["t"] < 2.4:
+				put(r0, Vector2(a["d"]["rect"].get_center().x, a["d"]["rect"].position.y - 80.0))
+			if id in ["G03", "G02"] and n % 50 < 14:
+				inp["v0"]["jump"] = true
+			PlayerInput.virtual = inp
+			await frames(1)
+			if n % 4 == 0:
+				await grab(dir, "ev_" + id)
+			n += 1
+		PlayerInput.virtual = {"v0": {}, "v1": {}}
+		ev.reset_round()
+		main.demo.canteiro.parts.map(func(p): p["shake"] = 0.0)
+
 func spells_frames(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	PlayerInput.virtual = {"v0": {}, "v1": {}}
