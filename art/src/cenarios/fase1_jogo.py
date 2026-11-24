@@ -102,9 +102,13 @@ def e2_palco():
             b.append(f'<rect x="{x0 + (w - 40 if x0 == 0 else 14)}" y="{FL - 30 - k * 24}" width="26" height="4" fill="#9fe3f5"/>')
     b.append(escada(3 * T + 6, 2 * T, FL))
     b.append(escada(W - 3 * T - 32, 2 * T, FL))
-    # piso
-    b.append(R(3 * T, FL, W - 6 * T, H2 - FL, "#7d8896", 0, 3, dark="#5d6878"))
-    b.append(f'<rect x="{3 * T}" y="{FL}" width="{W - 6 * T}" height="10" fill="#9aa4ae"/>')
+    # piso em 2 partes: nas cols 13–16 o POÇO de drenagem, coberto pela grelha (peça do jogo, quebra)
+    for (x0, x1) in ((3 * T, 13 * T), (17 * T, W - 3 * T)):
+        b.append(R(x0, FL, x1 - x0, H2 - FL, "#7d8896", 0, 3, dark="#5d6878"))
+        b.append(f'<rect x="{x0}" y="{FL}" width="{x1 - x0}" height="10" fill="#9aa4ae"/>')
+    b.append(f'<rect x="{13 * T}" y="{FL}" width="{4 * T}" height="{H2 - FL}" fill="#10141a"/>')
+    b.append(cd.zebra(13 * T - 8, FL + 2, 8, H2 - FL))
+    b.append(cd.zebra(17 * T, FL + 2, 8, H2 - FL))
     for k in range(int((W - 6 * T) // 180)):
         x = 3 * T + 40 + k * 180
         b.append(f'<path d="M{x},{FL + 10} V{H2}" stroke="#5d6878" stroke-width="3"/>')
@@ -118,13 +122,7 @@ def e2_palco():
         b.append(R(c0 * T, 11 * T, n * T, 18, "#a8582e", 3, 1.8, dark="#7a3a18"))
         for xx in (c0 * T + 14, (c0 + n) * T - 22):
             b.append(f'<path d="M{xx},{11 * T + 18} V{13 * T}" stroke="#7a3a18" stroke-width="6"/>')
-    for (c0, n, row) in ((8, 5, 9), (27, 5, 9), (18, 4, 6)):
-        x, y, w = c0 * T, row * T, n * T
-        b.append(R(x, y, w, 22, "#8d98a4", 3, 2, dark="#6b7783"))
-        b.append(cd.zebra(x, y + 22, w, 8))
-        b.append(R(x + w / 2 - 22, y + 30, 44, FL - y - 30, "#a9b2bc", 3, 2.4, dark="#8691a0"))
-        for yy in range(y + 80, FL, 90):
-            b.append(f'<path d="M{x + w / 2 - 20},{yy} h40" stroke="#8691a0" stroke-width="3"/>')
+    # (as plataformas com estaca são peças do jogo: quebram — sprites "plataforma" e "estaca")
     # registro da bomba (parede direita)
     b.append(f'<path d="M{W - 3 * T},{FL - 260} H{W - 3 * T - 60} V{FL - 20}" stroke="#7a4a2e" stroke-width="22" fill="none"/>')
     b.append(f'<circle cx="{W - 3 * T - 60}" cy="{FL - 190}" r="26" fill="none" stroke="#d94a3a" stroke-width="8"/>'
@@ -144,6 +142,11 @@ SPRITES = {
     "npc": (80, 110, lambda: npc(40, 100, "#b4a9c4", "", 1.4)),
     "npc_lanterna": (200, 110, lambda: npc(40, 100, "#55606e", "", 1.4, lamp=True)),
     # mecanismos (posicionados e animados por modes/mecanismos.gd); chão/base na borda de baixo
+    "plataforma": (320, 40, lambda: R(4, 4, 312, 22, "#8d98a4", 3, 2, dark="#6b7783") + cd.zebra(4, 26, 312, 8)),
+    "estaca": (44, 560, lambda: R(0, 0, 44, 560, "#a9b2bc", 3, 2.4, dark="#8691a0") + "".join(
+        f'<path d="M2,{y} h40" stroke="#8691a0" stroke-width="3"/>' for y in range(50, 560, 90))),
+    "grelha": (256, 40, lambda: R(0, 0, 256, 40, "#3a3f4a", 3, 1.6) + "".join(
+        f'<rect x="{8 + k * 31}" y="4" width="14" height="32" rx="3" fill="#8d98a4"/>' for k in range(8))),
     "m_betoneira": (330, 170, lambda: f'<g transform="translate(70,160)">' + fp.betoneira(0, 0).split('<ellipse')[0] + '</g>'),
     "m_esteira": (300, 70, lambda: fp.esteira(4, 64, 240)),
     "m_tubo": (84, 84, lambda: E(42, 42, 38, 38, "#c4beb2", 2, dark="#9e9789") + '<circle cx="42" cy="42" r="22" fill="#7d776c"/><circle cx="42" cy="42" r="17" fill="#5a554d"/>'

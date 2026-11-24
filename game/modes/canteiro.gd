@@ -12,7 +12,10 @@ const T := 64
 const LAYOUTS := {
 	"1": {"seg_x": [8, 12, 16, 20, 24, 28], "nucleo": [2, 3], "laje_y": 13, "andaimes": [[3, 10, 5], [32, 10, 5]],
 		"vigas": [[16, 8, 8], [10, 11, 4], [26, 11, 4], [9, 5, 4], [27, 5, 4]], "pilares": [17, 22],
-		"terreos": [[0, 17, 8, 5], [32, 17, 8, 5]]},
+		"terreos": [[0, 17, 8, 5], [32, 17, 8, 5]],
+		# etapa 2 (Fundação, embaixo): plataformas sobre estaca [col, linha, largura], grelha do poço [col, linha, largura],
+		# pedaços da laje que caem na virada [col, largura] (sobre o piso da linha "piso")
+		"fundacao": {"estacas": [[8, 35, 5], [27, 35, 5], [18, 32, 4]], "grelha": [13, 41, 4], "piso": 41, "entulhos": [[8, 3], [27, 3]]}},
 	"lab": {"seg_x": [3, 7, 11, 15, 19, 23], "nucleo": [2, 3], "laje_y": 12, "andaimes": [[5, 9, 4], [20, 9, 4]],
 		"vigas": [[11, 6, 6], [24, 4, 4]], "pilares": [12, 17]},
 }
@@ -36,14 +39,17 @@ var t := 0.0
 var cycle_state := "calma"
 var target = null
 var tex := {}
+var fund := {}                 # layout da Fundação (etapa 2)
 var quiet := false             # virada da fase: desaba tudo sem um texto por peça
 var pillars_down := false      # virada: os pilares do núcleo também caem
 
 func setup(m: Node, lv) -> void:
 	main = m
 	cfg = m.demo.cfg["canteiro"]
-	for k in ["laje_0", "laje_1", "laje_2", "andaime", "viga", "viga4", "pilar", "escora"]:
+	for k in ["laje_0", "laje_1", "laje_2", "andaime", "viga", "viga4", "pilar", "escora", "laje_pedaco_0", "laje_pedaco_2"]:
 		tex[k] = Data.tex("canteiro/" + k)
+	for k in ["plataforma", "estaca", "grelha"]:
+		tex[k] = Data.tex("fase1/" + k)
 	var lay: Dictionary = LAYOUTS.get(String(lv.prop("canteiro", "1")), LAYOUTS["1"])
 	SEG_X = lay["seg_x"]
 	NUCLEO = lay["nucleo"]
@@ -63,10 +69,17 @@ func setup(m: Node, lv) -> void:
 	for i in ters.size():   # chão do térreo (dos lados): firme; só some na virada da fase (collapse_all)
 		var g: Array = ters[i]
 		_add("terreo", Rect2(g[0] * T, g[1] * T, g[2] * T, g[3] * T), 999, true, false, i)
+	fund = lay.get("fundacao", {})
+	for i in fund.get("estacas", []).size():
+		var e: Array = fund["estacas"][i]
+		_add("estaca", Rect2(e[0] * T, e[1] * T, e[2] * T, 22), int(cfg["estaca_hp"]), false, true, i, 2)
+	if fund.has("grelha"):
+		var gr: Array = fund["grelha"]
+		_add("grelha", Rect2(gr[0] * T, gr[1] * T, gr[2] * T, 40), int(cfg["grelha_hp"]), false, false, 0, 2)
 	lv.extra_solid = func(c: Vector2i) -> bool: return owner_of.has(c)
 	lv.grab_solid = func(c: Vector2i) -> bool: return owner_of.has(c) and owner_of[c]["kind"] == "laje"
 
-func _add(kind: String, r: Rect2, hp: int, nucleo: bool, oneway: bool, idx: int) -> void:
+func _add(kind: String, r: Rect2, hp: int, nucleo: bool, oneway: bool, idx: int, etapa := 1) -> void:
 	var body: StaticBody2D = AnimatableBody2D.new() if kind == "andaime" else StaticBody2D.new()   # andaime: G12 move o deque
 	if body is AnimatableBody2D:
 		body.sync_to_physics = false
@@ -81,7 +94,8 @@ func _add(kind: String, r: Rect2, hp: int, nucleo: bool, oneway: bool, idx: int)
 	body.add_child(cs)
 	add_child(body)
 	var p := {"kind": kind, "rect": r, "hp": hp, "max": hp, "nucleo": nucleo, "body": body, "state": 0, "crit_t": 0.0,
-		"warn_t": 0.0, "fallen": false, "shake": 0.0, "idx": idx, "evt": "", "y0": r.position.y, "oneway": oneway}
+		"warn_t": 0.0, "fallen": false, "shake": 0.0, "idx": idx, "evt": "", "y0": r.position.y, "oneway": oneway, "etapa": etapa,
+		"escora_hp": int(cfg["escora_hp"]) if kind == "laje" and not nucleo else 0}
 	body.set_meta("canteiro", p)
 	parts.append(p)
 	_claim(p)
@@ -167,6 +181,18 @@ func damage(p: Dictionary, amount: int, at: Vector2) -> void:
 		p["crit_t"] = float(cfg["aviso_queda_s"])   # aviso final: range, treme forte, pedrinhas caindo
 		Audio.play("terremoto", 1.5, -4.0)
 
+## Etapa em que o jogo está (fase em etapas); peças da outra etapa ficam fora de eventos, caixas e ciclo.
+func etapa_now() -> int:
+	var et = main.demo.etapas
+	return et.etapa if et != null and is_instance_valid(et) else 1
+
+## Onde a marretada pega a peça (a estaca inclui o pilar embaixo da plataforma).
+func hit_rect(p: Dictionary) -> Rect2:
+	var r: Rect2 = p["rect"]
+	if p["kind"] == "estaca":
+		return r.merge(Rect2(r.get_center().x - 22.0, r.end.y, 44.0, float(fund.get("piso", 41)) * T - r.end.y))
+	return r
+
 ## Marretada pesada: acerta o trecho à frente (no chão onde a marreta bate) ou, com ▼, o trecho embaixo dos pés.
 func hammer(r, hit: Rect2, down: bool) -> bool:
 	if down and r.is_on_floor():
@@ -175,8 +201,22 @@ func hammer(r, hit: Rect2, down: bool) -> bool:
 			damage(owner_of[c], int(cfg["dano_pesada"]), r.position)
 			return true
 	var reach := hit.grow_individual(0, 0, 0, 16)
+	for p in parts:   # escoras (D4): 2 pesadas quebram e o trecho de cima entra em queda
+		if p["kind"] == "laje" and not p["fallen"] and int(p["escora_hp"]) > 0 and p["crit_t"] <= 0.0:
+			var er := Rect2(p["rect"].position.x + 24.0, p["rect"].end.y, p["rect"].size.x - 48.0, 3.5 * T)
+			if reach.intersects(er):
+				p["escora_hp"] = int(p["escora_hp"]) - 1
+				main.spark(reach.get_center(), 5)
+				Audio.play("caixote_pancada", 0.8, -1.0)
+				if int(p["escora_hp"]) <= 0:
+					debris.append({"tex": tex["escora"], "size": Vector2(276, 532), "pos": Vector2(p["rect"].get_center().x, p["rect"].end.y + 250),
+						"vel": Vector2(randf_range(-80, 80), 0), "rot": 0.0, "spin": randf_range(-0.8, 0.8), "t": 0.0})
+					main.float_text(p["rect"].get_center() + Vector2(0, 60), "ESCORA QUEBROU!", Color("#f2c84b"))
+					p["hp"] = 1
+					damage(p, 1, reach.get_center())
+				return true
 	for p in parts:
-		if not p["fallen"] and reach.intersects(p["rect"]):
+		if not p["fallen"] and reach.intersects(hit_rect(p)):
 			var at := Vector2(clampf(reach.get_center().x, p["rect"].position.x, p["rect"].end.x), p["rect"].position.y)
 			damage(p, int(cfg["dano_pesada"]), at)
 			return true
@@ -200,6 +240,15 @@ func _collapse(p: Dictionary) -> void:
 	var mid: float = r.get_center().x
 	var out := -1.0 if mid < 20 * T else 1.0
 	match p["kind"]:
+		"estaca", "grelha", "entulho":
+			var tx: Texture2D = tex["plataforma"] if p["kind"] == "estaca" else (tex["grelha"] if p["kind"] == "grelha" else tex["laje_pedaco_2"])
+			debris.append({"tex": tx, "size": r.size + Vector2(0, 18), "pos": r.get_center(), "vel": Vector2(randf_range(-60, 60), 40),
+				"rot": 0.0, "spin": randf_range(-1.6, 1.6), "t": 0.0})
+			if p["kind"] == "estaca":
+				debris.append({"tex": tex["estaca"], "size": Vector2(44, 300), "pos": Vector2(r.get_center().x, r.end.y + 150), "vel": Vector2(randf_range(-80, 80), 0),
+					"rot": 0.0, "spin": randf_range(-1.2, 1.2), "t": 0.0})
+			if p["kind"] == "grelha" and not quiet:
+				main.float_text(r.get_center() + Vector2(0, -60), "O POÇO ABRIU!", Color("#f2c84b"))
 		"laje":
 			for k in 8:
 				var px := r.position.x + 20 + (k % 4) * 64 + randf_range(-8, 8)
@@ -276,7 +325,7 @@ func _physics_process(dt: float) -> void:
 func _alert_pool() -> Array:
 	var pool := []
 	for p in parts:
-		if p["fallen"] or p["nucleo"] or p["crit_t"] > 0.0 or p["warn_t"] > 0.0 or p["evt"] != "" or p["kind"] == "terreo":
+		if p["fallen"] or p["nucleo"] or p["crit_t"] > 0.0 or p["warn_t"] > 0.0 or p["evt"] != "" or p["kind"] == "terreo" or int(p["etapa"]) != etapa_now():
 			continue
 		var fresh := false
 		for r in main.robots:
@@ -326,7 +375,7 @@ func _draw() -> void:
 	var ly := LAJE_Y * T
 	# escoras (atrás) e pilares do núcleo
 	for p in parts:
-		if p["kind"] == "laje" and not p["nucleo"] and not p["fallen"]:
+		if p["kind"] == "laje" and not p["nucleo"] and not p["fallen"] and int(p["escora_hp"]) > 0:
 			draw_texture_rect(tex["escora"], Rect2(Vector2(p["rect"].position.x - 10, ly + 2 * T - 16) + _shake_off(p) * 0.5, Vector2(276, 532)), false)
 	for col in PILARES:
 		if not pillars_down:
@@ -343,6 +392,33 @@ func _draw() -> void:
 			for cx in [r.position.x + 40, r.end.x - 40]:
 				draw_line(Vector2(cx, -500), Vector2(cx, r.position.y) + o, Color("#5a4a3a"), 4.0, true)
 			draw_texture_rect(tex["viga"] if r.size.x > 300.0 else tex["viga4"], Rect2(r.position + Vector2(-10, -10) + o, Vector2(r.size.x + 20.0, 46)), false)
+	# Fundação: plataformas sobre estaca (inclinam no aviso), grelha do poço e pedaços da laje
+	for p in parts:
+		if p["fallen"] or int(p["etapa"]) != 2:
+			continue
+		var r: Rect2 = p["rect"]
+		var o := _shake_off(p)
+		match p["kind"]:
+			"estaca":
+				var floor_y := float(fund.get("piso", 41)) * T
+				draw_texture_rect(tex["estaca"], Rect2(Vector2(r.get_center().x - 22.0, r.end.y) + o * 0.5, Vector2(44, floor_y - r.end.y)), false)
+				var tilt := 0.0
+				if p["crit_t"] > 0.0:
+					tilt = 0.12 * (1.0 - p["crit_t"] / maxf(float(cfg["aviso_queda_s"]), 0.01))
+				elif int(p["state"]) == 2:
+					tilt = 0.03
+				draw_set_transform(r.get_center() + o, tilt, Vector2.ONE)
+				draw_texture_rect(tex["plataforma"], Rect2(-r.size.x / 2.0, -11, r.size.x, 34), false)
+				draw_set_transform(Vector2.ZERO)
+				if int(p["state"]) >= 1:   # rachaduras no pilar
+					var cx := r.get_center().x
+					draw_polyline(PackedVector2Array([Vector2(cx - 6, r.end.y + 60), Vector2(cx + 4, r.end.y + 90), Vector2(cx - 4, r.end.y + 130)]), Color("#4a3f3a"), 3.0)
+			"grelha":
+				draw_texture_rect(tex["grelha"], Rect2(r.position + o, r.size), false)
+				if int(p["state"]) >= 1:
+					draw_line(r.position + Vector2(40, 4) + o, r.position + Vector2(90, 36) + o, Color("#2a1a2e"), 3.0)
+			"entulho":
+				draw_texture_rect(tex["laje_pedaco_0" if p["idx"] % 2 == 0 else "laje_pedaco_2"], Rect2(r.position + Vector2(-8, -16) + o, r.size + Vector2(16, 20)), false)
 	# chão do térreo (lados): terra batida com faixa clara no topo
 	for p in parts:
 		if p["kind"] == "terreo" and not p["fallen"]:
@@ -408,11 +484,18 @@ func _draw_sirens() -> void:
 func collapse_all() -> void:
 	quiet = true
 	for p in parts:
+		if int(p["etapa"]) != 1:
+			continue
 		p["warn_t"] = 0.0
 		p["evt"] = ""
 		if not p["fallen"]:
 			_collapse(p)
 	quiet = false
+	# D12: pedaços da laje caem pelo buraco e viram obstáculos quebráveis no piso da Fundação
+	var piso := float(fund.get("piso", 41)) * T
+	for i in fund.get("entulhos", []).size():
+		var e: Array = fund["entulhos"][i]
+		_add("entulho", Rect2(e[0] * T, piso - 44.0, e[1] * T, 44.0), int(cfg["entulho_hp"]), false, false, i, 2)
 	pillars_down = true
 	for col in PILARES:   # os pilares tombam em pedaços
 		var x: float = col * T + 64.0
@@ -425,7 +508,7 @@ func collapse_all() -> void:
 ## Aviso da virada: todas as peças tremem com a fita zebrada.
 func warn_all(s: float) -> void:
 	for p in parts:
-		if not p["fallen"] and p["kind"] != "terreo":
+		if not p["fallen"] and p["kind"] != "terreo" and int(p["etapa"]) == 1:
 			p["warn_t"] = s
 
 ## Quantos trechos/peças ainda de pé (testes e bots).

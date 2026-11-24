@@ -140,7 +140,7 @@ func spawn_points() -> Array:
 	var ct = demo.canteiro
 	if ct != null and is_instance_valid(ct):
 		for p in ct.parts:
-			if p["fallen"] or p["warn_t"] > 0.0 or p["crit_t"] > 0.0 or p["state"] == 2:
+			if p["fallen"] or p["warn_t"] > 0.0 or p["crit_t"] > 0.0 or p["state"] == 2 or int(p.get("etapa", 1)) != ct.etapa_now():
 				continue
 			var r: Rect2 = p["rect"]
 			var fixed: bool = p["nucleo"] or p["kind"] == "andaime"

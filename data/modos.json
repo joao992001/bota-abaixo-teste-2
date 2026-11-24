@@ -596,7 +596,11 @@
       "impacto_forte_vel": 1500,
       "dano_impacto_forte": 2,
       "aviso_queda_s": 1.1,
-      "ciclo_dano": 99
+      "ciclo_dano": 99,
+      "escora_hp": 2,
+      "estaca_hp": 2,
+      "grelha_hp": 3,
+      "entulho_hp": 2
     },
     "ko_explosao": {
       "nota": "KO pela borda: força do tremor e duração da explosão",

@@ -1275,7 +1275,7 @@ func canteiro_test() -> void:
 	await demo_round()
 	main.demo.spells.spawn_t = 999.0
 	var ct = main.demo.canteiro
-	check(ct != null and main.level.id == "canteiro_obras" and ct.standing() == 15 and ct.standing("terreo") == 2, "Canteiro monta laje (6), andaimes (2), vigas (5) e o chão do térreo (2) (%s)" % [ct.standing() if ct != null else -1])
+	check(ct != null and main.level.id == "canteiro_obras" and ct.parts.filter(func(p): return int(p["etapa"]) == 1 and not p["fallen"]).size() == 15 and ct.standing("terreo") == 2, "Canteiro monta laje (6), andaimes (2), vigas (5) e o chão do térreo (2) (%s)" % [ct.standing() if ct != null else -1])
 	var r0 = main.robots[0]
 	var r1 = main.robots[1]
 	put(r1, Vector2(col_x(30), 13 * 64))
@@ -1644,7 +1644,8 @@ func etapas_test() -> void:
 	await frames(6)
 	check(et.state == "aviso" and main.demo.banner.begins_with("A OBRA"), "aviso cronometrado: sirene + \"A OBRA VAI CEDER!\"")
 	await frames(int(float(et.cfg["aviso_s"]) * 60.0) + 4)
-	check(et.state == "queda" and main.demo.canteiro.parts.all(func(p): return p["fallen"]), "a estrutura TODA desaba (inclusive núcleo e térreo)")
+	check(et.state == "queda" and main.demo.canteiro.parts.all(func(p): return p["fallen"] or int(p["etapa"]) == 2), "a estrutura TODA da etapa 1 desaba (inclusive núcleo e térreo)")
+	check(main.demo.canteiro.parts.filter(func(p): return p["kind"] == "entulho").size() == 2, "pedaços da laje caem na Fundação e viram obstáculos")
 	var waited := 0
 	while et.state != "etapa" and waited < 400:
 		await frames(1)
@@ -1718,6 +1719,13 @@ func mecanismos_test() -> void:
 	mc.hammer_hit(Rect2(Vector2(m4["d"]["alvo"][0], m4["d"]["alvo"][1]), Vector2(40, 40)), true, 0)
 	await frames(90)
 	check(int(m4["s"]["pile"]) == 0 and r1.dmg > 0.0 and r1.last_attacker == 0, "M4 tubos: marretada solta tubos rolando que acertam (crédito de quem marretou)")
+	# D4 escora: 2 pesadas quebram e o trecho de cima entra em queda
+	var ct = main.demo.canteiro
+	var lj: Dictionary = ct.parts.filter(func(p): return p["kind"] == "laje" and not p["nucleo"] and not p["fallen"])[0]
+	var esc := Rect2(lj["rect"].get_center().x - 20.0, lj["rect"].end.y + 40.0, 40.0, 40.0)
+	ct.hammer(r0, esc, false)
+	ct.hammer(r0, esc, false)
+	check(int(lj["escora_hp"]) == 0 and lj["crit_t"] > 0.0, "D4 escora: 2 marretadas quebram a escora e o trecho entra em queda")
 	# M5 serra
 	calm.call()
 	var m5: Dictionary = get.call("M5")
@@ -1734,6 +1742,8 @@ func mecanismos_test() -> void:
 		if k % 30 == 0:
 			put(r0, Vector2(600, 640))
 	check(hurt, "M5 serra: a lâmina sobe em ciclo e machuca")
+	mc.hammer_hit(Rect2(560, 630, 40, 30), true, 0)
+	check(m5["s"].get("broken", false), "D6 passarela: marretada pesada parte a passarela")
 	# etapa 2
 	var et = main.demo.etapas
 	et.t = et.virada_s()
@@ -1745,6 +1755,27 @@ func mecanismos_test() -> void:
 			break
 	check(et.etapa == 2, "virada para a Fundação")
 	var fl: float = main.level.etapa_rect(2).position.y + 15 * 64.0
+	ct = main.demo.canteiro
+	# D9 estaca: 2 pesadas → a plataforma inclina e cai
+	var est: Dictionary = ct.parts.filter(func(p): return p["kind"] == "estaca")[0]
+	var er := Rect2(est["rect"].get_center().x - 10.0, est["rect"].end.y + 100.0, 20.0, 20.0)
+	ct.hammer(r0, er, false)
+	ct.hammer(r0, er, false)
+	await frames(int(float(ct.cfg["aviso_queda_s"]) * 60.0) + 10)
+	check(est["fallen"], "D9 estaca: 2 marretadas e a plataforma de cima cai")
+	# D8 grelha: 3 pesadas abrem o poço; quem está em cima cai e é eliminado
+	var gr: Dictionary = ct.parts.filter(func(p): return p["kind"] == "grelha")[0]
+	put(r1, Vector2(gr["rect"].get_center().x, gr["rect"].position.y))
+	for k in 3:
+		ct.hammer(r0, Rect2(gr["rect"].position + Vector2(20, 6), Vector2(20, 20)), false)
+	var lv1: int = main.demo.lives[1]
+	for k in 240:
+		await frames(1)
+		r1.invuln = 0.0
+		if main.demo.lives[1] < lv1:
+			break
+	check(gr["fallen"] and main.demo.lives[1] < lv1, "D8 grelha: 3 marretadas abrem o poço e quem estava em cima cai (KO)")
+	await frames(120)
 	# M6 bate-estaca
 	calm.call()
 	var hit6 := false

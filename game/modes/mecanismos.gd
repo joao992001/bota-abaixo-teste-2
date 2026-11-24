@@ -203,6 +203,15 @@ func _tubos(inst: Dictionary, dt: float) -> void:
 func _serra(inst: Dictionary, dt: float) -> void:
 	var d: Dictionary = inst["d"]
 	var s: Dictionary = inst["s"]
+	if s.get("broken", false):
+		return
+	var on_top := 0   # D6: 2 robôs pulando em cima partem a passarela
+	for r in _robots():
+		if r.is_on_floor() and r.position.x > float(d["passarela"][0]) and r.position.x < float(d["passarela"][1]) and absf(r.position.y - float(d["pos"][1])) < 10.0:
+			on_top += 1
+	if on_top >= 2:
+		_break_walkway(inst)
+		return
 	var on := float(d["ligada_s"])
 	var off := float(d["desligada_s"])
 	var k := fmod(float(s["t"]), on + off)
@@ -220,6 +229,19 @@ func _serra(inst: Dictionary, dt: float) -> void:
 				main.spark(p + Vector2(0, -30), 8)
 		if fmod(t, 0.25) < dt:
 			Audio.play("serra", 1.2, -10.0)
+
+## D6: a passarela parte no meio e a serra cai junto (fica quebrada até o fim da rodada).
+func _break_walkway(inst: Dictionary) -> void:
+	var s: Dictionary = inst["s"]
+	s["broken"] = true
+	s["fall"] = 0.0
+	if is_instance_valid(s["plat"]):
+		s["plat"].queue_free()
+	var d: Dictionary = inst["d"]
+	main.dust(_v(d["pos"]), 1.4)
+	main.shake(6.0)
+	Audio.play("caixote_quebra", 0.9, 0.0)
+	main.float_text(_v(d["pos"]) + Vector2(0, -80), "PASSARELA PARTIU!", Color("#f2c84b"))
 
 func _bate_estaca(inst: Dictionary, dt: float) -> void:
 	var d: Dictionary = inst["d"]
@@ -378,6 +400,13 @@ func hammer_hit(hit: Rect2, heavy: bool, by := -1) -> bool:
 			"bate_estaca":
 				s["t"] = float(s["t"]) - 2.0
 		return true
+	for inst in list:   # D6: marretada pesada na passarela
+		if inst["tipo"] == "serra" and _on(inst) and heavy and not inst["s"].get("broken", false):
+			var d2: Dictionary = inst["d"]
+			var pr := Rect2(float(d2["passarela"][0]), float(d2["pos"][1]) - 10.0, float(d2["passarela"][1]) - float(d2["passarela"][0]), 34.0)
+			if pr.intersects(hit):
+				_break_walkway(inst)
+				return true
 	return false
 
 # ---------------------------------------------------------------- desenho
@@ -440,6 +469,15 @@ func _draw() -> void:
 				var p := _v(d["pos"])
 				var x0 := float(d["passarela"][0])
 				var x1 := float(d["passarela"][1])
+				if s.get("broken", false):   # metades penduradas + serra caída lá embaixo
+					s["fall"] = minf(float(s.get("fall", 0.0)) + 0.016, 1.0)
+					var mid := (x0 + x1) / 2.0
+					draw_set_transform(Vector2(x0, p.y), 0.9, Vector2.ONE)
+					draw_rect(Rect2(0, 0, mid - x0, 14), Color("#d9a05e"))
+					draw_set_transform(Vector2(x1, p.y), PI - 0.9, Vector2.ONE)
+					draw_rect(Rect2(0, -14, x1 - mid, 14), Color("#d9a05e"))
+					draw_set_transform(Vector2.ZERO)
+					continue
 				for x in range(int(x0), int(x1), 40):
 					draw_rect(Rect2(x, p.y, 38, 14), Color("#d9a05e"))
 				draw_line(Vector2(x0, p.y - 30), Vector2(x1, p.y - 30), Color("#f2c84b"), 4.0)

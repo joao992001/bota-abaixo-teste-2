@@ -555,7 +555,7 @@ func _tick_ativo(a: Dictionary, dt: float, pa: float) -> void:
 			var x := _drone_pos(a).x
 			if ct != null:
 				for p in ct.parts:
-					if not p["fallen"] and x >= p["rect"].get_center().x and not d["stamped"].has(p["idx"] * 10 + ["laje", "andaime", "viga"].find(p["kind"])):
+					if not p["fallen"] and int(p["etapa"]) == ct.etapa_now() and x >= p["rect"].get_center().x and not d["stamped"].has(p["idx"] * 10 + ["laje", "andaime", "viga"].find(p["kind"])):
 						d["stamped"][p["idx"] * 10 + ["laje", "andaime", "viga"].find(p["kind"])] = a["age"]
 						Audio.play("chave", 1.5, -8.0)
 						_repair(p)
@@ -1604,7 +1604,7 @@ func _draw_inspection(fr: Node2D, a: Dictionary) -> void:
 	if ct != null and a["phase"] != "aviso":
 		var close := 1.0 if a["phase"] == "ativo" else clampf(a["t"] / a["len"], 0.0, 1.0)
 		for p in ct.parts:
-			if p["fallen"]:
+			if p["fallen"] or int(p["etapa"]) != ct.etapa_now():
 				continue
 			var r: Rect2 = p["rect"]
 			var g := 10.0 * close
