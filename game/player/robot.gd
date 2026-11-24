@@ -24,6 +24,7 @@ var atk_t := 0.0              # tempo desde o começo do golpe
 var atk_hit := false          # o impacto já aconteceu (uma vez por golpe, no fim do preparo)
 var atk_landed := false       # o impacto pegou alguém
 var atk_cd := 0.0
+var heavy_cd := 0.0           # recarga só da marretada pesada (o golpe rápido segue livre)
 # esquiva: impulso curto; nos primeiros instantes protege SÓ contra golpes de robôs (não contra cenário)
 var dodge_t := 0.0            # tempo restante da esquiva
 var dodge_len := 0.0
@@ -131,6 +132,7 @@ func _physics_process(dt: float) -> void:
 	if stun_t <= 0.0:
 		recover_t = maxf(recover_t - dt, 0.0)
 	atk_cd = maxf(atk_cd - dt, 0.0)
+	heavy_cd = maxf(heavy_cd - dt, 0.0)
 	dodge_cd = maxf(dodge_cd - dt, 0.0)
 	guard_t = maxf(guard_t - dt, 0.0)
 	frozen_t = maxf(frozen_t - dt, 0.0)
@@ -302,7 +304,10 @@ func _physics_process(dt: float) -> void:
 		return
 	if atk == "" and atk_cd <= 0.0:
 		if _pressed("heavy"):
-			_start_attack("pesado")
+			if heavy_cd <= 0.0:
+				_start_attack("pesado")
+			else:
+				vis.denied()   # ainda recarregando: a marreta treme e faz "clanc"
 		elif _pressed("hammer"):
 			_start_attack("rapido")
 	if atk != "":
@@ -526,7 +531,10 @@ func _apply_knock(dir: int, vx: float, vy: float, stun: float) -> void:
 	stun_t = maxf(stun_t, stun)
 	recover_len = float(c["arremesso"]["retorno_s"])
 	recover_t = recover_len
-	# golpe interrompe o que estava fazendo
+	# golpe interrompe o que estava fazendo (marretada no preparo: INTERROMPIDO!)
+	if atk == "pesado" and not atk_hit:
+		_cancel_heavy()
+		main.float_text(position + Vector2(0, -140), "INTERROMPIDO!", Color("#f2c84b"))
 	atk = ""
 	hammer_anim = 0.0
 	dodge_t = 0.0
@@ -668,14 +676,17 @@ func _attack_update(dt: float, on_floor: bool) -> void:
 			own_vx += facing * float(ac["avanco_px_s"])   # o peso do golpe leva o corpo junto
 	hammer_anim = maxf(_atk_total() - atk_t, 0.0)
 	if atk_t >= _atk_total():
+		if atk == "pesado":
+			heavy_cd = float(ac["recarga"])
 		atk = ""
 		hammer_anim = 0.0
-		atk_cd = float(ac["recarga"])
+		atk_cd = float(c["ataque_rapido"]["recarga"])
 
 func _can_dodge(on_floor: bool) -> bool:
 	if dodge_cd > 0.0 or stun_t > 0.0 or frozen_t > 0.0 or hanging or climb_t >= 0.0:
 		return false
-	if atk == "pesado" or (atk == "rapido" and not atk_hit):
+	# a esquiva cancela o PREPARO da marretada (finta); depois do impacto, não
+	if (atk == "pesado" and atk_hit) or (atk == "rapido" and not atk_hit):
 		return false
 	return on_floor or air_dodge > 0
 
@@ -699,6 +710,8 @@ func _start_dodge(on_floor: bool) -> void:
 	dodge_cd = float(dc["recarga"])
 	if not on_floor:
 		air_dodge = 0
+	if atk == "pesado":
+		_cancel_heavy()
 	atk = ""
 	hammer_anim = 0.0
 	var_jump = 0.0
@@ -744,3 +757,9 @@ func _on_landed() -> void:
 	Audio.play("aterrissa", _pitch() * (1.0 - hard * 0.15), -5.0 + hard * 4.0)
 	vis.land(hard, stun_t > 0.0 or recover_t > 0.0)
 	main.dust(position, 1.0 + hard * 0.8)
+
+## Marretada cancelada no preparo (esquiva ou golpe do rival): paga parte da recarga.
+func _cancel_heavy() -> void:
+	var hp: Dictionary = c["ataque_pesado"]
+	heavy_cd = float(hp["recarga"]) * float(hp["recarga_cancelada"])
+	vis.heavy_cancel()

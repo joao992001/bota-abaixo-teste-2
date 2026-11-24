@@ -26,7 +26,7 @@
   ],
   "combate_nota": "VALORES INICIAIS PARA TESTE (não homologados). Tempos em s, velocidades em px/s. Ver docs/relatorio_personagem_combate.md.",
   "ataque_rapido": {"preparo": 0.05, "ativo": 0.06, "recupera": 0.13, "recarga": 0.06, "alcance_px": 54, "mov_mult": 0.85},
-  "ataque_pesado": {"preparo": 0.24, "ativo": 0.07, "recupera_acerto": 0.16, "recupera_erro": 0.4, "recarga": 0.08, "alcance_px": 70, "mov_mult_preparo": 0.35, "mov_mult_recupera_erro": 0.15, "avanco_px_s": 260},
+  "ataque_pesado": {"preparo": 0.4, "ativo": 0.07, "recupera_acerto": 0.16, "recupera_erro": 0.5, "recarga": 0.9, "recarga_cancelada": 0.5, "alcance_px": 70, "mov_mult_preparo": 0.25, "mov_mult_recupera_erro": 0.15, "avanco_px_s": 260},
   "esquiva": {"vel": 1080, "duracao": 0.17, "protecao": 0.13, "recarga": 0.5, "vel_final": 0.35},
   "arremesso": {"sem_controle_base": 0.07, "sem_controle_por": 0.0018, "sem_controle_max": 0.32, "retorno_s": 0.5, "controle_inicial": 0.15, "giro_min_vel": 700},
   "hitstop": {"rapido": 0.035, "pesado": 0.085, "por_dano": 0.0003, "max": 0.13}

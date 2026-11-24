@@ -15,6 +15,11 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
    no corpo em 3 estágios (`dano1..3_<modelo>.png`, faísca, fumaça, plaquinha solta, parafuso voando). Números: `data/controller.json`
    (`ataque_rapido`, `ataque_pesado`, `esquiva`, `arremesso`, `hitstop`) e `modos.json` (`amassometro.rapido/pesado`) —
    VALORES INICIAIS, a calibrar jogando. Vitrine: `-- --combate=DIR` (quadros → GIF). Testes: `--autotest --so=combate`.
+2a. **Ajustes do usuário (2026-11-24):** marretada pesada mais custosa (preparo 0,40 s, lentidão no preparo, recarga própria
+   de 0,9 s com marreta acinzentada e "plim" ao ficar pronta) e **cancelável**: golpe do rival no preparo INTERROMPE; a
+   esquiva cancela o próprio preparo (finta, paga `recarga_cancelada` × recarga). Pulo duplo refeito: chute com jato →
+   cambalhota encolhida no eixo do corpo → abre os braços; pousar no meio termina o giro para a frente (antes desgirava no chão).
+   Captura quadro a quadro: `-- --pulo=DIR`.
 2b. **LABORATÓRIO** (menu principal) — FEITO (2026-11-24): `game/ui/laboratorio.gd` + `levels/laboratorio.lvl`. Medidores,
    bonecos com comportamento, 32 números ajustáveis ao vivo; o usuário calibra jogando e manda os valores (COPIAR) para virar
    o padrão nos JSON. Ajustes salvos ficam em `user://laboratorio.json` e valem no jogo todo (PADRÃO apaga). Testes: `--so=lab`.

@@ -17,6 +17,8 @@ Pulo duplo: `air_jumps` (recarrega no chão, parede e borda). Coyote e buffer em
 ## Golpes, esquiva e arremesso (2026-11-24)
 - `atk` = "rapido"/"pesado" com fases preparo → ativo → recuperação; o impacto (`main.try_attack` → `demo.attack`) acontece
   **no fim do preparo**, sincronizado com a animação. Só a pesada quebra caixote/chão/barril; as duas passam TNT e derrubam o rei.
+- Pesada: recarga própria (`heavy_cd`); cancelável no preparo pela esquiva do próprio jogador (finta) ou por golpe do rival
+  (INTERROMPIDO!), pagando `recarga_cancelada` × recarga. O golpe rápido nunca espera a recarga da pesada.
 - Esquiva: `dodge_t`, `guard_t` (protege só de golpe/pisão de robô; nunca de cenário), `air_dodge` (1 por período no ar, volta só
   ao pousar). Não atravessa geometria (usa `move_and_slide`).
 - Arremesso: `stun_t` = sem controle (curto, cresce com o dano); depois `recover_t` devolve o controle aos poucos; `hitstop`

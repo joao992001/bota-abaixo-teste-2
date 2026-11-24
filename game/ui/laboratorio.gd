@@ -32,6 +32,9 @@ const PARAMS := [
 	["Pesada: ativo (s)", "c", ["ataque_pesado", "ativo"], 0.01, 0.01, 0.4, 2],
 	["Pesada: recuperação acertou (s)", "c", ["ataque_pesado", "recupera_acerto"], 0.01, 0.0, 0.8, 2],
 	["Pesada: recuperação errou (s)", "c", ["ataque_pesado", "recupera_erro"], 0.01, 0.0, 1.2, 2],
+	["Pesada: recarga (s)", "c", ["ataque_pesado", "recarga"], 0.05, 0.0, 4.0, 2],
+	["Pesada: recarga se cancelada (×)", "c", ["ataque_pesado", "recarga_cancelada"], 0.05, 0.0, 1.0, 2],
+	["Pesada: lentidão no preparo (×)", "c", ["ataque_pesado", "mov_mult_preparo"], 0.05, 0.0, 1.0, 2],
 	["Pesada: alcance (px)", "c", ["ataque_pesado", "alcance_px"], 2.0, 16.0, 200.0, 0],
 	["Pesada: dano (%)", "m", ["amassometro", "pesado", "dano"], 1.0, 0.0, 60.0, 0],
 	["Pesada: empurrão", "m", ["amassometro", "pesado", "kx"], 10.0, 0.0, 2000.0, 0],
@@ -396,7 +399,7 @@ func _draw_meters(ci: CanvasItem) -> void:
 		return
 	var r = main.robots[0]
 	var c: Dictionary = Data.ctrl
-	var box := Rect2(20, 110, 560, 360)
+	var box := Rect2(20, 110, 560, 394)
 	ci.draw_rect(box, Color(1, 1, 1, 0.82))
 	ci.draw_rect(box, Color("#2a1a2e"), false, 3.0)
 	var x := box.position.x + 20
@@ -430,7 +433,8 @@ func _draw_meters(ci: CanvasItem) -> void:
 	_bar(ci, Vector2(x, y + 34), "Recuperando", r.recover_t / maxf(r.recover_len, 0.01), Color("#f2a23a"))
 	_bar(ci, Vector2(x, y + 68), "Proteção", r.guard_t / maxf(float(c["esquiva"]["protecao"]), 0.01), Color("#5cc45c"))
 	_bar(ci, Vector2(x, y + 102), "Recarga esquiva", r.dodge_cd / maxf(float(c["esquiva"]["recarga"]), 0.01), Color("#4f86d9"))
-	y += 150
+	_bar(ci, Vector2(x, y + 136), "Recarga pesada", r.heavy_cd / maxf(float(c["ataque_pesado"]["recarga"]), 0.01), Color("#8a63d2"))
+	y += 184
 	Kit.text(ci, Vector2(x, y), "Esquiva no ar: %s   Pulo duplo: %s   Dano: %d%%" % ["●" if r.air_dodge > 0 else "○", "●" if r.air_jumps > 0 else "○", int(r.dmg)], 22, Color("#2a1a2e"))
 	# entradas apertadas
 	var keys := [["◄", "left"], ["►", "right"], ["▲", "up"], ["▼", "down"], ["PULO", "jump"], ["GOLPE", "hammer"], ["PESADA", "heavy"], ["ESQUIVA", "dodge"]]
@@ -438,7 +442,7 @@ func _draw_meters(ci: CanvasItem) -> void:
 	for k in keys:
 		var on: bool = PlayerInput.held(0, k[1])
 		var w: float = 34.0 + 13.0 * String(k[0]).length()
-		var kr := Rect2(kx, 482, w, 40)
+		var kr := Rect2(kx, 516, w, 40)
 		ci.draw_rect(kr, Color("#f2c84b") if on else Color(1, 1, 1, 0.6))
 		ci.draw_rect(kr, Color("#2a1a2e"), false, 2.0)
 		Kit.text(ci, Vector2(kr.position.x, kr.position.y + 29), k[0], 20, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_CENTER, w)
@@ -453,7 +457,7 @@ func _draw_meters(ci: CanvasItem) -> void:
 		lines.append("Último arremesso: " + last_flight)
 	lines.append("Boneco: %s · %d%%   ·   velocidade %s   ·   %d ajuste(s) fora da fábrica" % [DUMMY[dummy_i], int(DUMMY_DMG[dummy_dmg_i]), ["1×", "½×", "¼×"][slow_i], changed_count()])
 	for i in lines.size():
-		Kit.sticker(ci, Vector2(20, 580 + i * 44), lines[i], 24, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_LEFT)
+		Kit.sticker(ci, Vector2(20, 614 + i * 44), lines[i], 24, Color("#2a1a2e"), HORIZONTAL_ALIGNMENT_LEFT)
 
 func _bar(ci: CanvasItem, p: Vector2, label: String, k: float, col: Color) -> void:
 	Kit.text(ci, p + Vector2(0, 20), label, 20, Color("#2a1a2e"))

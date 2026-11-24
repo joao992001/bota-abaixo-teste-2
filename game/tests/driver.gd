@@ -20,6 +20,10 @@ func _run() -> void:
 			await lab_shots(a.trim_prefix("--lab="))
 			get_tree().quit()
 			return
+		if a.begins_with("--pulo="):
+			await pulo_frames(a.trim_prefix("--pulo="))
+			get_tree().quit()
+			return
 		if a.begins_with("--combate="):
 			await combate_frames(a.trim_prefix("--combate="))
 			get_tree().quit()
@@ -171,6 +175,16 @@ func reset_run() -> void:
 	for r in main.robots:
 		r.active = true
 	await frames(2)
+
+## Marretada pesada "limpa" para testes de efeito: zera a recarga, aperta e espera o impacto.
+func heavy_hit(dev: String) -> void:
+	var i: int = PlayerInput.slots.find(dev)
+	if i >= 0 and i < main.robots.size():
+		main.robots[i].heavy_cd = 0.0
+		while main.robots[i].atk != "":
+			await frames(1)
+	await tap(dev, "heavy")
+	await frames(int(float(Data.ctrl["ataque_pesado"]["preparo"]) * 60.0) + 8)
 
 func put(r, pos: Vector2) -> void:
 	r.position = pos
@@ -371,13 +385,11 @@ func demolicao_test() -> void:
 	await frames(3)
 	var cell := Vector2i(13, 9)
 	var hp0: int = int(main.demo.cfg["block_hp"])
-	await tap("v0", "heavy")
-	await frames(18)
+	await heavy_hit("v0")
 	check(main.level.blocks.has(cell) and main.level.blocks[cell]["hp"] == hp0 - 1, "1ª marretada racha o caixote do chão à frente")
 	for k in hp0 - 1:
 		await frames(34)   # a marretada que erra o robô fica presa ~0,7 s (abertura real)
-		await tap("v0", "heavy")
-		await frames(18)
+		await heavy_hit("v0")
 	check(not main.level.blocks.has(cell), "%dª marretada quebra o caixote" % hp0)
 	await demo_round()
 	r0 = main.robots[0]
@@ -387,8 +399,7 @@ func demolicao_test() -> void:
 	r0.facing = 1
 	await frames(3)
 	var x1: float = r1.position.x
-	await tap("v0", "heavy")
-	await frames(18)
+	await heavy_hit("v0")
 	check(r1.recover_t > 0.0 and absf(r1.dmg - 14.0) < 0.1, "marretada pesada arremessa e soma 14%% no Amassômetro (%.0f%%)" % r1.dmg)
 	await frames(30)
 	var push_low: float = r1.position.x - x1
@@ -396,8 +407,7 @@ func demolicao_test() -> void:
 	r1.dmg = 120.0
 	await frames(16)
 	x1 = r1.position.x
-	await tap("v0", "heavy")
-	await frames(18)
+	await heavy_hit("v0")
 	await frames(30)
 	var push_high: float = r1.position.x - x1
 	check(push_low > 20.0 and push_low < 200.0 and push_high > push_low * 3.0, "amassado voa mais longe: 14%% → %.0f px, 120%% → %.0f px" % [push_low, push_high])
@@ -410,8 +420,7 @@ func demolicao_test() -> void:
 	r0.facing = 1
 	r1.invuln = 2.0
 	await frames(3)
-	await tap("v0", "heavy")
-	await frames(18)
+	await heavy_hit("v0")
 	check(r1.dmg == 0.0 and r1.stun_t == 0.0, "invulnerável (começo da rodada) não leva golpe")
 	# pulo duplo do propulsor
 	await demo_round()
@@ -1556,9 +1565,9 @@ func combate_test() -> void:
 	r1.dmg = 50.0
 	await frames(3)
 	await tap("v0", "heavy")
-	await frames(6)
-	check(r1.dmg == 50.0, "marretada pesada tem preparo: ainda não acertou no 6º quadro")
-	await frames(14)
+	await frames(10)
+	check(r1.dmg == 50.0, "marretada pesada tem preparo: ainda não acertou no 10º quadro")
+	await frames(int(float(Data.ctrl["ataque_pesado"]["preparo"]) * 60.0))
 	var kx_heavy: float = absf(r1.own_vx)
 	check(r1.dmg > 50.0 and kx_heavy > kx_fast * 1.4, "pesada empurra bem mais que a rápida (%.0f × %.0f)" % [kx_heavy, kx_fast])
 	await frames(60)
@@ -1644,6 +1653,45 @@ func combate_test() -> void:
 	await frames(90)
 	check(r0.stun_t == 0.0 and r0.atk == "" and r0.dodge_t == 0.0, "nenhum estado preso depois do arremesso")
 	await frames(2)
+	# 5) marretada pesada: recarga própria, esquiva cancela o preparo, golpe do rival interrompe
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(20), 576))
+	r0.facing = 1
+	await frames(3)
+	await tap("v0", "heavy")
+	await frames(70)
+	check(r0.atk == "" and r0.heavy_cd > 0.0, "depois da marretada vem a recarga (%.2f s)" % r0.heavy_cd)
+	await tap("v0", "heavy")
+	check(r0.atk == "", "na recarga, a marretada não sai (golpe rápido continua livre)")
+	await tap("v0", "hammer")
+	check(r0.atk == "rapido", "golpe rápido funciona durante a recarga da pesada")
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(11) + 60, 576))
+	r0.facing = 1
+	r1.facing = -1
+	await frames(3)
+	await tap("v0", "heavy")
+	await frames(6)
+	await tap("v0", "dodge")
+	check(r0.atk == "" and r0.dodge_t > 0.0 and r1.dmg == 0.0 and r0.heavy_cd > 0.0, "esquiva cancela o preparo da marretada (finta)")
+	await frames(60)
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(11) + 60, 576))
+	r0.facing = 1
+	r0.heavy_cd = 0.0
+	await frames(3)
+	await tap("v0", "heavy")
+	await frames(4)
+	r1.facing = -1
+	await tap("v1", "hammer")
+	await frames(6)
+	check(r0.atk == "" and r0.dmg > 0.0 and r1.dmg == 0.0, "golpe do rival no preparo INTERROMPE a marretada")
 
 ## LABORATÓRIO: abre pela tela inicial, ajusta número ao vivo, mede pulo, boneco obedece, salva/volta ao padrão.
 func lab_test() -> void:
@@ -1988,8 +2036,7 @@ func itens_test() -> void:
 	r0.facing = 1
 	main.demo.give(r0, "martelao")
 	await frames(2)
-	await tap("v0", "heavy")
-	await frames(18)
+	await heavy_hit("v0")
 	check(not main.level.blocks.has(Vector2i(13, 9)), "martelão quebra o caixote em 1 golpe")
 	await demo_round()
 	r0 = main.robots[0]
@@ -2042,6 +2089,8 @@ func bots_test() -> void:
 	main.bot_level = 2
 	main.players[1]["level"] = 2
 	main.demo.cfg["quake_start_s"] = 999.0
+	var crumble0 = main.demo.cfg["crumble_break_s"]
+	main.demo.cfg["crumble_break_s"] = 999.0   # mede só o bot: o caixote que racha sob quem fica parado derrubava os dois
 	main.start_match()
 	main.countdown = 0.0
 	for r in main.robots:
@@ -2054,6 +2103,7 @@ func bots_test() -> void:
 			won = main.demo.round_winner == 1
 			break
 	check(won, "bot difícil derruba um jogador parado em até 90 s")
+	main.demo.cfg["crumble_break_s"] = crumble0
 	main.demo.cfg["quake_start_s"] = 30.0
 	# 3 bots entre si: a rodada termina e nenhum cai sozinho nos primeiros 4 s
 	main.state = S.JOIN
@@ -2301,7 +2351,7 @@ func combate_frames(dir: String) -> void:
 	main.cam_lock = [1.55, Vector2(col_x(17), 470)]
 	_frame_no = 0
 	var script := {
-		"v0": [[10, 40, "right"], [40, 58, "left"], [70, 84, "jump"], [96, 102, "jump"], [96, 120, "right"],
+		"v0": [[10, 40, "right"], [40, 58, "left"], [70, 78, "jump"], [82, 92, "jump"], [82, 120, "right"],
 			[150, 153, "dodge"], [150, 153, "right"], [175, 189, "jump"], [192, 195, "dodge"], [192, 195, "right"], [192, 195, "up"],
 			[240, 243, "hammer"], [258, 261, "hammer"], [276, 279, "hammer"], [330, 333, "heavy"],
 			[440, 443, "dodge"], [440, 443, "right"]],
@@ -2340,6 +2390,36 @@ func combate_frames(dir: String) -> void:
 		if f % 2 == 0:
 			await grab(dir, "c")
 	print("quadros: ", _frame_no)
+
+## Pulo duplo quadro a quadro (--pulo=DIR): pula do chão, no alto aperta de novo; câmera parada e perto.
+func pulo_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	PlayerInput.virtual = {"v0": {}}
+	await frames(2)
+	main.lab.start("v0")
+	main.countdown = 0.0
+	for r in main.robots:
+		r.active = true
+		r.invuln = 0.0
+	main.sandbox_remove("boneco")
+	main.hud.visible = false
+	var r0 = main.robots[0]
+	put(r0, Vector2(col_x(16), 12 * 64))
+	r0.facing = 1
+	await frames(30)
+	main.cam_lock = [2.4, Vector2(col_x(16), 12 * 64 - 260)]
+	_frame_no = 0
+	for f in 70:
+		var a := {}
+		if f < 16:
+			a["jump"] = true
+		if f >= 20 and f < 32:
+			a["jump"] = true
+		if f >= 20 and f < 50:
+			a["right"] = true
+		PlayerInput.virtual = {"v0": a}
+		await frames(1)
+		await grab(dir, "p")
 
 func anim_frames(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)

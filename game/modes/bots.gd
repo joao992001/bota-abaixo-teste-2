@@ -261,7 +261,8 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 		if signi(int(dx)) != r.facing and absf(dx) > 4.0:
 			cmd["dir"] = signi(int(dx))   # vira para o rival
 		if main.rng.randf() < float(lv["hammer_acc"]) and st.get("hammer_cd", 0.0) <= 0.0:
-			var heavy: bool = (target.dmg > 60.0 and main.rng.randf() < 0.45) or main.rng.randf() < 0.12
+			# rival bem amassado + marreta pronta: bots bons finalizam com a pesada
+			var heavy: bool = r.heavy_cd <= 0.0 and ((target.dmg > 60.0 and main.rng.randf() < 0.35 + 0.6 * float(lv["hammer_acc"])) or main.rng.randf() < 0.12)
 			cmd["heavy" if heavy else "hammer"] = true
 			st["hammer_cd"] = float(lv["hammer_cooldown_s"]) * (1.6 if heavy else 1.0)
 		return _safe(r, cmd, lv)

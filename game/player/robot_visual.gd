@@ -64,7 +64,8 @@ var hurt_lean := 0.0
 var flash_t := 0.0
 var tumble := 0.0                      # giro acumulado do arremesso (rad)
 var tumbling := false
-var flip_t := -1.0                     # mortal do pulo duplo (0..1)
+var flip_t := -1.0                     # pulo duplo (0..1): chute, cambalhota, abre
+var heavy_was_cd := false
 var land_t := 0.0                      # amortecimento depois de pousar arremessado
 var dodge_ground := false
 var dodge_dir := Vector2.ZERO
@@ -113,12 +114,34 @@ func stretch() -> void:
 	s_sqx[0] = 0.8
 	s_sqy[0] = 1.24
 
+## Pulo duplo do propulsor em 3 tempos: CHUTE (pernas esticadas, braços para cima, jato nos pés),
+## CAMBALHOTA encolhida (abraça os joelhos, marreta colada) e ABRE (braços abertos, volta a cair).
+const DJ_LEN := 0.42
+const DJ_KICK := 0.12
+const DJ_OPEN := 0.72
+
 func double_jump() -> void:
 	flip_t = 0.0
-	s_sqx[0] = 0.78
-	s_sqy[0] = 1.28
+	s_sqx[0] = 0.72
+	s_sqy[0] = 1.34
 	if robot != null:
-		robot.main.ring_fx(robot.position + Vector2(0, 4), 0.8)
+		var m = robot.main
+		m.ring_fx(robot.position + Vector2(0, 10), 1.0)
+		m.ring_fx(robot.position + Vector2(0, 26), 0.6)
+		m.dust(robot.position + Vector2(-10, 14), 0.5)
+		m.dust(robot.position + Vector2(10, 14), 0.5)
+
+## Apertou a marretada ainda recarregando: a marreta treme e faz "clanc".
+func denied() -> void:
+	s_ham[1] += 18.0
+	Audio.play("menu_negado", 0.8, -8.0)
+
+## Marretada cancelada no preparo: a marreta desce de volta (a mola leva) e some o rastro.
+func heavy_cancel() -> void:
+	smear_a = 0.0
+	s_sqx[0] = 0.9
+	s_sqy[0] = 1.08
+	Audio.play("marreta_vento", 0.6, -10.0)
 
 func attack(kind: String) -> void:
 	atk_kind = kind
@@ -154,7 +177,8 @@ func launch(v: Vector2) -> void:
 		_snap_ghost(0.4)
 
 func look() -> Dictionary:
-	var lk := {"color": color_idx, "model": model, "hammer": has_hammer, "dmg": dmg_level}
+	var lk := {"color": color_idx, "model": model, "hammer": has_hammer, "dmg": dmg_level,
+		"ham_cd": robot != null and robot.get("heavy_cd") != null and robot.heavy_cd > 0.0}
 	if robot != null and robot.has_method("fx_flags"):
 		lk["fx"] = robot.fx_flags()
 	return lk
@@ -202,8 +226,11 @@ func tick(r, dt: float) -> void:
 	land_t = maxf(land_t - dt, 0.0)
 	dodged_flash = maxf(dodged_flash - dt * 3.0, 0.0)
 	if flip_t >= 0.0:
-		flip_t += dt / 0.36
+		flip_t += dt / DJ_LEN
 		if flip_t >= 1.0 or on_floor or r.stun_t > 0.0:
+			# acabou (ou pousou no meio): termina o giro PARA A FRENTE até ficar de pé, nunca desgira
+			var cur := float(s_rot[0])
+			tumble = ceil(cur / TAU - 0.15) * TAU if flip_t < 1.0 else round(cur / TAU) * TAU
 			flip_t = -1.0
 	if r.atk == "":
 		atk_kind = ""
@@ -217,6 +244,11 @@ func tick(r, dt: float) -> void:
 			if spd > 300.0:
 				r.main.dust(r.position + Vector2(-r.facing * 10, 0), 0.45)
 	has_hammer = r.hammer_left > 0 or r.atk != ""
+	# marretada pesada recarregou: brilho na marreta + "plim"
+	if heavy_was_cd and r.heavy_cd <= 0.0:
+		r.main.spark(r.position + Vector2(r.facing * 22, -78), 3)
+		Audio.play("item", 1.7, -12.0)
+	heavy_was_cd = r.heavy_cd > 0.0
 	# arremesso: gira enquanto voa rápido sem controle; ao recuperar, volta de pé com um "pop"
 	if tumbling:
 		var sp := v.length()
@@ -404,7 +436,7 @@ func _pose_springs(r, dt: float, on_floor: bool, v: Vector2) -> void:
 		s_rot[0] = tumble
 		s_rot[1] = 0.0
 	else:
-		_spring(s_rot, tumble, dt, 3.2, 0.38)   # volta de pé com um balanço
+		_spring(s_rot, tumble, dt, 7.0 if on_floor else 3.2, 0.5 if on_floor else 0.38)   # volta de pé com um balanço
 
 ## Rastro: copia a pose atual para um "fantasma" na cor do jogador que some aos poucos.
 func _snap_ghost(alpha: float) -> void:
@@ -468,16 +500,42 @@ func current_pose() -> Dictionary:
 			knee[i] = knee[i].lerp(Vector2(7.0, 0) * up + Vector2(0.5, 0) * down + Vector2(4.0, 0) * apex, a)
 		hb = hb.lerp(Vector2(-4, -16) * up + Vector2(sin(t * 24.0) * 6.0, -18.0 + cos(t * 24.0) * 5.0) * down + Vector2(-12, -8) * apex, a)
 		hf = hf.lerp(Vector2(2, -10) * up + Vector2(cos(t * 21.0) * 4.0, -8.0) * down + Vector2(8, -6) * apex, a)
-	# mortal do pulo duplo: encolhe (joelhos no peito) e gira para a frente
+	# pulo duplo: chute com jato → cambalhota encolhida → abre os braços
 	if flip_t >= 0.0:
-		var e := _ease_out(flip_t)
-		p["rot"] = TAU * e
-		var tuck := sin(PI * clampf(flip_t, 0.0, 1.0))
-		for i in 2:
-			feet[i] = feet[i].lerp(Vector2(4.0 + i * 4.0, -20.0), tuck)
-			knee[i] = knee[i].lerp(Vector2(10.0, 0), tuck)
-		hb = hb.lerp(Vector2(6, 8), tuck)
-		hf = hf.lerp(Vector2(4, 10), tuck)
+		var k := flip_t
+		if k < DJ_KICK:
+			var u := _ease_out(k / DJ_KICK)
+			for i in 2:
+				feet[i] = feet[i].lerp(Vector2(-3.0 + i * 6.0, 6.0), u)   # pernas esticadas para baixo
+				knee[i] = knee[i].lerp(Vector2(0.5, 0), u)
+			hb = hb.lerp(Vector2(-6, -34), u)                           # braços para cima
+			hf = hf.lerp(Vector2(6, -32), u)
+			p["jet"] = 1.0
+			p["rot"] = 0.0
+			p["dj_ham"] = lerpf(HAMMER_REST, -0.2, u)
+		elif k < DJ_OPEN:
+			var v := (k - DJ_KICK) / (DJ_OPEN - DJ_KICK)
+			var e := v * v * v * (v * (v * 6.0 - 15.0) + 10.0)          # começa e termina devagar
+			p["rot"] = TAU * e
+			var tuck := clampf(sin(PI * v) * 1.6, 0.0, 1.0)
+			for i in 2:
+				feet[i] = Vector2(-3.0 + i * 6.0, 6.0).lerp(Vector2(3.0 + i * 5.0, -24.0), tuck)
+				knee[i] = Vector2(0.5, 0).lerp(Vector2(12.0, 0), tuck)
+			hb = Vector2(-6, -34).lerp(Vector2(3, -18), tuck)          # abraça os joelhos
+			hf = Vector2(6, -32).lerp(Vector2(9, -16), tuck)
+			p["jet"] = maxf(1.0 - v * 2.5, 0.0)
+			p["dj_ham"] = lerpf(-0.2, 2.5, tuck)                         # marreta junto dos joelhos
+			p["tuck"] = tuck                                             # encolhe no eixo do corpo (vira "bola")
+			bob += 6.0 * tuck                                            # corpo desce até os joelhos
+		else:
+			var w := _ease_out((k - DJ_OPEN) / (1.0 - DJ_OPEN))
+			p["rot"] = TAU
+			for i in 2:
+				feet[i] = Vector2(3.0 + i * 5.0, -24.0).lerp(feet[i], w)
+				knee[i] = Vector2(12.0, 0).lerp(knee[i], w)
+			hb = Vector2(-20, -18).lerp(hb, w * 0.6)                    # abre os braços para se equilibrar
+			hf = Vector2(18, -16).lerp(hf, w * 0.6)
+			p["dj_ham"] = lerpf(2.5, HAMMER_REST, w)
 	# idle: tique de ocioso
 	if fidget_t >= 0.0:
 		var k := fidget_t
@@ -555,6 +613,10 @@ func current_pose() -> Dictionary:
 		knee[1] = Vector2(9, 0)
 		lean = 0.3
 	var ang: float = s_ham[0]
+	if p.has("dj_ham"):
+		ang = float(p["dj_ham"])
+		s_ham[0] = ang
+		s_ham[1] = 0.0
 	if fidget_t >= 0.0 and fidget_kind == 0:
 		ang = HAMMER_REST + TAU * smoothstep(0.1, 0.8, fidget_t)
 	if robot != null:
@@ -807,6 +869,9 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 		return
 	if pose.has("rot"):   # mortal, giro do arremesso, esquiva no ar: gira em torno do meio do corpo
 		base = base * Transform2D(float(pose["rot"]), PIVOT) * Transform2D(0.0, -PIVOT)
+	var tk := float(pose.get("tuck", 0.0))
+	if tk > 0.0:   # cambalhota: achata no eixo do próprio corpo (depois do giro), não no da tela
+		base = base * Transform2D(0.0, Vector2(1.0 + 0.2 * tk, 1.0 - 0.3 * tk), 0.0, PIVOT * Vector2(0, 1) * (0.3 * tk))
 	if pose.has("spin"):   # comemoração "pião": achata na horizontal passando pelo meio
 		var sp: float = pose["spin"]
 		base = base * Transform2D(0.0, Vector2(signf(sp) * maxf(absf(sp), 0.32), 1.0), 0.0, Vector2.ZERO)
@@ -845,7 +910,8 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 	if lk.get("hammer", true) and tool == "":
 		var big: bool = fx.get("martelao", false)
 		ci.draw_set_transform_matrix(base * Transform2D(pose["hammer_ang"], q * (1.55 if big else 1.0), 0.0, hf))
-		ci.draw_texture(Data.tex("robo/marreta"), -GRIP * 4.0, Color(1.0, 0.82, 0.3) if big else Color.WHITE)
+		var hcol := Color(1.0, 0.82, 0.3) if big else (Color(0.58, 0.62, 0.72) if lk.get("ham_cd", false) else Color.WHITE)
+		ci.draw_texture(Data.tex("robo/marreta"), -GRIP * 4.0, hcol)
 	# pernas + botas
 	var foot := Data.tex("robo/pe")
 	for i in 2:
@@ -898,6 +964,16 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 			ci.draw_circle(fp + Vector2(s * 1.5, 3.0), 5.5, Color(0.97, 0.96, 0.9))
 			ci.draw_circle(fp + Vector2(s * 1.5 + 4.0, 5.0), 3.0, Color(0.97, 0.96, 0.9))
 			ci.draw_rect(Rect2(fp + Vector2(s * 1.5 - 1.0, 6.0), Vector2(2, 3.0 + 2.0 * fposmod(now * 1.5 + i * 0.5, 1.0))), Color(0.97, 0.96, 0.9))
+	# jato do propulsor saindo dos pés (pulo duplo)
+	var jet := float(pose.get("jet", 0.0))
+	if jet > 0.01:
+		ci.draw_set_transform_matrix(base)
+		var flick := 0.85 + 0.15 * sin(Time.get_ticks_msec() / 25.0)
+		for i in 2:
+			var fp2: Vector2 = Vector2(_v(hips[i]).x + (-1.0 if i == 0 else 1.0) * 4.0, -4.0) + pose["feet"][i] + Vector2(0, 6)
+			var L := 30.0 * jet * flick
+			ci.draw_colored_polygon(PackedVector2Array([fp2 + Vector2(-6, 0), fp2 + Vector2(6, 0), fp2 + Vector2(0, L)]), Color("#f6a23a"))
+			ci.draw_colored_polygon(PackedVector2Array([fp2 + Vector2(-3, 0), fp2 + Vector2(3, 0), fp2 + Vector2(0, L * 0.55)]), Color("#fff1b8"))
 	_limb(ci, base, bx * _v(sh[0]), hb, limb, Vector2(0, 3), lw)
 	# corpo + rosto + antena (mola)
 	ci.draw_set_transform_matrix(base * bx * Transform2D(0.0, q, 0.0, -ORIGIN))
