@@ -58,7 +58,7 @@ var forced_vel := Vector2.ZERO
 var grip := 1.0               # aderência na parede/borda (1 = cheia); gasta segurando, recarrega no chão
 var wall_side := 0            # lado da parede em que está escorregando (desenho)
 var slow_t := 0.0             # lentidão (S03 Canhão Criogênico): corre mais devagar, nunca imobiliza
-var god := false              # Oficina: invencível (não leva golpe)
+var god := false              # Laboratório: invencível (não leva golpe)
 var push_vx := 0.0            # empurrão externo deste quadro (ímã); zera a cada quadro
 var fall_reason := ""
 var last_hit := 99.0

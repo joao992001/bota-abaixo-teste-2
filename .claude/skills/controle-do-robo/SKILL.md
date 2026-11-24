@@ -30,5 +30,5 @@ Pulo duplo: `air_jumps` (recarrega no chão, parede e borda). Coyote e buffer em
 - Parede e borda: aderência limitada com medidor acima da cabeça.
 
 ## Como ajustar
-Mude os JSON, jogue 1 minuto com 2 jogadores (ou use a OFICINA: câmera lenta, hitbox) e compare. Se o usuário reclamar
+Mude os JSON, jogue 1 minuto com 2 jogadores (ou use o LABORATÓRIO: câmera lenta, hitbox, números ao vivo) e compare. Se o usuário reclamar
 ("pesado", "flutua"), ofereça 2–3 variações. Testes de parede/controle: `-- --autotest --so=parede,controle_real`.

@@ -60,10 +60,6 @@ func _run() -> void:
 				await snap(dir, "intro_%03d" % target)
 			get_tree().quit(0)
 			return
-		if a.begins_with("--parede="):
-			await parede_frames(a.substr(9))
-			get_tree().quit(0)
-			return
 		if a.begins_with("--espiar="):
 			await espiar(a.trim_prefix("--espiar="))
 			get_tree().quit()
@@ -75,30 +71,6 @@ func _run() -> void:
 		if a.begins_with("--robos="):
 			await robos_sheet(a.trim_prefix("--robos="))
 			get_tree().quit()
-			return
-		if a.begins_with("--oficina="):
-			DirAccess.make_dir_recursive_absolute(a.substr(10))
-			get_window().size = Vector2i(1920, 1080)
-			main.go_menu()
-			PlayerInput.virtual = {"v0": {}}
-			await frames(2)
-			main.oficina.start("v0")
-			main.sandbox_add("boneco")
-			main.sandbox_add("bot")
-			await frames(150)
-			await snap(a.substr(10), "oficina_jogo")
-			main.oficina.toggle()
-			main.oficina.sel = 0
-			main.oficina.item_i = 4
-			await frames(10)
-			await snap(a.substr(10), "oficina_painel")
-			get_tree().quit(0)
-			return
-			get_tree().quit(0)
-			return
-			get_tree().quit(0)
-			return
-			get_tree().quit(0)
 			return
 		if a.begins_with("--perf"):
 			await perf_run()
@@ -517,7 +489,6 @@ func demolicao_test() -> void:
 	await menus_test()
 	await controles_test()
 	await controle_real_test()
-	await oficina_test()
 	await robos_test()
 	await combate_test()
 	await lab_test()
@@ -587,7 +558,7 @@ func menus_test() -> void:
 	await tap("v0", "jump")
 	check(main.state == S.MENU and not main.paused, "pausa → MENU PRINCIPAL")
 	main.menus.sel = 0
-	for k in 4:
+	for k in 3:
 		await tap("v0", "down")
 	await tap("v0", "jump")
 	check(main.state == S.OPTIONS, "OPÇÕES abre")
@@ -892,70 +863,6 @@ func submodos_test() -> void:
 	main.game_mode = "derruba"
 	main.demo.lives_setting = 1
 
-## Itens próprios de cada modo (Batata, Rei, Fuga).
-func oficina_test() -> void:
-	print("== Oficina (ambiente de testes)")
-	main.go_menu()
-	PlayerInput.virtual = {"v0": {}, "v1": {}}
-	await frames(2)
-	main.menus.sel = 0
-	await tap("v0", "down")
-	await tap("v0", "jump")
-	check(main.sandbox and main.state == S.RUN and main.level.id == "oficina" and main.players.size() == 1, "menu ▸ OFICINA abre a arena de testes com 1 jogador")
-	main.countdown = 0.0
-	for r in main.robots:
-		r.active = true
-	await frames(5)
-	var r0 = main.robots[0]
-	r0.invuln = 0.0
-	main.kill(r0, -1, null)
-	await frames(2)
-	check(r0.alive and main.state == S.RUN, "na Oficina, cair não tira ninguém (volta pelo guindaste)")
-	var ofi = main.oficina
-	await tap("v0", "start")
-	check(ofi.open and main.paused, "START abre o painel e pausa")
-	ofi.sel = 0
-	ofi.item_i = ofi.kinds().find("S03")
-	await tap("v0", "jump")
-	check(main.demo.spells.hud_info(0).get("id", "") == "S03" and not ofi.open, "painel: DAR SPELL entrega o canhão criogênico e fecha")
-	await tap("v0", "start")
-	ofi.sel = ofi.ROWS.find("boneco")
-	await tap("v0", "right")
-	check(main.players.size() == 2 and main.players[1].get("boneco", false) and main.robots.size() == 2, "painel: + boneco de treino")
-	ofi.sel = ofi.ROWS.find("evento")
-	ofi.event_i = 1   # G10 (a Oficina não tem estrutura para o G01)
-	await tap("v0", "jump")
-	check(main.events.phase == "aviso" and not ofi.open, "painel: EVENTO AGORA dispara o evento")
-	await frames(120)
-	check(main.events.phase == "ativo" or main.events.phase == "", "evento roda na Oficina")
-	await tap("v0", "start")
-	ofi.sel = ofi.ROWS.find("invencivel")
-	await tap("v0", "jump")
-	await tap("v0", "start")
-	await frames(2)
-	r0 = main.robots[0]
-	var d0: float = r0.dmg
-	r0.invuln = 0.0
-	r0.take_hit(1, "marretada", 1)
-	check(ofi.god and r0.dmg == d0, "painel: INVENCÍVEL — golpe não pega")
-	main.robots[1].invuln = 0.0
-	var hit: bool = main.robots[1].take_hit(1, "marretada", 0)
-	check(hit and main.robots[1].dmg > 0.0, "o boneco de treino apanha e mostra o dano")
-	await tap("v1", "jump")
-	await frames(2)
-	check(main.players.size() == 3 and main.robots.size() == 3, "outro controle entra na Oficina apertando PULAR")
-	await tap("v0", "start")
-	ofi.sel = ofi.ROWS.find("arena")
-	ofi.arena_i = ofi.arenas().map(func(a): return a["id"]).find("prensa")
-	await tap("v0", "jump")
-	await frames(3)
-	check(main.level.id != "oficina" and main.robots.size() == 3 and main.sandbox, "painel: trocar de arena mantém todos")
-	await tap("v0", "start")
-	ofi.sel = ofi.ROWS.find("sair")
-	await tap("v0", "jump")
-	check(main.state == S.MENU and not main.sandbox and not main.paused and Engine.time_scale == 1.0, "SAIR DA OFICINA volta ao menu")
-
-## ROBÔS: 8 modelos só de aparência; ▲▼ na entrada passa por todos e volta; cada modelo tem arte completa e desmonta.
 func robos_test() -> void:
 	print("== Robôs (8 modelos)")
 	check(Data.MODELS.size() == 8 and Data.robot_meta["modelos"].size() == 8, "8 modelos de robô (%d)" % Data.MODELS.size())
@@ -970,6 +877,8 @@ func robos_test() -> void:
 			if Data.tex(n) == null:
 				faltando.append(n)
 	check(faltando.is_empty(), "todos os modelos têm corpo nas 4 cores, 6 rostos e antena %s" % [faltando])
+	main.go_menu()
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
 	main.mode = "demolicao"
 	main.go_join()
 	await frames(2)
@@ -1225,8 +1134,7 @@ func lab_test() -> void:
 	PlayerInput.virtual = {"v0": {}, "v1": {}}
 	await frames(2)
 	main.menus.sel = 0
-	for k in 2:
-		await tap("v0", "down")
+	await tap("v0", "down")
 	await tap("v0", "jump")
 	check(main.sandbox and main.lab_mode and main.level.id == "laboratorio" and main.robots.size() == 2, "menu ▸ LABORATÓRIO abre a sala de medição com 1 jogador + boneco")
 	main.countdown = 0.0
@@ -1272,9 +1180,53 @@ func lab_test() -> void:
 	await tap("v0", "jump")
 	check(absf(float(Data.ctrl["ataque_pesado"]["preparo"]) - before) < 0.0001 and not FileAccess.file_exists(lab.SAVE_PATH), "PADRÃO volta aos valores de fábrica e apaga o salvo")
 	await frames(20)
+	# medidores somem/voltam com VOLTAR durante o jogo
+	await tap("v0", "start")
+	check(not lab.open, "START fecha o painel")
+	await tap("v0", "back")
+	check(not lab.show_meters, "VOLTAR esconde os medidores")
+	await tap("v0", "back")
+	check(lab.show_meters, "VOLTAR mostra de novo")
+	# spells, eventos e arena (o que era da Oficina)
+	var r0b = main.robots[0]
+	r0b.invuln = 0.0
+	main.kill(r0b, -1, null)
+	await frames(2)
+	check(r0b.alive and main.state == S.RUN, "no Laboratório, cair não tira ninguém")
+	await tap("v0", "start")
+	lab.sel = lab.rows().find("dar_spell")
+	lab.spell_i = lab.spells().find("S03")
+	await tap("v0", "jump")
+	check(main.demo.spells.hud_info(0).get("id", "") == "S03" and not lab.open, "painel: DAR SPELL entrega o canhão criogênico e fecha")
+	await tap("v0", "start")
+	lab.sel = lab.rows().find("caixa")
+	var nb: int = main.demo.spells.boxes.size()
+	await tap("v0", "jump")
+	check(main.demo.spells.boxes.size() == nb + 1, "painel: CAIXA DO CÉU solta uma caixa")
+	await tap("v0", "start")
+	lab.sel = lab.rows().find("evento")
+	lab.event_i = 1   # G10 (a sala de régua não tem estrutura para o G01)
+	await tap("v0", "jump")
+	check(main.events.phase == "aviso" and not lab.open, "painel: EVENTO AGORA dispara o evento")
+	await tap("v0", "start")
+	lab.sel = lab.rows().find("bot")
+	await tap("v0", "right")
+	var n_before: int = main.robots.size()
+	lab.sel = lab.rows().find("arena")
+	await tap("v0", "right")
+	await tap("v0", "jump")
+	await frames(5)
+	check(main.level.id == "canteiro_obras" and main.demo.canteiro != null and main.robots.size() == n_before and main.sandbox, "painel: arena CANTEIRO mantém todos (%d robôs)" % main.robots.size())
+	await tap("v0", "start")
+	lab.sel = lab.rows().find("evento")
+	lab.event_i = 0
+	await tap("v0", "jump")
+	check(main.events.phase == "aviso" and main.demo.canteiro.cycle_state == "aviso", "no Canteiro, G01 dispara pelo painel")
+	await frames(10)
+	await tap("v0", "start")
 	lab.sel = lab.rows().find("sair")
 	await tap("v0", "jump")
-	check(main.state == S.MENU and not main.lab_mode and not main.sandbox, "SAIR volta ao menu")
+	check(main.state == S.MENU and not main.lab_mode and not main.sandbox and not main.paused and Engine.time_scale == 1.0, "SAIR volta ao menu")
 	await frames(20)
 
 ## Capturas do Laboratório (--lab=DIR): medidores em ação e o painel de ajustes.
@@ -1305,8 +1257,8 @@ func lab_shots(dir: String) -> void:
 	await frames(70)
 	await snap(dir, "lab_medidas")
 	await tap("v0", "start")
-	main.lab.sel = main.lab.rows().find("num12")
-	main.lab.scroll = main.lab.sel - 4
+	main.lab.sel = main.lab.rows().find("dar_spell")
+	main.lab.scroll = 0
 	await frames(4)
 	await snap(dir, "lab_painel")
 
@@ -2631,66 +2583,6 @@ func video_frames(dir: String) -> void:
 	fa.store_string(JSON.stringify({"fps": 30, "frames": f / 2, "root": ProjectSettings.globalize_path("res://"), "log": Audio.rec_log}))
 	fa.close()
 	print("vídeo: %d quadros, %d sons" % [f / 2, Audio.rec_log.size()])
-
-# ---------------------------------------------------------------- capturas de parede/borda e botas de mola (zoom)
-func parede_frames(dir: String) -> void:
-	DirAccess.make_dir_recursive_absolute(dir)
-	get_window().size = Vector2i(1920, 1080)
-	main.go_menu()
-	PlayerInput.virtual = {"v0": {}}
-	await frames(2)
-	main.oficina.start("v0")
-	main.countdown = 0.0
-	await frames(5)
-	var r = main.robots[0]
-	r.active = true
-	main.hud.visible = false
-	# pendurado na quina do topo da parede de caixotes (coluna 6, topo na linha 6), aderência cheia/meio/acabando
-	for g in [1.0, 0.5, 0.15]:
-		r.forced_t = 0.0
-		r.hanging = true
-		r.hang_dir = -1
-		r.facing = -1
-		r.hang_t = 0.0
-		r.position = Vector2(7 * 64.0 + 24.0, 6 * 64.0 + 58.0)
-		r.reset_physics_interpolation()
-		main.cam_lock = [3.0, r.position + Vector2(-20, -60)]
-		for k in 12:
-			r.grip = g
-			r.hanging = true
-			await frames(1)
-		await snap(dir, "borda_%d" % int(g * 100))
-	# escorregando na parede (de costas para ela)
-	r.hanging = false
-	for g in [0.9, 0.25]:
-		r.position = Vector2(7 * 64.0 + 25.0, 8 * 64.0)
-		r.velocity = Vector2(0, 200)
-		r.reset_physics_interpolation()
-		vset("v0", "left", true)
-		for k in 14:
-			r.grip = g
-			await frames(1)
-			main.cam_lock = [3.0, r.position + Vector2(0, -50)]
-		await snap(dir, "parede_%d" % int(g * 100))
-		vset("v0", "left", false)
-	# armadura fornalha parada e no ar
-	main.demo.spells.equip(r, "S13")
-	main.demo.spells.use(r)
-	r.position = Vector2(12 * 64.0 + 32.0, 13 * 64.0)
-	r.velocity = Vector2.ZERO
-	r.reset_physics_interpolation()
-	await frames(80)
-	main.cam_lock = [3.0, r.position + Vector2(0, -50)]
-	await frames(4)
-	await snap(dir, "mola_chao")
-	vset("v0", "jump", true)
-	await frames(10)
-	main.cam_lock = [2.4, r.position + Vector2(0, -50)]
-	await frames(2)
-	await snap(dir, "mola_ar")
-	vset("v0", "jump", false)
-	main.cam_lock = []
-	main.hud.visible = true
 
 func perf_run() -> void:
 	get_window().size = Vector2i(1920, 1080)

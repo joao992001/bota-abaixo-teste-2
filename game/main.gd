@@ -13,7 +13,6 @@ const Demolicao := preload("res://modes/demolicao.gd")
 const Bots := preload("res://modes/bots.gd")
 const Menus := preload("res://ui/menus.gd")
 const Eventos := preload("res://modes/eventos.gd")
-const Oficina := preload("res://ui/oficina.gd")
 const Laboratorio := preload("res://ui/laboratorio.gd")
 const T := 64
 
@@ -21,10 +20,9 @@ enum S { JOIN, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS, AJUSTES, EV
 var state := S.INTRO   # abre com a intro animada (os testes pulam direto para a entrada)
 var paused := false
 const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.AJUSTES, S.EVENTOS, S.CONTROLES, S.INTRO, S.CONFIGPAD]
-var sandbox := false          # OFICINA: ambiente de testes (respawn infinito, rodada sem fim)
-var oficina: Node = null
+var sandbox := false          # LABORATÓRIO: ambiente de testes (respawn infinito, rodada sem fim)
 var lab: Node = null
-var lab_mode := false        # LABORATÓRIO (uma Oficina de medição/calibragem)
+var lab_mode := false        # LABORATÓRIO aberto
 var perf_acc := {}             # tempo gasto por parte (medição --perf)
 var lost_pads: Array = []      # jogadores cujo controle desconectou no meio da partida (índices)
 var timer := 0.0
@@ -109,9 +107,6 @@ func _ready() -> void:
 	menus = Menus.new()
 	menus.setup(self)
 	add_child(menus)
-	oficina = Oficina.new()
-	oficina.setup(self)
-	add_child(oficina)
 	lab = Laboratorio.new()
 	lab.setup(self)
 	add_child(lab)
@@ -119,7 +114,7 @@ func _ready() -> void:
 	PlayerInput.pad_changed.connect(_on_pad_changed)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--spells") or a.begins_with("--oficina") or a.begins_with("--parede") or a.begins_with("--intro") or a.begins_with("--maquete") or a.begins_with("--robos") or a.begins_with("--combate") or a.begins_with("--lab") or a.begins_with("--pulo") or a.begins_with("--prancha") or a.begins_with("--canteiro") or a.begins_with("--espiar"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--spells") or a.begins_with("--parede") or a.begins_with("--intro") or a.begins_with("--maquete") or a.begins_with("--robos") or a.begins_with("--combate") or a.begins_with("--lab") or a.begins_with("--pulo") or a.begins_with("--prancha") or a.begins_with("--canteiro") or a.begins_with("--espiar"):
 			state = S.JOIN   # testes e capturas começam direto na entrada de jogadores
 			var scr: GDScript = load("res://tests/driver.gd")
 			if scr == null or not scr.can_instantiate():
@@ -155,12 +150,12 @@ func _on_pad_changed(dev: String, connected: bool) -> void:
 			paused = true
 			menus.pause_sel = 0
 
-# ---------------------------------------------------------------- oficina / laboratório (testes)
-## Quem cuida do modo de testes atual: o Laboratório ou a Oficina (mesmo jeito de usar: painel, tick, desenho).
+# ---------------------------------------------------------------- laboratório (testes)
+## Quem cuida do modo de testes: o Laboratório (painel, tick, desenho).
 func tester() -> Node:
-	return lab if lab_mode else oficina
+	return lab
 
-## Outro dispositivo apertou PULAR na Oficina: entra na hora.
+## Outro dispositivo apertou PULAR no Laboratório: entra na hora.
 func _sandbox_join() -> void:
 	if players.size() >= 4:
 		return
@@ -172,7 +167,7 @@ func _sandbox_join() -> void:
 			_spawn_robot_for(players.size() - 1)
 			return
 
-## Robô novo no meio da rodada (Oficina): aparece pelo guindaste.
+## Robô novo no meio da rodada (Laboratório): aparece pelo guindaste.
 func _spawn_robot_for(i: int) -> void:
 	var r: CharacterBody2D = Robot.new()
 	r.setup(i, players[i]["color"], self, players[i]["model"])
@@ -183,7 +178,7 @@ func _spawn_robot_for(i: int) -> void:
 	r.hammer_left = 999
 	demo.respawn(r)
 
-## Oficina: adiciona boneco de treino (fica parado, apanha) ou bot.
+## Laboratório: adiciona boneco de treino (fica parado, apanha) ou bot.
 func sandbox_add(kind: String) -> void:
 	if players.size() >= 4:
 		Audio.play("menu_negado")
@@ -311,7 +306,7 @@ func _physics_process(dt: float) -> void:
 	if state in [S.RUN, S.SCORE]:
 		for i in players.size():
 			if sandbox and not players[i].get("bot", false) and PlayerInput.pressed(i, "start"):
-				tester().toggle()   # na Oficina/Laboratório, START abre o painel de testes
+				tester().toggle()   # no Laboratório, START abre o painel de testes
 				return
 			if not players[i].get("bot", false) and PlayerInput.pressed(i, "start"):
 				paused = true

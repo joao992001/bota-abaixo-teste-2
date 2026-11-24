@@ -31,7 +31,7 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
    robô fora da tela (só se o teste pedir); calibrar números jogando. Fases só de teste: demolicao, canteiro, mare, piramide.
    Decisões do usuário (2026-11-24):
    - Apagar TODAS as fases do Derruba no teste-2 (e `tools/mapas/`, prévias `ui/arena_*.png`); Batata, Rei e Fuga ficam
-     "EM BREVE" no menu (bloqueados). OFICINA e LABORATÓRIO continuam. Fazer a remoção JUNTO com a entrada do Canteiro.
+     "EM BREVE" no menu (bloqueados). LABORATÓRIO continua (a OFICINA foi incorporada nele em 2026-11-24). Fazer a remoção JUNTO com a entrada do Canteiro.
    - Arena-piloto **Canteiro de Obras** (Derruba), **opção A**: mundo 40x22 tiles (~1,3x a tela), câmera ADAPTATIVA
      (enquadra todos os vivos, antecipa arremesso forte pela velocidade, zoom limitado, nunca decide o KO).
    - **KO no mundo** nos 4 lados (inclusive em cima), declarado no .lvl (`ko:`), sem paredes invisíveis no Derruba;
@@ -58,6 +58,8 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
    DESLIGADOS/BAIXA/NORMAL/ALTA; G01 Sirene de Demolição (= ciclo do Canteiro, agora disparado pelo evento) e G10 Carga
    Especial (holofotes + 2 cápsulas de paraquedas). Números: `modos.json → demolicao.spells`, `demolicao.eventos`,
    `amassometro.spell_*`. Arte: `art/src/efeitos/spells.py`. Testes `--so=spells` (26). Vitrine `-- --spells=DIR`.
+   LABORATÓRIO absorveu a Oficina (removida): DAR SPELL, CAIXA DO CÉU, CAIXAS AUTOMÁTICAS, EVENTO AGORA, ARENA, BOT e os
+   números das spells ao vivo; medidores escondem com VOLTAR (B/○, Backspace) ou H.
    PRÓXIMO (só com aprovação da arte/jogo da Etapa 1 pelo usuário): Etapa 2 ataque (S02,S04,S05,S17,S18,S19,S20) →
    Etapa 3 controle+engenharia (S07,S08,S21,S12,S25,S27,S28) → Etapa 4 transformações (S14,S15,S16,S31,S33,S34) →
    Etapa 5 eventos (G05,G06,G11,G12,G13,G02,G03,G04,G14,G09) + matriz de conflitos. REJEITADOS (nunca reintroduzir):
@@ -89,7 +91,7 @@ Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controle
   sombra dura, títulos contornados, estrelas desenhadas). Cartões dos jogadores EMBAIXO na partida (retrato redondo
   `ui/retrato.gd`, estrelas, % grande, item no selo; ficam translúcidos quando um robô passa por trás). Placar em ranking,
   vitória com o nome do robô. Captura de apoio para novas propostas: `-- --maquete=DIR`.
-- **Menus:** intro animada, cenário próprio do menu, OFICINA (painel de testes), opções (vibração, testar/configurar controle).
+- **Menus:** intro animada, cenário próprio do menu, LABORATÓRIO (painel de testes: medidores que somem com VOLTAR/H, spells, caixas, eventos, arena Laboratório/Canteiro, bots, bonecos, números ao vivo), opções (vibração, testar/configurar controle).
 - **Arte:** personagens e cenário em **papel e giz** (recorte sem contorno preto, textura de giz, bordas tremidas; definido no chat
   de 2026-11-20 com versoes.png). Só a **interface** usa contorno grosso e sombra dura (`ui/kit.gd`). Tudo gerado por código em
   `art/src` (SVG → PNG pelo Chromium, `tools/render_svg.js`), cópias em `game/assets`. **Som:** `tools/sfxforge.py` (efeitos, com acabamento) e `tools/musica.py` (compositor de músicas longas).
@@ -97,7 +99,7 @@ Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controle
 ## Como rodar e testar
 - Jogar: `godot --path game` · bateria de testes: `godot --headless --path game --fixed-fps 60 -- --autotest` (199 verificações, 0 falhas).
 - Só uma parte: `-- --autotest --so=spells,canteiro,parede` · ritmo com bots: `-- --stats=4`.
-- Capturas: `-- --espiar=DIR,arena,modo,segundos` (bots, foto a cada 10 s), `-- --menus=DIR`, `--spells=DIR`, `--parede=DIR`, `--intro=DIR`, `--oficina=DIR` (com xvfb-run e `--rendering-driver opengl3`).
+- Capturas: `-- --espiar=DIR,arena,modo,segundos` (bots, foto a cada 10 s), `-- --menus=DIR`, `--spells=DIR`, `--lab=DIR`, `--intro=DIR` (com xvfb-run e `--rendering-driver opengl3`).
 
 ## Como gerar o executável (IMPORTANTE)
 - Exportar com a **mesma versão da Godot do editor do usuário: 4.7.1**. Exportado na 4.3, o controle DualShock/DualSense

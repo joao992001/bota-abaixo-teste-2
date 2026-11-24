@@ -15,7 +15,7 @@ var phase := ""              # "", "aviso", "ativo"
 var phase_t := 0.0
 var gravity_mult := 1.0
 var wind := 0.0
-var manual := false          # Oficina/Laboratório: só dispara pelo painel
+var manual := false          # Laboratório: só dispara pelo painel
 var menu_sel := 0
 var spots: Array = []        # G10: os 2 pontos anunciados (holofotes)
 var fired: Array = []        # ids disparados (testes)
@@ -103,7 +103,7 @@ func _announce(e: Dictionary, aviso: float) -> void:
 		"G10":
 			spots = _pick_spots()
 
-## Dispara um evento agora (painel da Oficina): aviso curto e depois ativo.
+## Dispara um evento agora (painel do Laboratório): aviso curto e depois ativo.
 func trigger(e: Dictionary) -> void:
 	_end_event()
 	if not eligible(e):

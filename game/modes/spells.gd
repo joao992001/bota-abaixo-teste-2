@@ -119,7 +119,7 @@ func spawn_box(at = null, special := false) -> void:
 		"vy": 0.0, "t": 0.0, "land_t": 9.0, "block": {}, "special": special})
 	Audio.play("item", 0.8, -6.0)
 
-## Oficina: caixa de uma spell escolhida caindo do céu em x.
+## Laboratório: caixa de uma spell escolhida caindo do céu em x.
 func drop_box(id: String, at: Vector2, from_sky := true) -> void:
 	boxes.append({"fam": sc(id)["familia"], "id": id, "charges": -1, "pos": Vector2(at.x, demo.play_rect().position.y - 60.0) if from_sky else at,
 		"vy": 0.0, "t": 0.0, "land_t": 9.0, "block": {}, "special": false})

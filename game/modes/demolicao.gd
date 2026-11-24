@@ -90,8 +90,6 @@ func pick_arena() -> Dictionary:
 	if list.is_empty():
 		list = cfg["arenas"]
 	var choice: String = main.arena_choice
-	if choice == "oficina":
-		return {"id": "oficina", "nome": "Oficina", "dica": "Teste à vontade: START abre o painel", "musica": "partida"}
 	if choice == "laboratorio":
 		return {"id": "laboratorio", "nome": "Laboratório", "dica": "Meça e ajuste: START abre o painel", "musica": "fabrica"}
 	if choice != "sorteio" and choice == last_choice and main.round_no > 1:
@@ -102,7 +100,7 @@ func pick_arena() -> Dictionary:
 			return list[(k + 1) % list.size()]
 	last_choice = choice
 	if choice != "sorteio":
-		for a in cfg["arenas"]:   # arena escolhida (de qualquer modo: Oficina e testes podem pedir qualquer uma)
+		for a in cfg["arenas"]:   # arena escolhida (de qualquer modo: Laboratório e testes podem pedir qualquer uma)
 			if a["id"] == choice:
 				return a
 	var opts := list.filter(func(a): return a["id"] != last_arena)
@@ -600,7 +598,7 @@ func intercept_kill(r) -> bool:
 		main.dust(r.position + Vector2(0, -30), 1.2)
 		r.dmg = 0.0
 		respawn(r)
-		return true   # na Oficina ninguém sai
+		return true   # no Laboratório ninguém sai
 	if rule() == "fuga":
 		if r.caught:
 			return false   # a tela (ou a lama) pegou: está fora
