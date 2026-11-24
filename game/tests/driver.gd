@@ -32,6 +32,10 @@ func _run() -> void:
 			await pulo_frames(a.trim_prefix("--pulo="))
 			get_tree().quit()
 			return
+		if a.begins_with("--elenco="):
+			await elenco_frames(a.trim_prefix("--elenco="))
+			get_tree().quit()
+			return
 		if a.begins_with("--eventos="):
 			await eventos_frames(a.trim_prefix("--eventos="))
 			get_tree().quit()
@@ -869,11 +873,18 @@ func submodos_test() -> void:
 	main.demo.lives_setting = 1
 
 func robos_test() -> void:
-	print("== Robôs (8 modelos)")
-	check(Data.MODELS.size() == 8 and Data.robot_meta["modelos"].size() == 8, "8 modelos de robô (%d)" % Data.MODELS.size())
+	print("== Robôs (elenco de 5)")
+	check(Data.MODELS.size() == 5 and Data.robot_meta["modelos"].size() == 5, "5 robôs no elenco (%d)" % Data.MODELS.size())
+	var poses_ok := true
+	for m in Data.MODELS:
+		var g: Dictionary = Data.robot_meta["modelos"][m]
+		for fr in ["parado", "corre", "ar", "rapido_prep", "rapido", "rapido2_prep", "rapido2", "cima", "baixo", "pesado_prep", "pesado_golpe", "esquiva", "esquiva_ar"]:
+			poses_ok = poses_ok and g["poses"].has(fr)
+		poses_ok = poses_ok and Data.tex("robo/ferramenta_" + m) != null
+	check(poses_ok, "cada robô tem a própria ferramenta e os 13 quadros-chave de golpe e esquiva")
 	var faltando := []
 	for m in Data.MODELS:
-		var names := ["robo/antena_" + m]
+		var names := ["robo/antena_" + m, "robo/ferramenta_" + m, "robo/dano3_" + m]
 		for k in 4:
 			names.append("robo/corpo_%s_p%d" % [m, k + 1])
 		for e in ["normal", "piscar", "esforco", "susto", "vitoria", "eliminado"]:
@@ -893,9 +904,9 @@ func robos_test() -> void:
 	for k in Data.MODELS.size():
 		seen[main.players[0]["model"]] = true
 		await tap("v0", "down")
-	check(seen.size() == 8 and main.players[0]["model"] == 0, "▲▼ na entrada passa pelos 8 robôs e volta ao primeiro")
-	main.players[0]["model"] = 4   # Brutamontes
-	main.players[1]["model"] = 5   # Varapau
+	check(seen.size() == 5 and main.players[0]["model"] == 0, "▲▼ na entrada passa pelos 5 robôs e volta ao primeiro")
+	main.players[0]["model"] = 4   # Pá
+	main.players[1]["model"] = 1   # Picareta
 	main.start_match()
 	await frames(3)
 	var hb0: Rect2 = main.robots[0].rect()
@@ -2600,7 +2611,7 @@ func maquete_frames(dir: String) -> void:
 			await snap(dir, "robo_%d%s" % [k, "_vitoria" if v == 1 else ""])
 	print("cores: ", main.players.map(func(p): return p["color"]))
 
-## Prancha dos 8 robôs montados pelo motor: parado, rostos, comemoração e corrida (--robos=DIR).
+## Prancha do elenco montado pelo motor: parado, rostos, comemoração e corrida (--robos=DIR).
 func robos_sheet(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	var layer := CanvasLayer.new()
@@ -2611,8 +2622,8 @@ func robos_sheet(dir: String) -> void:
 	var tt := [0.0]
 	sheet.draw.connect(func():
 		sheet.draw_texture_rect(Data.tex("temas/fabrica/fundo"), Rect2(0, 0, 1920, 1080), false)
-		for k in 8:
-			var x := 130.0 + k * 237.0
+		for k in Data.MODELS.size():
+			var x := 220.0 + k * 370.0
 			Vis.draw_robot(sheet, {"color": k % 4, "model": k}, Vis.idle_pose(0.5), Transform2D(0.0, Vector2(2.4, 2.4), 0.0, Vector2(x, 400)))
 			load("res://ui/kit.gd").text(sheet, Vector2(x - 110, 450), Data.MODEL_NAMES[k], 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 220, 6, Data.INK)
 			var po: Dictionary = Vis.victory_pose(tt[0] + k * 0.13, int(Data.model_meta(k)["danca"]))
@@ -2712,6 +2723,67 @@ func combate_frames(dir: String) -> void:
 	print("quadros: ", _frame_no)
 
 ## Vitrine das spells da Etapa 1 no Canteiro (--spells=DIR): caixas, cada spell em uso e a troca. 30 quadros/s.
+## Vitrine do elenco (--elenco=DIR, --so-elenco=0+3): cada robô de perto: parado, corre, 3 golpes rápidos, marretada
+## pesada num boneco, esquiva no chão, pulo + esquiva no ar. 1 quadro a cada 2 (30/s).
+func elenco_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	var which := [0, 1, 2, 3, 4]
+	for a0 in OS.get_cmdline_user_args():
+		if a0.begins_with("--so-elenco="):
+			which = Array(a0.substr(12).split("+")).map(func(x): return int(x))
+	_frame_no = 0
+	for m in which:
+		main.go_menu()
+		PlayerInput.virtual = {"v0": {}, "v1": {}}
+		main.mode = "demolicao"
+		main.go_join()
+		await frames(2)
+		for d in ["v0", "v1"]:
+			await tap(d, "jump")
+		main.players[0]["model"] = m
+		main.players[0]["color"] = m % 4
+		main.players[1]["model"] = (m + 1) % 5
+		main.game_mode = "derruba"
+		main.demo.lives_setting = 5
+		main.event_level = 0
+		main.arena_choice = "demolicao"
+		main.start_match()
+		await demo_round()
+		main.demo.spells.spawn_t = 999.0
+		main.hud.visible = false
+		var r0 = main.robots[0]
+		var r1 = main.robots[1]
+		put(r0, Vector2(col_x(11), 576))
+		put(r1, Vector2(col_x(20), 576))
+		r0.facing = 1
+		r1.facing = -1
+		var script := [[22, 46, "right"], [60, 63, "hammer"], [74, 77, "hammer"], [88, 91, "hammer"], [118, 121, "heavy"],
+			[178, 181, "dodge"], [178, 181, "right"], [205, 219, "jump"], [224, 227, "dodge"], [224, 227, "right"], [224, 227, "up"]]
+		for f in 262:
+			if f == 50:
+				put(r1, Vector2(r0.position.x + 70.0, 576))
+				r1.dmg = 0.0
+			if f == 110:
+				put(r1, Vector2(r0.position.x + 74.0, 576))
+				r1.dmg = 60.0
+				r1.own_vx = 0.0
+			if f == 170:
+				put(r1, Vector2(col_x(24), 576))
+			var a := {"v0": {}, "v1": {}}
+			for seg in script:
+				if f >= seg[0] and f < seg[1]:
+					a["v0"][seg[2]] = true
+			PlayerInput.virtual = a
+			for r in main.robots:
+				r.invuln = 0.0
+			main.demo.lives[0] = 9
+			main.demo.lives[1] = 9
+			main.cam_lock = [2.6, r0.position + Vector2(30, -70)]
+			await frames(1)
+			if f % 2 == 0:
+				await grab(dir, "el%d" % m)
+	print("quadros: ", _frame_no)
+
 ## Vitrine dos eventos (--eventos=DIR, --so-eventos=G02+G05): cada evento do aviso ao fim, 1 quadro a cada 3.
 func eventos_frames(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)

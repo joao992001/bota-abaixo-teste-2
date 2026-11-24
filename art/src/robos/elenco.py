@@ -94,29 +94,56 @@ def boot(p, w, h, col, forward=1.0):
 # ombros/quadris no tronco, braço (a, b, w), perna (a, b, w, dobra), mão, ferramenta (desenho no espaço da pegada
 # da frente, +x para a cabeça da ferramenta) e pegadas.
 
+# Expressões: as da prancha (ataque, forca, grito, esquiva) e as do jogo (normal, piscar, esforco, susto, vitoria, eliminado).
+ANGRY = ("ataque", "forca", "grito", "esforco")
+
+
 def face_eye(x, y, r, expr, lens=False):
     out = []
     if lens:
-        out.append(f'<circle cx="{x}" cy="{y}" r="{r + 1.6}" fill="{STEEL_D}"/><circle cx="{x}" cy="{y}" r="{r}" fill="{INK}"/>')
-        out.append(f'<circle cx="{x + r * 0.25}" cy="{y}" r="{r * 0.55}" fill="#9ff7c8"/><circle cx="{x}" cy="{y - r * 0.35}" r="{r * 0.25}" fill="#ffffff"/>')
+        out.append(f'<circle cx="{x}" cy="{y}" r="{r}" fill="{INK}"/>')
+        if expr == "eliminado":
+            out.append(f'<path d="M{x - r * 0.6:.1f},{y - r * 0.6:.1f} L{x + r * 0.6:.1f},{y + r * 0.6:.1f} M{x + r * 0.6:.1f},{y - r * 0.6:.1f} L{x - r * 0.6:.1f},{y + r * 0.6:.1f}" stroke="#9ff7c8" stroke-width="{r * 0.35:.2f}" stroke-linecap="round"/>')
+        elif expr == "piscar":
+            out.append(f'<path d="M{x - r * 0.8:.1f},{y:.1f} h{r * 1.6:.1f}" stroke="#9ff7c8" stroke-width="{r * 0.3:.2f}" stroke-linecap="round"/>')
+        elif expr == "vitoria":
+            out.append(f'<path d="M{x - r * 0.6:.1f},{y + r * 0.2:.1f} Q{x:.1f},{y - r * 0.8:.1f} {x + r * 0.6:.1f},{y + r * 0.2:.1f}" stroke="#9ff7c8" stroke-width="{r * 0.35:.2f}" fill="none" stroke-linecap="round"/>')
+        else:
+            pr = r * (0.3 if expr == "susto" else 0.55)
+            out.append(f'<circle cx="{x + r * 0.25}" cy="{y}" r="{pr:.2f}" fill="#9ff7c8"/><circle cx="{x}" cy="{y - r * 0.35}" r="{r * 0.25}" fill="#ffffff"/>')
+    elif expr == "piscar":
+        out.append(f'<path d="M{x - r * 0.9:.1f},{y:.1f} h{r * 1.8:.1f}" stroke="{INK}" stroke-width="{r * 0.4:.2f}" stroke-linecap="round"/>')
+    elif expr == "vitoria":
+        out.append(f'<path d="M{x - r * 0.8:.1f},{y + r * 0.3:.1f} Q{x:.1f},{y - r:.1f} {x + r * 0.8:.1f},{y + r * 0.3:.1f}" stroke="{INK}" stroke-width="{r * 0.42:.2f}" fill="none" stroke-linecap="round"/>')
+    elif expr == "eliminado":
+        out.append(f'<path d="M{x - r * 0.7:.1f},{y - r * 0.7:.1f} L{x + r * 0.7:.1f},{y + r * 0.7:.1f} M{x + r * 0.7:.1f},{y - r * 0.7:.1f} L{x - r * 0.7:.1f},{y + r * 0.7:.1f}" stroke="{INK}" stroke-width="{r * 0.42:.2f}" stroke-linecap="round"/>')
     else:
-        ry = r * (0.45 if expr in ("esquiva", "forca") else 1.0)
-        out.append(f'<ellipse cx="{x}" cy="{y}" rx="{r * 0.9:.2f}" ry="{ry:.2f}" fill="#ffffff"/>')
-        out.append(f'<ellipse cx="{x + r * 0.35:.2f}" cy="{y + 0.2:.2f}" rx="{r * 0.45:.2f}" ry="{min(ry, r * 0.55):.2f}" fill="{INK}"/>')
-    if expr in ("ataque", "forca", "grito"):
+        big = expr == "susto"
+        ry = r * (0.45 if expr in ("esquiva", "forca", "esforco") else (1.15 if big else 1.0))
+        out.append(f'<ellipse cx="{x}" cy="{y}" rx="{r * (1.05 if big else 0.9):.2f}" ry="{ry:.2f}" fill="#ffffff"/>')
+        pr = 0.3 if big else 0.45
+        out.append(f'<ellipse cx="{x + r * 0.35:.2f}" cy="{y + 0.2:.2f}" rx="{r * pr:.2f}" ry="{min(ry, r * (pr + 0.1)):.2f}" fill="{INK}"/>')
+    if expr in ANGRY:
         out.append(f'<path d="M{x - r * 1.1:.1f},{y - r * 1.5:.1f} L{x + r * 1.1:.1f},{y - r * 0.9:.1f}" stroke="{INK}" stroke-width="{r * 0.45:.2f}" stroke-linecap="round"/>')
     return "".join(out)
 
 
 def mouth(x, y, w, expr):
-    if expr == "grito":
+    if expr in ("grito", "vitoria"):
         return f'<path d="M{x - w * 0.5:.1f},{y - w * 0.2:.1f} Q{x:.1f},{y - w * 0.35:.1f} {x + w * 0.5:.1f},{y - w * 0.25:.1f} Q{x + w * 0.3:.1f},{y + w * 0.7:.1f} {x - w * 0.4:.1f},{y + w * 0.4:.1f} Z" fill="#7a2232"/>'
-    if expr in ("ataque", "forca"):
+    if expr in ("ataque", "forca", "esforco"):
         return f'<path d="M{x - w * 0.45:.1f},{y:.1f} h{w * 0.9:.1f}" stroke="{INK}" stroke-width="{w * 0.18:.2f}" stroke-linecap="round"/>' + \
             f'<path d="M{x - w * 0.3:.1f},{y - w * 0.12:.1f} v{w * 0.24:.1f} M{x:.1f},{y - w * 0.12:.1f} v{w * 0.24:.1f} M{x + w * 0.3:.1f},{y - w * 0.12:.1f} v{w * 0.24:.1f}" stroke="{INK}" stroke-width="{w * 0.06:.2f}"/>'
-    if expr == "esquiva":
+    if expr in ("esquiva", "susto"):
         return f'<ellipse cx="{x:.1f}" cy="{y:.1f}" rx="{w * 0.18:.1f}" ry="{w * 0.24:.1f}" fill="#7a2232"/>'
+    if expr == "eliminado":
+        return f'<path d="M{x - w * 0.45:.1f},{y:.1f} q{w * 0.15:.1f},{-w * 0.2:.1f} {w * 0.3:.1f},0 q{w * 0.15:.1f},{w * 0.2:.1f} {w * 0.3:.1f},0 q{w * 0.15:.1f},{-w * 0.2:.1f} {w * 0.3:.1f},0" stroke="{INK}" stroke-width="{w * 0.13:.2f}" fill="none" stroke-linecap="round"/>'
     return f'<path d="M{x - w * 0.4:.1f},{y - w * 0.1:.1f} Q{x:.1f},{y + w * 0.35:.1f} {x + w * 0.45:.1f},{y - w * 0.15:.1f}" stroke="{INK}" stroke-width="{w * 0.15:.2f}" fill="none" stroke-linecap="round"/>'
+
+
+# Cabeças em 3 camadas: L = "base" (forma), "face" (rosto, troca com a expressão), "acc" (antena/giroflex que balança), "all".
+def _L(L, *want):
+    return L == "all" or L in want
 
 
 # 1 MARRETÃO — brutamontes: tronco em trapézio largo, cabeça pequena de capacete com viseira, braços de pistão, botas.
@@ -131,15 +158,31 @@ def t_marretao(c, e):
     return out
 
 
-def h_marretao(c, e):
-    out = S("M-11,0 C-12,-14 -6,-20 1,-20 C9,-20 13,-14 12,0 Z", YEL, (-13, -22, 14, 2), k=0.6, dark=YEL_D)
-    out += S("M-13,-1 L17,-1 L17,2 L-13,2 Z", YEL_D, (-14, -2, 18, 3), k=0.4)
-    out += S("M-9,2 L13,2 L13,11 C13,14 -9,14 -9,11 Z", c, (-10, 1, 14, 15), k=0.5)
-    out += S("M0,4 L14,4 L14,9 L0,9 Z", INK, (-1, 3, 15, 10), k=0.3)
-    glow = "#ff6a3a" if e in ("forca", "grito") else "#ffd36b"
-    out += f'<rect x="7" y="5.2" width="6" height="2.6" rx="1.3" fill="{glow}"/>'
-    if e in ("ataque", "forca", "grito"):
-        out += f'<path d="M4,3.6 L14,5" stroke="{INK}" stroke-width="1.4"/>'
+def h_marretao(c, e, L="all"):
+    out = ""
+    if _L(L, "acc"):
+        out += f'<rect x="-0.8" y="-25" width="1.6" height="6" fill="{STEEL_D}"/><circle cx="0" cy="-26" r="2.6" fill="#f08a3d"/>'
+    if _L(L, "base"):
+        out += S("M-11,0 C-12,-14 -6,-20 1,-20 C9,-20 13,-14 12,0 Z", YEL, (-13, -22, 14, 2), k=0.6, dark=YEL_D)
+        out += S("M-13,-1 L17,-1 L17,2 L-13,2 Z", YEL_D, (-14, -2, 18, 3), k=0.4)
+        out += S("M-9,2 L13,2 L13,11 C13,14 -9,14 -9,11 Z", c, (-10, 1, 14, 15), k=0.5)
+        out += S("M0,4 L14,4 L14,9 L0,9 Z", INK, (-1, 3, 15, 10), k=0.3)
+    if _L(L, "face"):
+        glow = "#ff6a3a" if e in ANGRY else "#ffd36b"
+        if e == "piscar":
+            out += f'<rect x="7" y="6.1" width="6" height="0.9" fill="{glow}"/>'
+        elif e == "eliminado":
+            out += f'<path d="M8,4.8 L12,8.2 M12,4.8 L8,8.2" stroke="{glow}" stroke-width="1.2"/>'
+        elif e == "vitoria":
+            out += f'<path d="M7.5,7.6 Q10,4 12.5,7.6" stroke="{glow}" stroke-width="1.3" fill="none"/>'
+        elif e == "susto":
+            out += f'<circle cx="10" cy="6.5" r="2.4" fill="{glow}"/>'
+        else:
+            out += f'<rect x="7" y="5.2" width="6" height="2.6" rx="1.3" fill="{glow}"/>'
+        if e in ANGRY:
+            out += f'<path d="M4,3.6 L14,5" stroke="{INK}" stroke-width="1.4"/>'
+        if e in ("grito", "susto", "vitoria", "eliminado"):
+            out += mouth(9, 11.6, 4, e)
     return out
 
 
@@ -158,14 +201,20 @@ def t_picareta(c, e):
     return out
 
 
-def h_picareta(c, e):
-    out = f'<path d="M0,0 C1,-6 -1,-10 1,-15" stroke="{shade(c, -0.5)}" stroke-width="3.2" fill="none" stroke-linecap="round"/>'
-    out += S("M-9,-16 C-10,-26 0,-30 7,-28 C14,-26 16,-18 12,-13 C8,-9 -6,-9 -9,-16 Z", c, (-11, -31, 16, -8), k=0.5)
-    out += f'<path d="M-2,-29 C-4,-34 -1,-37 2,-37" stroke="{STEEL_D}" stroke-width="1.4" fill="none"/><circle cx="2" cy="-37.5" r="2" fill="{YEL}"/>'
-    out += face_eye(7, -19.5, 3.6, e, lens=True)
-    if e in ("ataque", "forca", "grito"):
-        out += f'<path d="M2,-25 L12,-23" stroke="{INK}" stroke-width="1.5" stroke-linecap="round"/>'
-    out += mouth(9, -12, 5, e) if e == "grito" else ""
+def h_picareta(c, e, L="all"):
+    out = ""
+    if _L(L, "acc"):
+        out += f'<path d="M-2,-29 C-4,-34 -1,-37 2,-37" stroke="{STEEL_D}" stroke-width="1.4" fill="none"/><circle cx="2" cy="-37.5" r="2" fill="{YEL}"/>'
+    if _L(L, "base"):
+        out += f'<path d="M0,0 C1,-6 -1,-10 1,-15" stroke="{shade(c, -0.5)}" stroke-width="3.2" fill="none" stroke-linecap="round"/>'
+        out += S("M-9,-16 C-10,-26 0,-30 7,-28 C14,-26 16,-18 12,-13 C8,-9 -6,-9 -9,-16 Z", c, (-11, -31, 16, -8), k=0.5)
+        out += f'<circle cx="7" cy="-19.5" r="5.2" fill="{STEEL_D}"/>'
+    if _L(L, "face"):
+        out += face_eye(7, -19.5, 3.6, e, lens=True)
+        if e in ANGRY:
+            out += f'<path d="M2,-25 L12,-23" stroke="{INK}" stroke-width="1.5" stroke-linecap="round"/>'
+        if e in ("grito", "susto", "vitoria", "eliminado"):
+            out += mouth(9, -12, 5, e)
     return out
 
 
@@ -186,17 +235,24 @@ def t_chave(c, e):
     return out
 
 
-def h_chave(c, e):
-    pts = [(math.cos(math.radians(a)) * 12, -12 + math.sin(math.radians(a)) * 12) for a in range(0, 360, 60)]
-    out = S(poly_d(pts), c, (-13, -25, 13, 1), k=0.5)
-    out += f'<circle cx="0" cy="-12" r="5.5" fill="{shade(c, -0.25)}"/>'
-    out += S("M-11,-20 C-9,-27 5,-28 9,-21 L-13,-19 Z", "#d14d35", (-14, -28, 10, -18), k=0.4)
-    out += S("M-11,-21 L-20,-19 L-12,-18 Z", "#a33a26", (-21, -22, -10, -17), k=0.3)
-    out += face_eye(3, -12, 2.6, e) + face_eye(9.5, -12.3, 2.3, e)
-    if e not in ("ataque", "forca"):
-        out += f'<path d="M3,-6 C6,-4.5 9,-4.5 11,-6.5" stroke="{INK}" stroke-width="2.2" fill="none" stroke-linecap="round"/>'
-    else:
-        out += f'<path d="M3,-5.5 C6,-7 9,-7 11,-5.5" stroke="{INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/>'
+def h_chave(c, e, L="all"):
+    out = ""
+    if _L(L, "acc"):
+        out += f'<circle cx="-2" cy="-26.5" r="2.2" fill="#a33a26"/>'
+    if _L(L, "base"):
+        pts = [(math.cos(math.radians(a)) * 12, -12 + math.sin(math.radians(a)) * 12) for a in range(0, 360, 60)]
+        out += S(poly_d(pts), c, (-13, -25, 13, 1), k=0.5)
+        out += f'<circle cx="-4" cy="-12" r="4.5" fill="{shade(c, -0.25)}"/>'
+        out += S("M-11,-20 C-9,-27 5,-28 9,-21 L-13,-19 Z", "#d14d35", (-14, -28, 10, -18), k=0.4)
+        out += S("M-11,-21 L-20,-19 L-12,-18 Z", "#a33a26", (-21, -22, -10, -17), k=0.3)
+    if _L(L, "face"):
+        out += face_eye(3, -12, 2.6, e) + face_eye(9.5, -12.3, 2.3, e)
+        if e in ("grito", "susto", "vitoria", "eliminado"):
+            out += mouth(7, -5, 5, e)
+        elif e in ANGRY:
+            out += f'<path d="M3,-5.5 C6,-7 9,-7 11,-5.5" stroke="{INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/>'
+        else:
+            out += f'<path d="M3,-6 C6,-4.5 9,-4.5 11,-6.5" stroke="{INK}" stroke-width="2.2" fill="none" stroke-linecap="round"/>'
     return out
 
 
@@ -215,16 +271,32 @@ def t_brit(c, e):
     return out
 
 
-def h_brit(c, e):
-    out = S(ellipse_d(2, -13, 15, 14), c, (-14, -28, 18, 2), k=0.5)
-    out += S("M-14,-15 C-14,-30 18,-30 18,-15 Z", YEL, (-15, -30, 19, -14), k=0.5, dark=YEL_D)
-    out += f'<rect x="-16" y="-16.5" width="36" height="3" rx="1.5" fill="{YEL_D}"/>'
-    out += f'<rect x="-6" y="-13" width="26" height="4" rx="2" fill="{INK}"/>'
-    for x in (6, 15):
-        out += f'<circle cx="{x}" cy="-9" r="5" fill="{STEEL_D}"/><circle cx="{x}" cy="-9" r="3.6" fill="#cdeff7"/>'
-        sq = 0.5 if e in ("forca", "esquiva") else 1.0
-        out += f'<ellipse cx="{x + 1}" cy="-9" rx="1.6" ry="{1.8 * sq:.1f}" fill="{INK}"/>'
-    out += mouth(10, -1, 7, e)
+def h_brit(c, e, L="all"):
+    out = ""
+    if _L(L, "acc"):
+        out += f'<rect x="0" y="-31" width="5" height="4" rx="1" fill="{STEEL_D}"/><circle cx="2.5" cy="-31" r="2.4" fill="#fff1b8"/>'
+    if _L(L, "base"):
+        out += S(ellipse_d(2, -13, 15, 14), c, (-14, -28, 18, 2), k=0.5)
+        out += S("M-14,-15 C-14,-30 18,-30 18,-15 Z", YEL, (-15, -30, 19, -14), k=0.5, dark=YEL_D)
+        out += f'<rect x="-16" y="-16.5" width="36" height="3" rx="1.5" fill="{YEL_D}"/>'
+        out += f'<rect x="-6" y="-13" width="26" height="4" rx="2" fill="{INK}"/>'
+        for x in (6, 15):
+            out += f'<circle cx="{x}" cy="-9" r="5" fill="{STEEL_D}"/><circle cx="{x}" cy="-9" r="3.6" fill="#cdeff7"/>'
+    if _L(L, "face"):
+        for x in (6, 15):
+            if e == "piscar":
+                out += f'<path d="M{x - 2.4},-9 h4.8" stroke="{INK}" stroke-width="1.3" stroke-linecap="round"/>'
+            elif e == "vitoria":
+                out += f'<path d="M{x - 2},-8.4 Q{x},-11.4 {x + 2},-8.4" stroke="{INK}" stroke-width="1.3" fill="none"/>'
+            elif e == "eliminado":
+                out += f'<path d="M{x - 1.8},-10.8 L{x + 1.8},-7.2 M{x + 1.8},-10.8 L{x - 1.8},-7.2" stroke="{INK}" stroke-width="1.2"/>'
+            else:
+                sq = 0.5 if e in ("forca", "esquiva", "esforco") else 1.0
+                r = 1.1 if e == "susto" else 1.6
+                out += f'<ellipse cx="{x + 1}" cy="-9" rx="{r}" ry="{1.8 * sq * r / 1.6:.1f}" fill="{INK}"/>'
+        if e in ANGRY:
+            out += f'<path d="M2,-15 L19,-13" stroke="{INK}" stroke-width="1.5" stroke-linecap="round"/>'
+        out += mouth(10, -1, 7, e)
     return out
 
 
@@ -251,16 +323,20 @@ def t_pa(c, e):
     return out
 
 
-def h_pa(c, e):
-    out = S(rect_d(-10, -22, 22, 20, 5), c, (-11, -23, 13, -1), k=0.5)
-    out += S(rect_d(-2, -19, 13, 12, 3), "#cdeff7", (-3, -20, 12, -6), k=0.4)
-    out += f'<path d="M0,-17 L4,-17 L1,-9 L-1,-9 Z" fill="#ffffff" opacity="0.6"/>'
-    out += face_eye(4, -13, 2.0, e) + face_eye(8.6, -13.2, 1.8, e)
-    if e in ("grito", "esquiva"):
-        out += mouth(6.5, -8.6, 3.6, e)
-    on = "#ff8a3a" if e in ("forca", "grito") else "#f08a3d"
-    out += f'<rect x="-2" y="-26" width="7" height="5" rx="2" fill="{on}"/><rect x="-3" y="-22" width="9" height="1.6" fill="{STEEL_D}"/>'
-    out += f'<rect x="-10" y="-6" width="22" height="3.4" rx="1.5" fill="{STEEL_D}"/>'
+def h_pa(c, e, L="all"):
+    out = ""
+    if _L(L, "acc"):
+        on = "#ff8a3a" if e in ("forca", "grito") else "#f08a3d"
+        out += f'<rect x="-2" y="-27" width="7" height="5" rx="2" fill="{on}"/><rect x="-3" y="-23" width="9" height="1.6" fill="{STEEL_D}"/>'
+    if _L(L, "base"):
+        out += S(rect_d(-10, -22, 22, 20, 5), c, (-11, -23, 13, -1), k=0.5)
+        out += S(rect_d(-2, -19, 13, 12, 3), "#cdeff7", (-3, -20, 12, -6), k=0.4)
+        out += f'<path d="M0,-17 L4,-17 L1,-9 L-1,-9 Z" fill="#ffffff" opacity="0.6"/>'
+        out += f'<rect x="-10" y="-6" width="22" height="3.4" rx="1.5" fill="{STEEL_D}"/>'
+    if _L(L, "face"):
+        out += face_eye(4, -13, 2.0, e) + face_eye(8.6, -13.2, 1.8, e)
+        if e in ("grito", "esquiva", "susto", "vitoria", "eliminado"):
+            out += mouth(6.5, -8.6, 3.6, e)
     return out
 
 
@@ -317,7 +393,7 @@ def draw(cid, pose, col):
     # tronco + cabeça
     torso = f'<g transform="translate({hip[0]:.2f},{hip[1]:.2f}) rotate({lean:.2f})">{ch["torso"](col, e)}'
     ha = ch["head_at"]
-    torso += f'<g transform="translate({ha[0]},{ha[1]}) rotate({pose.get("head", 0)})">{ch["head"](col, e)}</g></g>'
+    torso += f'<g transform="translate({ha[0]},{ha[1]}) rotate({pose.get("head", 0)})">{ch["head"](col, e, "all")}</g></g>'
     parts["torso"] = torso
     # braços
     a, b, w = ch["arm"]
@@ -491,8 +567,193 @@ def prancha():
     return doc(W, H, f'<g filter="url(#rough)">{"".join(b)}</g>', rough(seed=8, scale=0.8, freq=0.08))
 
 
+# ================================================================ exportação para o jogo
+# Escala de cada um no jogo (o robô fica com ~80-95 px; a Britadeira é baixinha) e da ferramenta.
+GAME = {
+    "marretao": dict(k=0.84, tk=1.18, voz=0.7, danca=1, hand_r=5.6, foot=(18, 9), acc=(0, -20),
+                     torso_d="M-15,0 L15,0 C20,-10 30,-30 27,-42 C25,-48 -22,-48 -25,-42 C-28,-30 -20,-10 -15,0 Z",
+                     especial={"pesado": "", "esquiva": "escudo"}),
+    "picareta": dict(k=0.84, tk=0.9, voz=0.9, danca=3, hand_r=3.8, foot=(12, 5), acc=(-2, -29),
+                     torso_d="M-9,-2 C-12,-12 -10,-30 0,-32 C10,-32 12,-14 8,-2 C4,2 -6,2 -9,-2 Z",
+                     especial={"pesado": "", "esquiva": "mortal"}),
+    "chave": dict(k=1.0, tk=0.88, voz=1.08, danca=2, hand_r=4.6, foot=(14, 7), acc=(-2, -24),
+                  torso_d=rect_d(-15, -30, 30, 30, 5), especial={"pesado": "giro", "esquiva": "carrinho"}),
+    "britadeira": dict(k=1.0, tk=0.9, voz=1.4, danca=2, hand_r=4.4, foot=(13, 7), acc=(2.5, -28),
+                       torso_d=ellipse_d(0, -14, 17, 15), especial={"pesado": "monta", "esquiva": "pulinho"}),
+    "pa": dict(k=0.92, tk=0.88, voz=1.0, danca=0, hand_r=4.8, foot=(15, 8), acc=(1.5, -22),
+               torso_d="M-12,-2 C-15,-14 -15,-30 -11,-36 L11,-36 C15,-30 15,-14 12,-2 C6,1 -6,1 -12,-2 Z",
+               especial={"pesado": "", "esquiva": "salto"}),
+}
+TOOL_BOX = {"marretao": (-17, -12, 51, 12), "picareta": (-17, -23, 53, 27), "chave": (-15, -15, 50, 15),
+            "britadeira": (-3, -12, 46, 12), "pa": (-23, -13, 60, 13)}
+# Quadros que só o jogo usa (a prancha mostra os principais). tool = (x, y, ângulo) da pegada da frente.
+EXTRA = {
+    "marretao": {"corre": dict(lean=8, tool=(10, -52, -140)), "ar": dict(tool=(16, -58, -110)),
+                 "rapido_prep": dict(lean=-6, tool=(4, -52, -150)), "rapido2_prep": dict(lean=-4, tool=(12, -32, 120)),
+                 "rapido2": dict(lean=10, feet=[(-12, 0), (16, 0)], tool=(30, -58, -60)), "cima": dict(tool=(14, -74, -80)),
+                 "baixo": dict(tool=(14, -32, 95)), "esquiva_ar": dict(feet=[(-4, -14), (8, -12)], tool=(12, -46, -130))},
+    "picareta": {"corre": dict(lean=10, tool=(10, -56, -120)), "ar": dict(tool=(12, -62, -100)),
+                 "rapido_prep": dict(lean=-8, tool=(-2, -52, -12)), "rapido2_prep": dict(tool=(6, -82, -80)),
+                 "rapido2": dict(lean=14, feet=[(-16, 0), (20, 0)], tool=(34, -46, 40)), "cima": dict(tool=(14, -88, -75)),
+                 "baixo": dict(tool=(18, -36, 100)), "esquiva_ar": dict(feet=[(-6, -20), (6, -18)], tool=(4, -66, -90))},
+    "chave": {"corre": dict(lean=8, tool=(12, -44, -128)), "ar": dict(tool=(14, -50, -100)),
+              "rapido_prep": dict(lean=-6, tool=(6, -44, -24)), "rapido2_prep": dict(tool=(18, -60, -120)),
+              "rapido2": dict(lean=10, feet=[(-12, 0), (16, 0)], tool=(32, -34, 30)), "cima": dict(tool=(16, -66, -80)),
+              "baixo": dict(tool=(16, -28, 95)), "esquiva_ar": dict(feet=[(-4, -12), (8, -10)], tool=(8, -44, -130))},
+    "britadeira": {"corre": dict(lean=8, tool=(16, -30, 60)), "ar": dict(tool=(14, -34, 110)),
+                   "rapido_prep": dict(lean=-6, tool=(6, -26, 4)), "rapido2_prep": dict(tool=(14, -44, -60)),
+                   "rapido2": dict(lean=8, feet=[(-10, 0), (12, 0)], tool=(24, -30, 30)), "cima": dict(tool=(14, -48, -90)),
+                   "baixo": dict(tool=(12, -26, 90)), "esquiva_ar": dict(feet=[(-6, -12), (6, -10)], tool=(14, -36, 60))},
+    "pa": {"corre": dict(lean=8, tool=(12, -50, -130)), "ar": dict(tool=(14, -56, -105)),
+           "rapido_prep": dict(lean=-8, tool=(2, -46, -8)), "rapido2_prep": dict(tool=(10, -70, -100)),
+           "rapido2": dict(lean=12, feet=[(-14, 0), (16, 0)], tool=(30, -28, 20)), "cima": dict(tool=(14, -76, -80)),
+           "baixo": dict(tool=(14, -34, 100)), "esquiva_ar": dict(feet=[(-4, -14), (8, -12)], tool=(10, -50, -120))},
+}
+GAME_EXPR = ("normal", "piscar", "esforco", "susto", "vitoria", "eliminado")
+O = (64.0, 120.0)
+K4 = 4
+
+
+def _gwrap(body, seed, w=128, h=128):
+    return doc(w, h, f'<g filter="url(#rough)">{body}</g>', rough(seed=seed, scale=0.9, freq=0.12))
+
+
+def _xf(cid):
+    g, ch = GAME[cid], CHARS[cid]
+    return f'translate({O[0]},{O[1]}) scale({g["k"]}) translate(0,{-ch["hip_h"]})'
+
+
+def _head_xf(cid):
+    ha = CHARS[cid]["head_at"]
+    return _xf(cid) + f' translate({ha[0]},{ha[1]})'
+
+
+def _damage(cid, lvl):
+    import random as _r
+    g = GAME[cid]
+    rnd = _r.Random(len(cid) * 13 + 5)
+    d = g["torso_d"]
+    xs = [float(v) for v in __import__("re").findall(r"-?\d+\.?\d*", d)]
+    x0, x1 = min(xs[0::2]), max(xs[0::2])
+    y0, y1 = min(xs[1::2]), max(xs[1::2])
+    w, h = x1 - x0, y1 - y0
+    pts = lambda: (rnd.uniform(x0 + w * 0.15, x1 - w * 0.15), rnd.uniform(y0 + h * 0.15, y1 - h * 0.15))  # noqa: E731
+    spots = [pts() for _ in range(9)]
+    b = [f'<clipPath id="dc"><path d="{d}"/></clipPath><g clip-path="url(#dc)">']
+    for (x, y) in spots[:3 + (2 if lvl >= 3 else 0)]:
+        rx, ry = rnd.uniform(3.5, 5.5), rnd.uniform(2.4, 3.6)
+        b.append(f'<ellipse cx="{x:.1f}" cy="{y:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" fill="{INK}" opacity="0.22"/>')
+        b.append(f'<path d="M{x - rx:.1f},{y + 0.4:.1f} Q{x:.1f},{y + ry * 1.3:.1f} {x + rx:.1f},{y + 0.4:.1f}" stroke="#ffffff" stroke-width="0.8" fill="none" opacity="0.55"/>')
+    for _ in range(4):
+        x, y = pts()
+        b.append(f'<path d="M{x:.1f},{y:.1f} l{rnd.uniform(3, 6):.1f},{rnd.uniform(-1.5, 1.5):.1f}" stroke="#ffffff" stroke-width="0.6" opacity="0.6"/>')
+    if lvl >= 2:
+        for (x, y) in spots[5:7]:
+            dd = f"M{x:.1f},{y:.1f}"
+            cx, cy = x, y
+            for _ in range(4):
+                cx += rnd.uniform(1.5, 3.5) * rnd.choice([-1, 1])
+                cy += rnd.uniform(1.0, 3.0)
+                dd += f" L{cx:.1f},{cy:.1f}"
+            b.append(f'<path d="{dd}" stroke="{INK}" stroke-width="1.1" fill="none" opacity="0.8"/>')
+        tx, ty = spots[7]
+        for ang in (35, -35):
+            b.append(f'<rect x="{tx - 6:.1f}" y="{ty - 1.6:.1f}" width="12" height="3.2" fill="#d9d4c4" transform="rotate({ang} {tx:.1f} {ty:.1f})"/>')
+    if lvl >= 3:
+        hx, hy = spots[8]
+        b.append(f'<ellipse cx="{hx:.1f}" cy="{hy:.1f}" rx="8" ry="6.3" fill="{INK}" opacity="0.25"/>')
+        b.append(f'<path d="M{hx - 4:.1f},{hy:.1f} L{hx - 1.6:.1f},{hy - 3.8:.1f} L{hx + 2:.1f},{hy - 3:.1f} L{hx + 4.2:.1f},{hy:.1f} L{hx + 1.2:.1f},{hy + 3.8:.1f} L{hx - 2.5:.1f},{hy + 3:.1f} Z" fill="#1c1626"/>')
+        for kk, col in enumerate(("#f2c84b", "#d14d35", "#5cc45c")):
+            b.append(f'<path d="M{hx - 1 + kk:.1f},{hy:.1f} q{2 + kk},{3 + kk} {4 + kk},{1}" stroke="{col}" stroke-width="0.9" fill="none"/>')
+    b.append("</g>")
+    return f'<g transform="{_xf(cid)}">{"".join(b)}</g>'
+
+
+def _tool_export(cid):
+    """Ferramenta em pé (cabeça para cima), pegada da frente em tool_grip; grip2 = da frente até a de trás."""
+    g, ch = GAME[cid], CHARS[cid]
+    x0, y0, x1, y1 = TOOL_BOX[cid]
+    s = g["k"] * g["tk"]
+    pad = 2.0
+    w = (y1 - y0) * s + pad * 2
+    h = (x1 - x0) * s + pad * 2
+    gf = ch["grips"][0]
+    gb = ch["grips"][1] if len(ch["grips"]) > 1 else ch["grips"][0]
+    # ponto (x,y) da ferramenta → (y, -x) em pé
+    up = lambda p: ((p[1] - y0) * s + pad, (x1 - p[0]) * s + pad)  # noqa: E731
+    grip = up(gf)
+    back = up(gb)
+    head = up(((x1 + max(x1 - 14, 0)) / 2.0, 0))
+    body = f'<g transform="translate({pad - y0 * s},{pad + x1 * s}) scale({s}) rotate(-90) ">{ch["tool"]()}</g>'
+    return body, (math.ceil(w), math.ceil(h)), grip, (back[0] - grip[0], back[1] - grip[1]), math.hypot(head[0] - grip[0], head[1] - grip[1])
+
+
+def _pose_export(cid, pz):
+    g, ch = GAME[cid], CHARS[cid]
+    k = g["k"]
+    G = pz["tool"]
+    out = {"hf": [round(G[0] * k, 2), round(G[1] * k, 2)], "a": round(math.radians(G[2] + 90.0), 4),
+           "lean": round(math.radians(pz.get("lean", 0)), 4), "dy": round(pz.get("dy", 0) * k, 2), "dx": round(pz.get("dx", 0) * k, 2)}
+    if "feet" in pz:
+        out["feet"] = [[round(f[0] * k, 2), round(f[1] * k, 2)] for f in pz["feet"]]
+    return out
+
+
+def export_game():
+    out_dir = os.path.join(ROOT, "art/out/game/robo")
+    src = os.path.join(ROOT, "art/src/robos/svg/elenco")
+    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(src, exist_ok=True)
+    meta = {"cores": COLORS[:4], "membros": [shade(c, -0.45) for c in COLORS[:4]], "ordem": list(CHARS), "modelos": {}}
+    for mi, cid in enumerate(CHARS):
+        g, ch = GAME[cid], CHARS[cid]
+        k = g["k"]
+        seed = 40 + mi * 3
+        for ci in range(4):
+            col = COLORS[ci]
+            body = f'<g transform="{_xf(cid)}">{ch["torso"](col, "")}</g><g transform="{_head_xf(cid)}">{ch["head"](col, "", "base")}</g>'
+            queue(_gwrap(body, seed), f"{src}/corpo_{cid}_p{ci + 1}.svg", f"{out_dir}/corpo_{cid}_p{ci + 1}.png", 128, 128, K4)
+        for e in GAME_EXPR:
+            face = f'<g transform="{_head_xf(cid)}">{ch["head"](COLORS[0], e, "face")}</g>'
+            queue(_gwrap(face, seed + 1), f"{src}/rosto_{cid}_{e}.svg", f"{out_dir}/rosto_{cid}_{e}.png", 128, 128, K4)
+        acc = f'<g transform="{_head_xf(cid)}">{ch["head"](COLORS[0], "", "acc")}</g>'
+        queue(_gwrap(acc, seed + 2), f"{src}/antena_{cid}.svg", f"{out_dir}/antena_{cid}.png", 128, 128, K4)
+        for lvl in (1, 2, 3):
+            queue(_gwrap(_damage(cid, lvl), seed + 3 + lvl), f"{src}/dano{lvl}_{cid}.svg", f"{out_dir}/dano{lvl}_{cid}.png", 128, 128, K4)
+        tbody, tsize, tgrip, grip2, reach = _tool_export(cid)
+        queue(_gwrap(tbody, seed + 7, tsize[0], tsize[1]), f"{src}/ferramenta_{cid}.svg", f"{out_dir}/ferramenta_{cid}.png", tsize[0], tsize[1], K4)
+        # geometria em coordenadas da tela 128x128 (pés em 64,120)
+        hip = (0, -ch["hip_h"])
+        cv = lambda p: [round(O[0] + k * p[0], 2), round(O[1] + k * p[1], 2)]  # noqa: E731
+        hb = ch["hip_b"] or (-6, -2)
+        hf = ch["hip_f"] or (6, -2)
+        shb = ch["sh_b"] or (-8, ch["sh_f"][1])
+        poses = dict(POSES[cid])
+        poses.update(EXTRA[cid])
+        ha = ch["head_at"]
+        eyes_c = add(add(hip, ha), (7, -12) if cid != "marretao" else (10, 6))
+        acc_p = add(add(hip, ha), g["acc"])
+        top = add(add(hip, ha), (0, -26 if cid in ("chave", "pa") else (-38 if cid == "picareta" else (-28 if cid == "marretao" else -32))))
+        meta["modelos"][cid] = {
+            "nome": ch["nome"].capitalize() if cid != "pa" else "Pá", "hat": [64, 40, 0.5],
+            "hips": [cv(add(hip, hb)), cv(add(hip, hf))], "shoulders": [cv(add(hip, shb)), cv(add(hip, ch["sh_f"]))],
+            "hand_back": cv(POSES[cid]["parado"]["tool"][:2]), "hand_front": cv(POSES[cid]["parado"]["tool"][:2]),
+            "antenna": cv(acc_p), "eyes": [cv(eyes_c), cv(eyes_c)], "top": round(O[1] + k * top[1], 1),
+            "limb_w": round(ch["arm"][2] * k, 2), "leg_w": round(ch["leg"][2] * k, 2), "knee": ch["knee"],
+            "hand_s": round(g["hand_r"] * k / 6.2, 3), "foot_s": round(g["foot"][0] * k / 17.0, 3),
+            "voz": g["voz"], "danca": g["danca"],
+            "tool": list(tsize), "tool_grip": [round(tgrip[0], 2), round(tgrip[1], 2)], "grip2": [round(grip2[0], 2), round(grip2[1], 2)],
+            "reach": round(reach, 1), "especial": g["especial"],
+            "poses": {name: _pose_export(cid, pz) for name, pz in poses.items()},
+        }
+    import json
+    with open(f"{out_dir}/modelos.json", "w") as f:
+        json.dump(meta, f, indent=1, ensure_ascii=False)
+
+
 def main():
     os.makedirs(SRC, exist_ok=True)
+    export_game()
     queue(prancha(), f"{SRC}/prancha_elenco5.svg", os.path.join(ROOT, "art/out/prancha_elenco5.png"), 1920, 2200, 1)
     print("elenco:", render_all())
 

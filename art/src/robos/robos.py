@@ -1,4 +1,5 @@
-"""Robôs v3 — exatamente o estilo de versoes.png (referência do usuário): papel recortado sem contorno,
+"""(ANTIGO — os 8 modelos foram trocados pelo elenco de 5 em art/src/robos/elenco.py; aqui ficam só as peças comuns.)
+Robôs v3 — exatamente o estilo de versoes.png (referência do usuário): papel recortado sem contorno,
 textura de giz, membros grossos mais escuros (desenhados pela Godot), mãos de luva brancas.
 8 modelos (só visual; a hitbox é a mesma): Lata, TV, Baixinho, Pescoção, Brutamontes, Varapau, Barril e Bolha,
 nas 4 cores de jogador. Sem personalização: o modelo é a identidade do robô.
@@ -308,26 +309,14 @@ def bolt_svg():
 
 
 def main():
-    for model in MODELS:
-        for ci in range(4):
-            queue(body_svg(model, ci), f"{SRC}/corpo_{model}_p{ci + 1}.svg", f"{OUT}/corpo_{model}_p{ci + 1}.png", 128, 128, K)
-        queue(antenna_svg(model), f"{SRC}/antena_{model}.svg", f"{OUT}/antena_{model}.png", 128, 128, K)
-        for e in ("normal", "piscar", "esforco", "susto", "vitoria", "eliminado"):
-            queue(face_svg(model, e), f"{SRC}/rosto_{model}_{e}.svg", f"{OUT}/rosto_{model}_{e}.png", 128, 128, K)
+    """Desde 2026-11-24 os robôs são o elenco de art/src/robos/elenco.py (que também gera modelos.json).
+    Este arquivo só gera as peças comuns: luva, bota, parafuso e a marreta (usada pela spell Marreta-Bumerangue)."""
+    os.makedirs(OUT, exist_ok=True)
     queue(hand_svg(), f"{SRC}/mao.svg", f"{OUT}/mao.png", 16, 16, K)
     queue(foot_svg(), f"{SRC}/pe.svg", f"{OUT}/pe.png", 24, 14, K)
     queue(hammer_svg(), f"{SRC}/marreta.svg", f"{OUT}/marreta.png", 64, 64, K)
     queue(bolt_svg(), f"{SRC}/parafuso.svg", f"{OUT}/parafuso.png", 12, 12, K)
-    for model in MODELS:
-        for lvl in (1, 2, 3):
-            queue(damage_svg(model, lvl), f"{SRC}/dano{lvl}_{model}.svg", f"{OUT}/dano{lvl}_{model}.png", 128, 128, K)
-    os.makedirs(OUT, exist_ok=True)
-    keys = ("nome", "hat", "hips", "shoulders", "hand_back", "hand_front", "antenna", "eyes", "top", "limb_w", "hand_s", "voz", "danca")
-    meta = {"cores": COLORS, "membros": [shade(c, -0.5) for c in COLORS], "ordem": list(MODELS),
-            "modelos": {k: {kk: v[kk] for kk in keys} for k, v in MODELS.items()}}
-    with open(f"{OUT}/modelos.json", "w") as f:
-        json.dump(meta, f, indent=1, ensure_ascii=False)
-    print("robôs renderizados:", render_all())
+    print("peças comuns renderizadas:", render_all())
 
 
 if __name__ == "__main__":

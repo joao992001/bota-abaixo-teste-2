@@ -3,9 +3,10 @@ extends Node
 
 const COLORS := [Color("#4f86d9"), Color("#5cc45c"), Color("#f06aa8"), Color("#f2c84b")]
 const TEXT_COLORS := [Color("#3a6cc0"), Color("#3c9a46"), Color("#e0508f"), Color("#d9a521")]  # placar sobre fundo claro
-## 8 modelos de robô: só aparência (a hitbox e os números de jogo são os mesmos). Ordem = art/out/game/robo/modelos.json.
-const MODELS := ["lata", "tv", "baixinho", "pescocao", "brutamontes", "varapau", "barril", "bolha"]
-const MODEL_NAMES := ["Lata", "TV", "Baixinho", "Pescoção", "Brutamontes", "Varapau", "Barril", "Bolha"]
+## 5 robôs (elenco 2026-11-24, art/src/robos/elenco.py): cada um com a própria ferramenta e golpes desenhados à parte,
+## mas a hitbox e os números de jogo são os mesmos. Ordem = art/out/game/robo/modelos.json.
+const MODELS := ["marretao", "picareta", "chave", "britadeira", "pa"]
+const MODEL_NAMES := ["Marretão", "Picareta", "Chave", "Britadeira", "Pá"]
 const COLOR_NAMES := ["Azul", "Verde", "Rosa", "Amarelo"]
 const DANGER := Color("#d42035")
 const INK := Color("#2a1a2e")
@@ -68,4 +69,4 @@ func preload_all(dir := "res://assets") -> int:
 
 ## Medidas e jeito de um modelo (modelos.json): nome, top, limb_w, hand_s, voz, danca...
 func model_meta(model: int) -> Dictionary:
-	return robot_meta["modelos"][MODELS[clampi(model, 0, MODELS.size() - 1)]]
+	return robot_meta["modelos"][MODELS[posmod(model, MODELS.size())]]

@@ -477,7 +477,6 @@ func _pose_springs(r, dt: float, on_floor: bool, v: Vector2) -> void:
 	_spring(s_bob, bob_t, dt, 4.5, 0.35)
 	sq = Vector2(_spring(s_sqx, sqx_t, dt, 4.2, 0.28), _spring(s_sqy, sqy_t, dt, 4.2, 0.28))
 	sq = sq.clamp(Vector2(0.55, 0.55), Vector2(1.6, 1.6))
-	_spring(s_ham, ham_t, dt, 4.0, 0.42)
 	if tumbling:
 		s_rot[0] = tumble
 		s_rot[1] = 0.0
@@ -513,26 +512,81 @@ func _process(dt: float) -> void:
 			continue
 		g.modulate = Color(col.r * 1.3, col.g * 1.3, col.b * 1.3, float(sn["a"]) * (1.0 - k))
 
+## Pose do elenco: cada robô tem quadros-chave próprios (art/src/robos/elenco.py → modelos.json "poses"):
+## parado, corre, ar, rapido_prep/rapido, rapido2_prep/rapido2, cima, baixo, pesado_prep/pesado_golpe, esquiva, esquiva_ar.
+## A animação mistura esses quadros no ritmo exato dos tempos do controle (preparo/ativo/recupera de data/controller.json):
+## o desenho nunca atrasa o golpe. Ferramenta sempre nas DUAS mãos (a de trás vai para a pegada de trás do cabo).
+func _g() -> Dictionary:
+	return Data.model_meta(model)
+
+func _frame(name: String) -> Dictionary:
+	var ps: Dictionary = _g()["poses"]
+	return ps.get(name, ps["parado"])
+
+static func _a2(a) -> Vector2:
+	return Vector2(float(a[0]), float(a[1]))
+
+func _def_foot(i: int) -> Vector2:
+	var hips: Array = _g()["hips"]
+	return Vector2(_v(hips[i]).x + (-1.0 if i == 0 else 1.0) * 4.0, -4.0)
+
+## Mistura o estado st na direção do quadro fr com peso w. fwd: +1 gira a ferramenta para a frente (por cima),
+## -1 para trás, 0 pelo caminho mais curto.
+func _blend(st: Dictionary, fr: Dictionary, w: float, fwd := 0) -> void:
+	if w <= 0.0:
+		return
+	st["hf"] = (st["hf"] as Vector2).lerp(_a2(fr["hf"]), w)
+	var a0: float = st["a"]
+	var a1 := float(fr["a"])
+	if fwd > 0:
+		a1 = a0 + fposmod(a1 - a0, TAU)
+	elif fwd < 0:
+		a1 = a0 - fposmod(a0 - a1, TAU)
+	else:
+		a1 = a0 + wrapf(a1 - a0, -PI, PI)
+	st["a"] = lerpf(a0, a1, w)
+	st["lean"] = lerpf(float(st["lean"]), float(fr["lean"]), w)
+	st["bob"] = lerpf(float(st["bob"]), float(fr["dy"]), w)
+	if fr.has("feet"):
+		var ft: Array = st["feet"]
+		for i in 2:
+			ft[i] = (ft[i] as Vector2).lerp(_a2(fr["feet"][i]) - _def_foot(i), w)
+
 func current_pose() -> Dictionary:
 	var p := idle_pose(t)
+	p.erase("rest")
 	p["expr"] = expression
+	var g := _g()
 	var r := run_k
 	var c: Dictionary = Data.ctrl
 	var ant_extra := 0.0
 	var bob := -absf(sin(phase)) * 5.0 * r + sin(t * 2.3) * 1.0 * (1.0 - r) + float(s_bob[0])
 	var feet := [Vector2.ZERO, Vector2.ZERO]
-	var knee := [Vector2(1.5, 0), Vector2(1.5, 0)]
-	var hb := Vector2(0, sin(t * 2.3 + 0.6) * 0.8 * (1.0 - r))
-	var hf := Vector2(0, sin(t * 2.3 + 1.1) * 0.6 * (1.0 - r))
-	# corrida: pés em elipse (sobe na passagem, empurra atrás), joelho dobra na subida, braços opostos às pernas
+	var kd := float(g.get("knee", 1))
+	var knee := [Vector2(1.5 * kd, 0), Vector2(1.5 * kd, 0)]
+	var hfr := _v(g["hand_front"])
+	var hbr := _v(g["hand_back"])
+	var two_hand := true
+	# base: parado → corre → ar (a ferramenta muda de jeito: apoiada, no ombro, erguida)
+	var fp0 := _frame("parado")
+	var fr_run := _frame("corre")
+	var fr_air := _frame("ar")
+	var hf: Vector2 = _a2(fp0["hf"]).lerp(_a2(fr_run["hf"]), r)
+	var ang: float = float(fp0["a"]) + wrapf(float(fr_run["a"]) - float(fp0["a"]), -PI, PI) * r
+	var stand := (1.0 - r) * (1.0 - air_k)
+	if fp0.has("feet"):
+		for i in 2:
+			feet[i] = (_a2(fp0["feet"][i]) - _def_foot(i)) * stand
+	# corrida: pés em elipse, joelho dobra na subida; a ferramenta balança com a passada
 	for i in 2:
 		var ph := phase + (0.0 if i == 0 else PI)
 		var lift := maxf(sin(ph), 0.0)
-		feet[i] = Vector2(cos(ph) * 11.0 * r, -lift * 10.0 * r - maxf(-sin(ph), 0.0) * 1.2 * r)
-		knee[i] = Vector2(1.5 + 7.0 * r * lift, 0)
-	hb += Vector2(-cos(phase) * 9.0 * r, -2.0 * r - absf(sin(phase)) * 3.0 * r)
-	hf += Vector2(cos(phase) * 5.0 * r, -1.0 * r)
-	# ar: sobe encolhido com os braços para cima; no alto abre; caindo agita os braços e estica as pernas
+		feet[i] += Vector2(cos(ph) * 11.0 * r, -lift * 10.0 * r - maxf(-sin(ph), 0.0) * 1.2 * r)
+		knee[i] = Vector2((1.5 + 7.0 * r * lift) * kd, 0)
+	hf += Vector2(cos(phase) * 2.0, -absf(sin(phase)) * 3.0) * r + Vector2(0, sin(t * 2.3 + 1.1) * 0.6 * (1.0 - r))
+	ang += sin(phase) * 0.14 * r
+	var hb := hbr + Vector2(-cos(phase) * 9.0 * r, -2.0 * r)
+	# ar: encolhe subindo, abre no alto, estica caindo; a ferramenta vai para cima e balança na queda
 	var a := air_k
 	if a > 0.0:
 		var fall := clampf(vy / 800.0, -1.0, 1.0)
@@ -543,363 +597,372 @@ func current_pose() -> Dictionary:
 			var sg := -1.0 if i == 0 else 1.0
 			var air_f := Vector2(2.0 + sg * 1.0, -11.0) * up + Vector2(sg * 5.0, 3.0) * down + Vector2(sg * 7.0, -5.0) * apex
 			feet[i] = feet[i].lerp(air_f, a)
-			knee[i] = knee[i].lerp(Vector2(7.0, 0) * up + Vector2(0.5, 0) * down + Vector2(4.0, 0) * apex, a)
-		hb = hb.lerp(Vector2(-4, -16) * up + Vector2(sin(t * 24.0) * 6.0, -18.0 + cos(t * 24.0) * 5.0) * down + Vector2(-12, -8) * apex, a)
-		hf = hf.lerp(Vector2(2, -10) * up + Vector2(cos(t * 21.0) * 4.0, -8.0) * down + Vector2(8, -6) * apex, a)
-	# pulo duplo: chute com jato → cambalhota encolhida → abre os braços
+			knee[i] = knee[i].lerp(Vector2(7.0 * kd, 0) * up + Vector2(0.5 * kd, 0) * down + Vector2(4.0 * kd, 0) * apex, a)
+		hf = hf.lerp(_a2(fr_air["hf"]) + Vector2(0, -2.0 * up + 3.0 * down), a)
+		ang = lerpf(ang, ang + wrapf(float(fr_air["a"]) - ang, -PI, PI) + 0.35 * down - 0.2 * up, a)
+		hb = hb.lerp(hbr + Vector2(sin(t * 24.0) * 6.0, -18.0 + cos(t * 24.0) * 5.0) * down + Vector2(-12, -8) * apex, a)
+	# pulo duplo: chute com jato → cambalhota encolhida (ferramenta colada) → abre
 	if flip_t >= 0.0:
 		var k := flip_t
+		var fr_t := _frame("esquiva_ar")
 		if k < DJ_KICK:
 			var u := _ease_out(k / DJ_KICK)
 			for i in 2:
-				feet[i] = feet[i].lerp(Vector2(-3.0 + i * 6.0, 6.0), u)   # pernas esticadas para baixo
-				knee[i] = knee[i].lerp(Vector2(0.5, 0), u)
-			hb = hb.lerp(Vector2(-6, -34), u)                           # braços para cima
-			hf = hf.lerp(Vector2(6, -32), u)
+				feet[i] = feet[i].lerp(Vector2(-3.0 + i * 6.0, 6.0), u)
+				knee[i] = knee[i].lerp(Vector2(0.5 * kd, 0), u)
 			p["jet"] = 1.0
 			p["rot"] = 0.0
-			p["dj_ham"] = lerpf(HAMMER_REST, -0.2, u)
 		elif k < DJ_OPEN:
 			var v := (k - DJ_KICK) / (DJ_OPEN - DJ_KICK)
-			var e := v * v * v * (v * (v * 6.0 - 15.0) + 10.0)          # começa e termina devagar
+			var e := v * v * v * (v * (v * 6.0 - 15.0) + 10.0)
 			p["rot"] = TAU * e
 			var tuck := clampf(sin(PI * v) * 1.6, 0.0, 1.0)
 			for i in 2:
 				feet[i] = Vector2(-3.0 + i * 6.0, 6.0).lerp(Vector2(3.0 + i * 5.0, -24.0), tuck)
-				knee[i] = Vector2(0.5, 0).lerp(Vector2(12.0, 0), tuck)
-			hb = Vector2(-6, -34).lerp(Vector2(3, -18), tuck)          # abraça os joelhos
-			hf = Vector2(6, -32).lerp(Vector2(9, -16), tuck)
+				knee[i] = Vector2(0.5 * kd, 0).lerp(Vector2(12.0 * kd, 0), tuck)
+			hf = hf.lerp(_a2(fr_t["hf"]), tuck)
+			ang = lerpf(ang, ang + wrapf(float(fr_t["a"]) - ang, -PI, PI), tuck)
 			p["jet"] = maxf(1.0 - v * 2.5, 0.0)
-			p["dj_ham"] = lerpf(-0.2, 2.5, tuck)                         # marreta junto dos joelhos
-			p["tuck"] = tuck                                             # encolhe no eixo do corpo (vira "bola")
-			bob += 6.0 * tuck                                            # corpo desce até os joelhos
+			p["tuck"] = tuck
+			bob += 6.0 * tuck
 		else:
 			var w := _ease_out((k - DJ_OPEN) / (1.0 - DJ_OPEN))
 			p["rot"] = TAU
 			for i in 2:
 				feet[i] = Vector2(3.0 + i * 5.0, -24.0).lerp(feet[i], w)
-				knee[i] = Vector2(12.0, 0).lerp(knee[i], w)
-			hb = Vector2(-20, -18).lerp(hb, w * 0.6)                    # abre os braços para se equilibrar
-			hf = Vector2(18, -16).lerp(hf, w * 0.6)
-			p["dj_ham"] = lerpf(2.5, HAMMER_REST, w)
-	# idle: tique de ocioso
+				knee[i] = Vector2(12.0 * kd, 0).lerp(knee[i], w)
+	# ocioso: gira a ferramenta e pega de volta / espreguiça
 	if fidget_t >= 0.0:
 		var k := fidget_t
 		if fidget_kind == 0:
-			# gira a marreta no ar e pega de volta
 			hf += Vector2(0, -16.0 * sin(PI * k))
-			bob += -3.0 * sin(PI * clampf((k - 0.75) / 0.25, 0.0, 1.0))
+			ang += TAU * smoothstep(0.1, 0.8, k)
+			two_hand = k < 0.05 or k > 0.9
+			hb = hbr + Vector2(-6, -10) * sin(PI * k)
 		else:
-			# espreguiça: braços para cima, fica na ponta dos pés
 			var u := sin(PI * k)
-			hb += Vector2(-2, -26) * u
 			hf += Vector2(2, -22) * u
 			bob -= 3.0 * u
 			ant_extra = sin(t * 10.0) * 0.3 * u
-	# pendurado na borda: as duas mãos na quina, corpo esticado embaixo, pés raspando na parede
+	# pendurado na borda: as duas mãos na quina, ferramenta pendurada para trás
 	var tremble := 0.0
 	if hanging or on_wall:
 		tremble = clampf((0.45 - grip) / 0.45, 0.0, 1.0)
 	if hanging:
-		var slip := clampf((0.3 - grip) / 0.3, 0.0, 1.0) * 6.0   # as mãos escorregam no fim
+		two_hand = false
+		var slip := clampf((0.3 - grip) / 0.3, 0.0, 1.0) * 6.0
 		p["hb_abs"] = Vector2(14, -60 + slip) + Vector2(sin(t * 55.0), cos(t * 47.0)) * 1.5 * tremble
-		p["hf_abs"] = Vector2(23, -61 + slip) + Vector2(cos(t * 51.0), sin(t * 43.0)) * 1.5 * tremble
+		hf = Vector2(23, -61 + slip) + Vector2(cos(t * 51.0), sin(t * 43.0)) * 1.5 * tremble
 		lean = lerpf(lean, 0.1, 0.5)
 		bob = 5.0 + sin(t * 3.0) * 1.0
-		var scr := 2.0 + 10.0 * tremble   # pés tentam escalar quando cansa
+		var scr := 2.0 + 10.0 * tremble
 		for i in 2:
 			var ph := t * (6.0 + 14.0 * tremble) + i * PI
 			feet[i] = Vector2(8.0 + i * 3.0, -2.0 - maxf(sin(ph), 0.0) * scr)
-			knee[i] = Vector2(5, 0)
-		p["hammer_ang"] = -2.7   # marreta pendurada para trás, longe da parede
-	# escorregando na parede (de costas para ela): mão de trás espalmada na parede, pé de trás apoiado
+			knee[i] = Vector2(5 * kd, 0)
+		ang = PI * 0.92
 	if wall_k > 0.0 and not hanging:
 		var shake := Vector2(sin(t * 60.0), cos(t * 53.0)) * 1.6 * tremble
-		hb = hb.lerp(Vector2(-16, -18) + shake, wall_k)
-		hf = hf.lerp(Vector2(6, -16), wall_k)
+		if wall_k > 0.5:
+			two_hand = false
+			p["hb_abs"] = Vector2(-16, -40) + shake
+		hf = hf.lerp(Vector2(8, -34), wall_k)
+		ang = lerpf(ang, ang + wrapf(-0.4 - ang, -PI, PI), wall_k)
 		feet[0] = feet[0].lerp(Vector2(-12, -10), wall_k)
 		feet[1] = feet[1].lerp(Vector2(4, 0), wall_k)
-		knee[0] = knee[0].lerp(Vector2(-3, 0), wall_k)
-	# spell: preparo (puxa o braço / mira), disparo com coice; fora disso a spell fica guardada na mão de trás
+	# spells (igual para todos): a mão da frente segura a arma / aponta; a ferramenta vai para as costas
 	var sf: Dictionary = robot.fx_flags() if robot != null and robot.has_method("fx_flags") else {}
 	var sid: String = sf.get("spell", "")
 	var prep: float = sf.get("prep", -1.0)
 	var fire: float = sf.get("fire", -1.0)
 	var aiming: bool = prep >= 0.0 or (fire >= 0.0 and fire < 0.32) or (sf.get("channel", false) and sid in ["S06", "S11", "S07", "S17"])
+	var hf_set := false
 	if sid != "" and aiming and not sf.get("armor", false):
 		var kick := clampf(1.0 - fire / 0.22, 0.0, 1.0) if fire >= 0.0 and prep < 0.0 else 0.0
-		var buzz := Vector2(sin(t * 80.0), cos(t * 71.0)) * 1.4 * maxf(prep, 0.0)   # treme carregando
-		var aa := float(sf.get("aim_a", 0.0))   # ângulo da mira no espaço do robô (0 = frente, −π/2 = cima)
+		var buzz := Vector2(sin(t * 80.0), cos(t * 71.0)) * 1.4 * maxf(prep, 0.0)
+		var aa := float(sf.get("aim_a", 0.0))
+		two_hand = false
 		match sid:
 			"S01":
 				var ad := Vector2.from_angle(aa)
-				if prep >= 0.0:   # puxa o punho para trás (na direção da mira), corpo carregando
-					p["hf_abs"] = SHOULDER + ad * lerpf(ARM, 2.0, ease(prep, 0.5)) + buzz
+				if prep >= 0.0:
+					hf = SHOULDER + ad * lerpf(ARM, 2.0, ease(prep, 0.5)) + buzz
 					p["hb_abs"] = SHOULDER + Vector2(-6, 6) + buzz * 0.5
 					lean = lerpf(lean, -0.16 * prep, 0.5)
-				else:             # SOCO: braço esticado na direção, corpo vai junto
-					p["hf_abs"] = SHOULDER + ad * (ARM + 6.0 - 8.0 * (1.0 - kick))
+				else:
+					hf = SHOULDER + ad * (ARM + 6.0 - 8.0 * (1.0 - kick))
 					p["hb_abs"] = Vector2(-10, -32)
 					lean = lerpf(lean, (0.18 * kick + 0.04) * cos(aa), 0.6)
 				p["tool"] = "S01"
 				p["tool_ang"] = aa
-			"S04":   # marreta sísmica: ergue bem alto e crava no chão
+				hf_set = true
+			"S04":
 				if prep >= 0.0:
-					p["hammer_ang"] = lerpf(-0.6, -2.7, ease(prep, 0.4))
-					p["hf_abs"] = Vector2(4, -62) + buzz
+					ang = lerpf(-0.6, -2.7, ease(prep, 0.4))
+					hf = Vector2(4, -62) + buzz
 					p["hb_abs"] = Vector2(-2, -60) + buzz
 					lean = lerpf(lean, -0.18 * prep, 0.5)
 				else:
-					p["hammer_ang"] = 1.75
-					p["hf_abs"] = Vector2(24, -18)
+					ang = 1.75
+					hf = Vector2(24, -18)
 					p["hb_abs"] = Vector2(18, -16)
 					lean = lerpf(lean, 0.3, 0.6)
+				hf_set = true
 				for i in 2:
 					feet[i] = feet[i].lerp(Vector2(-12.0 + i * 20.0, 0), 0.7)
-			"S18", "S19":   # arremesso: braço vem de trás e solta à frente
+			"S18", "S19":
 				var u := clampf(fire / 0.2, 0.0, 1.0)
-				p["hf_abs"] = Vector2(-16, -52).lerp(Vector2(28, -38), ease(u, 0.3))
+				hf = Vector2(-16, -52).lerp(Vector2(28, -38), ease(u, 0.3))
 				lean = lerpf(lean, -0.1 + 0.25 * u, 0.5)
-			"S17":   # aponta para onde a estaca vai cair
-				p["hf_abs"] = Vector2(26, -30)
-			"S12", "S27", "S28", "S25":   # aperta o botão / instala apontando
-				p["hf_abs"] = Vector2(24, -34 + 4.0 * kick)
+				hf_set = true
+			"S17":
+				hf = Vector2(26, -30)
+				hf_set = true
+			"S12", "S27", "S28", "S25":
+				hf = Vector2(24, -34 + 4.0 * kick)
+				hf_set = true
 			"S03", "S06", "S02", "S05", "S20", "S08", "S21", "S07":
-				# mira em 8 direções: mão gira em volta do ombro, a arma acompanha; coice para trás na linha do tiro
 				var ad := Vector2.from_angle(aa)
 				var hold := Vector2(sin(t * 70.0), cos(t * 61.0)) * 1.4 if sf.get("channel", false) else Vector2.ZERO
-				p["hf_abs"] = SHOULDER + ad * (ARM - 9.0 * kick) + buzz + hold
-				p["hb_abs"] = p["hf_abs"] + Vector2(-9, 4).rotated(aa)
+				hf = SHOULDER + ad * (ARM - 9.0 * kick) + buzz + hold
+				p["hb_abs"] = hf + Vector2(-9, 4).rotated(aa)
 				p["tool"] = sid
 				p["tool_ang"] = aa - 0.35 * kick
 				var back := -0.2 if sid == "S06" and sf.get("channel", false) else (0.16 if sid == "S07" and sf.get("channel", false) else 0.06 - 0.14 * kick)
 				lean = lerpf(lean, back - 0.12 * clampf(-sin(aa), 0.0, 1.0), 0.5)
-			"S10":   # aponta onde o andaime abre
-				p["hf_abs"] = Vector2(24, -46 - 10.0 * kick)
-			"S11":   # mirando: dedos na testa, concentrado; ao ir, estala os dedos para cima
+				hf_set = true
+			"S10":
+				hf = Vector2(24, -46 - 10.0 * kick)
+				hf_set = true
+			"S11":
 				if sf.get("channel", false):
-					p["hf_abs"] = Vector2(8, -66) + Vector2(sin(t * 50.0), 0) * 1.2
+					hf = Vector2(8, -66) + Vector2(sin(t * 50.0), 0) * 1.2
 					p["hb_abs"] = Vector2(-10, -64)
 				else:
-					p["hf_abs"] = Vector2(10, -62 + 6.0 * kick)
+					hf = Vector2(10, -62 + 6.0 * kick)
 					p["hb_abs"] = Vector2(-8, -60 + 6.0 * kick)
+				hf_set = true
 		for i in 2:
-			feet[i] = feet[i].lerp(Vector2(-6.0 + i * 10.0, 0), 0.6)   # pés firmes
+			feet[i] = feet[i].lerp(Vector2(-6.0 + i * 10.0, 0), 0.6)
 	elif sid in WEAPONS and robot != null and robot.atk == "" and not sf.get("fading", false):
-		# carregando a arma: as duas mãos nela, apontada um pouco para baixo, balança com a passada
 		var cbob := sin(t * 12.0) * 1.6 * run_k
-		p["hf_abs"] = CARRY_HF + Vector2(0, cbob)
+		hf = CARRY_HF + Vector2(0, cbob)
 		p["hb_abs"] = CARRY_HF + Vector2(-9, 4 + cbob)
 		p["tool"] = sid
 		p["tool_ang"] = 0.32 - 0.12 * air_k
+		two_hand = false
+		hf_set = true
 	elif sf.get("armor", false) and FORM_TOOLS.has(String(sf.get("armor_set", ""))):
-		# a ferramenta virou o braço: mira em 8 direções, tremendo enquanto trabalha
 		var aa2 := float(sf.get("aim_a", 0.0))
 		var shake2 := Vector2(sin(t * 80.0), cos(t * 73.0)) * (1.6 if sf.get("busy", false) else 0.4)
-		p["hf_abs"] = SHOULDER + Vector2.from_angle(aa2) * ARM + shake2
+		hf = SHOULDER + Vector2.from_angle(aa2) * ARM + shake2
 		p["hb_abs"] = Vector2(-12, -30)
 		p["tool"] = FORM_TOOLS[String(sf["armor_set"])]
 		p["tool_ang"] = aa2
 		lean = lerpf(lean, 0.08 if sf.get("busy", false) else 0.0, 0.4)
+		two_hand = false
+		hf_set = true
 	elif sf.get("armor", false) and String(sf.get("armor_set", "")) == "S14":
-		p["hf_abs"] = Vector2(20, -32)   # alavancas do mastro
+		hf = Vector2(20, -32)
 		p["hb_abs"] = Vector2(12, -30)
+		two_hand = false
+		hf_set = true
 	elif sf.get("flying_on", false):
-		# voando de jetpack: corpo inclina para onde vai, pernas soltas balançando, braços abertos
 		var vxk := clampf(float(sf.get("fly_vx", 0.0)) / 600.0, -1.0, 1.0) * float(robot.facing if robot != null else 1)
 		lean = lerpf(lean, 0.38 * vxk, 0.25)
 		p["hb_abs"] = Vector2(-20, -40 + sin(t * 9.0) * 3.0)
-		p["hf_abs"] = Vector2(22, -42 + cos(t * 9.0) * 3.0)
+		hf = Vector2(22, -42 + cos(t * 9.0) * 3.0)
+		two_hand = false
+		hf_set = true
 		for i in 2:
 			feet[i] = feet[i].lerp(Vector2(-10.0 - vxk * 6.0 + i * 8.0, -6.0 + sin(t * 7.0 + i * 1.7) * 5.0), 0.5)
 	elif sf.get("armor", false) and float(sf.get("flame", 0.0)) > 0.05:
 		var fk := float(sf.get("flame", 0.0))
-		lean = lerpf(lean, -0.14 * fk, 0.5)   # segurando o jato: corpo jogado para trás, tremendo
-		p["hf_abs"] = SHOULDER + Vector2.from_angle(float(sf.get("aim_a", 0.0))) * ARM + Vector2(sin(t * 60.0), cos(t * 55.0)) * 1.5 * fk
+		lean = lerpf(lean, -0.14 * fk, 0.5)
+		hf = SHOULDER + Vector2.from_angle(float(sf.get("aim_a", 0.0))) * ARM + Vector2(sin(t * 60.0), cos(t * 55.0)) * 1.5 * fk
 		p["hb_abs"] = Vector2(-14, -30)
+		two_hand = false
+		hf_set = true
 		for i in 2:
 			feet[i] = feet[i].lerp(Vector2(-10.0 + i * 14.0, 0), 0.6)
-	# subindo na borda: empurra a quina com as mãos e levanta o joelho
+	elif sf.get("armor", false):
+		two_hand = false
+	# subindo na borda
 	if robot != null and robot.climb_t >= 0.0:
 		var k: float = robot.climb_t
 		p["hb_abs"] = Vector2(10, -48 + 40 * k)
-		p["hf_abs"] = Vector2(18, -50 + 40 * k)
+		hf = Vector2(18, -50 + 40 * k)
 		feet[1] = Vector2(10, -22 * (1.0 - k))
-		knee[1] = Vector2(9, 0)
+		knee[1] = Vector2(9 * kd, 0)
 		lean = 0.3
-	var ang: float = s_ham[0]
-	if p.has("dj_ham"):
-		ang = float(p["dj_ham"])
-		s_ham[0] = ang
-		s_ham[1] = 0.0
-	if fidget_t >= 0.0 and fidget_kind == 0:
-		ang = HAMMER_REST + TAU * smoothstep(0.1, 0.8, fidget_t)
-	if robot != null:
-		var hp: Dictionary = c["ataque_pesado"]
-		var rp: Dictionary = c["ataque_rapido"]
+		two_hand = false
+		hf_set = true
+	# ---- golpes e esquiva: quadros-chave do robô no ritmo do controle
+	var esp: Dictionary = g.get("especial", {})
+	if robot != null and not hf_set:
 		var at: float = robot.atk_t
+		var st := {"hf": hf, "a": ang, "lean": lean, "bob": 0.0, "feet": feet.duplicate()}
+		var used := false
 		if robot.atk == "pesado":
+			var hp: Dictionary = c["ataque_pesado"]
 			var pre := float(hp["preparo"])
 			var act := float(hp["ativo"])
+			var fpre := _frame("pesado_prep")
+			var fhit := _frame("pesado_golpe")
+			used = true
+			# o golpe ACERTA no fim do preparo: a descida começa nos últimos 15% do preparo, então no impacto (e no
+			# hitstop) a ferramenta já está quase no alvo; o "ativo" termina o movimento.
 			if not robot.atk_hit:
-				# preparo: levanta a marreta bem alto atrás da cabeça, agacha e treme no fim
 				var k := clampf(at / pre, 0.0, 1.0)
-				var e := _ease_out(k)
-				ang = lerpf(HAMMER_REST, -2.75, e)
-				hf = hf.lerp(Vector2(-8, -24), e)
-				hb = hb.lerp(Vector2(-2, -20), e)
-				bob += 4.0 * e
-				for i in 2:
-					feet[i] = feet[i].lerp(Vector2(-6.0 + i * 14.0, 0), e)
-					knee[i] = knee[i].lerp(Vector2(6, 0), e)
-				if k > 0.7:
-					bob += sin(t * 90.0) * 1.2
-				p["glint"] = clampf((k - 0.6) / 0.4, 0.0, 1.0)
-				smear_from = ang
-				smear_a = 0.0
+				_blend(st, fpre, _ease_out(minf(k / 0.85, 1.0)), -1)
+				var sw := clampf((k - 0.85) / 0.15, 0.0, 1.0)
+				if sw > 0.0:
+					smear_from = float(st["a"])
+					_blend(st, fhit, 0.6 * sw * sw, 1)
+					smear_a = sw
+				else:
+					smear_from = float(st["a"])
+					smear_a = 0.0
+					if k > 0.6:
+						st["hf"] += Vector2(sin(t * 90.0), cos(t * 83.0)) * 1.2
+				p["glint"] = clampf((k - 0.5) / 0.35, 0.0, 1.0) * (1.0 - sw)
+				if String(esp.get("pesado", "")) == "giro":
+					p["spin"] = cos(sw * 0.6 * TAU)
 			elif at < pre + act:
-				# golpe: desce com tudo por cima da cabeça
 				var k := clampf((at - pre) / act, 0.0, 1.0)
-				ang = lerpf(-2.75, 2.35, k * k)
-				hf = Vector2(-8, -24).lerp(Vector2(14, 6), k)
-				hb = Vector2(-2, -20).lerp(Vector2(8, 4), k)
-				for i in 2:
-					feet[i] = Vector2(-8.0 + i * 18.0, 0)
-					knee[i] = Vector2(7, 0)
-				smear_from = -2.75
+				_blend(st, fpre, 1.0, -1)
+				smear_from = float(st["a"])
+				_blend(st, fhit, 0.6 + 0.4 * _ease_out(k), 1)
 				smear_a = 1.0
+				if String(esp.get("pesado", "")) == "giro":
+					p["spin"] = cos((0.6 + 0.4 * k) * TAU)
 			else:
 				var rec := at - pre - act
 				var stuck := 0.0 if robot.atk_landed else clampf(1.0 - rec / (float(hp["recupera_erro"]) * 0.7), 0.0, 1.0)
-				if stuck > 0.0:
-					# errou: a marreta fica cravada no chão e ele puxa com esforço
-					ang = 2.35 + sin(t * 40.0) * 0.04 * stuck
-					hf = Vector2(14, 6) + Vector2(-2, 0) * sin(t * 30.0) * stuck
-					hb = Vector2(8, 4)
-					bob += 5.0 * stuck
-					for i in 2:
-						feet[i] = Vector2(-8.0 + i * 18.0, 0)
-						knee[i] = Vector2(8, 0)
+				var back_w := 1.0 - clampf(rec / float(hp["recupera_acerto"] if robot.atk_landed else hp["recupera_erro"]), 0.0, 1.0)
+				_blend(st, fhit, maxf(back_w, stuck), 0)
+				if stuck > 0.0:   # errou: a ferramenta fica cravada e ele puxa com esforço
+					st["a"] = float(st["a"]) + sin(t * 40.0) * 0.04 * stuck
+					st["hf"] += Vector2(-2, 0) * sin(t * 30.0) * stuck
 				smear_a = maxf(smear_a - 0.25, 0.0)
+		elif robot.atk == "rapido":
+			var rp: Dictionary = c["ataque_rapido"]
+			var pre := float(rp["preparo"])
+			var act := float(rp["ativo"])
+			var pn := "rapido_prep" if not jab_alt else "rapido2_prep"
+			var hn := "rapido" if not jab_alt else "rapido2"
+			match String(robot.atk_dir):
+				"cima":
+					pn = "rapido_prep"
+					hn = "cima"
+				"baixo":
+					pn = "rapido2_prep"
+					hn = "baixo"
+				"corrida":
+					pn = "rapido_prep"
+					hn = "rapido"
+				_:
+					if int(robot.combo_i) == 2:
+						pn = "rapido2_prep"
+						hn = "rapido2"
+			var fpre := _frame(pn)
+			var fhit := _frame(hn)
+			used = true
+			# preparo curtíssimo: metade puxando, metade já batendo; no impacto a ferramenta está a 65% do golpe
+			if not robot.atk_hit:
+				var u := clampf(at / pre, 0.0, 1.0)
+				_blend(st, fpre, _ease_out(minf(u / 0.5, 1.0)), 0)
+				smear_from = float(st["a"])
+				var sw := clampf((u - 0.5) / 0.5, 0.0, 1.0)
+				_blend(st, fhit, 0.65 * sw, 1)
+				smear_a = sw
+			elif at < pre + act:
+				_blend(st, fpre, 1.0, 0)
+				smear_from = float(st["a"])
+				_blend(st, fhit, 0.65 + 0.35 * _ease_out((at - pre) / act), 1)
+				smear_a = 1.0 if (int(robot.combo_i) == 2 or String(robot.atk_dir) != "frente") else 0.8
+			else:
+				var rec := at - pre - act
+				_blend(st, fhit, 1.0 - clampf(rec / float(rp["recupera"]), 0.0, 1.0), 0)
+				smear_a = maxf(smear_a - 0.3, 0.0)
+		else:
+			smear_a = maxf(smear_a - 0.3, 0.0)
+		if robot.dodge_t > 0.0:
+			var dl: float = maxf(float(robot.get("dodge_len") if robot.get("dodge_len") != null else 0.17), 0.01)
+			var u := clampf(1.0 - robot.dodge_t / dl, 0.0, 1.0)
+			var kind := String(esp.get("esquiva", ""))
+			used = true
+			if dodge_ground:
+				_blend(st, _frame("esquiva"), _ease_out(minf(u * 3.0, 1.0)), 0)
+				match kind:
+					"mortal":   # Picareta: mortal para trás
+						p["rot"] = -TAU * smoothstep(0.0, 1.0, u)
+						st["bob"] = float(st["bob"]) * 0.5 - sin(PI * u) * 14.0
+					"salto", "pulinho":   # Pá apoia na pá e salta / Britadeira pula de lado
+						st["bob"] = float(st["bob"]) * (1.0 if kind == "salto" else 0.6) - sin(PI * u) * (6.0 if kind == "salto" else 12.0)
+			else:
+				_blend(st, _frame("esquiva_ar"), _ease_out(minf(u * 3.0, 1.0)), 0)
+				if kind == "mortal":
+					p["rot"] = -TAU * smoothstep(0.0, 1.0, u)
+				else:
+					p["rot"] = atan2(dodge_dir.y, absf(dodge_dir.x) + 0.001) * 0.7 + 0.35
+			p["guard"] = clampf(robot.guard_t / 0.13, 0.0, 1.0)
+		if used:
+			hf = st["hf"]
+			ang = st["a"]
+			lean = st["lean"]
+			bob += float(st["bob"])
+			feet = st["feet"]
 			s_ham[0] = ang
 			s_ham[1] = 0.0
 			s_hf[0] = hf
-			s_hb[0] = hb
-		elif robot.atk == "rapido":
-			var pre := float(rp["preparo"])
-			var act := float(rp["ativo"])
-			var wind := -0.5 if not jab_alt else 2.5
-			var hit_ang := 1.8 if not jab_alt else -0.35
-			var hf_hit := Vector2(18, 0) if not jab_alt else Vector2(16, -20)
-			match String(robot.atk_dir):
-				"cima":   # varre por cima da cabeça
-					wind = 2.2
-					hit_ang = -0.7
-					hf_hit = Vector2(6, -38)
-				"baixo":  # marreta para baixo no ar
-					wind = -2.5
-					hit_ang = 3.0
-					hf_hit = Vector2(6, 16)
-				"corrida":  # investida: braço todo à frente
-					wind = -0.9
-					hit_ang = 1.6
-					hf_hit = Vector2(26, -4)
-				_:
-					if int(robot.combo_i) == 2:   # 3º golpe da sequência: giro grande que arremessa
-						wind = -2.6
-						hit_ang = 2.3
-						hf_hit = Vector2(20, 4)
-			if not robot.atk_hit:
-				var k := _ease_out(at / pre)
-				ang = lerpf(float(s_ham[0]), wind, k)
-				hf = hf.lerp(Vector2(-6, -8) if not jab_alt else Vector2(-2, 6), k)
-				smear_from = ang
-				smear_a = 0.0
-			elif at < pre + act:
-				var k := _ease_out((at - pre) / act)
-				ang = lerpf(wind, hit_ang, k)
-				hf = hf.lerp(hf_hit, k)
-				hb = hb.lerp(Vector2(-10, -6), k)
-				feet[1] = feet[1].lerp(Vector2(10, 0), k)
-				smear_from = wind
-				smear_a = 1.0 if (int(robot.combo_i) == 2 or String(robot.atk_dir) != "frente") else 0.8
-			else:
-				smear_a = maxf(smear_a - 0.3, 0.0)
-				ang = float(s_ham[0])
-				hf = s_hf[0]
-			if robot.atk_t <= pre + act:
-				s_ham[0] = ang
-				s_ham[1] = 0.0
-				s_hf[0] = hf
-		else:
-			smear_a = maxf(smear_a - 0.3, 0.0)
-		# esquiva: no chão desliza baixo, no ar encolhe e vai na direção
-		if robot.dodge_t > 0.0:
-			if dodge_ground:
-				feet[0] = Vector2(-22, -2)
-				feet[1] = Vector2(14, 0)
-				knee[0] = Vector2(-2, 0)
-				knee[1] = Vector2(9, 0)
-				hb = Vector2(-22, -26)
-				hf = Vector2(-14, -22)
-				ang = -2.2
-			else:
-				p["rot"] = atan2(dodge_dir.y, absf(dodge_dir.x) + 0.001) * 0.7 + 0.35
-				for i in 2:
-					feet[i] = Vector2(-2.0 + i * 6.0, -16.0)
-					knee[i] = Vector2(9, 0)
-				hb = Vector2(-16, -12)
-				hf = Vector2(-10, -14)
-				ang = -1.9
-			s_ham[0] = ang
-			s_ham[1] = 0.0
-			p["guard"] = clampf(robot.guard_t / 0.13, 0.0, 1.0)
-		# atingido / arremessado: braços e pernas abertos, se debatendo
+			s_hf[1] = Vector2.ZERO
+		# atingido / arremessado: solta a mão de trás, braços e pernas se debatendo
 		if hurt_t > 0.0 or tumbling or robot.stun_t > 0.0:
 			var fl := 1.0 if tumbling else 0.6
-			hb = Vector2(-16, -22) + Vector2(sin(t * 31.0), cos(t * 27.0)) * 6.0 * fl
-			hf = Vector2(14, -20) + Vector2(cos(t * 29.0), sin(t * 33.0)) * 6.0 * fl
+			two_hand = false
+			hb = Vector2(-16, -44) + Vector2(sin(t * 31.0), cos(t * 27.0)) * 6.0 * fl
+			hf = hfr + Vector2(4, -14) + Vector2(cos(t * 29.0), sin(t * 33.0)) * 6.0 * fl
 			for i in 2:
 				feet[i] = Vector2(-10.0 + i * 20.0, -6.0) + Vector2(sin(t * 25.0 + i), 0) * 4.0 * fl
-				knee[i] = Vector2(-3.0 + i * 6.0, 0)
+				knee[i] = Vector2((-3.0 + i * 6.0) * kd, 0)
 			ang = float(s_ham[0]) + sin(t * 20.0) * 0.5 * fl
-		# recuperou o controle no ar: abre os braços para se equilibrar
 		elif not robot.is_on_floor() and robot.recover_t > 0.0:
 			var u: float = robot.recover_t / maxf(robot.recover_len, 0.01)
-			hb = hb.lerp(Vector2(-20, -18), u)
-			hf = hf.lerp(Vector2(18, -18), u)
-		# pouso depois de arremessado: agacha fundo e absorve
+			hb = hb.lerp(Vector2(-20, -40), u)
+			two_hand = u < 0.4
 		if land_t > 0.0:
 			var u := land_t / 0.28
 			for i in 2:
 				feet[i] = Vector2(-9.0 + i * 18.0, 0)
-				knee[i] = Vector2(10, 0) * u + knee[i] * (1.0 - u)
+				knee[i] = Vector2(10 * kd, 0) * u + knee[i] * (1.0 - u)
 			bob += 8.0 * u
-			hb = hb.lerp(Vector2(-18, 6), u)
-			hf = hf.lerp(Vector2(16, 8), u)
-	# mãos com inércia (seguem o alvo com uma molinha) e o dano deixa os braços bambos
+			hf = hf.lerp(hfr + Vector2(4, 10), u)
+	# mãos com inércia (molinha) fora dos golpes; dano deixa os braços bambos
 	var wob := Vector2(sin(t * 13.0), cos(t * 11.0)) * (1.2 if dmg_level >= 2 else 0.0)
 	var dt := 1.0 / 60.0
-	if robot == null or robot.atk == "" or (robot.atk == "rapido" and robot.atk_t > float(c["ataque_rapido"]["preparo"]) + float(c["ataque_rapido"]["ativo"])):
+	var attacking: bool = robot != null and (robot.atk != "" or robot.dodge_t > 0.0)
+	if not attacking:
+		s_ham[0] = ang + wrapf(float(s_ham[0]) - ang, -PI, PI)
+		ang = _spring(s_ham, ang, dt * 0.5, 5.0, 0.45)
 		hf = _spring(s_hf, hf, dt * 0.5, 6.0, 0.5) + wob
-	if robot == null or robot.atk != "pesado":
-		hb = _spring(s_hb, hb, dt * 0.5, 6.0, 0.5) - wob
+	hb = _spring(s_hb, hb, dt * 0.5, 6.0, 0.5) - wob
 	if not p.has("rot") and absf(float(s_rot[0]) - round(float(s_rot[0]) / TAU) * TAU) > 0.001:
 		p["rot"] = s_rot[0]
 	elif p.has("rot"):
 		s_rot[0] = p["rot"]
 		s_rot[1] = 0.0
 		tumble = round(float(p["rot"]) / TAU) * TAU if flip_t < 0.0 else tumble
-	# botas de mola: a mola estica no ar e encolhe ao tocar o chão
 	p["spring_k"] = 1.0 + 0.5 * air_k - 0.4 * clampf(1.0 - sq.y, 0.0, 1.0)
 	p["body_off"] = Vector2(0, bob)
 	p["lean"] = lean
 	p["feet"] = feet
 	p["knee"] = knee
-	p["hb_off"] = hb
-	p["hf_off"] = hf
-	if not p.has("hammer_ang") or not hanging:
-		p["hammer_ang"] = ang
+	p["hf_abs"] = hf
+	if not p.has("hb_abs") and not two_hand:
+		p["hb_abs"] = hb
+	p["two_hand"] = two_hand
+	p["hammer_ang"] = ang
 	p["ant"] = ant + ant_extra + 0.12 * dmg_level
 	p["smear"] = [smear_from, ang, smear_a]
 	p["panel"] = panel[0]
@@ -943,7 +1006,7 @@ static func idle_pose(time: float) -> Dictionary:
 	return {"expr": "piscar" if fmod(time, 3.3) < 0.12 else "normal", "body_off": Vector2(0, sin(time * 2.4) * 0.8),
 		"lean": 0.0, "feet": [Vector2.ZERO, Vector2.ZERO], "knee": [Vector2(1.5, 0), Vector2(1.5, 0)],
 		"hb_off": Vector2(0, sin(time * 2.4) * 0.6), "hf_off": Vector2.ZERO, "hammer_ang": HAMMER_REST,
-		"ant": sin(time * 3.1) * 0.12}
+		"ant": sin(time * 3.1) * 0.12, "rest": true}
 
 static func victory_pose(time: float, danca := 0) -> Dictionary:
 	var hop := -absf(sin(time * 6.0)) * 8.0
@@ -992,7 +1055,7 @@ static func victory_pose(time: float, danca := 0) -> Dictionary:
 ## Desenha o robô montado em qualquer CanvasItem. look = {color, model, hammer, fx}; pose = ver topo.
 static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base := Transform2D.IDENTITY) -> void:
 	var col_idx: int = lk["color"]
-	var mname: String = Data.MODELS[lk["model"]]
+	var mname: String = Data.MODELS[posmod(int(lk["model"]), Data.MODELS.size())]
 	var body := Data.tex("robo/corpo_%s_p%d" % [mname, col_idx + 1])
 	if body == null or Data.robot_meta.is_empty():
 		return
@@ -1014,11 +1077,30 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 	var pivot := (_v(hips[0]) + _v(hips[1])) / 2.0
 	var bx := Transform2D(0.0, pose["body_off"] + pivot) * Transform2D(pose["lean"], Vector2.ZERO) * Transform2D(0.0, -pivot)
 	var sh: Array = g["shoulders"]
-	var hf: Vector2 = pose["hf_abs"] if pose.has("hf_abs") else bx * _v(g["hand_front"]) + pose["hf_off"]
-	var hb: Vector2 = pose["hb_abs"] if pose.has("hb_abs") else bx * _v(g["hand_back"]) + pose["hb_off"]
-	# marreta (atrás do corpo)
+	var ham_ang := float(pose["hammer_ang"])
+	var hf: Vector2
+	if pose.has("hf_abs"):
+		hf = pose["hf_abs"]
+	elif pose.get("rest", false):   # telas (entrada, vitória): parte da pose "parado" do robô
+		var fp0: Dictionary = g["poses"]["parado"]
+		hf = bx * Vector2(float(fp0["hf"][0]), float(fp0["hf"][1])) + pose["hf_off"]
+		ham_ang = float(fp0["a"]) + (ham_ang - HAMMER_REST)
+	else:
+		hf = bx * _v(g["hand_front"]) + pose["hf_off"]
 	var fx: Dictionary = lk.get("fx", {})
 	var tool: String = pose.get("tool", "")
+	var armor0: bool = fx.get("armor", false)
+	var hb: Vector2
+	if pose.has("hb_abs"):
+		hb = pose["hb_abs"]
+	elif pose.get("two_hand", true) and tool == "" and lk.get("hammer", true) and not armor0:
+		hb = hf + Vector2(float(g["grip2"][0]), float(g["grip2"][1])).rotated(ham_ang)   # as duas mãos no cabo
+	else:
+		hb = bx * _v(g["hand_back"]) + pose["hb_off"]
+	var ttex := Data.tex("robo/ferramenta_" + mname)
+	var tsz := Vector2(float(g["tool"][0]), float(g["tool"][1]))
+	var tgr := Vector2(float(g["tool_grip"][0]), float(g["tool_grip"][1]))
+	var reach := float(g.get("reach", 40.0))
 	# rastro do golpe (arco branco por onde a cabeça da marreta passou)
 	var smear: Array = pose.get("smear", [0.0, 0.0, 0.0])
 	if float(smear[2]) > 0.01 and tool == "":
@@ -1028,10 +1110,10 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 		var n := 10
 		for i in n + 1:
 			var aa := lerpf(a0, a1, float(i) / n)
-			poly.append(hf + Vector2(sin(aa), -cos(aa)) * 46.0)
+			poly.append(hf + Vector2(sin(aa), -cos(aa)) * (reach + 8.0))
 		for i in range(n, -1, -1):
 			var aa := lerpf(a0, a1, float(i) / n)
-			var w := 46.0 - 18.0 * pow(float(i) / n, 0.5)
+			var w := reach + 8.0 - 20.0 * pow(float(i) / n, 0.5)
 			poly.append(hf + Vector2(sin(aa), -cos(aa)) * w)
 		ci.draw_set_transform_matrix(base)
 		if poly.size() >= 3 and absf(a1 - a0) > 0.2:
@@ -1046,8 +1128,8 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 	var sid0: String = String(sf.get("spell", ""))
 	if lk.get("hammer", true) and tool != "" and not armor:
 		# arma na mão: a marreta fica presa nas costas, na diagonal
-		ci.draw_set_transform_matrix(base * bx * Transform2D(2.45, q * 0.8, 0.0, _v(sh[0]) + Vector2(-8, 6)))
-		ci.draw_texture(Data.tex("robo/marreta"), -GRIP * 4.0)
+		ci.draw_set_transform_matrix(base * bx * Transform2D(2.45, Vector2(0.8, 0.8), 0.0, _v(sh[0]) + Vector2(-8, 6)))
+		ci.draw_texture_rect(ttex, Rect2(-tgr, tsz), false)
 	if sid0 in WEAPONS and tool == "" and not armor and not sf.get("fading", false):
 		# golpeando com a marreta: a arma vai para as costas
 		var spec0: Array = SPELL_TOOLS[sid0]
@@ -1066,22 +1148,18 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 		var bp: Array = BACK_PROPS[sid0]
 		ci.draw_set_transform_matrix(base * bx * Transform2D(float(bp[2]), _v(sh[0]) + Vector2(-12, 10)))
 		ci.draw_texture_rect(Data.tex("spells/" + bp[0]), Rect2(-bp[1] / 2.0, bp[1]), false)
-	if lk.get("hammer", true) and tool == "" and not armor:
-		var seis: bool = sf.get("spell", "") == "S04" and (float(sf.get("prep", -1.0)) >= 0.0 or (float(sf.get("fire", -1.0)) >= 0.0 and float(sf.get("fire", -1.0)) < 0.32))
-		if not seis:   # na marretada sísmica a marreta gigante é desenhada por modes/spells.gd
-			ci.draw_set_transform_matrix(base * Transform2D(pose["hammer_ang"], q, 0.0, hf))
-			var hcol := Color(0.58, 0.62, 0.72) if lk.get("ham_cd", false) else Color.WHITE
-			ci.draw_texture(Data.tex("robo/marreta"), -GRIP * 4.0, hcol)
 	var eye: Vector2 = (_v(g["eyes"][0]) + _v(g["eyes"][1])) / 2.0
 	if armor:   # costas da armadura (tanque + chaminé) atrás do corpo
 		_armor_piece(ci, base * bx, aspec["back"], asm, eye + Vector2(-5, 0), sf)
-	# pernas + botas
+	# pernas + botas (grossura, dobra do joelho e bota de cada robô)
 	var foot := Data.tex("robo/pe")
+	var legw := float(g.get("leg_w", lw)) * (1.0 + 0.9 * asm)
+	var foot_s := float(g.get("foot_s", 1.0))
 	for i in 2:
 		var s := -1.0 if i == 0 else 1.0
 		var hip: Vector2 = bx * _v(hips[i])
 		var fp: Vector2 = Vector2(_v(hips[i]).x + s * 4.0, -4.0) + pose["feet"][i]
-		_limb(ci, base, hip, fp, limb, pose["knee"][i], lw)
+		_limb(ci, base, hip, fp, limb.darkened(0.12) if i == 0 else limb, pose["knee"][i], legw)
 		if armor and String(sf.get("armor_set", "")) == "S14" and asm > 0.5:   # mecha empilhadeira: rodas no lugar dos pés
 			ci.draw_set_transform_matrix(base)
 			var wc := fp + Vector2(s * 1.5, -4.0)
@@ -1092,8 +1170,8 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 				ci.draw_line(wc, wc + Vector2.from_angle(sp_a + k * TAU / 3.0) * 6.0, Color("#2a1a2e"), 1.6, true)
 			ci.draw_circle(wc, 2.4, Color("#f2c84b"))
 		else:
-			ci.draw_set_transform_matrix(base * Transform2D(0.0, q * (0.72 + 0.2 * asm), 0.0, fp + Vector2(s * 1.5, 0.5)))
-			ci.draw_texture(foot, -Vector2(12, 7) * 4.0, limb)
+			ci.draw_set_transform_matrix(base * Transform2D(0.0, q * (0.72 + 0.2 * asm) * foot_s, 0.0, fp + Vector2(s * 1.5, 0.5)))
+			ci.draw_texture(foot, -Vector2(12, 7) * 4.0, limb.darkened(0.12) if i == 0 else limb)
 	# jato do propulsor saindo dos pés (pulo duplo)
 	var jet := float(pose.get("jet", 0.0))
 	if jet > 0.01:
@@ -1104,7 +1182,7 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 			var L := 30.0 * jet * flick
 			ci.draw_colored_polygon(PackedVector2Array([fp2 + Vector2(-6, 0), fp2 + Vector2(6, 0), fp2 + Vector2(0, L)]), Color("#f6a23a"))
 			ci.draw_colored_polygon(PackedVector2Array([fp2 + Vector2(-3, 0), fp2 + Vector2(3, 0), fp2 + Vector2(0, L * 0.55)]), Color("#fff1b8"))
-	_limb(ci, base, bx * _v(sh[0]), hb, limb, Vector2(0, 3), lw)
+	_limb(ci, base, bx * _v(sh[0]), hb, limb.darkened(0.12), Vector2(0, 3), lw)
 	# corpo + rosto + antena (mola)
 	ci.draw_set_transform_matrix(base * bx * Transform2D(0.0, q, 0.0, -ORIGIN))
 	ci.draw_texture(body, Vector2.ZERO)
@@ -1125,6 +1203,12 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 	ci.draw_set_transform_matrix(base * bx * Transform2D(pose["ant"], ab) * Transform2D(0.0, q, 0.0, -ab - ORIGIN))
 	ci.draw_texture(Data.tex("robo/antena_" + mname), Vector2.ZERO)
 	var tnow := Time.get_ticks_msec() / 1000.0
+	if lk.get("hammer", true) and tool == "" and not armor:
+		var seis: bool = sf.get("spell", "") == "S04" and (float(sf.get("prep", -1.0)) >= 0.0 or (float(sf.get("fire", -1.0)) >= 0.0 and float(sf.get("fire", -1.0)) < 0.32))
+		if not seis:   # ferramenta nas mãos, na frente do corpo (na marretada sísmica a marreta gigante é de modes/spells.gd)
+			ci.draw_set_transform_matrix(base * Transform2D(ham_ang, hf))
+			var hcol := Color(0.58, 0.62, 0.72) if lk.get("ham_cd", false) else Color.WHITE
+			ci.draw_texture_rect(ttex, Rect2(-tgr, tsz), false, hcol)
 	if armor:   # frente da armadura por cima do corpo; o rosto do robô aparece na vigia
 		_armor_piece(ci, base * bx, aspec["front"], asm, eye, sf)
 		var drop := Vector2(0, -(1.0 - asm) * 30.0)
@@ -1204,7 +1288,7 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 	# brilho na cabeça da marreta no fim do preparo da pesada
 	var gl := float(pose.get("glint", 0.0))
 	if gl > 0.0:
-		var head := hf + Vector2(sin(float(pose["hammer_ang"])), -cos(float(pose["hammer_ang"]))) * 40.0
+		var head := hf + Vector2(sin(ham_ang), -cos(ham_ang)) * reach
 		ci.draw_set_transform_matrix(base * Transform2D(Time.get_ticks_msec() / 200.0, head))
 		var st := Data.tex("cenario/brilho")
 		var sz := 10.0 + 18.0 * gl
@@ -1249,7 +1333,7 @@ static func _limb(ci: CanvasItem, base: Transform2D, a: Vector2, b: Vector2, col
 
 ## Partes soltas para o robô "desmontar" na eliminação: [{tex, rect (local), modulate}].
 static func parts(lk: Dictionary) -> Array:
-	var mname: String = Data.MODELS[lk["model"]]
+	var mname: String = Data.MODELS[posmod(int(lk["model"]), Data.MODELS.size())]
 	var g: Dictionary = Data.robot_meta["modelos"][mname]
 	var limb := Color(Data.robot_meta["membros"][lk["color"]])
 	var out := []
@@ -1257,7 +1341,8 @@ static func parts(lk: Dictionary) -> Array:
 		"rect": Rect2(-ORIGIN, Vector2(128, 128)), "mod": Color.WHITE})
 	out.append({"tex": [Data.tex("robo/antena_" + mname)], "rect": Rect2(-ORIGIN, Vector2(128, 128)), "mod": Color.WHITE})
 	if lk.get("hammer", true):
-		out.append({"tex": [Data.tex("robo/marreta")], "rect": Rect2(_v(g["hand_front"]) - GRIP, Vector2(64, 64)), "mod": Color.WHITE})
+		var tsz2 := Vector2(float(g["tool"][0]), float(g["tool"][1]))
+		out.append({"tex": [Data.tex("robo/ferramenta_" + mname)], "rect": Rect2(_v(g["hand_front"]) - Vector2(float(g["tool_grip"][0]), float(g["tool_grip"][1])), tsz2), "mod": Color.WHITE})
 	var hs := 16.0 * float(g["hand_s"])
 	for hp in [g["hand_back"], g["hand_front"]]:
 		out.append({"tex": [Data.tex("robo/mao")], "rect": Rect2(_v(hp) - Vector2(hs, hs) / 2.0, Vector2(hs, hs)), "mod": Color.WHITE})

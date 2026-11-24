@@ -5,8 +5,21 @@ Repositórios (GitHub privado, ramo `main`): `joao992001/bota-abaixo` = versão 
 **`joao992001/bota-abaixo-teste-2` = cópia para as mudanças estruturais grandes (trabalhe aqui).**
 
 ## ▶ Retomar aqui (sessão nova)
+**ÚLTIMO (2026-11-24): ELENCO NOVO DE 5 ROBÔS** (pedido do usuário: os 8 modelos "olhavam para a câmera e batiam com
+uma mão"). Marretão (marreta de 2 mãos), Picareta (pernas de pássaro), Chave (mecânico, chave inglesa), Britadeira
+(baixinho, monta na britadeira), Pá (cabeça de cabine; a Garra-veículo foi vetada: SEMPRE humanoides). Fonte única:
+`art/src/robos/elenco.py` → prancha `art/out/prancha_elenco5.png` (aprovada) + texturas `robo/*_<robô>` e `modelos.json`
+com geometria, pegadas (`tool_grip`, `grip2` = mão de trás no cabo), `especial` e 13 QUADROS-CHAVE por robô (parado, corre,
+ar, rapido_prep/rapido, rapido2_prep/rapido2, cima, baixo, pesado_prep/pesado_golpe, esquiva, esquiva_ar). O motor
+(`robot_visual.current_pose`) mistura esses quadros no ritmo de `controller.json`; o golpe ACERTA no fim do preparo, então a
+descida começa dentro do preparo (no impacto a ferramenta já está a 60–65% do golpe). Especiais: Chave gira 360° na pesada,
+Britadeira sobe na britadeira, Picareta dá mortal para trás na esquiva, Pá salta apoiada na pá, Marretão dispara agachado
+com a marreta de escudo. Regras do golpe iguais para todos. Vitrine: `-- --elenco=DIR [--so-elenco=0+3]`; prancha do motor:
+`--robos=DIR`. `robos.py` agora só gera luva/bota/parafuso/marreta (a da spell S19). Aguardando o usuário jogar.
+Pendentes de resposta: Guindaste (G05) e Drone (G09) com função mais clara; Carga Remota (S12) "acerta em tudo".
+
 Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, nesta ordem:
-1. **Robôs: 8 modelos só de aparência** no lugar da Garagem — **FEITO** (commit 6b089e1).
+1. **Robôs: 8 modelos só de aparência** no lugar da Garagem — FEITO (commit 6b089e1); TROCADOS pelo elenco de 5 (acima).
 2. **Movimento, combate e animação** — FEITO (2026-11-24), relatório em `docs/relatorio_personagem_combate.md`.
    Golpe rápido (X/□) × marretada pesada (Y/△, preparo/impacto/recuperação, só ela quebra caixote/chão/barril);
    esquiva (RB/RT) no chão e 1× no ar (volta só ao pousar; protege só de golpe/pisão de robô); arremesso com perda de controle
