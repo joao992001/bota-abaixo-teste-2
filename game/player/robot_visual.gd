@@ -22,7 +22,7 @@ const SPELL_TOOLS := {"S01": ["s01_canhao", Vector2(52, 26), Vector2(30, 34), Ve
 	"S20": ["s20_canhao", Vector2(60, 30), Vector2(24, 54), Vector2(124, 32)],
 	"S07": ["s07_ventilador", Vector2(60, 30), Vector2(29, 52), Vector2(126, 32)],
 	"S08": ["s08_gancho", Vector2(58, 29), Vector2(33, 50), Vector2(126, 30)],
-	"S21": ["s21_laco", Vector2(56, 28), Vector2(29, 50), Vector2(124, 32)]}
+	"S21": ["s21_laco", Vector2(56, 28), Vector2(29, 52), Vector2(124, 32)]}
 const WEAPONS := ["S01", "S02", "S03", "S05", "S06", "S20", "S07", "S08", "S21"]
 const CARRY_HF := Vector2(17, -31)      # mão da frente carregando a arma (baixa, pronta)
 const AIM_HF := Vector2(21, -38)        # mão da frente mirando reto

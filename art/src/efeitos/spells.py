@@ -360,15 +360,15 @@ def s08_gancho():
 
 
 def s21_laco():
-    """Laço Elástico: lançador em forquilha com elástico vermelho enrolado e bola de ventosa — 128x64."""
-    b = [shape("s21h", rect_d(10, 22, 54, 20, 6), "#d9a05e", 107, (8, 20, 66, 44), k=1.6, dark="#8f5a2c")]
-    b.append(f'<rect x="22" y="40" width="14" height="20" rx="3" fill="{INK}"/>')
-    b.append(f'<path d="M62,32 L96,10 M62,32 L96,54" stroke="{INK}" stroke-width="10" stroke-linecap="round"/>')
-    b.append(f'<path d="M62,32 L96,10 M62,32 L96,54" stroke="#8a63d2" stroke-width="6" stroke-linecap="round"/>')
-    b.append('<path d="M96,10 C108,18 108,46 96,54" stroke="#e8503a" stroke-width="5" fill="none"/>')
-    b.append(shape("s21v", ellipse_d(112, 32, 12, 12), "#e8503a", 108, (100, 20, 124, 44), k=1.4, dark="#a8301f", light="#ff8a6a"))
-    for x in (20, 30, 40, 50):
-        b.append(f'<path d="M{x},24 V40" stroke="#e8503a" stroke-width="3"/>')
+    """Laço de Energia: emissor roxo com 3 bobinas de cobre e cristal ciano aceso na ponta — 128x64."""
+    b = [shape("s21h", rect_d(8, 20, 70, 24, 7), "#5e3fa0", 107, (6, 18, 80, 46), k=1.8, dark="#3d2870", light="#8a63d2")]
+    b.append(f'<rect x="22" y="42" width="14" height="20" rx="3" fill="{INK}"/>')
+    for x in (44, 56, 68):
+        b.append(f'<rect x="{x}" y="14" width="8" height="36" rx="3" fill="#c9853a"/><rect x="{x + 2}" y="14" width="2" height="36" fill="#f0b46a"/>')
+    b.append(shape("s21p", rect_d(76, 24, 22, 16, 3), METAL, 108, (74, 22, 100, 42), k=1.4, dark=METAL_D))
+    b.append('<polygon points="98,32 110,20 124,32 110,44" fill="#3fc1c9"/><polygon points="102,32 110,24 118,32 110,40" fill="#bff6ff"/>')
+    b.append('<circle cx="110" cy="32" r="3" fill="#ffffff"/>')
+    b.append('<path d="M14,26 H40" stroke="#bff6ff" stroke-width="3" stroke-linecap="round" opacity="0.8"/>')
     return b
 
 

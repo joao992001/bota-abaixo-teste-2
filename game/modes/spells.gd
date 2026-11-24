@@ -12,7 +12,7 @@ const FAM_COR := {"ataque": Color("#f08a3d"), "controle": Color("#8a63d2"), "eng
 const NOMES := {"S01": "PUNHO PNEUMÁTICO", "S03": "CANHÃO CRIOGÊNICO", "S06": "SUPERÍMÃ", "S10": "ANDAIME RELÂMPAGO",
 	"S11": "TELEPORTE", "S13": "ARMADURA FORNALHA", "S02": "LASER DE CORTE", "S04": "MARRETA SÍSMICA", "S05": "REBITEIRA RICOCHETE",
 	"S17": "BATE-ESTACA", "S18": "DISCO DE CORTE", "S19": "MARRETA-BUMERANGUE", "S20": "CANHÃO DE MOLAS",
-	"S07": "TURBOVENTILADOR", "S08": "GANCHO DE ARRASTO", "S21": "LAÇO ELÁSTICO", "S12": "CARGA REMOTA",
+	"S07": "TURBOVENTILADOR", "S08": "GANCHO DE ARRASTO", "S21": "LAÇO DE ENERGIA", "S12": "CARGA REMOTA",
 	"S25": "PONTE DOBRÁVEL", "S27": "CONTROLE REMOTO", "S28": "ESCUDO DE SOLDA"}
 
 var main: Node
@@ -2221,7 +2221,7 @@ func _fire_hook(r, s: Dictionary) -> void:
 func _fire_lasso(r, s: Dictionary) -> void:
 	var c: Dictionary = sc("S21")
 	var dl := aim_dir(r)
-	lassos.append({"owner": r.pid, "pos": muzzle(r, "S21"), "vel": dl * float(c["vel"]) + (Vector2(0, -60.0) if absf(dl.y) < 0.1 else Vector2.ZERO), "t": 0.0})
+	lassos.append({"owner": r.pid, "pos": muzzle(r, "S21"), "vel": dl * float(c["vel"]), "t": 0.0})
 	s["fire"] = 0.0
 	Audio.play("arremesso", 1.4, -2.0)
 	_spend(r, s)
@@ -2464,8 +2464,7 @@ func _update_etapa3(dt: float) -> void:
 	var c21: Dictionary = sc("S21")
 	for l in lassos:
 		l["t"] += dt
-		l["vel"].y += 300.0 * dt
-		l["pos"] += l["vel"] * dt
+		l["pos"] += l["vel"] * dt   # esfera de energia: voa reto
 		for o in main.robots:
 			if o.pid != l["owner"] and o.alive and o.invuln <= 0.0 and o.rect().grow(8).has_point(l["pos"]):
 				tethers.append({"a": l["owner"], "b": o.pid, "t": 0.0})
@@ -2473,7 +2472,7 @@ func _update_etapa3(dt: float) -> void:
 				o.vis.s_sqx[0] = 0.8
 				o.vis.s_sqy[0] = 1.15
 				l["dead"] = true
-				main.float_text(o.position + Vector2(0, -120), "LAÇADO!", Color("#e8503a"))
+				main.float_text(o.position + Vector2(0, -120), "PRESO!", Color("#3fc1c9"))
 				Audio.play("pulo_mola", 1.4, -2.0)
 				break
 		if _hard_at(l["pos"]) or shield_block(l["pos"], l["owner"]) or l["t"] > float(c21["alcance_tiles"]) * T / float(c21["vel"]):
@@ -2688,36 +2687,49 @@ func _draw_etapa3() -> void:
 		if h.get("snap", 0.0) > 0.0:   # estalo ao fechar
 			var u: float = 1.0 - h["snap"]
 			draw_arc(b, 14.0 + 22.0 * u, 0, TAU, 16, Color(1, 1, 1, 1.0 - u), 3.0, true)
-	# S21 laço: ventosa voando presa no elástico; depois, ventosa grudada em cada robô e elástico entre eles
+	# S21 laço de energia: esfera elétrica com rastro; acertou → algema de energia em cada robô e um raio entre eles
+	# (frouxo: ondula; esticado: mais grosso, mais claro e estalando); soltou → descarga nas duas pontas
 	var c21: Dictionary = sc("S21")
 	for l in lassos:
-		var owner = main.robots[l["owner"]]
-		var a := muzzle(owner, "S21") if slot.has(l["owner"]) and slot[l["owner"]]["id"] == "S21" else hand(owner)
-		_draw_elastic(a, l["pos"], clampf(a.distance_to(l["pos"]) / (float(c21["alcance_tiles"]) * T), 0.0, 1.0), 0.0)
-		_draw_cup(l["pos"], l["vel"].angle(), 0.0)
+		var p: Vector2 = l["pos"]
+		var dv: Vector2 = l["vel"].normalized()
+		for k in 5:   # rastro elétrico
+			draw_circle(p - dv * (10.0 + k * 10.0), 9.0 - k * 1.5, Color(0.25, 0.76, 0.79, 0.45 - k * 0.08))
+		_draw_bolt(p - dv * 54.0, p, 0.3, 4.0, l["t"])
+		draw_circle(p, 15.0, Color(0.54, 0.39, 0.82, 0.35))
+		draw_circle(p, 11.0, Color("#3fc1c9"))
+		draw_circle(p, 6.5, Color("#bff6ff"))
+		draw_circle(p, 3.0, Color.WHITE)
+		for k in 3:   # arquinhos estalando em volta
+			var a0 := t * 9.0 + k * TAU / 3.0
+			_draw_bolt(p + Vector2.from_angle(a0) * 8.0, p + Vector2.from_angle(a0 + 0.6) * 20.0, 0.0, 3.0, t + k)
 	for e in tethers:
-		var a = main.robots[e["a"]]
-		var b = main.robots[e["b"]]
-		var pa: Vector2 = a.rect().get_center()
-		var pb: Vector2 = b.rect().get_center()
-		var dv := (pb - pa).normalized() if pa.distance_to(pb) > 1.0 else Vector2.RIGHT
-		var ea := pa + dv * 18.0
-		var eb := pb - dv * 18.0
+		var ra = main.robots[e["a"]]
+		var rb = main.robots[e["b"]]
+		var pa: Vector2 = ra.rect().get_center()
+		var pb: Vector2 = rb.rect().get_center()
 		var folga := float(c21["folga_tiles"]) * T
-		var dist := ea.distance_to(eb)
+		var dist := pa.distance_to(pb)
 		var stretch := clampf((dist - folga) / (2.0 * T), 0.0, 1.0)
-		var slack := maxf(folga - dist, 0.0) * 0.45
-		_draw_elastic(ea, eb, stretch, slack)
-		_draw_cup(ea, (-dv).angle(), stretch)
-		_draw_cup(eb, dv.angle(), stretch)
 		var left: float = float(c21["duracao_s"]) - e["t"]
-		if left < 0.8 and fmod(t, 0.16) < 0.08:   # vai soltar: elástico pisca
-			draw_line(ea, eb, Color(1, 1, 1, 0.5), 2.0, true)
-	for e in snaps:   # soltou: as pontas voltam estalando
+		var flick := 0.55 if left < 0.8 and fmod(t, 0.16) < 0.08 else 1.0
+		var slack := maxf(folga - dist, 0.0) * 0.35
+		_draw_bolt(pa, pb, stretch, slack, e["t"], flick)
+		for q in [pa, pb]:   # algema de energia: anel achatado girando + nós de faísca
+			draw_set_transform(q, 0.0, Vector2(1.0, 0.45))
+			draw_arc(Vector2.ZERO, 30.0, 0, TAU, 24, Color(0.25, 0.76, 0.79, 0.5 * flick), 7.0, true)
+			draw_arc(Vector2.ZERO, 30.0, 0, TAU, 24, Color(0.75, 0.96, 1.0, 0.9 * flick), 2.5, true)
+			draw_set_transform(Vector2.ZERO)
+			for k in 3:
+				var a1 := t * (6.0 + stretch * 6.0) + k * TAU / 3.0
+				draw_circle(q + Vector2(cos(a1) * 30.0, sin(a1) * 13.5), 3.5, Color(1, 1, 1, flick))
+	for e in snaps:   # soltou: descarga nas pontas
 		var u: float = e["t"] / 0.18
-		var m: Vector2 = Vector2(e["a"]).lerp(e["b"], 0.5)
-		_draw_elastic(Vector2(e["a"]).lerp(m, u), Vector2(e["b"]).lerp(m, u), 0.0, 6.0 * (1.0 - u))
-		draw_circle(m, 10.0 * u, Color(1, 1, 1, 1.0 - u))
+		for q in [e["a"], e["b"]]:
+			draw_circle(q, 10.0 + 30.0 * u, Color(0.75, 0.96, 1.0, 0.8 * (1.0 - u)))
+			for k in 5:
+				var a2 := k * TAU / 5.0 + u
+				_draw_bolt(q, q + Vector2.from_angle(a2) * (16.0 + 26.0 * u), 0.0, 4.0, t + k, 1.0 - u)
 	# S12 cargas: cai e gruda, luz pisca na cor do dono (mais rápido perto de explodir), círculo de alcance quando armada
 	var c12: Dictionary = sc("S12")
 	var ctex := Data.tex("spells/s12_carga")
@@ -2828,41 +2840,22 @@ func _panel_rect(sh: Dictionary, i: int) -> Rect2:
 		return Rect2(r.position.x + order[i] * w, r.position.y, w, r.size.y)
 	return Rect2(r.position.x, r.end.y - (i + 1) * 40.0, r.size.x, 40.0)
 
-func _draw_elastic(a: Vector2, b: Vector2, stretch: float, slack := 0.0) -> void:
-	var n := 18
-	var pts := PackedVector2Array()
+## Raio de energia de a até b: zigue-zague que muda a cada 1/20 s, com brilho largo ciano e miolo branco.
+## stretch 0..1 (esticado: mais grosso/claro, puxa para o magenta), slack = barriga para baixo, alpha = piscar.
+func _draw_bolt(a: Vector2, b: Vector2, stretch: float, slack: float, seed_t: float, alpha := 1.0) -> void:
+	var n := maxi(int(a.distance_to(b) / 16.0), 3)
 	var nrm := (b - a).normalized().orthogonal()
+	var frame := int(t * 20.0)
+	var pts := PackedVector2Array()
 	for i in n + 1:
 		var u := float(i) / n
 		var bell := sin(u * PI)
-		var wob := bell * sin(t * 14.0) * 4.0 * (1.0 - stretch)
-		var buzz := bell * sin(u * 40.0 + t * 90.0) * 2.2 * stretch
-		pts.append(a.lerp(b, u) + Vector2(0, bell * slack) + nrm * (wob + buzz))
-	var w := 8.0 - 4.5 * stretch
-	draw_polyline(pts, INK, w + 3.5, true)
-	draw_polyline(pts, Color("#e8503a").lerp(Color("#ff3a2a"), stretch), w, true)
-	var hl := PackedVector2Array()
-	for q in pts:
-		hl.append(q + Vector2(0, -w * 0.25))
-	draw_polyline(hl, Color(1, 0.75, 0.7, 0.7), maxf(w * 0.3, 1.0), true)
-
-## Ventosa de borracha (domo + aba), apontando em `ang`; achata quando o elástico estica.
-func _draw_cup(p: Vector2, ang: float, stretch: float) -> void:
-	draw_set_transform(p, ang, Vector2(1.0 - 0.25 * stretch, 1.0 + 0.15 * stretch))
-	var dome := PackedVector2Array()
-	for k in 9:
-		var a := -PI / 2.0 + PI * k / 8.0
-		dome.append(Vector2(cos(a) * 9.0 - 2.0, sin(a) * 13.0))
-	draw_colored_polygon(dome, INK)
-	var inner := PackedVector2Array()
-	for k in 9:
-		var a := -PI / 2.0 + PI * k / 8.0
-		inner.append(Vector2(cos(a) * 7.0 - 2.0, sin(a) * 11.0))
-	draw_colored_polygon(inner, Color("#e8503a"))
-	draw_rect(Rect2(5, -15, 5, 30), INK)
-	draw_rect(Rect2(6, -13.5, 3, 27), Color("#a8301f"))
-	draw_circle(Vector2(1, -5), 2.5, Color(1, 1, 1, 0.75))
-	draw_set_transform(Vector2.ZERO)
+		var jit := 0.0 if i == 0 or i == n else sin(float(frame) * 12.9898 + i * 78.233 + seed_t * 3.1) * (7.0 + 5.0 * stretch)
+		pts.append(a.lerp(b, u) + Vector2(0, bell * slack + sin(u * 9.0 + t * 8.0) * slack * 0.15) + nrm * jit)
+	var glow := Color(0.25, 0.76, 0.79).lerp(Color(0.85, 0.35, 0.85), stretch * 0.6)
+	draw_polyline(pts, Color(glow, 0.35 * alpha), 14.0 + 6.0 * stretch, true)
+	draw_polyline(pts, Color(glow, 0.9 * alpha), 5.0 + 2.0 * stretch, true)
+	draw_polyline(pts, Color(1, 1, 1, alpha), 2.0, true)
 
 ## Ponte: N painéis presos em dobradiça; cada um gira de "em pé" para deitado em sequência (k 0→1); dobra no fim.
 func _draw_bridge(x0: float, y: float, dir: float, k: float, left: float, mod: Color, slope := 0.0) -> void:
