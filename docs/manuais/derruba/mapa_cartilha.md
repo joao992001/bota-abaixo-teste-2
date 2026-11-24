@@ -1,6 +1,8 @@
 # Cartilha do MAPA — modo Derruba (PROPOSTA, aguardando aprovação)
 
-> Estado: **esqueleto para aprovar antes de editar qualquer fase** (pedido do usuário em 2026-11-24). Quando aprovado e
+> Estado: **conceito aprovado pelo usuário (2026-11-24)**: cena viva em 2 etapas, virada "a obra cede" (todos caem numa
+> animação de queda e a luta continua embaixo), fundo muito mais animado e detalhado, MAIS mecanismos e eventos
+> ESPECÍFICOS de cada fase, tudo catalogado por fase antes de construir. Números ainda em aprovação. Quando aprovado e
 > aplicado ao Canteiro, vira o manual `mapa.md` (mesmo formato dos outros manuais). Esquema visual:
 > `art/out/cartilha_mapa_derruba.png` (gerado por `art/src/cenarios/cartilha_mapa.py`).
 
@@ -35,7 +37,7 @@ Todo mapa do Derruba tem estes 8 elementos (a forma muda por tema; a função n�
 | Z4 | **Bordas e KO** | o perigo de sair | KO nos 4 lados, no mundo (nunca pela câmera); beira legível |
 | Z5 | **Rotas de volta** | quem é arremessado pode voltar | ≥ 2 por lado (borda agarrável, cabo, escada, plataforma baixa) |
 | Z6 | **Pontos de disputa** | onde nascem caixas e prêmios | 2 fixos (alto e baixo) + variáveis; nunca em cima de nascimento |
-| Z7 | **Mecanismos / armadilhas da fase** | profundidade própria do mapa | 2–3 por ato; aviso visível; ritmo próprio; ver §5 |
+| Z7 | **Mecanismos / armadilhas da fase** | profundidade própria do mapa | **3–5 por etapa** (o usuário pediu mais); aviso visível; ritmo próprio; ver §5 |
 | Z8 | **Vida de ambiente** | a cena respira | operários NPC, máquinas, luzes, animais; não colide, não confunde |
 
 Nascimentos: 4 por ato, simétricos ou equivalentes, longe de Z7 e da base que cai.
@@ -50,6 +52,17 @@ Nascimentos: 4 por ato, simétricos ou equivalentes, longe de Z7 e da base que c
 - **Ato 2:** mesmo tema, OUTRA região com outra arte e outra composição (§6), palco um pouco menor ou mais perigoso,
   1 mecanismo novo. Eventos continuam, com a lista própria do ato.
 - **Rodada seguinte** começa de novo no Ato 1.
+
+## 4b. Eventos são DA FASE
+Os eventos globais (G01–G14) viram uma **biblioteca**: cada fase escolhe, por etapa, quais eventos da biblioteca usa e
+cria os seus **eventos específicos** (ex.: Concretagem no Térreo, Enchente na Fundação). A lista por etapa fica no
+catálogo da fase.
+
+## 4c. Catálogo da fase (obrigatório antes de construir)
+Cada fase tem um documento `docs/fases/derruba/fN_<nome>.md` com, **para cada etapa**: ficha (composição, paleta,
+horário, assinatura, câmera, som), catálogo de **estruturas (E)**, de **demolições (D)**, de **mecanismos (M)**, de
+**eventos (V)** e do **fundo vivo (A, camadas C0–C4)**, mais o **storyboard da virada**. Exemplo: `f1_canteiro.md`.
+Ordem de trabalho: catálogo aprovado → prancha de arte aprovada → código.
 
 ## 5. Mecanismos e armadilhas (Z7)
 - São **da fase** (diferentes dos eventos globais, que valem para todas): cada mapa tem os seus.
@@ -87,7 +100,7 @@ Ato 2: composição · Z1..Z8 · mecanismo novo · nascimentos
 Eventos: quais funcionam em cada ato · câmera (margens/zoom por ato) · som de ambiente
 ```
 
-## 9. Exemplo: CANTEIRO DE OBRAS refeito com a cartilha (para escolher)
+## 9. Exemplo: CANTEIRO DE OBRAS refeito com a cartilha — ESCOLHIDA A VIRADA A (catálogo completo em `docs/fases/derruba/f1_canteiro.md`)
 **Ato 1 — Térreo da obra (composição Ponte):** o palco de hoje (laje em trechos, núcleo, andaimes, vigas penduradas)
 + fundo vivo: cidade ao longe, 2 gruas girando, betoneira girando, robôs-operários carregando tábuas, caminhão de entrega.
 Mecanismos: **betoneira** que gira e despeja concreto (chão que gruda por alguns segundos) e **elevador de obra** de

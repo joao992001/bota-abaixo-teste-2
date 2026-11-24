@@ -10,7 +10,10 @@ Repositórios (GitHub privado, ramo `main`): `joao992001/bota-abaixo` = versão 
 (o usuário acha que o mapa do Derruba não está fechado).
 **CARTILHA DO MAPA (PROPOSTA, 2026-11-24):** `docs/manuais/derruba/mapa_cartilha.md` + esquema `art/out/cartilha_mapa_derruba.png`.
 Fase = cena viva em 2 atos com virada cinematográfica; camadas C0–C4; palco Z1–Z8; mecanismos por fase; composições.
-Aguardando o usuário aprovar e escolher a virada do Canteiro (A: obra cede → subsolo · B: grua iça → cobertura).
+Conceito APROVADO; virada escolhida = A (a obra cede, todos caem e a luta segue na Fundação). Eventos passam a ser DA FASE.
+**CATÁLOGO DA FASE 1 (PROPOSTA):** `docs/fases/derruba/f1_canteiro.md` + `art/out/fase1_canteiro_catalogo.png` —
+estruturas E1–E18, demolições D1–D12, mecanismos M1–M9, eventos por etapa (+ V1 Concretagem, V2 Desmoronamento, V3 Enchente),
+fundo vivo por camada e storyboard da queda. Aguardando aprovação → depois prancha de ARTE das 2 etapas → código.
 G05/G09 ganharam função (caixa na carga + gancho que solta; drone conserta e recolhe) — FEITO.
 **ÚLTIMO (2026-11-24): ELENCO NOVO DE 5 ROBÔS** (pedido do usuário: os 8 modelos "olhavam para a câmera e batiam com
 uma mão"). Marretão (marreta de 2 mãos), Picareta (pernas de pássaro), Chave (mecânico, chave inglesa), Britadeira
