@@ -23,9 +23,26 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
 2b. **LABORATÓRIO** (menu principal) — FEITO (2026-11-24): `game/ui/laboratorio.gd` + `levels/laboratorio.lvl`. Medidores,
    bonecos com comportamento, 32 números ajustáveis ao vivo; o usuário calibra jogando e manda os valores (COPIAR) para virar
    o padrão nos JSON. Ajustes salvos ficam em `user://laboratorio.json` e valem no jogo todo (PADRÃO apaga). Testes: `--so=lab`.
-3. **Fases e câmera** — DEPOIS do movimento (as medidas do pulo/golpe definem as fases). Retirar as 24 arenas atuais
-   (+ antigas, `tools/mapas/`, prévias `game/assets/ui/arena_*.png`), deixando 1 arena-base provisória por modo para o jogo
-   abrir e os testes rodarem; depois criar um modelo de fase padrão, com câmera e regras próprias por modo.
+3. **Fases e câmera — Relatório 02** (`docs/relatorio_02_cameras_arenas.md`) — PRÓXIMO. Decisões do usuário (2026-11-24):
+   - Apagar TODAS as fases do Derruba no teste-2 (e `tools/mapas/`, prévias `ui/arena_*.png`); Batata, Rei e Fuga ficam
+     "EM BREVE" no menu (bloqueados). OFICINA e LABORATÓRIO continuam. Fazer a remoção JUNTO com a entrada do Canteiro.
+   - Arena-piloto **Canteiro de Obras** (Derruba), **opção A**: mundo 40x22 tiles (~1,3x a tela), câmera ADAPTATIVA
+     (enquadra todos os vivos, antecipa arremesso forte pela velocidade, zoom limitado, nunca decide o KO).
+   - **KO no mundo** nos 4 lados (inclusive em cima), declarado no .lvl (`ko:`), sem paredes invisíveis no Derruba;
+     espinhos opcionais. Animação de KO: voa girando com rastro → explosão cartoon na linha de KO → peças/parafusos.
+   - **Laje central em 6 trechos de 4x2 tiles** (cols 8..31, topo na linha 13): os 2 do meio (núcleo, sobre pilares)
+     NUNCA caem; os 4 de fora (sobre escoras) caem DE VEZ. Andaimes (cols 3-7 e 32-36, topo linha 10 = 3 tiles acima)
+     e viga pendurada (cols 16-23, linha 8 = 5 tiles acima) também caem de vez. Destruição permanente até o fim da
+     rodada; no fim sobra só o núcleo.
+   - Estados do trecho: íntegro → rachado → crítico (fita zebrada, treme, range, solta pedrinha) → desaba (pedaços com
+     física); a colisão some no quadro em que começa a cair. Gatilhos: SÓ golpes fortes (marretada pesada) + robô
+     arremessado batendo forte; ciclo da obra (sirene + luzes + fita zebrada marcando o trecho que vai ceder),
+     alternando calma e atividade. Números iniciais no modos.json e no LABORATÓRIO.
+   - Arte aprovada: `art/src/cenarios/canteiro_derruba.py` (laje em 3 estados, pedaços, pilares, escoras, andaimes, viga,
+     fundo) e pranchas `art/out/prancha_canteiro_derruba_*.png`; robôs por cima: `-- --prancha=DIR`.
+   - Ordem: KO + câmera + animação de KO → laje em trechos → gatilhos/ciclo → andaimes/viga → remover fases/EM BREVE →
+     testes 2–4 jogadores + bots → GIF + .exe. Priorizar animação/visual da destruição (é a referência dos mapas).
+   - Entrega final no formato da seção 11 do relatório (estado anterior, mudanças, parâmetros, testes, pendências, como testar).
 **Economia (pedido do usuário):** uma sessão nova por mudança grande; sessão principal faz tudo (agentes só para lotes grandes
 de arte em paralelo); rodar só a parte dos testes que mudou (`--so=`) e a bateria completa 1× no fim; poucas capturas.
 **Ambiente na nuvem:** Godot 4.7.1 + modelos de exportação não vêm instalados; baixe de github.com/godotengine/godot/releases
