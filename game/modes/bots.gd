@@ -297,6 +297,12 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 		"S19": it_ok = absf(dy) < 70.0 and absf(dx) > 90.0 and absf(dx) < 300.0
 		"S20": it_ok = absf(dy) < 60.0 and absf(dx) > 100.0 and absf(dx) < 420.0
 		"S07": it_ok = absf(dy) < 60.0 and absf(dx) < 320.0
+		"S14": it_ok = absf(dy) < 40.0 and absf(dx) < 140.0
+		"S15": it_ok = sp.slot[r.pid]["t"] < 0.0 and absf(dx) < 500.0
+		"S16": it_ok = not r.is_on_floor() and r.velocity.y > 200.0
+		"S31": it_ok = sp.slot[r.pid]["t"] < 0.0 and absf(dy) < 40.0 and absf(dx) < 220.0
+		"S33": it_ok = absf(dy) < 40.0 and absf(dx) < 120.0
+		"S34": it_ok = sp.slot[r.pid]["t"] < 0.0 and absf(dx) < 320.0
 		"S08": it_ok = absf(dy) < 40.0 and absf(dx) > 120.0 and absf(dx) < 480.0
 		"S21": it_ok = absf(dy) < 50.0 and absf(dx) > 100.0 and absf(dx) < 400.0
 		"S28": it_ok = absf(dy) < 40.0 and absf(dx) > 200.0 and absf(dx) < 700.0 and main.rng.randf() < 0.05

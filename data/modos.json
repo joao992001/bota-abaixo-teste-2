@@ -417,6 +417,34 @@
         "kx_por": 2.0,
         "ky": 300,
         "ky_por": 1.0
+      },
+      "spell_bola": {
+        "dano": 12,
+        "kx": 700,
+        "kx_por": 5.0,
+        "ky": 380,
+        "ky_por": 2.5
+      },
+      "spell_empilhadeira": {
+        "dano": 10,
+        "kx": 200,
+        "kx_por": 1.0,
+        "ky": 200,
+        "ky_por": 1.0
+      },
+      "spell_broca": {
+        "dano": 3,
+        "kx": 170,
+        "kx_por": 1.2,
+        "ky": 90,
+        "ky_por": 0.5
+      },
+      "spell_solda": {
+        "dano": 3,
+        "kx": 120,
+        "kx_por": 1.0,
+        "ky": 70,
+        "ky_por": 0.4
       }
     },
     "aderencia": {
@@ -591,7 +619,13 @@
           "S12",
           "S25",
           "S27",
-          "S28"
+          "S28",
+          "S14",
+          "S15",
+          "S16",
+          "S31",
+          "S33",
+          "S34"
         ]
       },
       "S01": {
@@ -774,6 +808,68 @@
         "cargas": 2,
         "duracao_s": 7.0,
         "resistencia": 3
+      },
+      "S14": {
+        "familia": "transformacao",
+        "raridade": "incomum",
+        "cargas": 1,
+        "duracao_s": 6.5,
+        "vel_mult": 0.65,
+        "empurrao_mult": 0.5,
+        "garfo_alcance": 96,
+        "segura_max_s": 0.6,
+        "intervalo_s": 0.8,
+        "joga_vel": 950
+      },
+      "S15": {
+        "familia": "transformacao",
+        "raridade": "rara",
+        "cargas": 1,
+        "duracao_s": 5.0,
+        "acel": 1300,
+        "vel_max": 980,
+        "freio": 700,
+        "pulo": 650,
+        "dano_min_vel": 320
+      },
+      "S16": {
+        "familia": "transformacao",
+        "raridade": "comum",
+        "cargas": 3,
+        "duracao_s": 7.0,
+        "intervalo_s": 0.35,
+        "impulso": 1500,
+        "falha_chance": 0.12
+      },
+      "S31": {
+        "familia": "transformacao",
+        "raridade": "incomum",
+        "cargas": 1,
+        "duracao_s": 5.0,
+        "vel_mult": 0.75,
+        "empurrao_mult": 0.6,
+        "tick_s": 0.25,
+        "estrutura_tick_s": 0.45
+      },
+      "S33": {
+        "familia": "transformacao",
+        "raridade": "incomum",
+        "cargas": 1,
+        "duracao_s": 6.5,
+        "combustivel_s": 3.0,
+        "arco_alcance": 90,
+        "tick_s": 0.22,
+        "reparo_s": 0.9
+      },
+      "S34": {
+        "familia": "transformacao",
+        "raridade": "comum",
+        "cargas": 1,
+        "duracao_s": 5.5,
+        "tamanho": 0.58,
+        "vel_mult": 1.35,
+        "empurrao_mult": 1.5,
+        "golpe_mult": 0.6
       }
     },
     "eventos": {

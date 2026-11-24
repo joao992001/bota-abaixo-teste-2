@@ -58,6 +58,10 @@ var forced_vel := Vector2.ZERO
 var grip := 1.0               # aderência na parede/borda (1 = cheia); gasta segurando, recarrega no chão
 var wall_side := 0            # lado da parede em que está escorregando (desenho)
 var frozen_t := 0.0           # congelado (S03 Canhão Criogênico): preso no gelo; agitar o direcional quebra mais rápido
+var size_k := 1.0             # S34 Minirobô: tamanho (a hitbox acompanha o desenho)
+var spell_hit := 1.0          # força dos golpes DESTE robô nos outros (minirobô empurra menos)
+var spell_form := ""          # transformação que muda o movimento ("bola" = S15 rola com inércia)
+var body_cs: CollisionShape2D
 var hammer_out := false       # S19: a marreta está voando (sem marretada pesada até voltar)
 var spell_lock := false       # mirando/viajando (S11 Teleporte): ignora movimento, pulo e golpes
 var god := false              # Laboratório: invencível (não leva golpe)
@@ -102,6 +106,7 @@ func setup(p: int, col_idx: int, m: Node, model := 0) -> void:
 		Vector2(w - 4, 0), Vector2(-w + 4, 0), Vector2(-w, -8), Vector2(-w, -h + 8)])
 	cs.shape = shp
 	add_child(cs)
+	body_cs = cs
 	floor_snap_length = 6.0
 	floor_block_on_wall = false   # a Godot marcava a parede como "chão" e o robô descia grudado nela
 	vis = Vis.new()
@@ -110,7 +115,13 @@ func setup(p: int, col_idx: int, m: Node, model := 0) -> void:
 
 func rect() -> Rect2:
 	var hb: Array = c["hitbox"]
-	return Rect2(position.x - hb[0] / 2.0, position.y - hb[1], hb[0], hb[1])
+	return Rect2(position.x - hb[0] * size_k / 2.0, position.y - hb[1] * size_k, hb[0] * size_k, hb[1] * size_k)
+
+## S34: muda o tamanho do robô (colisão e hitbox juntas; os pés ficam no lugar).
+func set_size(k: float) -> void:
+	size_k = k
+	if body_cs != null:
+		body_cs.scale = Vector2(k, k)
 
 func f(key: String) -> float:
 	return float(c[key])
@@ -179,6 +190,9 @@ func _physics_process(dt: float) -> void:
 	if dodge_t > 0.0:
 		_dodge_update(dt)
 		vis.tick(self, dt)
+		return
+	if spell_form == "bola":
+		_ball_update(dt, ix, on_floor)
 		return
 	if _pressed("item") and main.demo.spells != null:
 		main.demo.spells.press(self)   # botão de especial (spell equipada / troca segurando sobre a caixa)
@@ -335,6 +349,34 @@ func _jump_speed() -> float:
 	var js := float(c["jump_speed"])
 	return js
 
+## S15 Bola de Demolição: rola com inércia (acelera devagar, freia longe), pulinho, quica na parede.
+func _ball_update(dt: float, ix: float, on_floor: bool) -> void:
+	var bc: Dictionary = main.demo.cfg["spells"]["S15"]
+	if ix != 0.0:
+		var same := signf(ix) == signf(own_vx) or absf(own_vx) < 10.0
+		own_vx = move_toward(own_vx, ix * float(bc["vel_max"]), float(bc["acel"]) * (1.0 if same else 0.7) * dt)
+		facing = int(signf(ix))
+	else:
+		own_vx = move_toward(own_vx, 0.0, float(bc["freio"]) * dt)
+	if on_floor and _pressed("jump"):
+		velocity.y = -float(bc["pulo"])
+	velocity.y = minf(velocity.y + f("gravity") * dt, f("max_fall"))
+	velocity.x = own_vx + push_vx
+	push_vx = 0.0
+	var vx_before := own_vx
+	move_and_slide()
+	if is_on_wall() and absf(vx_before) > 200.0:
+		own_vx = -vx_before * 0.4   # bate e volta
+		main.shake(4.0)
+		if main.demo.spells != null:
+			main.demo.spells.ball_bump(self, vx_before)
+	var landed := is_on_floor() and not was_on_floor
+	was_on_floor = is_on_floor()
+	if landed:
+		main.dust(position, 0.8)
+	main.check_contacts(self)
+	vis.tick(self, dt)
+
 ## Estado visual da spell (arma na mão, transformação…), montado por modes/spells.gd.
 func fx_flags() -> Dictionary:
 	return main.demo.spells.flags(self) if main.mode == "demolicao" and main.demo.spells != null else {}
@@ -444,7 +486,8 @@ func _climb_update(dt: float) -> void:
 const ROBOT_HITS := ["rapido", "pesado", "martelao", "marretada", "combo", "combo_final", "cima", "baixo", "corrida",
 	"spell_punho", "spell_gelo", "spell_fogo", "spell_explosao",
 	"spell_laser", "spell_sismo", "spell_rebite", "spell_estaca", "spell_disco", "spell_bumerangue", "spell_mola",
-	"spell_gancho", "spell_carga", "spell_viga"]
+	"spell_gancho", "spell_carga", "spell_viga",
+	"spell_bola", "spell_empilhadeira", "spell_broca", "spell_solda"]
 
 func take_hit(dir: int, kind: String, by := -1) -> bool:
 	if invuln > 0.0 or god:
@@ -457,7 +500,8 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 		"spell_punho": "punho pneumático", "spell_gelo": "canhão criogênico", "spell_fogo": "armadura fornalha",
 		"spell_explosao": "fornalha explodiu", "spell_laser": "laser de corte", "spell_sismo": "marreta sísmica",
 		"spell_rebite": "rebite", "spell_estaca": "bate-estaca", "spell_disco": "disco de corte", "spell_bumerangue": "marreta-bumerangue",
-		"spell_mola": "canhão de molas", "spell_gancho": "gancho", "spell_carga": "carga de demolição", "spell_viga": "viga do guindaste"}.get(kind, kind)
+		"spell_mola": "canhão de molas", "spell_gancho": "gancho", "spell_carga": "carga de demolição", "spell_viga": "viga do guindaste",
+		"spell_bola": "bola de demolição", "spell_empilhadeira": "empilhadeira", "spell_broca": "broca", "spell_solda": "solda"}.get(kind, kind)
 	last_attacker = by
 	hanging = false
 	var am: Dictionary = main.demo.cfg["amassometro"]
@@ -467,6 +511,9 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 	var ky := float(k["ky"]) + dmg * float(k["ky_por"])
 	kx *= spell_push   # armadura: empurrão bem menor
 	ky *= spell_push
+	if by >= 0 and by < main.robots.size():
+		kx *= main.robots[by].spell_hit   # minirobô bate mais fraco
+		ky *= main.robots[by].spell_hit
 	if frozen_t > 0.0 and main.demo.spells != null:
 		# pancada em quem está congelado: o gelo estilhaça e o empurrão é maior
 		var mult := float(main.demo.cfg["spells"]["S03"]["quebra_mult"])

@@ -13,7 +13,10 @@ const NOMES := {"S01": "PUNHO PNEUMÁTICO", "S03": "CANHÃO CRIOGÊNICO", "S06":
 	"S11": "TELEPORTE", "S13": "ARMADURA FORNALHA", "S02": "LASER DE CORTE", "S04": "MARRETA SÍSMICA", "S05": "REBITEIRA RICOCHETE",
 	"S17": "BATE-ESTACA", "S18": "DISCO DE CORTE", "S19": "MARRETA-BUMERANGUE", "S20": "CANHÃO DE MOLAS",
 	"S07": "TURBOVENTILADOR", "S08": "GANCHO DE ARRASTO", "S21": "LAÇO DE ENERGIA", "S12": "CARGA REMOTA",
-	"S25": "PONTE DOBRÁVEL", "S27": "CONTROLE REMOTO", "S28": "ESCUDO DE SOLDA"}
+	"S25": "PONTE DOBRÁVEL", "S27": "CONTROLE REMOTO", "S28": "ESCUDO DE SOLDA",
+	"S14": "MECHA EMPILHADEIRA", "S15": "BOLA DE DEMOLIÇÃO", "S16": "PROPULSOR GAMBIARRA", "S31": "MODO BROCA",
+	"S33": "MODO SOLDADOR", "S34": "MINIRROBÔ VELOZ"}
+const FORMS := ["S14", "S15", "S31", "S33", "S34"]   # transformações com duração (S13 tem código próprio)
 
 var main: Node
 var demo: Node
@@ -49,6 +52,8 @@ var charges_placed: Array = []   # S12 {owner, pos, t, armed}
 var bridges: Array = []      # S25 {rect, body, t, len, k, owner, dir, x0, y}
 var drops: Array = []        # S27 {part, owner, t, hit}
 var shields: Array = []      # S28 {rect, t, hp, k, owner, flash}
+var smokes: Array = []      # S16 fumaça cômica {pos, vel, t, size}
+var jets: Array = []         # S16 jato de um pulso {pid, dir, t, fail}
 var ext_v := {}              # empurrão externo suave por robô (vento, elástico): pid -> Vector2, aplicado via push_vx
 var feedback: Array = []     # {pos, text, t}
 var spawn_t := 0.0
@@ -232,6 +237,8 @@ func clear(r) -> void:
 	charges_placed = charges_placed.filter(func(c): return c["owner"] != r.pid)
 	if slot.has(r.pid) and slot[r.pid]["id"] == "S13" and slot[r.pid]["t"] > 0.0:
 		_end_armor(r, false)
+	if slot.has(r.pid) and slot[r.pid]["id"] in FORMS and slot[r.pid]["t"] > 0.0:
+		_end_form(r, false)
 	_stop_channel(r)
 	slot.erase(r.pid)
 	holds.erase(r.pid)
@@ -289,6 +296,8 @@ func _swap(r, b: Dictionary) -> void:
 	var old: Dictionary = slot[r.pid]
 	if old["id"] == "S13" and old["t"] > 0.0:
 		_end_armor(r, false)   # troca encerra a transformação
+	if old["id"] in FORMS and old["t"] > 0.0:
+		_end_form(r, false)
 	_stop_channel(r)
 	aims.erase(r.pid)
 	r.spell_lock = false
@@ -455,6 +464,17 @@ func use(r) -> void:
 			if r.hammer_out:
 				return
 			_throw_hammer(r, s)
+		"S14", "S15", "S31", "S33", "S34":
+			if s["t"] < 0.0:
+				_start_form(r, s)
+			elif s["id"] == "S14":
+				_fork_action(r, s)
+			elif s["id"] == "S33":
+				s["channel"] = true   # segura: arco de solda
+				if _is_bot(r.pid):
+					bot_hold[r.pid] = 0.8
+		"S16":
+			_jet_pulse(r, s)
 		"S07":   # segura: sopra enquanto a barra dura
 			s["channel"] = true
 			if _is_bot(r.pid):
@@ -932,6 +952,14 @@ func update(dt: float, alive: Array) -> void:
 			_update_magnet(r, s, dt)
 		if s["id"] == "S07" and s["channel"]:
 			_update_fan(r, s, dt)
+		if s["id"] in FORMS and s["t"] > 0.0:
+			_update_form(r, s, dt)
+			if not slot.has(r.pid):
+				continue
+		if s["id"] == "S16" and s["t"] > 0.0:
+			s["t"] -= dt
+			if s["t"] <= 0.0:
+				s["empty_t"] = 0.3   # gambiarra apagou
 		if s["id"] == "S13" and s["t"] > 0.0:
 			s["data"]["assemble"] = minf(float(s["data"].get("assemble", 0.0)) + dt / 0.35, 1.0)
 			_update_flame(r, s, dt)
@@ -943,6 +971,7 @@ func update(dt: float, alive: Array) -> void:
 	_update_shots(dt)
 	_update_attack2(dt)
 	_update_etapa3(dt)
+	_update_etapa4(dt)
 	for p in platforms.duplicate():
 		p["t"] -= dt
 		p["k"] = minf(p["k"] + dt / 0.32, 1.0)
@@ -1053,6 +1082,9 @@ func flags(r) -> Dictionary:
 		out["fading"] = true
 	if s["id"] == "S12":
 		out["placed"] = charges_placed.any(func(c): return c["owner"] == r.pid)
+	if s["id"] in FORMS and s["t"] > 0.0:
+		out["form"] = s["id"]
+		out["fk"] = float(s["data"].get("assemble", 1.0))
 	return out
 
 ## HUD: {id, fam, charges, frac} do jogador (ou vazio). frac = barra de energia/duração.
@@ -1065,6 +1097,8 @@ func hud_info(pid: int) -> Dictionary:
 		frac = s["energy"] / float(sc(s["id"])["energia_s"])
 	elif s["id"] == "S13" and s["t"] > 0.0:
 		frac = s["energy"] / float(sc("S13")["combustivel_s"])
+	elif (s["id"] in FORMS or s["id"] == "S16") and s["t"] > 0.0:
+		frac = s["t"] / float(sc(s["id"])["duracao_s"])
 	return {"id": s["id"], "fam": s["fam"], "charges": s["charges"] if not s["id"] in ["S06", "S07"] else 0, "frac": clampf(frac, 0.0, 1.0),
 		"nome": NOMES.get(s["id"], s["id"])}
 
@@ -1089,6 +1123,7 @@ func _draw() -> void:
 	_draw_fists()
 	_draw_attack2()
 	_draw_etapa3()
+	_draw_etapa4()
 	_draw_shots()
 	for r in main.robots:
 		if frozen.has(r.pid) and r.alive and r.frozen_t > 0.0:
@@ -2879,3 +2914,422 @@ func _draw_bridge(x0: float, y: float, dir: float, k: float, left: float, mod: C
 		draw_texture_rect(tex, Rect2(0, -2, 64, 20), false, m)
 		draw_set_transform(Vector2.ZERO)
 		hinge += xa * 64.0
+
+# ================================================================ ETAPA 4: transformações
+func _start_form(r, s: Dictionary) -> void:
+	var c: Dictionary = sc(s["id"])
+	s["t"] = float(c["duracao_s"])
+	s["data"]["assemble"] = 0.0
+	match s["id"]:
+		"S14":
+			r.spell_speed = float(c["vel_mult"])
+			r.spell_push = float(c["empurrao_mult"])
+		"S15":
+			r.spell_form = "bola"
+			r.vis.visible = false
+			r.own_vx = r.facing * 300.0
+		"S31":
+			r.spell_speed = float(c["vel_mult"])
+			r.spell_push = float(c["empurrao_mult"])
+			r.vis.visible = false
+		"S34":
+			r.spell_speed = float(c["vel_mult"])
+			r.spell_push = float(c["empurrao_mult"])
+			r.spell_hit = float(c["golpe_mult"])
+	main.float_text(r.position + Vector2(0, -150), NOMES[s["id"]] + "!", FAM_COR["transformacao"])
+	main.dust(r.position + Vector2(0, -20), 1.0)
+	main.shake(5.0)
+	Audio.play("caixote_pancada", 0.8, 0.0)
+	for k in 8:
+		main.spark(r.rect().get_center() + Vector2(randf_range(-30, 30), randf_range(-40, 20)), 1)
+
+func _end_form(r, natural: bool) -> void:
+	var id: String = slot[r.pid]["id"] if slot.has(r.pid) else ""
+	var d: Dictionary = slot[r.pid]["data"] if slot.has(r.pid) else {}
+	if d.get("lift") is Object and is_instance_valid(d["lift"]):
+		d["lift"].stun_t = 0.0
+	r.spell_speed = 1.0
+	r.spell_push = 1.0
+	r.spell_hit = 1.0
+	r.spell_form = ""
+	r.vis.visible = true
+	if r.size_k != 1.0:
+		r.set_size(1.0)
+		r.vis.s_sqy[0] = 0.6   # volta ao tamanho com mola
+		r.vis.s_sqx[0] = 1.4
+	if slot.has(r.pid):
+		slot[r.pid]["t"] = -1.0
+		slot[r.pid]["channel"] = false
+	# peças voando na desmontagem
+	var texs := {"S14": ["s14_chassi", Rect2(-40, -25, 80, 50)], "S15": ["s15_bola", Rect2(-30, -30, 60, 60)],
+		"S31": ["s31_broca", Rect2(-30, -20, 60, 40)], "S33": ["s33_mascara", Rect2(-14, -12, 28, 24)]}
+	if texs.has(id):
+		var parts := [{"tex": [Data.tex("spells/" + texs[id][0])], "rect": texs[id][1], "mod": Color.WHITE}]
+		var dbr: Node2D = main.Debris.new()
+		dbr.setup(parts, r.position + Vector2(0, -30), r.facing, Vector2(-r.facing * 160.0, -360.0))
+		main.world.add_child(dbr)
+	main.dust(r.position + Vector2(0, -20), 1.0)
+	Audio.play("caixote_quebra", 1.3, -4.0)
+	if natural:
+		slot.erase(r.pid)
+
+## Ponta do garfo da empilhadeira (sobe com `lift` 0..1).
+func _fork_tip(r, lift: float) -> Vector2:
+	return r.position + Vector2(r.facing * 66.0, -14.0 - lift * 74.0)
+
+## S14: garfo sobe; se tem rival (ou caixa) na frente, ergue; 2º toque (ou tempo) joga para a frente (▲ mais alto).
+func _fork_action(r, s: Dictionary) -> void:
+	var c: Dictionary = sc("S14")
+	var d: Dictionary = s["data"]
+	if d.get("lift_t", -1.0) >= 0.0:
+		_fork_toss(r, s)
+		return
+	if s["cd"] > 0.0:
+		return
+	d["lift_t"] = 0.0
+	d["lift"] = null
+	var front := Rect2(r.position.x + (20.0 if r.facing > 0 else -20.0 - float(c["garfo_alcance"])), r.position.y - 70.0, float(c["garfo_alcance"]), 74.0)
+	for o in main.robots:
+		if o != r and o.alive and o.guard_t <= 0.0 and o.invuln <= 0.0 and front.intersects(o.rect()):
+			d["lift"] = o
+			main.float_text(o.position + Vector2(0, -120), "ERGUIDO!", Color("#f2c84b"))
+			break
+	if d["lift"] == null:
+		for b in boxes:
+			if front.has_point(b["pos"] + Vector2(0, 20)):
+				d["lift"] = b
+				break
+	Audio.play("elevador", 1.6, -2.0)
+
+func _fork_toss(r, s: Dictionary) -> void:
+	var c: Dictionary = sc("S14")
+	var d: Dictionary = s["data"]
+	var tg = d.get("lift")
+	var up := aim_vec(r).y < -0.5
+	var v := Vector2(r.facing * float(c["joga_vel"]), -500.0) if not up else Vector2(r.facing * 260.0, -float(c["joga_vel"]) * 1.05)
+	if tg is Object and is_instance_valid(tg) and tg.alive:
+		_hit(tg, r.pid, r.facing, "spell_empilhadeira")
+		tg.velocity = v
+		tg.own_vx = v.x
+		tg.stun_t = maxf(tg.stun_t, 0.35)
+		Audio.play("arremesso", 0.9, 2.0)
+	elif tg is Dictionary and tg in boxes:
+		tg["vy"] = v.y * 0.8
+		tg["pos"].x += r.facing * 40.0
+	d["lift_t"] = -1.0
+	d["lift"] = null
+	d["drop_t"] = 0.0   # garfo desce
+	s["cd"] = float(c["intervalo_s"])
+	s["fire"] = 0.0
+	main.shake(4.0)
+
+## S16: pulso do propulsor na direção da mira (sem nada: sobe na diagonal para a frente). Às vezes falha (fumaça).
+func _jet_pulse(r, s: Dictionary) -> void:
+	var c: Dictionary = sc("S16")
+	if s["cd"] > 0.0:
+		return
+	if s["t"] < 0.0:
+		s["t"] = float(c["duracao_s"])
+	s["cd"] = float(c["intervalo_s"])
+	if main.rng.randf() < float(c["falha_chance"]) and not _is_bot(r.pid):
+		jets.append({"pid": r.pid, "dir": Vector2.UP, "t": 0.0, "fail": true})
+		for k in 4:
+			smokes.append({"pos": r.position + Vector2(-r.facing * 16.0, -30.0), "vel": Vector2(randf_range(-60, 60), randf_range(-120, -40)), "t": 0.0, "size": randf_range(8, 14)})
+		Audio.play("menu_negado", 0.6, -2.0)
+		main.float_text(r.position + Vector2(0, -120), "PFFT…", Color("#9aa4ae"))
+		return   # falhou: não gasta pulso
+	var av := aim_vec(r)
+	var dirv := Vector2(r.facing * 0.55, -0.85).normalized() if absf(av.y) < 0.3 else av
+	r.velocity = dirv * float(c["impulso"])
+	r.own_vx = dirv.x * float(c["impulso"]) * 0.8
+	r.var_jump = 0.0
+	r.hanging = false
+	jets.append({"pid": r.pid, "dir": dirv, "t": 0.0, "fail": false})
+	for k in 5:
+		smokes.append({"pos": r.position + Vector2(-r.facing * 14.0, -20.0) - dirv * 20.0, "vel": -dirv * randf_range(80, 220) + Vector2(randf_range(-50, 50), 0), "t": 0.0, "size": randf_range(9, 16)})
+	Audio.play("foguete", 1.0, 0.0)
+	main.shake(3.0)
+	s["fire"] = 0.0
+	_spend(r, s)
+
+func _update_form(r, s: Dictionary, dt: float) -> void:
+	var c: Dictionary = sc(s["id"])
+	var d: Dictionary = s["data"]
+	d["assemble"] = minf(float(d.get("assemble", 0.0)) + dt / 0.35, 1.0)
+	s["t"] -= dt
+	match s["id"]:
+		"S14":   # garfo erguendo: segura o rival na ponta por pouco tempo e joga
+			if d.get("lift_t", -1.0) >= 0.0:
+				d["lift_t"] += dt
+				var k := minf(d["lift_t"] / 0.25, 1.0)
+				var tg = d.get("lift")
+				if tg is Object and is_instance_valid(tg) and tg.alive:
+					tg.position = _fork_tip(r, k) + Vector2(0, 2)
+					tg.velocity = Vector2.ZERO
+					tg.own_vx = 0.0
+					tg.stun_t = maxf(tg.stun_t, 0.1)
+					tg.hanging = false
+				elif tg is Dictionary and tg in boxes:
+					tg["pos"] = _fork_tip(r, k) + Vector2(0, -34)
+					tg["vy"] = 0.0
+				if d["lift_t"] >= float(c["segura_max_s"]) + 0.25:
+					_fork_toss(r, s)
+			elif d.has("drop_t"):
+				d["drop_t"] += dt
+		"S15":   # bola: quem é atropelado leva o golpe (uma vez a cada meio segundo)
+			d["roll"] = float(d.get("roll", 0.0)) + r.velocity.x * dt / 36.0
+			var hc: Dictionary = d.get("hitcd", {})
+			for oid in hc.keys():
+				hc[oid] -= dt
+			d["hitcd"] = hc
+			if absf(r.own_vx) > float(c["dano_min_vel"]):
+				for o in main.robots:
+					if o != r and o.alive and r.rect().grow(6).intersects(o.rect()) and float(hc.get(o.pid, 0.0)) <= 0.0:
+						hc[o.pid] = 0.5
+						if _hit(o, r.pid, int(signf(r.own_vx)), "spell_bola"):
+							d["squash"] = 1.0
+							r.own_vx *= 0.7
+				if fmod(t, 0.05) < dt and r.is_on_floor():
+					main.dust(r.position + Vector2(-signf(r.own_vx) * 20.0, 0), 0.5)
+			d["squash"] = maxf(float(d.get("squash", 0.0)) - dt * 5.0, 0.0)
+		"S31":   # broca: frente perfura (rival e trecho frágil); ▼ fura para baixo
+			var hc2: Dictionary = d.get("hitcd", {})
+			for oid in hc2.keys():
+				hc2[oid] -= dt
+			d["hitcd"] = hc2
+			d["spin"] = float(d.get("spin", 0.0)) + dt * 30.0
+			var down: bool = PlayerInput.held(r.pid, "down") and r.is_on_floor()
+			d["down"] = down
+			var front := Rect2(r.position.x + (24.0 if r.facing > 0 else -78.0), r.position.y - 44.0, 54.0, 40.0)
+			for o in main.robots:
+				if o != r and o.alive and front.intersects(o.rect()) and float(hc2.get(o.pid, 0.0)) <= 0.0:
+					hc2[o.pid] = float(c["tick_s"])
+					_hit(o, r.pid, r.facing, "spell_broca")
+			d["st"] = float(d.get("st", 0.0)) - dt
+			if d["st"] <= 0.0:
+				d["st"] = float(c["estrutura_tick_s"])
+				var pt: Vector2 = r.position + (Vector2(0, 14) if down else Vector2(r.facing * 62.0, -16.0))
+				var ct = demo.canteiro
+				if ct != null and is_instance_valid(ct):
+					for p in ct.parts:
+						if not p["fallen"] and p["rect"].grow(4).has_point(pt):
+							ct.damage(p, 1, pt)
+				for k in 3:
+					rocks.append({"pos": pt, "vel": Vector2(-r.facing * randf_range(80, 260), randf_range(-420, -160)), "t": 0.0, "rot": randf() * TAU, "size": randf_range(4, 8)})
+				Audio.play("furadeira", 1.0, -6.0)
+		"S33":   # soldador: segurar = arco curto à frente; parado com ▼ conserta 1 ponto de um trecho danificado
+			var on: bool = s["channel"] and held(r) and s["energy"] > 0.0
+			if s["channel"] and not on:
+				s["channel"] = false
+			d["arc"] = on
+			if on:
+				s["energy"] -= dt
+				var hc3: Dictionary = d.get("hitcd", {})
+				for oid in hc3.keys():
+					hc3[oid] -= dt
+				d["hitcd"] = hc3
+				var a := hand(r)
+				var b := a + aim_dir(r) * float(c["arco_alcance"])
+				for o in main.robots:
+					if o != r and o.alive and _seg_rect(a, b, o.rect(), 14.0) and float(hc3.get(o.pid, 0.0)) <= 0.0:
+						hc3[o.pid] = float(c["tick_s"])
+						_hit_dir(o, r.pid, aim_dir(r), "spell_solda")
+				if fmod(t, 0.1) < dt:
+					Audio.play("laser", 1.8, -12.0)
+			# conserto: parado, segurando ▼ + especial em cima de um trecho rachado
+			var rep_ok: bool = not d.get("repaired", false) and r.is_on_floor() and absf(r.velocity.x) < 30.0 and PlayerInput.held(r.pid, "down") and held(r)
+			var part = null
+			if rep_ok:
+				var ct2 = demo.canteiro
+				if ct2 != null and is_instance_valid(ct2):
+					for p in ct2.parts:
+						if not p["fallen"] and p["crit_t"] <= 0.0 and int(p["hp"]) < int(p["max"]) and p["rect"].grow(8).has_point(r.position + Vector2(0, 6)):
+							part = p
+			if part != null:
+				d["rep_t"] = float(d.get("rep_t", 0.0)) + dt
+				if d["rep_t"] >= float(c["reparo_s"]):
+					part["hp"] = mini(int(part["hp"]) + 1, int(part["max"]))
+					var frac := float(part["hp"]) / float(part["max"])
+					part["state"] = 0 if frac > 0.67 else (1 if frac > 0.34 else 2)
+					d["repaired"] = true
+					main.float_text(r.position + Vector2(0, -130), "CONSERTADO!", Color("#5cc45c"))
+					Audio.play("item", 1.4)
+			else:
+				d["rep_t"] = 0.0
+		"S34":
+			var target: float = lerpf(1.0, float(c["tamanho"]), float(d["assemble"]))
+			if s["t"] < 0.4:
+				target = lerpf(float(c["tamanho"]), 1.0, 1.0 - s["t"] / 0.4)
+			r.set_size(target)
+			if absf(r.velocity.x) > 200.0 and fmod(t, 0.06) < dt and r.is_on_floor():
+				main.dust(r.position, 0.3)
+	if s["t"] <= 0.0:
+		_end_form(r, true)
+
+## Quando a bola bate forte na parede: racha trecho frágil do Canteiro.
+func ball_bump(r, vx: float) -> void:
+	var ct = demo.canteiro
+	var pt: Vector2 = r.position + Vector2(signf(vx) * 40.0, -30.0)
+	main.spark(pt, 5)
+	if ct != null and is_instance_valid(ct):
+		for p in ct.parts:
+			if not p["fallen"] and p["state"] >= 1 and p["rect"].grow(10).has_point(pt):
+				ct.damage(p, 1, pt)
+	if slot.has(r.pid):
+		slot[r.pid]["data"]["squash"] = 1.0
+
+func _update_etapa4(dt: float) -> void:
+	for e in jets:
+		e["t"] += dt
+	jets = jets.filter(func(e): return e["t"] < 0.3)
+	for m in smokes:
+		m["t"] += dt
+		m["pos"] += m["vel"] * dt
+		m["vel"] *= 0.94
+		m["vel"].y -= 30.0 * dt
+	smokes = smokes.filter(func(m): return m["t"] < 0.9)
+
+# ---------------------------------------------------------------- desenho da Etapa 4
+func _draw_etapa4() -> void:
+	for r in main.robots:
+		if not r.alive or not slot.has(r.pid):
+			continue
+		var s: Dictionary = slot[r.pid]
+		var d: Dictionary = s["data"]
+		if not (s["id"] in FORMS) or s["t"] <= 0.0:
+			continue
+		var fk: float = float(d.get("assemble", 1.0))
+		var end_blink: bool = s["t"] < 1.0 and fmod(t, 0.16) < 0.08
+		var mod := Color(1.5, 1.4, 1.3) if end_blink else Color.WHITE
+		match s["id"]:
+			"S14": _draw_forklift(r, d, fk, mod)
+			"S15": _draw_ball(r, d, fk, mod)
+			"S31": _draw_drill(r, d, fk, mod)
+			"S33": _draw_welder(r, d, fk, mod)
+	# S16 jatos e fumaça
+	for e in jets:
+		var r = main.robots[e["pid"]]
+		var u: float = e["t"] / 0.3
+		var base: Vector2 = r.position + Vector2(-r.facing * 12.0, -24.0)
+		if e["fail"]:   # ignição falhou: estalos
+			for k in 3:
+				draw_circle(base + Vector2(randf_range(-8, 8), 18 + randf_range(-6, 6)), 4.0 * (1.0 - u), Color(1, 0.8, 0.3, 1.0 - u))
+			continue
+		var back: Vector2 = -e["dir"]
+		for nz in [-7.0, 7.0]:
+			var o: Vector2 = base + Vector2(nz, 18)
+			var L := 46.0 * (1.0 - u) + 10.0
+			var side: Vector2 = back.orthogonal() * 9.0
+			draw_colored_polygon(PackedVector2Array([o - side, o + back * L, o + side]), Color(1, 0.55, 0.2, 1.0 - u))
+			draw_colored_polygon(PackedVector2Array([o - side * 0.5, o + back * L * 0.6, o + side * 0.5]), Color(1, 0.95, 0.7, 1.0 - u))
+	for m in smokes:
+		var u: float = m["t"] / 0.9
+		draw_circle(m["pos"], m["size"] * (0.6 + u), Color(0.42, 0.4, 0.44, 0.55 * (1.0 - u)))
+		draw_circle(m["pos"] + Vector2(-3, -3), m["size"] * 0.4 * (0.6 + u), Color(0.7, 0.7, 0.72, 0.4 * (1.0 - u)))
+	# S16: tremor da mochila (o robot_visual desenha a mochila nas costas)
+	for r in main.robots:
+		if r.alive and slot.has(r.pid) and slot[r.pid]["id"] == "S16" and slot[r.pid]["t"] > 0.0 and fmod(t, 0.3) < 0.05:
+			smokes.append({"pos": r.position + Vector2(-r.facing * 14.0, -8.0), "vel": Vector2(randf_range(-30, 30), -60), "t": 0.0, "size": 5.0})
+
+func _ptag(r, at: Vector2) -> void:   # marcador "P1" quando o robô está escondido dentro da transformação
+	var pc: Color = main.player_color(r.pid)
+	draw_colored_polygon(PackedVector2Array([at + Vector2(-10, -14), at + Vector2(10, -14), at]), INK)
+	draw_colored_polygon(PackedVector2Array([at + Vector2(-7, -12), at + Vector2(7, -12), at + Vector2(0, -3)]), pc)
+	Kit.text(self, at + Vector2(-30, -20), "P%d" % (r.pid + 1), 22, pc, HORIZONTAL_ALIGNMENT_CENTER, 60, 5, INK)
+
+## S14: carroceria por cima das pernas, mastro e garfo na frente (sobe com o rival/caixa).
+func _draw_forklift(r, d: Dictionary, fk: float, mod: Color) -> void:
+	var f := float(r.facing)
+	var drop := (1.0 - fk) * -60.0
+	var lift := 0.0
+	if d.get("lift_t", -1.0) >= 0.0:
+		lift = minf(d["lift_t"] / 0.25, 1.0)
+	elif d.has("drop_t"):
+		lift = maxf(1.0 - d["drop_t"] / 0.25, 0.0)
+	var bob := sin(t * 18.0) * 1.5 if absf(r.velocity.x) > 40.0 else 0.0
+	draw_set_transform(r.position + Vector2(0, drop + bob), 0.0, Vector2(f, 1.0))
+	var tip := Vector2(60, -14.0 - lift * 74.0)
+	draw_texture_rect(Data.tex("spells/s14_garfo"), Rect2(Vector2(44, -78), Vector2(34, 68)), false, mod)
+	draw_rect(Rect2(52, tip.y - 2, 30, 6), INK)
+	draw_rect(Rect2(53, tip.y - 1, 28, 4), Color("#c9d1d8"))
+	draw_texture_rect(Data.tex("spells/s14_chassi"), Rect2(Vector2(-54, -54), Vector2(100, 62)), false, mod)
+	draw_set_transform(Vector2.ZERO)
+	if fk < 1.0:
+		for k in 2:
+			main.spark(r.position + Vector2(randf_range(-40, 40), -20), 1)
+
+## S15: esfera rolando (gira com a distância), faixa na cor do jogador, achata no impacto.
+func _draw_ball(r, d: Dictionary, fk: float, mod: Color) -> void:
+	var c: Vector2 = r.position + Vector2(0, -36)
+	var sq: float = float(d.get("squash", 0.0))
+	var close := ease(fk, 0.5)
+	draw_set_transform(c, float(d.get("roll", 0.0)), Vector2(1.0 + 0.2 * sq, 1.0 - 0.2 * sq) * (0.6 + 0.4 * close))
+	draw_texture_rect(Data.tex("spells/s15_bola"), Rect2(-38, -38, 76, 76), false, mod)
+	draw_set_transform(Vector2.ZERO)
+	draw_arc(c, 39.0, 0, TAU, 32, main.player_color(r.pid), 4.0, true)
+	# olhos espiando pela fresta (sempre para o lado que rola)
+	var eye_c: Vector2 = c + Vector2(r.facing * 10.0, -6.0)
+	draw_rect(Rect2(eye_c - Vector2(16, 6), Vector2(32, 12)), INK)
+	for ex in [-7.0, 7.0]:
+		draw_circle(eye_c + Vector2(ex, 0), 4.0, Color.WHITE)
+		draw_circle(eye_c + Vector2(ex + r.facing * 1.5, 0), 2.0, INK)
+	if absf(r.own_vx) > 400.0:   # linhas de velocidade
+		for k in 3:
+			var y: float = c.y - 20.0 + k * 20.0
+			draw_line(Vector2(c.x - signf(r.own_vx) * 44.0, y), Vector2(c.x - signf(r.own_vx) * (80.0 + k * 10.0), y), Color(1, 1, 1, 0.7), 3.0, true)
+	_ptag(r, c + Vector2(0, -50))
+
+## S31: esteira + carroceria na cor do jogador com olhos + cone de broca girando (▼: broca aponta para baixo).
+func _draw_drill(r, d: Dictionary, fk: float, mod: Color) -> void:
+	var f := float(r.facing)
+	var pc: Color = main.player_color(r.pid)
+	var down: bool = d.get("down", false)
+	var vib := Vector2(sin(t * 70.0), cos(t * 63.0)) * 1.5
+	draw_set_transform(r.position + vib, 0.0, Vector2(f, 1.0))
+	draw_texture_rect(Data.tex("spells/s31_esteira"), Rect2(-40, -20, 80, 20), false, mod)
+	var bodyr := Rect2(-30, -50, 52, 32)
+	draw_rect(bodyr.grow(3), INK)
+	draw_rect(bodyr, pc.darkened(0.1))
+	draw_rect(Rect2(bodyr.position, Vector2(bodyr.size.x, 8)), pc.lightened(0.25))
+	for ex in [0.0, 12.0]:   # olhos
+		draw_circle(Vector2(ex - 4.0, -36), 5.0, Color.WHITE)
+		draw_circle(Vector2(ex - 2.0, -36), 2.5, INK)
+	var spin: float = float(d.get("spin", 0.0))
+	var cone_xf := Transform2D(PI / 2.0 if down else 0.0, Vector2(20, -34) if not down else Vector2(0, -16))
+	draw_set_transform_matrix(Transform2D(0.0, Vector2(f, 1.0), 0.0, r.position + vib) * cone_xf)
+	draw_texture_rect(Data.tex("spells/s31_broca"), Rect2(0, -20, 60, 40), false, mod)
+	for k in 4:   # sulcos correndo (giro)
+		var u := fposmod(spin * 0.15 + k * 0.25, 1.0)
+		var x := 14.0 + u * 40.0
+		var hh := 18.0 * (1.0 - (x - 10.0) / 52.0)
+		draw_line(Vector2(x, -hh), Vector2(x + 6.0, hh), Color(0.3, 0.33, 0.38, 0.9), 2.5, true)
+	draw_set_transform(Vector2.ZERO)
+	_ptag(r, r.position + Vector2(0, -60))
+
+## S33: máscara de solda baixando sobre o rosto; arco luminoso curto com gotas de solda e fumaça.
+func _draw_welder(r, d: Dictionary, fk: float, mod: Color) -> void:
+	var g: Dictionary = Data.robot_meta["modelos"][Data.MODELS[r.vis.model]]
+	var eye := (Vector2(g["eyes"][0][0], g["eyes"][0][1]) + Vector2(g["eyes"][1][0], g["eyes"][1][1])) / 2.0 - Vector2(64, 120)
+	var at: Vector2 = r.position + Vector2(eye.x * r.facing, eye.y)
+	var ang: float = (1.0 - ease(fk, 0.4)) * -PI / 2.0 * r.facing   # baixa da testa para o rosto
+	draw_set_transform(at, ang, Vector2(r.facing, 1.0))
+	draw_texture_rect(Data.tex("spells/s33_mascara"), Rect2(-17, -16, 34, 30), false, mod)
+	draw_set_transform(Vector2.ZERO)
+	if d.get("arc", false):
+		var a := hand(r) + Vector2(r.facing * 10.0, 0)
+		var b := a + aim_dir(r) * float(sc("S33")["arco_alcance"])
+		_draw_bolt(a, b, 0.7, 0.0, t)
+		draw_circle(a, 9.0, Color(0.75, 0.9, 1.0, 0.9))
+		draw_circle(a, 4.0, Color.WHITE)
+		draw_circle(b, 12.0 + sin(t * 40.0) * 3.0, Color(1, 0.95, 0.8, 0.8))
+		for k in 3:   # gotas de solda caindo
+			var u := fposmod(t * 3.0 + k * 0.33, 1.0)
+			draw_circle(b + Vector2(sin(k * 2.0) * 8.0, u * 40.0), 2.5, Color(1, 0.6, 0.2, 1.0 - u))
+		if fmod(t, 0.08) < 0.02:
+			smokes.append({"pos": b, "vel": Vector2(randf_range(-20, 20), -70), "t": 0.0, "size": 6.0})
+	var rep: float = float(d.get("rep_t", 0.0))
+	if rep > 0.0:   # anel de progresso do conserto
+		var k := clampf(rep / float(sc("S33")["reparo_s"]), 0.0, 1.0)
+		var c: Vector2 = r.position + Vector2(0, -140)
+		draw_arc(c, 18.0, 0, TAU, 24, Color(0.85, 0.87, 0.9, 0.9), 6.0, true)
+		draw_arc(c, 18.0, -PI / 2.0, -PI / 2.0 + TAU * k, 24, Color("#5cc45c"), 6.0, true)

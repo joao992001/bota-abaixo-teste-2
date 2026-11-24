@@ -107,7 +107,14 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
    anéis de pressão, sucata voando, hélice girando, dono escorregando e rival tremulando; ponte encosta na altura exata do
    chão (dá para andar sem pular); controle remoto mostra receptor piscando em cada viga + dica; no Laboratório avisa para
    trocar a arena para CANTEIRO.
-   PRÓXIMO: Etapa 4 controle+engenharia (S07,S08,S21,S12,S25,S27,S28) → Etapa 4 transformações (S14,S15,S16,S31,S33,S34) →
+   **Etapa 3 APROVADA (2026-11-24).** **Etapa 4 FEITA (2026-11-24), aguardando aprovação:** S14 Mecha Empilhadeira (toque
+   monta; toque ergue o rival/caixa no garfo e joga — ▲ mais alto), S15 Bola de Demolição (rola com inércia, atropela,
+   racha trecho frágil batendo na parede; olhos espiando e anel na cor do jogador), S16 Propulsor Gambiarra (3 pulsos na
+   direção da mira, às vezes "PFFT" sem gastar), S31 Modo Broca (tanque com broca; fura quem está na frente e a laje;
+   ▼ fura para baixo), S33 Modo Soldador (máscara baixa; segurar = arco curto; parado com ▼ conserta 1 ponto de um trecho),
+   S34 Minirrobô (encolhe com a hitbox, corre mais, empurra menos e voa mais). Moldura comum: `_start_form/_update_form/
+   _end_form`, `robot.size_k/set_size`, `spell_hit`, `spell_form="bola"` (`_ball_update`).
+   PRÓXIMO: Etapa 5 controle+engenharia (S07,S08,S21,S12,S25,S27,S28) → Etapa 4 transformações (S14,S15,S16,S31,S33,S34) →
    Etapa 5 eventos (G05,G06,G11,G12,G13,G02,G03,G04,G14,G09) + matriz de conflitos. REJEITADOS (nunca reintroduzir):
    S09,S22,S23,S24,S26,S29,S30,S32; G07,G08,G15,G16,G17,G18. Testar só no Derruba/Canteiro.
 **Economia (pedido do usuário):** uma sessão nova por mudança grande; sessão principal faz tudo (agentes só para lotes grandes

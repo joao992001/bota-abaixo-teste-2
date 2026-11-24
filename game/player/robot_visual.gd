@@ -30,9 +30,10 @@ const SHOULDER := Vector2(3, -38)       # ombro da frente: a mão gira em volta 
 const ARM := 18.0
 ## Spells sem arma: objeto nas costas (andaime dobrado, marreta sísmica, fornalha desmontada) ou na mão de trás.
 const BACK_PROPS := {"S04": ["s04_marreta", Vector2(30, 60), 2.55], "S10": ["s10_trouxa", Vector2(34, 23), 1.35],
-	"S13": ["s13_costas", Vector2(40, 35), 0.0], "S25": ["s25_tabua", Vector2(46, 15), 1.45]}
+	"S13": ["s13_costas", Vector2(40, 35), 0.0], "S25": ["s25_tabua", Vector2(46, 15), 1.45],
+	"S16": ["s16_mochila", Vector2(34, 38), 0.0]}
 const HAND_PROPS := {"S18": ["s18_disco", Vector2(24, 24)], "S12": ["s12_carga", Vector2(30, 22)],
-	"S27": ["s27_controle", Vector2(18, 24)], "S28": ["s28_macarico", Vector2(30, 15)]}
+	"S27": ["s27_controle", Vector2(18, 24)], "S28": ["s28_macarico", Vector2(30, 15)], "S33": ["s28_macarico", Vector2(30, 15)]}
 # aparência
 var color_idx := 0
 var model := 0
@@ -358,7 +359,8 @@ func tick(r, dt: float) -> void:
 	var fl := 1.0 + 2.2 * (flash_t / 0.08) + 0.8 * dodged_flash
 	modulate = Color(fl, fl, fl, al)
 	_pose_springs(r, dt, on_floor, v)
-	scale = Vector2(sq.x * signf(shown_facing + 0.0001), sq.y)
+	var szk: float = r.size_k if r.get("size_k") != null else 1.0
+	scale = Vector2(sq.x * signf(shown_facing + 0.0001), sq.y) * szk
 	queue_redraw()
 
 ## Dano visível: o corpo vai ficando amassado (3 estágios), solta faísca, fumaça e parafusos.

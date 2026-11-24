@@ -1880,6 +1880,94 @@ func spells_test() -> void:
 	vset("v0", "left", false)
 	check(xb - r0.position.x > 150.0 and absf(r0.position.y - floor_y) < 4.0 and r0.is_on_floor(), "ponte: anda do chão para a ponte sem pular (%.0f px, y %.0f)" % [xb - r0.position.x, r0.position.y])
 	sp.clear(r0)
+	# ===== Etapa 4 (transformações)
+	sp.shields.clear()
+	# S14 empilhadeira: veste, ergue o rival à frente e joga
+	place.call(1.3)
+	sp.clear(r0)
+	sp.equip(r0, "S14")
+	await frames(2)
+	await tap("v0", "item")
+	await frames(20)
+	check(sp.flags(r0).get("form", "") == "S14" and r0.spell_speed < 1.0, "S14: vira empilhadeira (mais lenta)")
+	place.call(1.3)
+	await frames(2)
+	await tap("v0", "item")
+	await frames(10)
+	check(r1.position.y < floor_y - 40.0, "S14: garfo ergue o rival (%.0f acima)" % (floor_y - r1.position.y))
+	var x14: float = r1.position.x
+	await frames(60)
+	check(r1.dmg > 0.0 and r1.position.x - x14 > 100.0, "S14: e joga para a frente (%.0f px)" % (r1.position.x - x14))
+	sp.clear(r0)
+	check(r0.spell_speed == 1.0 and r0.vis.visible, "S14: desmonta ao limpar")
+	# S15 bola: rola com inércia e atropela
+	place.call(5.0)
+	sp.equip(r0, "S15")
+	await frames(2)
+	await tap("v0", "item")
+	await frames(10)
+	check(r0.spell_form == "bola" and not r0.vis.visible, "S15: vira bola")
+	vset("v0", "right", true)
+	await frames(50)
+	vset("v0", "right", false)
+	check(r1.dmg > 0.0, "S15: atropela o rival (dano %d%%)" % int(r1.dmg))
+	await frames(int(float(sp.sc("S15")["duracao_s"]) * 60.0))
+	check(r0.spell_form == "" and r0.vis.visible and sp.hud_info(0).is_empty(), "S15: abre de volta no fim")
+	# S16 propulsor: pulso no ar (sem falha no teste)
+	place.call(6.0)
+	sp.sc("S16")["falha_chance"] = 0.0
+	sp.equip(r0, "S16")
+	await frames(2)
+	vset("v0", "up", true)
+	await tap("v0", "item")
+	vset("v0", "up", false)
+	check(r0.velocity.y < -500.0 and sp.hud_info(0)["charges"] == 2, "S16: pulso para cima (vy %.0f)" % r0.velocity.y)
+	sp.sc("S16")["falha_chance"] = 0.12
+	await frames(60)
+	sp.clear(r0)
+	# S31 broca: rival na frente leva dano contínuo
+	place.call(1.2)
+	sp.equip(r0, "S31")
+	await frames(2)
+	await tap("v0", "item")
+	place.call(1.2)
+	await frames(40)
+	check(r1.dmg > 0.0 and not r0.vis.visible, "S31: broca fura quem está na frente (dano %d%%)" % int(r1.dmg))
+	sp.clear(r0)
+	# S33 soldador: arco curto e conserto de trecho rachado
+	place.call(1.2)
+	sp.equip(r0, "S33")
+	await frames(2)
+	await tap("v0", "item")
+	await frames(20)
+	place.call(1.0)
+	vset("v0", "item", true)
+	await frames(30)
+	vset("v0", "item", false)
+	check(r1.dmg > 0.0, "S33: arco de solda acerta de perto (dano %d%%)" % int(r1.dmg))
+	var lajes: Array = ct.parts.filter(func(p): return p["kind"] == "laje" and not p["fallen"] and not p["nucleo"] and p["crit_t"] <= 0.0)
+	if lajes.size() > 0:
+		var lp: Dictionary = lajes[0]
+		lp["hp"] = int(lp["max"]) - 1
+		put(r0, Vector2(lp["rect"].get_center().x, lp["rect"].position.y))
+		put(r1, Vector2(lp["rect"].get_center().x + 600.0, floor_y))
+		await frames(8)
+		vset("v0", "down", true)
+		vset("v0", "item", true)
+		await frames(int(float(sp.sc("S33")["reparo_s"]) * 60.0) + 10)
+		vset("v0", "down", false)
+		vset("v0", "item", false)
+		check(int(lp["hp"]) == int(lp["max"]), "S33: parado com ▼ conserta o trecho rachado")
+	sp.clear(r0)
+	# S34 minirrobô: encolhe (hitbox junto), corre mais, empurra menos; volta ao tamanho
+	place.call(5.0)
+	sp.equip(r0, "S34")
+	await frames(2)
+	await tap("v0", "item")
+	await frames(30)
+	check(r0.size_k < 0.7 and r0.rect().size.y < 50.0 and r0.spell_hit < 1.0, "S34: encolhe (hitbox %s)" % str(r0.rect().size))
+	await frames(int(float(sp.sc("S34")["duracao_s"]) * 60.0))
+	check(r0.size_k == 1.0 and r0.spell_hit == 1.0, "S34: volta ao tamanho no fim")
 	# G10 carga especial: holofotes em 2 pontos e duas cápsulas descem
 	main.event_level = 2
 	main.events.manual = true
@@ -2449,7 +2537,8 @@ func spells_frames(dir: String) -> void:
 	var segs := [["caixas", 50], ["S01", 60], ["S03", 120], ["S06", 90], ["S10", 70], ["S11", 70], ["S13", 300], ["troca", 60],
 		["S02", 60], ["S04", 70], ["S05", 60], ["S17", 90], ["S18", 80], ["S19", 90], ["S20", 70], ["porte", 90],
 		["S07", 90], ["S08", 70], ["S21", 120], ["S12", 110], ["S25", 90], ["S27", 90], ["S28", 90],
-		["lasercima", 70], ["gelodiag", 70], ["ganchocima", 90], ["ventocima", 80], ["fogocima", 140], ["socobaixo", 60], ["ganchocaixa", 70], ["murotteto", 80]]
+		["lasercima", 70], ["gelodiag", 70], ["ganchocima", 90], ["ventocima", 80], ["fogocima", 140], ["socobaixo", 60], ["ganchocaixa", 70], ["murotteto", 80],
+		["S14", 120], ["S15", 110], ["S16", 90], ["S31", 90], ["S33", 100], ["S34", 100]]
 	var mira_sp := {"lasercima": "S02", "gelodiag": "S03", "ganchocima": "S08", "ventocima": "S07", "fogocima": "S13", "socobaixo": "S01"}
 	for a0 in OS.get_cmdline_user_args():
 		if a0.begins_with("--so-spells="):
@@ -2465,7 +2554,8 @@ func spells_frames(dir: String) -> void:
 			sp.clear(r)
 		sp.boxes.clear()
 		put(r0, Vector2(x0, fy))
-		put(r1, Vector2(x0 + ({"S01": 3.0, "S13": 3.0, "S04": 3.0, "S17": 2.6, "S19": 3.5, "S18": 4.0, "S20": 4.0, "S07": 3.0, "S21": 4.0, "S12": 1.5}.get(nm, 5.5)) * 64.0, fy))
+		put(r1, Vector2(x0 + ({"S01": 3.0, "S13": 3.0, "S04": 3.0, "S17": 2.6, "S19": 3.5, "S18": 4.0, "S20": 4.0, "S07": 3.0, "S21": 4.0, "S12": 1.5,
+			"S14": 2.2, "S15": 6.0, "S31": 2.5, "S33": 1.6, "S34": 3.0}.get(nm, 5.5)) * 64.0, fy))
 		r0.facing = 1
 		r1.facing = -1
 		if nm == "caixas":
@@ -2548,6 +2638,26 @@ func spells_frames(dir: String) -> void:
 					a["v0"]["item"] = f == 20 or f == 21
 				"ganchocaixa":
 					a["v0"]["item"] = f == 14 or f == 15
+				"S14":
+					a["v0"]["item"] = f in [8, 9, 40, 41]
+					a["v0"]["right"] = f >= 22 and f < 30
+				"S15":
+					a["v0"]["item"] = f in [8, 9]
+					a["v0"]["right"] = f >= 22 and f < 80
+				"S16":
+					a["v0"]["jump"] = f >= 4 and f < 16
+					a["v0"]["up"] = f >= 18 and f < 24
+					a["v0"]["item"] = f in [20, 21, 45, 46, 65, 66]
+					a["v0"]["right"] = f >= 44 and f < 70
+				"S31":
+					a["v0"]["item"] = f in [8, 9]
+					a["v0"]["right"] = f >= 25 and f < 60
+				"S33":
+					a["v0"]["item"] = (f == 8 or f == 9) or (f >= 35 and f < 80)
+				"S34":
+					a["v0"]["item"] = f in [8, 9]
+					a["v0"]["right"] = f >= 30 and f < 60
+					a["v0"]["hammer"] = f in [62, 63]
 				"murotteto":
 					a["v0"]["up"] = f >= 40
 					a["v0"]["item"] = f in [10, 11, 44, 45]
