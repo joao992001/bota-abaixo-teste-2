@@ -42,23 +42,11 @@ func panel(r: Rect2, tint := Color.WHITE) -> void:
 	Kit.paper(self, r, tint)
 
 func _look(p: Dictionary) -> Dictionary:
-	return {"color": p["color"], "model": p["model"], "acc": p["acc"], "skin": p.get("skin", {})}
+	return {"color": p["color"], "model": p["model"]}
 
-## Nome do jogador: o nome do robô da Garagem, ou "P1".."P4" para os robôs de fábrica.
+## Nome do jogador: "P1".."P4" (o modelo do robô aparece na entrada e na vitória).
 func pname(i: int) -> String:
-	var base := _raw_name(i)
-	if base == "P%d" % (i + 1):
-		return base
-	# dois jogadores com o mesmo robô da Garagem: o segundo vira "Parafuso 2"
-	var same := 1
-	for k in i:
-		if _raw_name(k) == base:
-			same += 1
-	return base if same == 1 else "%s %d" % [base, same]
-
-func _raw_name(i: int) -> String:
-	var sk: Dictionary = main.players[i].get("skin", {})
-	return String(sk.get("nome", "")) if not sk.is_empty() and String(sk.get("nome", "")) != "" else "P%d" % (i + 1)
+	return "P%d" % (i + 1)
 
 ## Retrato redondo do jogador i centrado em c (desenhado por cima deste quadro).
 func _head(i: int, c: Vector2, r: float, ring := Kit.INK, bg := Kit.CREAM, expr := "normal", alpha := 1.0) -> void:
@@ -326,7 +314,7 @@ func _draw_join() -> void:
 			if p.get("bot", false):
 				lab = "BOT · %s" % main.bots.LEVEL_NAMES[p.get("level", 1)]
 			fit_text(Vector2(lr.position.x + 20, lr.position.y + 120), lab, 22, Kit.SOFT, W - 40, 0, HORIZONTAL_ALIGNMENT_CENTER)
-			var nm: String = p["skin"]["nome"] if not p.get("skin", {}).is_empty() else Data.MODEL_NAMES[p["model"]]
+			var nm: String = Data.MODEL_NAMES[p["model"]]
 			Kit.text(self, Vector2(lr.position.x, lr.end.y - 104), nm, 42, DARK, HORIZONTAL_ALIGNMENT_CENTER, W)
 			var pr := Rect2(lr.position.x + 30, lr.end.y - 82, W - 60, 58)
 			Kit.chunk(self, pr, col, 20, 5, 0.0)
@@ -344,7 +332,7 @@ func _draw_join() -> void:
 	draw_set_transform(Vector2.ZERO)
 	if Input.get_connected_joypads().is_empty():
 		Kit.sticker(self, Vector2(0, 950), "nenhum controle detectado  ·  OPÇÕES ▸ TESTAR CONTROLES", 26, Color("#ff8a8a"), HORIZONTAL_ALIGNMENT_CENTER, 1920)
-	Kit.pad_hint(self, 960, 1030, [["baixo"], " entrar   ", "◄► cor   ▲▼ robô   ", ["esquerda"], " chapéu   ", ["cima"], " + bot   ", ["direita"], " sair   ", ["start"], " começar"], 30, Color.WHITE, st, 7)
+	Kit.pad_hint(self, 960, 1030, [["baixo"], " entrar   ", "◄► cor   ▲▼ robô   ", ["cima"], " + bot   ", ["direita"], " sair   ", ["start"], " começar"], 30, Color.WHITE, st, 7)
 
 # ---------------------------------------------------------------- corrida / rodada
 func _draw_run() -> void:
@@ -420,7 +408,7 @@ func _draw_win() -> void:
 	Kit.text(self, Vector2(px, 222), "P%d" % (w + 1), 44, Data.COLORS[pw["color"]], HORIZONTAL_ALIGNMENT_LEFT, -1, 10)
 	for k in goal:
 		Kit.star(self, Vector2(px + 110 + k * 46, 206), 42, k < int(pw["score"]))
-	RobotVis.draw_robot(self, _look(pw), RobotVis.victory_pose(t, pw.get("skin", {}).get("danca", 0)), Transform2D(0.0, Vector2(5.2, 5.2), 0.0, Vector2(960, 930)))
+	RobotVis.draw_robot(self, _look(pw), RobotVis.victory_pose(t, int(Data.model_meta(pw["model"])["danca"])), Transform2D(0.0, Vector2(5.2, 5.2), 0.0, Vector2(960, 930)))
 	draw_set_transform(Vector2.ZERO)
 	if main.mode == "demolicao":
 		_draw_titles()

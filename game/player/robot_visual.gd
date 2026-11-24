@@ -19,10 +19,8 @@ const TOOL_SIZE := 44.0                   # px percorridos por ciclo de passada 
 
 # aparência
 var color_idx := 0
-var acc := 0
 var model := 0
 var has_hammer := true
-var skin := {}                         # personalização da Garagem (vazio = robô padrão na cor do jogador)
 # estado da animação
 var expression := "normal"
 var sq := Vector2.ONE                  # squash/stretch visual
@@ -50,9 +48,8 @@ var drops: Array = []                  # gotas de suor quando a aderência está
 var hang_snap := Vector2.ZERO          # ao agarrar a borda: o desenho começa onde o robô estava e desliza até a quina
 var smoke_t := 0.0
 
-func setup(col_idx: int, accessory: int, mdl := 0) -> void:
+func setup(col_idx: int, mdl := 0) -> void:
 	color_idx = col_idx
-	acc = accessory
 	model = mdl
 	blink_t = randf_range(0.5, 3.0)
 
@@ -63,7 +60,7 @@ func stretch() -> void:
 	sq = Vector2(0.78, 1.28)
 
 func look() -> Dictionary:
-	var lk := {"color": color_idx, "model": model, "acc": acc, "hammer": has_hammer, "skin": skin}
+	var lk := {"color": color_idx, "model": model, "hammer": has_hammer}
 	if robot != null and robot.has_method("fx_flags"):
 		lk["fx"] = robot.fx_flags()
 	return lk
@@ -297,14 +294,15 @@ func _draw() -> void:
 		draw_arc(c, 10.0, -PI / 2.0, -PI / 2.0 + TAU * grip, 24, col, 5.0, true)
 		draw_set_transform(Vector2.ZERO)
 
-## Setinha na cor do jogador acima da cabeça ("P1"): identifica quem é quem mesmo com robôs da Garagem.
+## Setinha na cor do jogador acima da cabeça ("P1"): identifica quem é quem (fica acima do topo de cada modelo).
 func _draw_tag() -> void:
 	if robot == null or not robot.alive or not robot.get("active"):
 		return
 	var sx := signf(scale.x) if scale.x != 0.0 else 1.0
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0 / maxf(absf(scale.x), 0.2) * sx, 1.0 / maxf(scale.y, 0.2)))
 	var meter: bool = (hanging or on_wall or not robot.is_on_floor()) and grip < 0.999
-	var y := -150.0 if meter else -116.0
+	var top := float(Data.model_meta(model)["top"]) - ORIGIN.y
+	var y := (top - 48.0) if meter else (top - 14.0)
 	var col: Color = Data.COLORS[color_idx % Data.COLORS.size()]
 	draw_colored_polygon(PackedVector2Array([Vector2(-9, y), Vector2(9, y), Vector2(0, y + 10)]), col)
 	draw_polyline(PackedVector2Array([Vector2(-9, y), Vector2(9, y), Vector2(0, y + 10), Vector2(-9, y)]), Data.INK, 2.0, true)
@@ -362,26 +360,25 @@ static func victory_pose(time: float, danca := 0) -> Dictionary:
 	p["ant"] = sin(time * 12.0) * 0.35
 	return p
 
-## Desenha o robô montado em qualquer CanvasItem. look = {color, model, acc, hammer}; pose = ver topo.
+## Desenha o robô montado em qualquer CanvasItem. look = {color, model, hammer, fx}; pose = ver topo.
 static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base := Transform2D.IDENTITY) -> void:
 	var spring_h := 0.0
 	if lk.get("fx", {}).get("mola", false):
 		spring_h = 11.5 * float(pose.get("spring_k", 1.0))
 		base = base * Transform2D(0.0, Vector2(0, -spring_h))   # botas de mola: o robô fica em cima das molas
 	var col_idx: int = lk["color"]
-	var sk: Dictionary = lk.get("skin", {})
-	var custom := not sk.is_empty()
-	var mname: String = Data.MODELS[sk.get("model", lk["model"]) if custom else lk["model"]]
-	var body := Data.tex(("robo/corpo_%s" % mname) if custom else ("robo/corpo_%s_p%d" % [mname, col_idx + 1]))
+	var mname: String = Data.MODELS[lk["model"]]
+	var body := Data.tex("robo/corpo_%s_p%d" % [mname, col_idx + 1])
 	if body == null or Data.robot_meta.is_empty():
 		return
 	if pose.has("spin"):   # comemoração "pião": achata na horizontal passando pelo meio
 		var sp: float = pose["spin"]
 		base = base * Transform2D(0.0, Vector2(signf(sp) * maxf(absf(sp), 0.32), 1.0), 0.0, Vector2.ZERO)
 	var g: Dictionary = Data.robot_meta["modelos"][mname]
-	var limb := limb_color(sk) if custom else Color(Data.robot_meta["membros"][col_idx])
-	var tool_tex := Data.tool_tex(sk.get("ferramenta", 0)) if custom else "robo/marreta"
+	var limb := Color(Data.robot_meta["membros"][col_idx])
+	var lw := float(g["limb_w"])
 	var q := Vector2(0.25, 0.25)
+	var hand_q: Vector2 = q * float(g["hand_s"])
 	# corpo inclina em torno do quadril
 	var hips: Array = g["hips"]
 	var pivot := (_v(hips[0]) + _v(hips[1])) / 2.0
@@ -395,14 +392,14 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 	if lk.get("hammer", true) and tool == "":
 		var big: bool = fx.get("martelao", false)
 		ci.draw_set_transform_matrix(base * Transform2D(pose["hammer_ang"], q * (1.55 if big else 1.0), 0.0, hf))
-		ci.draw_texture(Data.tex(tool_tex), -GRIP * 4.0, Color(1.0, 0.82, 0.3) if big else Color.WHITE)
+		ci.draw_texture(Data.tex("robo/marreta"), -GRIP * 4.0, Color(1.0, 0.82, 0.3) if big else Color.WHITE)
 	# pernas + botas
 	var foot := Data.tex("robo/pe")
 	for i in 2:
 		var s := -1.0 if i == 0 else 1.0
 		var hip: Vector2 = bx * _v(hips[i])
 		var fp: Vector2 = Vector2(_v(hips[i]).x + s * 4.0, -4.0) + pose["feet"][i]
-		_limb(ci, base, hip, fp, limb, pose["knee"][i])
+		_limb(ci, base, hip, fp, limb, pose["knee"][i], lw)
 		var now := Time.get_ticks_msec() / 1000.0
 		if fx.get("mola", false):
 			# bota de mola (mesma arte do ícone do item): cano da bota no pé, mola embaixo que estica e encolhe
@@ -448,36 +445,14 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 			ci.draw_circle(fp + Vector2(s * 1.5, 3.0), 5.5, Color(0.97, 0.96, 0.9))
 			ci.draw_circle(fp + Vector2(s * 1.5 + 4.0, 5.0), 3.0, Color(0.97, 0.96, 0.9))
 			ci.draw_rect(Rect2(fp + Vector2(s * 1.5 - 1.0, 6.0), Vector2(2, 3.0 + 2.0 * fposmod(now * 1.5 + i * 0.5, 1.0))), Color(0.97, 0.96, 0.9))
-	_limb(ci, base, bx * _v(sh[0]), hb, limb, Vector2(0, 3))
-	# corpo + rosto + antena (mola) ou chapéu
+	_limb(ci, base, bx * _v(sh[0]), hb, limb, Vector2(0, 3), lw)
+	# corpo + rosto + antena (mola)
 	ci.draw_set_transform_matrix(base * bx * Transform2D(0.0, q, 0.0, -ORIGIN))
-	if custom:
-		ci.draw_texture(body, Vector2.ZERO, body_color(sk))
-		var pat: int = sk.get("padrao", 0)
-		if pat > 0:
-			ci.draw_texture(Data.tex("robo/padrao_%s_%s" % [Data.PADROES[pat], mname]), Vector2.ZERO, _pal(sk.get("cor2", 9)))
-		ci.draw_texture(Data.tex("robo/detalhe_" + mname), Vector2.ZERO)
-	else:
-		ci.draw_texture(body, Vector2.ZERO)
+	ci.draw_texture(body, Vector2.ZERO)
 	ci.draw_texture(Data.tex("robo/rosto_%s_%s" % [mname, pose["expr"]]), Vector2.ZERO)
-	var face_item: int = sk.get("rosto", 0) if custom else 0
-	if face_item > 0 and pose["expr"] != "eliminado":
-		var ey: Array = g["eyes"]
-		var e0 := _v(ey[0])
-		var e1 := _v(ey[1])
-		var fs := e0.distance_to(e1) / 22.0
-		ci.draw_set_transform_matrix(base * bx * Transform2D(0.0, (e0 + e1) / 2.0))
-		ci.draw_texture_rect(Data.tex("robo/rosto_item_" + Data.ROSTOS[face_item]), Rect2(Vector2(-32, -16) * fs, Vector2(64, 32) * fs), false)
-	var accessory: int = sk.get("chapeu", 0) if custom else lk.get("acc", 0)
-	if accessory <= 0:
-		var ab := _v(g["antenna"])
-		ci.draw_set_transform_matrix(base * bx * Transform2D(pose["ant"], ab) * Transform2D(0.0, q, 0.0, -ab - ORIGIN))
-		ci.draw_texture(Data.tex("robo/antena_" + mname), Vector2.ZERO)
-	else:
-		var h: Array = g["hat"]
-		var hs := float(h[2]) * 0.25
-		ci.draw_set_transform_matrix(base * bx * Transform2D(pose["ant"] * 0.15, Vector2(hs, hs), 0.0, _v(h)))
-		ci.draw_texture(Data.tex("robo/acc_" + Data.ACCS[accessory]), -Vector2(64, 64) * 4.0)
+	var ab := _v(g["antenna"])
+	ci.draw_set_transform_matrix(base * bx * Transform2D(pose["ant"], ab) * Transform2D(0.0, q, 0.0, -ab - ORIGIN))
+	ci.draw_texture(Data.tex("robo/antena_" + mname), Vector2.ZERO)
 	var ha: Array = g["hat"]
 	if fx.get("capacete", false):
 		var size := 64.0 * (60.0 * float(ha[2]) / 52.0)
@@ -518,73 +493,44 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 				var x := lerpf(-1.0, 18.0, u)
 				var hh := lerpf(6.0, 0.8, u)
 				ci.draw_line(tip + Vector2(x, -hh), tip + Vector2(x + 4.0, hh), Color("#5a6370"), 1.6, true)
-	_limb(ci, base, bx * _v(sh[1]), hf, limb, Vector2(0, 3))
+	_limb(ci, base, bx * _v(sh[1]), hf, limb, Vector2(0, 3), lw)
 	var hand := Data.tex("robo/mao")
 	for p in [hb, hf]:
-		ci.draw_set_transform_matrix(base * Transform2D(0.0, q, 0.0, p))
+		ci.draw_set_transform_matrix(base * Transform2D(0.0, hand_q, 0.0, p))
 		ci.draw_texture(hand, -Vector2(8, 8) * 4.0)
 	ci.draw_set_transform_matrix(base)
-
-static func _pal(i: int) -> Color:
-	return Data.PALETA[posmod(i, Data.PALETA.size())]
-
-## Cor que pinta o corpo neutro (a base da arte é #f2f2f2: compensa para a cor sair fiel).
-static func body_color(sk: Dictionary) -> Color:
-	var c := _pal(sk.get("cor", 0))
-	return Color(c.r * 1.06, c.g * 1.06, c.b * 1.06)
-
-## Braços e pernas: a cor do corpo escurecida puxando para o roxo (como na arte original).
-static func limb_color(sk: Dictionary) -> Color:
-	return _pal(sk.get("cor", 0)).darkened(0.42).lerp(Color("#3a2a5a"), 0.18)
 
 static func _v(a: Array) -> Vector2:
 	return Vector2(float(a[0]), float(a[1])) - ORIGIN
 
 ## Membro grosso de "macarrão" com risco de giz.
-static func _limb(ci: CanvasItem, base: Transform2D, a: Vector2, b: Vector2, col: Color, bend: Vector2) -> void:
+static func _limb(ci: CanvasItem, base: Transform2D, a: Vector2, b: Vector2, col: Color, bend: Vector2, w := 3.4) -> void:
 	var m := (a + b) / 2.0 + bend
 	var pts := PackedVector2Array()
 	for i in 7:
 		var k := i / 6.0
 		pts.append(a.lerp(m, k).lerp(m.lerp(b, k), k))
 	ci.draw_set_transform_matrix(base)
-	ci.draw_polyline(pts, col, 3.4, true)
+	ci.draw_polyline(pts, col, w, true)
 	var streak := PackedVector2Array()
 	for p in pts:
 		streak.append(p + Vector2(-0.6, 0))
-	ci.draw_polyline(streak, col.lightened(0.15), 0.6, true)
+	ci.draw_polyline(streak, col.lightened(0.15), w * 0.18, true)
 
 ## Partes soltas para o robô "desmontar" na eliminação: [{tex, rect (local), modulate}].
 static func parts(lk: Dictionary) -> Array:
-	var sk: Dictionary = lk.get("skin", {})
-	var custom := not sk.is_empty()
-	var mname: String = Data.MODELS[sk.get("model", lk["model"]) if custom else lk["model"]]
+	var mname: String = Data.MODELS[lk["model"]]
 	var g: Dictionary = Data.robot_meta["modelos"][mname]
-	var limb := limb_color(sk) if custom else Color(Data.robot_meta["membros"][lk["color"]])
+	var limb := Color(Data.robot_meta["membros"][lk["color"]])
 	var out := []
-	if custom:
-		var tx := [Data.tex("robo/corpo_" + mname)]
-		var md := [body_color(sk)]
-		if int(sk.get("padrao", 0)) > 0:
-			tx.append(Data.tex("robo/padrao_%s_%s" % [Data.PADROES[sk["padrao"]], mname]))
-			md.append(_pal(sk.get("cor2", 9)))
-		tx.append_array([Data.tex("robo/detalhe_" + mname), Data.tex("robo/rosto_%s_eliminado" % mname)])
-		md.append_array([Color.WHITE, Color.WHITE])
-		out.append({"tex": tx, "mods": md, "rect": Rect2(-ORIGIN, Vector2(128, 128)), "mod": Color.WHITE})
-	else:
-		out.append({"tex": [Data.tex("robo/corpo_%s_p%d" % [mname, lk["color"] + 1]), Data.tex("robo/rosto_%s_eliminado" % mname)],
-			"rect": Rect2(-ORIGIN, Vector2(128, 128)), "mod": Color.WHITE})
-	var hat_i: int = sk.get("chapeu", 0) if custom else lk.get("acc", 0)
-	if hat_i > 0:
-		var h: Array = g["hat"]
-		var hs := float(h[2])
-		out.append({"tex": [Data.tex("robo/acc_" + Data.ACCS[hat_i])], "rect": Rect2(_v(h) - Vector2(64, 64) * hs, Vector2(128, 128) * hs), "mod": Color.WHITE})
-	else:
-		out.append({"tex": [Data.tex("robo/antena_" + mname)], "rect": Rect2(-ORIGIN, Vector2(128, 128)), "mod": Color.WHITE})
+	out.append({"tex": [Data.tex("robo/corpo_%s_p%d" % [mname, lk["color"] + 1]), Data.tex("robo/rosto_%s_eliminado" % mname)],
+		"rect": Rect2(-ORIGIN, Vector2(128, 128)), "mod": Color.WHITE})
+	out.append({"tex": [Data.tex("robo/antena_" + mname)], "rect": Rect2(-ORIGIN, Vector2(128, 128)), "mod": Color.WHITE})
 	if lk.get("hammer", true):
-		out.append({"tex": [Data.tex(Data.tool_tex(sk.get("ferramenta", 0)) if custom else "robo/marreta")], "rect": Rect2(_v(g["hand_front"]) - GRIP, Vector2(64, 64)), "mod": Color.WHITE})
+		out.append({"tex": [Data.tex("robo/marreta")], "rect": Rect2(_v(g["hand_front"]) - GRIP, Vector2(64, 64)), "mod": Color.WHITE})
+	var hs := 16.0 * float(g["hand_s"])
 	for hp in [g["hand_back"], g["hand_front"]]:
-		out.append({"tex": [Data.tex("robo/mao")], "rect": Rect2(_v(hp) - Vector2(8, 8), Vector2(16, 16)), "mod": Color.WHITE})
+		out.append({"tex": [Data.tex("robo/mao")], "rect": Rect2(_v(hp) - Vector2(hs, hs) / 2.0, Vector2(hs, hs)), "mod": Color.WHITE})
 	for hip in g["hips"]:
 		out.append({"tex": [Data.tex("robo/pe")], "rect": Rect2(Vector2(_v(hip).x - 9, -9), Vector2(17, 10)), "mod": limb})
 	return out

@@ -48,8 +48,8 @@ func _run() -> void:
 			await maquete_frames(a.trim_prefix("--maquete="))
 			get_tree().quit()
 			return
-		if a.begins_with("--skins="):
-			await skins_sheet(a.trim_prefix("--skins="))
+		if a.begins_with("--robos="):
+			await robos_sheet(a.trim_prefix("--robos="))
 			get_tree().quit()
 			return
 		if a.begins_with("--oficina="):
@@ -265,14 +265,15 @@ func autotest() -> void:
 	vset("padB", "jump", false)
 	await frames(2)
 	check(main.players.size() == 3, "mesmo controle visto 2x entra como 1 jogador (%d)" % main.players.size())
-	var acc_before: int = main.players[0]["acc"]
-	vset("padA", "hammer", true)
-	vset("padB", "hammer", true)
+	var m0: int = main.players[0]["model"]
+	var m2: int = main.players[2]["model"]
+	vset("padA", "down", true)
+	vset("padB", "down", true)
 	await frames(2)
-	vset("padA", "hammer", false)
-	vset("padB", "hammer", false)
+	vset("padA", "down", false)
+	vset("padB", "down", false)
 	await frames(2)
-	check(main.players[2]["acc"] == 1 and main.players[0]["acc"] == acc_before, "trocar chapéu muda só o jogador do controle")
+	check(main.players[2]["model"] == posmod(m2 + 1, Data.MODELS.size()) and main.players[0]["model"] == m0, "trocar robô muda só o jogador do controle")
 	await tap("padA", "back")
 	check(main.players.size() == 2, "botão de sair remove o jogador")
 	await tap("v0", "start")
@@ -493,7 +494,7 @@ func demolicao_test() -> void:
 	await controles_test()
 	await controle_real_test()
 	await oficina_test()
-	await garagem_test()
+	await robos_test()
 	await imagens_test()
 
 func menus_test() -> void:
@@ -560,7 +561,7 @@ func menus_test() -> void:
 	await tap("v0", "jump")
 	check(main.state == S.MENU and not main.paused, "pausa → MENU PRINCIPAL")
 	main.menus.sel = 0
-	for k in 4:
+	for k in 3:
 		await tap("v0", "down")
 	await tap("v0", "jump")
 	check(main.state == S.OPTIONS, "OPÇÕES abre")
@@ -1408,7 +1409,6 @@ func oficina_test() -> void:
 	await frames(2)
 	main.menus.sel = 0
 	await tap("v0", "down")
-	await tap("v0", "down")
 	await tap("v0", "jump")
 	check(main.sandbox and main.state == S.RUN and main.level.id == "oficina" and main.players.size() == 1, "menu ▸ OFICINA abre a arena de testes com 1 jogador")
 	main.countdown = 0.0
@@ -1464,46 +1464,43 @@ func oficina_test() -> void:
 	await tap("v0", "jump")
 	check(main.state == S.MENU and not main.sandbox and not main.paused and Engine.time_scale == 1.0, "SAIR DA OFICINA volta ao menu")
 
-## GARAGEM: muda uma peça, salva, recarrega; na entrada ▲▼ chega aos robôs da Garagem e a partida usa o robô.
-func garagem_test() -> void:
-	print("== Garagem (personalização)")
-	var g = main.garagem
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(g.path))
-	g.load_all()
-	main.go_menu()
-	PlayerInput.virtual = {"v0": {}, "v1": {}}
-	await frames(2)
-	main.menus.sel = 0
-	await tap("v0", "down")
-	await tap("v0", "jump")
-	check(main.state == S.GARAGEM and g.robots.size() == 8, "menu ▸ GARAGEM abre com 8 robôs")
-	await tap("v0", "right")   # linha ROBÔ: vai para o 2º robô
-	for k in 3:
-		await tap("v0", "down")   # NOME, MODELO, COR
-	var before: int = g.robots[1]["cor"]
-	await tap("v0", "right")
-	check(g.slot == 1 and g.robots[1]["cor"] == posmod(before + 1, Data.PALETA.size()), "◄► muda a cor do robô escolhido")
-	g.robots[1]["cor"] = 99
-	g.load_all()
-	check(g.robots[1]["cor"] == posmod(before + 1, Data.PALETA.size()), "a Garagem fica salva no arquivo")
-	await tap("v0", "back")
-	check(main.state == S.MENU, "VOLTAR sai da Garagem")
-	# entrada: P1 desce até o primeiro robô da Garagem
+## ROBÔS: 8 modelos só de aparência; ▲▼ na entrada passa por todos e volta; cada modelo tem arte completa e desmonta.
+func robos_test() -> void:
+	print("== Robôs (8 modelos)")
+	check(Data.MODELS.size() == 8 and Data.robot_meta["modelos"].size() == 8, "8 modelos de robô (%d)" % Data.MODELS.size())
+	var faltando := []
+	for m in Data.MODELS:
+		var names := ["robo/antena_" + m]
+		for k in 4:
+			names.append("robo/corpo_%s_p%d" % [m, k + 1])
+		for e in ["normal", "piscar", "esforco", "susto", "vitoria", "eliminado"]:
+			names.append("robo/rosto_%s_%s" % [m, e])
+		for n in names:
+			if Data.tex(n) == null:
+				faltando.append(n)
+	check(faltando.is_empty(), "todos os modelos têm corpo nas 4 cores, 6 rostos e antena %s" % [faltando])
 	main.mode = "demolicao"
 	main.go_join()
 	await frames(2)
 	await tap("v0", "jump")
 	await tap("v1", "jump")
+	var seen := {}
 	for k in Data.MODELS.size():
+		seen[main.players[0]["model"]] = true
 		await tap("v0", "down")
-	var sk: Dictionary = main.players[0].get("skin", {})
-	check(not sk.is_empty() and sk["nome"] == g.robots[0]["nome"], "▲▼ na entrada escolhe o robô da Garagem (%s)" % sk.get("nome", "-"))
+	check(seen.size() == 8 and main.players[0]["model"] == 0, "▲▼ na entrada passa pelos 8 robôs e volta ao primeiro")
+	main.players[0]["model"] = 4   # Brutamontes
+	main.players[1]["model"] = 5   # Varapau
 	main.start_match()
 	await frames(3)
-	check(main.robots[0].vis.skin.get("nome", "") == g.robots[0]["nome"] and main.robots[1].vis.skin.is_empty(), "a partida usa o robô da Garagem (P2 segue de fábrica)")
-	var parts: Array = main.robots[0].vis.parts(main.robots[0].vis.look())
-	check(parts.size() > 4 and parts[0].has("mods"), "o robô da Garagem desmonta com as próprias cores")
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(g.path))
+	var hb0: Rect2 = main.robots[0].rect()
+	var hb1: Rect2 = main.robots[1].rect()
+	check(main.robots[0].vis.model == 4 and hb0.size == hb1.size, "o modelo muda só a aparência (mesma hitbox %s)" % [hb0.size])
+	var ok := true
+	for m in Data.MODELS.size():
+		var parts: Array = main.robots[0].vis.parts({"color": 1, "model": m, "hammer": true})
+		ok = ok and parts.size() >= 6 and parts[0]["tex"][0] != null
+	check(ok, "todos os modelos desmontam na eliminação")
 	main.go_menu()
 
 ## Toda imagem pedida no código existe (a lama da Maré faltava e enchia o log de erros, travando o jogo).
@@ -1905,14 +1902,12 @@ func shots(dir: String) -> void:
 		var Vis = load("res://player/robot_visual.gd")
 		sheet.draw_rect(Rect2(0, 0, 1920, 1080), Color("#9fe3ee"))
 		var ex := ["normal", "esforco", "susto", "vitoria", "eliminado"]
-		for k in 4:  # os 4 modelos em azul, como em versoes.png
-			Vis.draw_robot(sheet, {"color": 0, "model": k, "acc": 0}, Vis.idle_pose(0.5), Transform2D(0.0, Vector2(4.2, 4.2), 0.0, Vector2(230 + k * 480, 520)))
-		for k in 4:  # cores, chapéus e expressões
+		for k in 8:  # os 8 modelos em azul
+			Vis.draw_robot(sheet, {"color": 0, "model": k}, Vis.idle_pose(0.5), Transform2D(0.0, Vector2(2.6, 2.6), 0.0, Vector2(140 + k * 235, 560)))
+		for k in 8:  # cores e expressões
 			var po: Dictionary = Vis.idle_pose(0.5)
-			po["expr"] = ex[k + 1]
-			Vis.draw_robot(sheet, {"color": k, "model": (k + 1) % 4, "acc": (k + 1) % 4}, po, Transform2D(0.0, Vector2(2.2, 2.2), 0.0, Vector2(200 + k * 250, 1010)))
-		for k in 4:
-			Vis.draw_robot(sheet, {"color": k, "model": k, "acc": 0}, Vis.victory_pose(0.3 + k * 0.2), Transform2D(0.0, Vector2(1, 1), 0.0, Vector2(1260 + k * 150, 1000)))
+			po["expr"] = ex[k % 5]
+			Vis.draw_robot(sheet, {"color": k % 4, "model": k}, po, Transform2D(0.0, Vector2(1.6, 1.6), 0.0, Vector2(140 + k * 235, 1010)))
 	)
 	layer.add_child(sheet)
 	await frames(3)
@@ -1962,7 +1957,7 @@ func maquete_frames(dir: String) -> void:
 	main.add_bot()
 	var looks: Array = []
 	for p in main.players:
-		looks.append({"color": p["color"], "model": p["model"], "acc": p["acc"], "skin": p.get("skin", {})})
+		looks.append({"color": p["color"], "model": p["model"]})
 	main.start_match()
 	main.countdown = 0.0
 	for r in main.robots:
@@ -1983,7 +1978,7 @@ func maquete_frames(dir: String) -> void:
 	var which := [0, false]
 	sheet.draw.connect(func():
 		var lk: Dictionary = looks[which[0]]
-		var pose: Dictionary = Vis.victory_pose(0.35, lk["skin"].get("danca", 0)) if which[1] else Vis.idle_pose(0.5)
+		var pose: Dictionary = Vis.victory_pose(0.35, int(Data.model_meta(lk["model"])["danca"])) if which[1] else Vis.idle_pose(0.5)
 		Vis.draw_robot(sheet, lk, pose, Transform2D(0.0, Vector2(6, 6), 0.0, Vector2(960, 900)))
 	)
 	layer.add_child(sheet)
@@ -1996,8 +1991,8 @@ func maquete_frames(dir: String) -> void:
 			await snap(dir, "robo_%d%s" % [k, "_vitoria" if v == 1 else ""])
 	print("cores: ", main.players.map(func(p): return p["color"]))
 
-## Prancha da personalização: robôs da Garagem montados pelo motor (cores, padrões, chapéus, rosto, ferramentas, danças).
-func skins_sheet(dir: String) -> void:
+## Prancha dos 8 robôs montados pelo motor: parado, rostos, comemoração e corrida (--robos=DIR).
+func robos_sheet(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	var layer := CanvasLayer.new()
 	layer.layer = 10
@@ -2007,30 +2002,22 @@ func skins_sheet(dir: String) -> void:
 	var tt := [0.0]
 	sheet.draw.connect(func():
 		sheet.draw_texture_rect(Data.tex("temas/fabrica/fundo"), Rect2(0, 0, 1920, 1080), false)
-		for k in 16:
-			var sk := Data.default_skin(0, k % 4)
-			sk["cor"] = k
-			sk["cor2"] = (k * 5 + 3) % 16
-			sk["padrao"] = k % 5
-			sk["chapeu"] = k % 16
-			sk["rosto"] = k % 6
-			sk["ferramenta"] = k % 6
-			var lk := {"color": k % 4, "model": k % 4, "acc": 0, "skin": sk}
-			Vis.draw_robot(sheet, lk, Vis.idle_pose(0.5), Transform2D(0.0, Vector2(2.3, 2.3), 0.0, Vector2(130 + (k % 8) * 236, 330 + (k / 8) * 300)))
-		for d in 4:
-			var sk2 := Data.default_skin(0, d)
-			sk2["cor"] = [5, 6, 7, 12][d]
-			sk2["padrao"] = d + 1
-			sk2["chapeu"] = [4, 5, 9, 15][d]
-			sk2["ferramenta"] = d + 1
-			Vis.draw_robot(sheet, {"color": d, "model": d, "acc": 0, "skin": sk2}, Vis.victory_pose(tt[0] + d * 0.13, d), Transform2D(0.0, Vector2(2.0, 2.0), 0.0, Vector2(300 + d * 440, 1010)))
+		for k in 8:
+			var x := 130.0 + k * 237.0
+			Vis.draw_robot(sheet, {"color": k % 4, "model": k}, Vis.idle_pose(0.5), Transform2D(0.0, Vector2(2.4, 2.4), 0.0, Vector2(x, 400)))
+			load("res://ui/kit.gd").text(sheet, Vector2(x - 110, 450), Data.MODEL_NAMES[k], 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 220, 6, Data.INK)
+			var po: Dictionary = Vis.victory_pose(tt[0] + k * 0.13, int(Data.model_meta(k)["danca"]))
+			Vis.draw_robot(sheet, {"color": (k + 1) % 4, "model": k}, po, Transform2D(0.0, Vector2(1.6, 1.6), 0.0, Vector2(x, 760)))
+			var p2: Dictionary = Vis.idle_pose(0.5)
+			p2["expr"] = ["esforco", "susto", "eliminado", "vitoria"][k % 4]
+			Vis.draw_robot(sheet, {"color": (k + 2) % 4, "model": k}, p2, Transform2D(0.0, Vector2(1.6, 1.6), 0.0, Vector2(x, 1010)))
 	)
 	layer.add_child(sheet)
-	for f in 3:
+	for f in 2:
 		tt[0] = 0.21 * f
 		sheet.queue_redraw()
 		await frames(3)
-		await snap(dir, "skins_%d" % f)
+		await snap(dir, "robos_%d" % f)
 
 # ---------------------------------------------------------------- animação (quadros para GIF)
 var _frame_no := 0
@@ -2161,11 +2148,6 @@ func menus_frames(dir: String) -> void:
 	main.state = S.ARENAS
 	await frames(10)
 	await snap(dir, "m4b_arenas")
-	main.garagem.open()
-	main.garagem.slot = 2
-	main.garagem.row = 6
-	await frames(20)
-	await snap(dir, "m4d_garagem")
 	main.state = S.JOIN
 	main.mode = "demolicao"
 	main.demo.cfg["rounds_to_win"] = 5
@@ -2173,7 +2155,7 @@ func menus_frames(dir: String) -> void:
 	await tap("v1", "jump")
 	await tap("v1", "down")
 	for k in 6:
-		await tap("v0", "down")   # P1 com um robô da Garagem
+		await tap("v0", "down")   # P1 com outro modelo de robô
 	main.add_bot()
 	await frames(20)
 	await snap(dir, "m5_entrada")

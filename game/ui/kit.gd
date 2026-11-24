@@ -1,7 +1,7 @@
 extends RefCounted
 ## Kit visual da interface (estilo cartoon chapado): cartões gordinhos com contorno grosso e sombra dura,
 ## títulos com contorno, estrelas desenhadas, explosão de raios atrás do vencedor. Fonte Fredoka.
-## Funções estáticas: todas as telas (menus, entrada, HUD, placar, vitória, Garagem) usam este kit.
+## Funções estáticas: todas as telas (menus, entrada, HUD, placar, vitória) usam este kit.
 
 const INK := Color("#2a1a2e")         # contorno e sombra de tudo
 const CREAM := Color("#fff6e4")       # fundo dos cartões

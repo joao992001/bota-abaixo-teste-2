@@ -14,16 +14,14 @@ const Bots := preload("res://modes/bots.gd")
 const Menus := preload("res://ui/menus.gd")
 const Eventos := preload("res://modes/eventos.gd")
 const Oficina := preload("res://ui/oficina.gd")
-const Garagem := preload("res://ui/garagem.gd")
 const T := 64
 
-enum S { JOIN, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS, AJUSTES, EVENTOS, CONTROLES, INTRO, CONFIGPAD, GARAGEM }
+enum S { JOIN, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS, AJUSTES, EVENTOS, CONTROLES, INTRO, CONFIGPAD }
 var state := S.INTRO   # abre com a intro animada (os testes pulam direto para a entrada)
 var paused := false
-const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.AJUSTES, S.EVENTOS, S.CONTROLES, S.INTRO, S.CONFIGPAD, S.GARAGEM]
+const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.AJUSTES, S.EVENTOS, S.CONTROLES, S.INTRO, S.CONFIGPAD]
 var sandbox := false          # OFICINA: ambiente de testes (respawn infinito, rodada sem fim)
 var oficina: Node = null
-var garagem
 var perf_acc := {}             # tempo gasto por parte (medição --perf)
 var lost_pads: Array = []      # jogadores cujo controle desconectou no meio da partida (índices)
 var timer := 0.0
@@ -109,13 +107,11 @@ func _ready() -> void:
 	add_child(menus)
 	oficina = Oficina.new()
 	oficina.setup(self)
-	garagem = Garagem.new()
-	garagem.setup(self)
 	add_child(oficina)
 	PlayerInput.pad_changed.connect(_on_pad_changed)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens") or a.begins_with("--oficina") or a.begins_with("--parede") or a.begins_with("--intro") or a.begins_with("--skins") or a.begins_with("--maquete") or a.begins_with("--espiar"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens") or a.begins_with("--oficina") or a.begins_with("--parede") or a.begins_with("--intro") or a.begins_with("--maquete") or a.begins_with("--robos") or a.begins_with("--espiar"):
 			state = S.JOIN   # testes e capturas começam direto na entrada de jogadores
 			var scr: GDScript = load("res://tests/driver.gd")
 			if scr == null or not scr.can_instantiate():
@@ -167,8 +163,7 @@ func _sandbox_join() -> void:
 ## Robô novo no meio da rodada (Oficina): aparece pelo guindaste.
 func _spawn_robot_for(i: int) -> void:
 	var r: CharacterBody2D = Robot.new()
-	r.setup(i, players[i]["color"], self, players[i]["acc"], players[i]["model"])
-	r.vis.skin = players[i].get("skin", {})
+	r.setup(i, players[i]["color"], self, players[i]["model"])
 	r.position = level.spawns.get(1, Vector2(960, 300))
 	robots_root.add_child(r)
 	robots.append(r)
@@ -466,10 +461,6 @@ func _join_update() -> void:
 			cycle_robot(i, -1)
 		if PlayerInput.pressed(i, "down"):
 			cycle_robot(i, 1)
-		if PlayerInput.pressed(i, "hammer"):
-			players[i]["acc"] = posmod(players[i]["acc"] + 1, Data.ACCS.size())
-			if not players[i].get("skin", {}).is_empty():
-				players[i]["skin"]["chapeu"] = players[i]["acc"]
 		if PlayerInput.pressed(i, "item") and not PlayerInput.held(i, "back") and not players[i].get("bot", false):
 			# ITEM: adiciona bot; com a mesa cheia, tira os bots
 			if players.size() < 4:
@@ -489,24 +480,14 @@ func add_player(dev: String) -> void:
 	var col := 0
 	while col in used:
 		col += 1
-	players.append({"dev": dev, "color": col, "acc": 0, "model": players.size() % Data.MODELS.size(), "score": 0,
+	players.append({"dev": dev, "color": col, "model": players.size() % Data.MODELS.size(), "score": 0,
 		"stats": {"derrubadas": 0, "caixotes": 0, "quedas": 0}})
 	Audio.voice("voz_oi", players[-1]["model"])
 	PlayerInput.slots.append(dev)
 
-## ▲▼ na entrada: os 4 robôs de fábrica (na cor do jogador) e depois os robôs da Garagem.
+## ▲▼ na entrada: passa pelos 8 modelos de robô (sempre na cor do jogador).
 func cycle_robot(i: int, d: int) -> void:
-	var n: int = Data.MODELS.size() + garagem.robots.size()
-	var k := posmod(int(players[i].get("robo", players[i]["model"])) + d, n)
-	players[i]["robo"] = k
-	if k < Data.MODELS.size():
-		players[i]["model"] = k
-		players[i]["skin"] = {}
-	else:
-		var sk: Dictionary = garagem.robots[k - Data.MODELS.size()].duplicate()
-		players[i]["skin"] = sk
-		players[i]["model"] = sk["model"]
-		players[i]["acc"] = sk["chapeu"]
+	players[i]["model"] = posmod(int(players[i]["model"]) + d, Data.MODELS.size())
 	Audio.voice("voz_oi", players[i]["model"])
 
 func _cycle_color(i: int, d: int) -> void:
@@ -591,8 +572,7 @@ func start_run_at(spots: Array) -> void:
 	finish_order = []
 	for i in players.size():
 		var r: CharacterBody2D = Robot.new()
-		r.setup(i, players[i]["color"], self, players[i]["acc"], players[i]["model"])
-		r.vis.skin = players[i].get("skin", {})
+		r.setup(i, players[i]["color"], self, players[i]["model"])
 		r.position = level.spawns.get(int(spots[i]) if i < spots.size() else i + 1, level.spawns[1])
 		robots_root.add_child(r)
 		robots.append(r)
@@ -673,21 +653,6 @@ func add_bot() -> void:
 	players[-1]["bot"] = true
 	players[-1]["level"] = bot_level
 	players[-1]["model"] = rng.randi() % Data.MODELS.size()
-	players[-1]["skin"] = random_skin(players[-1]["model"])
-	players[-1]["acc"] = players[-1]["skin"]["chapeu"]
-
-## Robô sorteado para os bots (cor, padrão, chapéu, rosto e ferramenta aleatórios).
-func random_skin(model: int) -> Dictionary:
-	var sk := Data.default_skin(0, model)
-	sk["cor"] = rng.randi() % Data.PALETA.size()
-	sk["cor2"] = rng.randi() % Data.PALETA.size()
-	sk["padrao"] = rng.randi() % Data.PADROES.size()
-	sk["chapeu"] = rng.randi() % Data.ACCS.size()
-	sk["rosto"] = rng.randi() % Data.ROSTOS.size() if rng.randf() < 0.5 else 0
-	sk["ferramenta"] = rng.randi() % Data.FERRAMENTAS.size()
-	sk["danca"] = rng.randi() % Data.DANCAS.size()
-	sk["nome"] = garagem.NOMES[rng.randi() % garagem.NOMES.size()]
-	return sk
 
 func remove_last_bot() -> void:
 	for i in range(players.size() - 1, -1, -1):

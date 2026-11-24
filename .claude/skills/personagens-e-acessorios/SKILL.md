@@ -1,25 +1,32 @@
 ---
 name: personagens-e-acessorios
-description: "Robôs de Bota-Abaixo em cartoon vetorial: proporções, corpo na cor do jogador, olhos e expressões, marreta, 8 acessórios, partes para animação cut-out e variações das 4 cores. Use ao criar ou ajustar robôs, expressões ou acessórios."
+description: "Robôs de Bota-Abaixo em papel e giz: os 8 modelos (só aparência), corpo na cor do jogador, rostos e expressões, marreta, partes para a animação por código. Use ao criar ou ajustar robôs ou expressões."
 ---
 
-# Personagens e acessórios
+# Personagens (8 modelos de robô)
 
-## Robô base
-- ~80 px de altura no jogo (desenhe em 4× para ter detalhe: 320 px).
-- Cabeça/corpo único em formato de feijão (≈ 60% da altura), olhos ovais brancos grandes com pupilas pretas e brilho, boca ou visor expressivo, braços curtos, pés redondos, marreta grande (cabo de madeira, cabeça de aço).
-- Corpo inteiro na cor do jogador; sombra de 1 tom mais escura do mesmo matiz; contorno 6 px escuro (quase preto azulado).
-- Símbolo do jogador no peito (● ▲ ■ ◆).
-- Proporção e carisma inspirados nos personagens da ref. 1 e da ref. 4, sem copiar nenhum.
+Não há personalização (Garagem, chapéus, padrões e ferramentas foram removidos em 2026-11-23). Cada jogador escolhe **um dos 8 modelos**
+na entrada (▲▼); o corpo sai na **cor do jogador**. O modelo é **só aparência**: hitbox 48×72 e todos os números de jogo são iguais.
 
-## Partes para cut-out (SVGs separados, com pivô anotado)
-corpo · olho_esq/olho_dir · pupilas · boca (5 expressões) · braço_esq/braço_dir · pé_esq/pé_dir · marreta · ponto_da_cabeça (para o acessório).
+| Modelo | Silhueta | Jeito |
+|---|---|---|
+| Lata | cilindro médio | boca com língua |
+| TV | cabeça de tela | rosto verde na tela |
+| Baixinho | cabeça redonda grande, corpo curto | boca em "o", voz fina |
+| Pescoção | cabeça numa mola | sorriso de lado, voz grave |
+| Brutamontes | tronco largo em trapézio, cabeça pequena, braços grossos, mãos grandes | dentes cerrados, voz bem grave |
+| Varapau | muito alto e fino, membros finos | cabeça pequena lá no alto |
+| Barril | barril gordo com cintas, pernas curtas | torneirinha do lado |
+| Bolha | cúpula de vidro sobre base em trapézio, núcleo que brilha | voz aguda |
+
+## Onde mexer
+- Arte: `art/src/robos/robos.py` (tabela `MODELS` + `body_svg`/`face_svg`/`antenna_svg`). Rodar `python3 art/src/robos/robos.py && cp art/out/game/robo/* game/assets/robo/`.
+- A tabela vira `art/out/game/robo/modelos.json`, lido pela Godot: quadris, ombros, mãos, `top` (setinha P1), `limb_w` (grossura dos membros),
+  `hand_s` (tamanho da luva), `hat` (onde o capacete do Rei da Obra assenta), `voz` (tom) e `danca` (comemoração).
+- Montagem/animação: `game/player/robot_visual.gd` (braços e pernas desenhados por código). Tela das partes 128×128, pés em (64,120).
 
 ## Expressões
-normal · esforço (pulo) · susto (queda/perto de perigo) · vitória · eliminado (olhos em X).
-
-## Acessórios (8)
-capacete de obra · boné virado · gorro com pompom · chapéu de cowboy · coroa de papel · óculos de solda · bigode · cone de trânsito. Exagerados e engraçados, como na ref. 4; mesmo contorno; não cobrem os olhos (exceto os óculos, que mostram os olhos atrás).
+normal · piscar · esforço · susto · vitória · eliminado (olhos em X).
 
 ## Checagem
-Os 4 robôs lado a lado sobre o fundo de cada mapa: dá para distinguir em 1 s? Silhueta legível só em preto? Comparação com a ref. 1 e a ref. 4 feita?
+`godot --path game -- --robos=DIR` gera a prancha dos 8 (parado, comemoração, rostos). Os 8 lado a lado: dá para distinguir pela silhueta em 1 s?

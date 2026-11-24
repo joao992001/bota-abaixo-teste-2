@@ -4,7 +4,7 @@ Plataforma competitivo, **multiplayer local 2–4**, Godot 4. Party game de rob�
 
 ## Prioridades (nesta ordem)
 1. **Jogável cedo** — a rodada completa roda no Marco 1, mesmo com formas simples.
-2. **Visual muito próximo das referências** — personagens, acessórios e cenário são a vitrine do jogo. Compare sempre lado a lado com `docs/referencias/`.
+2. **Visual muito próximo das referências** — personagens e cenário são a vitrine do jogo. Compare sempre lado a lado com `docs/referencias/`.
 3. **Controle responsivo** — nunca sacrifique resposta do controle por animação.
 4. **Caos legível** — cada jogador entende em 1 s o que é perigoso para ele.
 
@@ -52,7 +52,7 @@ tools/       sfxforge.py + scripts criados quando necessários
 | Mapas | `mapas` | sessão principal |
 | Projeto Godot, importar arte, animação cut-out | `godot` | sessão principal |
 | Direção de arte e comparação com referências | `estilo-visual` | artistas e revisor |
-| Robôs, expressões, acessórios | `personagens-e-acessorios` | artista-personagens |
+| Robôs (8 modelos), expressões | `personagens-e-acessorios` | artista-personagens |
 | Blocos, fundos, peças, efeitos | `cenarios-e-pecas` | artista-cenarios |
 | Sons e música | `audio` | sessão principal |
 | Testar com pessoas | `playtest` | sessão principal |

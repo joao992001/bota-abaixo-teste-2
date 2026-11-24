@@ -29,9 +29,7 @@ func _draw() -> void:
 func _draw_robo() -> void:
 	if look.is_empty() or Data.robot_meta.is_empty():
 		return
-	var sk: Dictionary = look.get("skin", {})
-	var mname: String = Data.MODELS[sk.get("model", look["model"]) if not sk.is_empty() else look["model"]]
-	var g: Dictionary = Data.robot_meta["modelos"][mname]
+	var g: Dictionary = Data.model_meta(look["model"])
 	var ey: Array = g["eyes"]
 	var ec := (Vector2(float(ey[0][0]), float(ey[0][1])) + Vector2(float(ey[1][0]), float(ey[1][1]))) / 2.0 - RobotVis.ORIGIN
 	var s := radius / 21.0

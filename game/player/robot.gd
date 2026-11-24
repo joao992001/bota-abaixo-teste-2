@@ -61,7 +61,7 @@ var last_attacker := -1       # quem causou (jogador), -1 = cenário      # depo
 var wall_dust := 0.0
 var vis: Node2D
 
-func setup(p: int, col_idx: int, m: Node, acc := 0, model := 0) -> void:
+func setup(p: int, col_idx: int, m: Node, model := 0) -> void:
 	pid = p
 	color_idx = col_idx
 	main = m
@@ -83,7 +83,7 @@ func setup(p: int, col_idx: int, m: Node, acc := 0, model := 0) -> void:
 	floor_snap_length = 6.0
 	floor_block_on_wall = false   # a Godot marcava a parede como "chão" e o robô descia grudado nela
 	vis = Vis.new()
-	vis.setup(col_idx, acc, model)
+	vis.setup(col_idx, model)
 	add_child(vis)
 
 func rect() -> Rect2:

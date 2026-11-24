@@ -18,9 +18,9 @@ Party game de briga e plataforma, **2–4 jogadores locais** (teclado e controle
   martelão, ímã, botas de mola, bota-foguete (automáticos). Ferramentas aparecem na mão ao usar.
 - **9 eventos** configuráveis; Amassômetro (dano % aumenta o empurrão); aderência limitada na parede/borda com medidor.
 - **Temas de arena:** Canteiro, Fábrica, Porto e Cidade à noite (blocos, tábuas e fundo animado por tema; `tema:` no .lvl).
-- **Garagem (personalização):** 8 robôs salvos em `user://garagem.cfg` — modelo, cor livre (16), cor 2, padrão (5),
-  chapéu (16), rosto (6), ferramenta (6), comemoração (4). Na entrada, ▲▼ passa pelos 4 robôs de fábrica e pelos da Garagem.
-  A cor do jogador só identifica (setinha "P1" acima da cabeça, placar). Bots sorteiam um robô. Prancha: `-- --skins=DIR`.
+- **Robôs: 8 modelos só de aparência** (Lata, TV, Baixinho, Pescoção, Brutamontes, Varapau, Barril, Bolha), na cor do jogador; ▲▼ na entrada.
+  Garagem, chapéus, padrões, itens de rosto e ferramentas foram removidos (2026-11-23). Prancha: `-- --robos=DIR`.
+  A cor do jogador só identifica (setinha "P1" acima da cabeça, placar). Bots sorteiam um robô.
 - **Interface (estilo cartoon, escolhido entre 3 propostas):** kit em `game/ui/kit.gd` (cartões com contorno grosso e
   sombra dura, títulos contornados, estrelas desenhadas). Cartões dos jogadores EMBAIXO na partida (retrato redondo
   `ui/retrato.gd`, estrelas, % grande, item no selo; ficam translúcidos quando um robô passa por trás). Placar em ranking,

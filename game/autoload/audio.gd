@@ -3,7 +3,6 @@ extends Node
 ## Sons gerados por tools/sfxforge.py a partir de audio/sfx/*.json e audio/music/*.json (índice em assets/audio/sons.json).
 ## Volumes 0..10 (OPÇÕES), salvos em user://opcoes.cfg junto com as outras opções.
 
-const VOICE_PITCH := {"lata": 1.0, "tv": 1.18, "baixinho": 1.4, "pescocao": 0.78}
 var sfx_vol := 8
 var music_vol := 6
 var _index := {}
@@ -80,9 +79,9 @@ func play(sfx: String, pitch := 1.0, vol := 0.0) -> void:
 	if rec_log != null:
 		rec_log.append({"t": rec_time, "path": path, "pitch": p.pitch_scale, "db": p.volume_db})
 
-## Voz do robô: o tom depende do modelo (Baixinho fininho, Pescoção grave).
+## Voz do robô: o tom depende do modelo (Baixinho fininho, Brutamontes grave): campo "voz" de modelos.json.
 func voice(sfx: String, model: int) -> void:
-	play(sfx, VOICE_PITCH.get(Data.MODELS[clampi(model, 0, 3)], 1.0))
+	play(sfx, float(Data.model_meta(model).get("voz", 1.0)))
 
 ## Música em loop; troca com transição suave. "" para silenciar.
 func music(name: String, loop := true) -> void:

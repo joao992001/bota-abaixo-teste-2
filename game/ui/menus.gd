@@ -5,7 +5,7 @@ extends Node
 const Kit := preload("res://ui/kit.gd")
 const RobotVis := preload("res://player/robot_visual.gd")
 
-const MENU_ITEMS := ["JOGAR", "GARAGEM", "OFICINA", "COMO JOGAR", "OPÇÕES", "SAIR"]
+const MENU_ITEMS := ["JOGAR", "OFICINA", "COMO JOGAR", "OPÇÕES", "SAIR"]
 const PAUSE_ITEMS := ["CONTINUAR", "REINICIAR PARTIDA", "MENU PRINCIPAL"]
 const STAR_GOALS := [3, 5, 7]
 
@@ -65,11 +65,10 @@ func update(dt: float) -> void:
 			if confirm():
 				match sel:
 					0: main.state = S.MODES
-					1: main.garagem.open()
-					2: main.oficina.start(_who_confirmed())
-					3: main.state = S.HOWTO
-					4: main.state = S.OPTIONS
-					5: main.get_tree().quit()
+					1: main.oficina.start(_who_confirmed())
+					2: main.state = S.HOWTO
+					3: main.state = S.OPTIONS
+					4: main.get_tree().quit()
 		S.MODES:
 			var modes: Array = main.demo.cfg["modos"]
 			mode_sel = posmod(mode_sel + move_h(), modes.size())
@@ -86,8 +85,6 @@ func update(dt: float) -> void:
 					Audio.play("menu_negado")
 			elif pressed("back"):
 				main.state = S.MENU
-		S.GARAGEM:
-			main.garagem.update(dt)
 		S.HOWTO:
 			if confirm() or pressed("back"):
 				main.state = S.MENU
@@ -207,7 +204,6 @@ func draw(ci: CanvasItem) -> void:
 		S.CONTROLES: _draw_pads(ci)
 		S.INTRO: _draw_intro(ci)
 		S.CONFIGPAD: _draw_config(ci)
-		S.GARAGEM: main.garagem.draw(ci)
 	if main.paused:
 		if main.sandbox and main.oficina.open:
 			main.oficina.draw(ci)
@@ -256,8 +252,8 @@ func _mode_art(ci: CanvasItem, id: String, c: Vector2, xf: Transform2D) -> void:
 		"derruba":
 			for k in 3:
 				ci.draw_texture_rect(Data.tex("cenario/caixote_%d" % k), Rect2(c + Vector2(-96 + k * 64, 20), Vector2(64, 64)), false)
-			RobotVis.draw_robot(ci, {"color": 0, "model": 0, "acc": 0}, RobotVis.victory_pose(t), xf * Transform2D(0.0, Vector2(1.2, 1.2), 0.0, c + Vector2(-30, 20)))
-			RobotVis.draw_robot(ci, {"color": 2, "model": 2, "acc": 0}, RobotVis.idle_pose(t), xf * Transform2D(-0.6 + sin(t * 3.0) * 0.2, Vector2(1.0, 1.0), 0.0, c + Vector2(90, -40)))
+			RobotVis.draw_robot(ci, {"color": 0, "model": 0}, RobotVis.victory_pose(t), xf * Transform2D(0.0, Vector2(1.2, 1.2), 0.0, c + Vector2(-30, 20)))
+			RobotVis.draw_robot(ci, {"color": 2, "model": 2}, RobotVis.idle_pose(t), xf * Transform2D(-0.6 + sin(t * 3.0) * 0.2, Vector2(1.0, 1.0), 0.0, c + Vector2(90, -40)))
 			ci.draw_set_transform_matrix(xf)
 			for k in 3:
 				_heart(ci, c + Vector2(-50 + k * 50, -120), 14.0)
@@ -404,14 +400,14 @@ func _draw_howto(ci: CanvasItem) -> void:
 		var ic: String = tips[i][0]
 		var c := Vector2(r.position.x + 120, y + 30)
 		match ic:
-			"robo": RobotVis.draw_robot(ci, {"color": 0, "model": 0, "acc": 0}, RobotVis.victory_pose(t), Transform2D(0.0, Vector2(1.1, 1.1), 0.0, c + Vector2(0, 50)))
+			"robo": RobotVis.draw_robot(ci, {"color": 0, "model": 0}, RobotVis.victory_pose(t), Transform2D(0.0, Vector2(1.1, 1.1), 0.0, c + Vector2(0, 50)))
 			"marreta":
 				ci.draw_set_transform(c, 0.6 + sin(t * 5.0) * 0.5, Vector2(0.45, 0.45))
 				ci.draw_texture(Data.tex("robo/marreta"), Vector2(-128, -224))
 			"pisao":
 				var po: Dictionary = RobotVis.idle_pose(t)
 				po["expr"] = "susto"
-				RobotVis.draw_robot(ci, {"color": 2, "model": 2, "acc": 0}, po, Transform2D(0.0, Vector2(0.9, 0.9), 0.0, c + Vector2(0, 60)))
+				RobotVis.draw_robot(ci, {"color": 2, "model": 2}, po, Transform2D(0.0, Vector2(0.9, 0.9), 0.0, c + Vector2(0, 60)))
 			"itens":
 				var names := ["dinamite", "martelao", "capacete", "mola"]
 				for k in 4:
@@ -846,7 +842,7 @@ func _draw_scene(ci: CanvasItem, enter: Array) -> void:
 		else:
 			base.x = lerpf(SCENE_X[i] + 900.0, SCENE_X[i], e)
 		var face: float = SCENE_FACE[i]
-		var look := {"color": i, "model": i, "acc": 0, "hammer": true, "fx": {}}
+		var look := {"color": i, "model": i, "hammer": true, "fx": {}}
 		var pose: Dictionary = RobotVis.idle_pose(now + i)
 		var off := Vector2.ZERO
 		if e < 1.0:

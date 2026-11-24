@@ -93,7 +93,7 @@ Mapas em texto (`levels/*.lvl`, formato em `levels/README.md`); geradores em `to
 Chuva de Caixas · Gravidade Baixa · Ventania · Apagão · Chão Ensaboado · Hora do Martelão · Chuva de Dinamite · Tremores · Vigas Desgovernadas. Cada um avisa 2 s antes.
 
 ## 8. Personagens e personalização
-Robôs de ~80 px com expressões, chapéus e ferramentas. **Garagem:** 8 robôs salvos — modelo, cor livre, cor secundária, padrão, chapéu, item de rosto, ferramenta (aparência da marreta) e comemoração. Cada jogador escolhe o seu na entrada.
+**8 modelos de robô** (Lata, TV, Baixinho, Pescoção, Brutamontes, Varapau, Barril, Bolha), cada um com silhueta, voz e comemoração próprias. São **só aparência**: a hitbox e os números de jogo são iguais. Cada jogador escolhe o modelo na entrada (▲▼); o corpo sai na cor do jogador. Sem personalização (Garagem removida em 2026-11-23).
 
 ## 9. Interface e áudio
 Estilo cartoon (cartões com contorno grosso). HUD discreto no topo: retrato, nome, estrelas de rodadas, vidas/% e pílula do modo (segundos de rei, pavio). Menus: Modo → Arena → Ajustes → Entrada; Opções, Controles, Garagem, Oficina (fase de testes).
