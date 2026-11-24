@@ -19,14 +19,18 @@ const SPELL_TOOLS := {"S01": ["s01_canhao", Vector2(52, 26), Vector2(30, 34), Ve
 	"S06": ["s06_ima", Vector2(44, 31), Vector2(14, 40), Vector2(106, 40)],
 	"S02": ["s02_laser", Vector2(58, 29), Vector2(19, 50), Vector2(122, 31)],
 	"S05": ["s05_rebiteira", Vector2(56, 28), Vector2(40, 52), Vector2(127, 25)],
-	"S20": ["s20_canhao", Vector2(60, 30), Vector2(24, 54), Vector2(124, 32)]}
-const WEAPONS := ["S01", "S02", "S03", "S05", "S06", "S20"]
+	"S20": ["s20_canhao", Vector2(60, 30), Vector2(24, 54), Vector2(124, 32)],
+	"S07": ["s07_ventilador", Vector2(60, 30), Vector2(29, 52), Vector2(126, 32)],
+	"S08": ["s08_gancho", Vector2(58, 29), Vector2(33, 50), Vector2(126, 30)],
+	"S21": ["s21_laco", Vector2(56, 28), Vector2(29, 50), Vector2(124, 32)]}
+const WEAPONS := ["S01", "S02", "S03", "S05", "S06", "S20", "S07", "S08", "S21"]
 const CARRY_HF := Vector2(17, -31)      # mão da frente carregando a arma (baixa, pronta)
 const AIM_HF := Vector2(21, -38)        # mão da frente mirando
 ## Spells sem arma: objeto nas costas (andaime dobrado, marreta sísmica, fornalha desmontada) ou na mão de trás.
 const BACK_PROPS := {"S04": ["s04_marreta", Vector2(30, 60), 2.55], "S10": ["s10_trouxa", Vector2(34, 23), 1.35],
-	"S13": ["s13_costas", Vector2(40, 35), 0.0]}
-const HAND_PROPS := {"S18": ["s18_disco", Vector2(24, 24)]}
+	"S13": ["s13_costas", Vector2(40, 35), 0.0], "S25": ["s25_tabua", Vector2(46, 15), 1.45]}
+const HAND_PROPS := {"S18": ["s18_disco", Vector2(24, 24)], "S12": ["s12_carga", Vector2(30, 22)],
+	"S27": ["s27_controle", Vector2(18, 24)], "S28": ["s28_macarico", Vector2(30, 15)]}
 # aparência
 var color_idx := 0
 var model := 0
@@ -594,7 +598,7 @@ func current_pose() -> Dictionary:
 	var sid: String = sf.get("spell", "")
 	var prep: float = sf.get("prep", -1.0)
 	var fire: float = sf.get("fire", -1.0)
-	var aiming: bool = prep >= 0.0 or (fire >= 0.0 and fire < 0.32) or (sf.get("channel", false) and sid in ["S06", "S11"])
+	var aiming: bool = prep >= 0.0 or (fire >= 0.0 and fire < 0.32) or (sf.get("channel", false) and sid in ["S06", "S11", "S07"])
 	if sid != "" and aiming and not sf.get("armor", false):
 		var kick := clampf(1.0 - fire / 0.22, 0.0, 1.0) if fire >= 0.0 and prep < 0.0 else 0.0
 		var buzz := Vector2(sin(t * 80.0), cos(t * 71.0)) * 1.4 * maxf(prep, 0.0)   # treme carregando
@@ -634,7 +638,15 @@ func current_pose() -> Dictionary:
 				lean = lerpf(lean, -0.1 + 0.25 * u, 0.5)
 			"S17":   # aponta para onde a estaca vai cair
 				p["hf_abs"] = Vector2(26, -30)
-			"S03", "S06", "S02", "S05", "S20":
+			"S07" when sf.get("channel", false):   # segurando o ventilador: corpo inclinado contra o próprio vento
+				var hb2 := Vector2(sin(t * 70.0), cos(t * 61.0)) * 1.2
+				p["hf_abs"] = AIM_HF + hb2
+				p["hb_abs"] = AIM_HF + Vector2(-8, 3) + hb2
+				p["tool"] = "S07"
+				lean = lerpf(lean, 0.16, 0.4)
+			"S12", "S27", "S28", "S25":   # aperta o botão / instala apontando
+				p["hf_abs"] = Vector2(24, -34 + 4.0 * kick)
+			"S03", "S06", "S02", "S05", "S20", "S08", "S21":
 				p["hf_abs"] = Vector2(21 - 9.0 * kick, -38 - 4.0 * kick) + buzz
 				p["hb_abs"] = Vector2(13 - 7.0 * kick, -35 - 3.0 * kick) + buzz * 0.6
 				p["tool"] = sid
@@ -1062,7 +1074,7 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 		ci.draw_arc(eye + drop, 10.4, 0, TAU, 20, Color("#c9a03a"), 3.0, true)
 		ci.draw_arc(eye + drop + Vector2(-1.5, -1.5), 6.4, PI * 1.1, PI * 1.6, 6, Color(1, 1, 1, 0.6), 1.6, true)
 	if HAND_PROPS.has(sid0) and not armor and not sf.get("fading", false) and float(sf.get("fire", -1.0)) < 0.0:
-		var hp: Array = HAND_PROPS[sid0]
+		var hp: Array = HAND_PROPS[sid0] if not (sid0 == "S12" and sf.get("placed", false)) else ["s27_controle", Vector2(18, 24)]
 		ci.draw_set_transform_matrix(base * Transform2D(-0.4, hb + Vector2(-2, -4)))
 		ci.draw_texture_rect(Data.tex("spells/" + hp[0]), Rect2(-hp[1] / 2.0, hp[1]), false)
 	if sid0 == "S17" and not sf.get("fading", false):   # controle remoto do bate-estaca, luz piscando

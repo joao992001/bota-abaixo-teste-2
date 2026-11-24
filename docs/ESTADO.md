@@ -77,7 +77,22 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
    sísmica com arte própria e tremor rico (placas do piso levantando, rachadura incandescente, pedras, anel de choque);
    rebiteira e rebite novos; bate-estaca com mira segurando (como o teleporte); disco e marreta-bumerangue com mais alcance.
    **Etapa 2 APROVADA pelo usuário (2026-11-24, "todos muito bom").**
-   PRÓXIMO: Etapa 3 controle+engenharia (S07,S08,S21,S12,S25,S27,S28) → Etapa 4 transformações (S14,S15,S16,S31,S33,S34) →
+   **PADRÃO DAS SPELLS (lições das revisões — seguir desde a 1ª versão, para evitar retrabalho):**
+   1. Arma = arte própria (SVG em `art/src/efeitos/spells.py`) em `RobotVis.SPELL_TOOLS` + `WEAPONS`: carregada com as 2 mãos,
+      marreta nas costas; ao golpear, arma nas costas. Sem arma: objeto em `BACK_PROPS`/`HAND_PROPS`. Nunca ícone balançando.
+   2. Tiro/feixe sai de `muzzle(r, id)` (bico real da arte). Projétil grande, com contorno escuro e rastro: fácil de ler.
+   3. Segurar = barra de energia sobre a cabeça (`channel` + `energy` + `_draw_bars`) + `bot_hold` para bots.
+   4. Precisa de lugar? Segurar mira com o direcional (prévia/holograma), soltar executa; toque = padrão à frente.
+   5. Animação: preparo visível (carga, tremor, vapor) → ação com mola (passa do ponto) → impacto (achata, estrela,
+      faíscas, tremor de tela) → recuperação. Efeito no chão rico (placas, pedras, poeira, anel), nunca só uma linha.
+   6. Alcances generosos (o usuário pediu mais alcance em disco e bumerangue). Sem ajuda a quem perde.
+   7. Conferir 1 prancha de quadros-chave antes de entregar; GIF + .exe no fim.
+   **Etapa 3 FEITA (2026-11-24), aguardando aprovação:** S07 Turboventilador (segurar, cone de vento com rajadas, empurra
+   sem tirar o controle), S08 Gancho (▲ 45°; parede puxa o dono, rival leva tranco), S21 Laço Elástico (liga os dois; esticado
+   puxa ambos), S12 Carga Remota (instala, arma em 0,5 s, 2º toque detona; danifica o Canteiro), S25 Ponte Dobrável (painéis
+   desdobrando sobre o vão, prévia), S27 Controle Remoto (derruba a viga pendurada mais perto; acerta quem está embaixo),
+   S28 Escudo de Solda (placa soldada que bloqueia tiros, 3 acertos). Empurrões suaves via `ext_v` → `push_vx`.
+   PRÓXIMO: Etapa 4 controle+engenharia (S07,S08,S21,S12,S25,S27,S28) → Etapa 4 transformações (S14,S15,S16,S31,S33,S34) →
    Etapa 5 eventos (G05,G06,G11,G12,G13,G02,G03,G04,G14,G09) + matriz de conflitos. REJEITADOS (nunca reintroduzir):
    S09,S22,S23,S24,S26,S29,S30,S32; G07,G08,G15,G16,G17,G18. Testar só no Derruba/Canteiro.
 **Economia (pedido do usuário):** uma sessão nova por mudança grande; sessão principal faz tudo (agentes só para lotes grandes

@@ -330,6 +330,105 @@ def s17_estaca():
     return b
 
 
+# ---------------------------------------------------------------- Etapa 3 (controle e engenharia)
+def s07_ventilador():
+    """Turboventilador: motor com tanque, grade redonda na frente com hélice — 128x64 (cabo x≈30, bico x≈124)."""
+    b = [shape("s7t", rect_d(6, 18, 40, 28, 8), "#3fa7c9", 101, (4, 16, 48, 48), k=1.8, dark="#2a7a96", light="#7fd3ea")]
+    b.append(f'<rect x="22" y="44" width="14" height="18" rx="3" fill="{INK}"/>')
+    b.append(shape("s7m", rect_d(42, 22, 30, 20, 4), METAL_D, 102, (40, 20, 74, 44), k=1.6))
+    b.append(shape("s7g", ellipse_d(98, 32, 26, 30), METAL, 103, (70, 0, 126, 64), k=1.8, dark=METAL_D, light=METAL_L))
+    b.append('<ellipse cx="100" cy="32" rx="20" ry="24" fill="#2e3642"/>')
+    for k in range(3):
+        a = k * 2.094
+        b.append(f'<path d="M100,32 L{100 + 18 * math.cos(a):.1f},{32 + 22 * math.sin(a):.1f} L{100 + 18 * math.cos(a + 0.7):.1f},{32 + 22 * math.sin(a + 0.7):.1f} Z" fill="#c9d1d8"/>')
+    b.append('<circle cx="100" cy="32" r="5" fill="#f2c84b"/>')
+    for x in (82, 92, 108, 118):
+        b.append(f'<path d="M{x},6 V58" stroke="{METAL_L}" stroke-width="2" opacity="0.7"/>')
+    return b
+
+
+def s08_gancho():
+    """Gancho de Arrasto: lançador com carretel de corrente e garra de 3 dentes na ponta — 128x64."""
+    b = [shape("s8b", rect_d(10, 18, 70, 24, 6), "#8a63d2", 104, (8, 16, 82, 44), k=1.8, dark="#5e3fa0", light="#b59cff")]
+    b.append(f'<rect x="26" y="40" width="14" height="20" rx="3" fill="{INK}"/>')
+    b.append(shape("s8c", ellipse_d(38, 22, 13, 13), METAL_D, 105, (24, 8, 52, 36), k=1.4))
+    b.append('<circle cx="38" cy="22" r="5" fill="#c9d1d8"/>')
+    b.append(shape("s8p", rect_d(78, 24, 20, 12, 2), METAL, 106, (76, 22, 100, 38), k=1.4, dark=METAL_D))
+    b.append(f'<path d="M98,30 L116,30 M108,30 L124,16 M108,30 L124,44 M110,30 L126,30" stroke="{INK}" stroke-width="7" stroke-linecap="round"/>')
+    b.append(f'<path d="M98,30 L116,30 M108,30 L124,16 M108,30 L124,44 M110,30 L126,30" stroke="{METAL_L}" stroke-width="3.5" stroke-linecap="round"/>')
+    return b
+
+
+def s21_laco():
+    """Laço Elástico: lançador em forquilha com elástico vermelho enrolado e bola de ventosa — 128x64."""
+    b = [shape("s21h", rect_d(10, 22, 54, 20, 6), "#d9a05e", 107, (8, 20, 66, 44), k=1.6, dark="#8f5a2c")]
+    b.append(f'<rect x="22" y="40" width="14" height="20" rx="3" fill="{INK}"/>')
+    b.append(f'<path d="M62,32 L96,10 M62,32 L96,54" stroke="{INK}" stroke-width="10" stroke-linecap="round"/>')
+    b.append(f'<path d="M62,32 L96,10 M62,32 L96,54" stroke="#8a63d2" stroke-width="6" stroke-linecap="round"/>')
+    b.append('<path d="M96,10 C108,18 108,46 96,54" stroke="#e8503a" stroke-width="5" fill="none"/>')
+    b.append(shape("s21v", ellipse_d(112, 32, 12, 12), "#e8503a", 108, (100, 20, 124, 44), k=1.4, dark="#a8301f", light="#ff8a6a"))
+    for x in (20, 30, 40, 50):
+        b.append(f'<path d="M{x},24 V40" stroke="#e8503a" stroke-width="3"/>')
+    return b
+
+
+def s12_carga():
+    """Carga de Demolição: maleta de dinamite com ímã embaixo, luz e antena — 64x48."""
+    b = [shape("s12", rect_d(4, 12, 56, 30, 5), "#4a5566", 109, (2, 10, 62, 44), k=1.8, dark="#2e3642", light="#71829a")]
+    for i, x in enumerate((10, 22, 34)):
+        b.append(shape(f"s12d{i}", rect_d(x, 16, 10, 22, 3), "#d14d35", 110 + i, (x - 2, 14, x + 12, 40), k=1.2))
+    b.append('<rect x="8" y="24" width="38" height="6" fill="#2a1a2e"/>')
+    b.append('<rect x="48" y="16" width="8" height="10" rx="2" fill="#2a1a2e"/><circle cx="52" cy="21" r="3" fill="#ff5a3a"/>')
+    b.append(f'<path d="M52,16 L56,2" stroke="{INK}" stroke-width="2.5"/><circle cx="56" cy="2" r="2.4" fill="#f2c84b"/>')
+    b.append(f'<rect x="10" y="40" width="44" height="6" rx="2" fill="{METAL_D}"/>')
+    return b
+
+
+def s27_controle():
+    """Controle Remoto Industrial: caixa amarela, 2 botões grandes, antena com bolinha — 48x64."""
+    b = [shape("s27", rect_d(6, 18, 36, 44, 6), "#f2c84b", 112, (4, 16, 44, 64), k=1.8, dark="#c49a2a")]
+    b.append('<rect x="12" y="24" width="24" height="12" rx="2" fill="#2e3d4f"/><path d="M15,30 L33,30" stroke="#5cc45c" stroke-width="2"/>')
+    b.append('<circle cx="17" cy="46" r="5" fill="#d94a3a"/><circle cx="31" cy="46" r="5" fill="#3c9a46"/>')
+    b.append(f'<path d="M34,18 L40,2" stroke="{INK}" stroke-width="3"/><circle cx="40" cy="2" r="3" fill="#d94a3a"/>')
+    for x in (12, 24, 36):
+        b.append(f'<rect x="{x - 2}" y="54" width="4" height="4" fill="{INK}"/>')
+    return b
+
+
+def s28_placa():
+    """Escudo de Solda: chapa de aço com cordões de solda brilhantes e rebites — 48x96."""
+    b = [shape("s28", rect_d(2, 2, 44, 92, 4), METAL, 113, (0, 0, 48, 96), k=2.0, dark=METAL_D, light=METAL_L)]
+    b.append('<path d="M2,32 H46 M2,64 H46" stroke="#f2a23a" stroke-width="3"/>')
+    b.append('<path d="M2,32 H46 M2,64 H46" stroke="#fff1b8" stroke-width="1.2"/>')
+    for (x, y) in ((8, 8), (40, 8), (8, 88), (40, 88), (8, 48), (40, 48)):
+        b.append(f'<circle cx="{x}" cy="{y}" r="2.6" fill="{METAL_L}"/>')
+    b.append('<rect x="2" y="2" width="44" height="6" fill="#f2c84b"/>')
+    for x in range(4, 44, 8):
+        b.append(f'<path d="M{x},8 L{x + 4},2 L{x + 6},2 L{x + 2},8 Z" fill="{INK}"/>')
+    return b
+
+
+def s28_macarico():
+    """Maçarico de solda (o robô segura antes de usar) — 64x32."""
+    b = [shape("s28m", rect_d(4, 10, 34, 12, 4), "#3e4752", 114, (2, 8, 40, 24), k=1.4)]
+    b.append(shape("s28b", rect_d(36, 12, 18, 8, 2), METAL, 115, (34, 10, 56, 22), k=1.2, dark=METAL_D))
+    b.append('<path d="M54,16 L62,16" stroke="#3fc1c9" stroke-width="4" stroke-linecap="round"/>')
+    b.append('<path d="M8,22 C4,30 14,32 18,28" stroke="#d94a3a" stroke-width="3" fill="none"/>')
+    return b
+
+
+def s25_tabua():
+    """Ponte Dobrável: segmento de ponte (64x20) com guarda-corpo zebrado e dobradiça."""
+    b = [shape("s25", rect_d(1, 6, 62, 12, 2), "#71829a", 116, (0, 4, 64, 20), k=1.6, dark="#4a5566", light="#9aa4ae")]
+    for x in range(4, 62, 8):
+        b.append(f'<rect x="{x}" y="9" width="4" height="6" fill="#4a5566"/>')
+    b.append('<rect x="0" y="0" width="64" height="5" fill="#f2c84b"/>')
+    for x in range(2, 62, 10):
+        b.append(f'<path d="M{x},5 L{x + 5},0 L{x + 8},0 L{x + 3},5 Z" fill="{INK}"/>')
+    b.append(f'<circle cx="2" cy="12" r="3" fill="{METAL_L}"/><circle cx="62" cy="12" r="3" fill="{METAL_L}"/>')
+    return b
+
+
 PIECES = {  # nome: (largura, altura, função)
     "s01_canhao": (128, 64, s01_canhao), "s01_luva": (64, 50, s01_luva),
     "s03_canhao": (128, 64, s03_canhao),
@@ -338,6 +437,9 @@ PIECES = {  # nome: (largura, altura, função)
     "g10_capsula": (128, 160, g10_capsula),
     "s02_laser": (128, 64, s02_laser), "s05_rebiteira": (128, 64, s05_rebiteira), "s18_disco": (64, 64, s18_disco),
     "s20_canhao": (128, 64, s20_canhao), "s17_estaca": (64, 192, s17_estaca), "s04_marreta": (64, 128, s04_marreta),
+    "s07_ventilador": (128, 64, s07_ventilador), "s08_gancho": (128, 64, s08_gancho), "s21_laco": (128, 64, s21_laco),
+    "s12_carga": (64, 48, s12_carga), "s27_controle": (48, 64, s27_controle), "s28_placa": (48, 96, s28_placa),
+    "s28_macarico": (64, 32, s28_macarico), "s25_tabua": (64, 20, s25_tabua),
 }
 
 

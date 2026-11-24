@@ -396,6 +396,27 @@
         "kx_por": 4.0,
         "ky": 480,
         "ky_por": 2.0
+      },
+      "spell_gancho": {
+        "dano": 5,
+        "kx": 480,
+        "kx_por": 2.0,
+        "ky": 220,
+        "ky_por": 1.0
+      },
+      "spell_carga": {
+        "dano": 14,
+        "kx": 600,
+        "kx_por": 5.0,
+        "ky": 700,
+        "ky_por": 3.0
+      },
+      "spell_viga": {
+        "dano": 12,
+        "kx": 200,
+        "kx_por": 2.0,
+        "ky": 300,
+        "ky_por": 1.0
       }
     },
     "aderencia": {
@@ -563,7 +584,14 @@
           "S17",
           "S18",
           "S19",
-          "S20"
+          "S20",
+          "S07",
+          "S08",
+          "S21",
+          "S12",
+          "S25",
+          "S27",
+          "S28"
         ]
       },
       "S01": {
@@ -687,6 +715,65 @@
         "subida": 320,
         "quique": 0.72,
         "vida_s": 1.8
+      },
+      "S07": {
+        "familia": "controle",
+        "raridade": "comum",
+        "cargas": 1,
+        "energia_s": 2.6,
+        "alcance_tiles": 6,
+        "forca": 2800,
+        "vel_max": 720,
+        "dono_vel_mult": 0.45,
+        "recuo": 160
+      },
+      "S08": {
+        "familia": "controle",
+        "raridade": "comum",
+        "cargas": 2,
+        "vel": 1500,
+        "alcance_tiles": 8,
+        "puxa_vel": 1250,
+        "puxa_max_s": 0.7
+      },
+      "S21": {
+        "familia": "controle",
+        "raridade": "incomum",
+        "cargas": 1,
+        "vel": 1200,
+        "alcance_tiles": 7,
+        "duracao_s": 3.5,
+        "folga_tiles": 2.5,
+        "forca": 2600
+      },
+      "S12": {
+        "familia": "engenharia",
+        "raridade": "comum",
+        "cargas": 1,
+        "arma_s": 0.5,
+        "auto_s": 12.0,
+        "raio_tiles": 2.4,
+        "dano_estrutura": 2
+      },
+      "S25": {
+        "familia": "engenharia",
+        "raridade": "comum",
+        "cargas": 2,
+        "comprimento_tiles": 4,
+        "duracao_s": 6.0
+      },
+      "S27": {
+        "familia": "engenharia",
+        "raridade": "incomum",
+        "cargas": 2,
+        "alcance_tiles": 10
+      },
+      "S28": {
+        "familia": "engenharia",
+        "raridade": "comum",
+        "cargas": 2,
+        "duracao_s": 7.0,
+        "resistencia": 3
       }
     },
     "eventos": {

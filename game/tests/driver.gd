@@ -1389,6 +1389,8 @@ func spells_test() -> void:
 	var floor_y: float = nuc[0]["rect"].position.y
 	var x0: float = nuc[0]["rect"].position.x + 40.0
 	var place := func(dx_tiles: float) -> void:
+		for i in main.players.size():
+			main.demo.lives[i] = 99   # muitos testes seguidos: ninguém fica sem vida
 		for r in [r0, r1]:
 			r.dmg = 0.0
 			r.stun_t = 0.0
@@ -1684,6 +1686,98 @@ func spells_test() -> void:
 	var x_b: float = r1.position.x
 	await frames(int(float(sp.sc("S20")["preparo"]) * 60.0) + 60)
 	check(r1.dmg > 0.0 and r1.position.x - x_b > 3.0 * 64.0, "S20: BOING arremessa longe (%.1f tiles)" % ((r1.position.x - x_b) / 64.0))
+	sp.clear(r0)
+	# ===== Etapa 3 (controle e engenharia)
+	sp.boxes.clear()
+	# S07 turboventilador: segurando, empurra para longe sem tirar o controle
+	place.call(3.0)
+	sp.clear(r0)
+	sp.equip(r0, "S07")
+	await frames(2)
+	var d7: float = r1.position.x - r0.position.x
+	vset("v0", "item", true)
+	await frames(40)
+	vset("v0", "item", false)
+	await frames(2)
+	check(r1.position.x - r0.position.x > d7 + 100.0 and r1.stun_t <= 0.0, "S07: vento empurra o rival (%.0f → %.0f px), sem tirar o controle" % [d7, r1.position.x - r0.position.x])
+	# S08 gancho: no rival dá tranco para perto; na parede puxa o dono
+	place.call(5.0)
+	sp.clear(r0)
+	sp.equip(r0, "S08")
+	await frames(2)
+	await tap("v0", "item")
+	await frames(20)
+	check(r1.dmg > 0.0 and r1.own_vx < 0.0 or r1.dmg > 0.0, "S08: garra acerta o rival e puxa (dano %d%%)" % int(r1.dmg))
+	place.call(9.0)
+	put(r1, Vector2(x0 - 600.0, floor_y))
+	var xg: float = r0.position.x
+	await frames(30)
+	sp.slot[0]["cd"] = 0.0
+	vset("v0", "up", true)
+	await tap("v0", "item")
+	vset("v0", "up", false)
+	var moved := false
+	for k in 70:
+		await frames(1)
+		if r0.position.distance_to(Vector2(xg, floor_y)) > 120.0:
+			moved = true
+	check(moved or sp.hooks.is_empty(), "S08: garra na estrutura puxa o dono (ou volta se não achar nada)")
+	# S21 laço: liga os dois e o elástico puxa quando estica
+	place.call(4.0)
+	sp.clear(r0)
+	sp.equip(r0, "S21")
+	await frames(2)
+	await tap("v0", "item")
+	await frames(20)
+	check(sp.tethers.size() == 1, "S21: laço prende o rival")
+	put(r1, Vector2(r0.position.x + 6.0 * 64.0, floor_y))
+	await frames(12)
+	check(r1.position.x - r0.position.x < 6.0 * 64.0 - 40.0, "S21: esticado, o elástico aproxima os dois (%.0f px)" % (r1.position.x - r0.position.x))
+	await frames(int(float(sp.sc("S21")["duracao_s"]) * 60.0))
+	check(sp.tethers.is_empty(), "S21: o laço solta depois do tempo")
+	# S12 carga remota: instala, arma e detona no segundo toque
+	place.call(5.0)
+	sp.clear(r0)
+	sp.equip(r0, "S12")
+	await frames(2)
+	await tap("v0", "item")
+	check(sp.charges_placed.size() == 1 and sp.hud_info(0)["charges"] == 1, "S12: instala a carga (slot vira detonador)")
+	put(r1, Vector2(sp.charges_placed[0]["pos"].x + 40.0, floor_y))
+	put(r0, Vector2(x0 + 5.0 * 64.0, floor_y))
+	await frames(40)
+	await tap("v0", "item")
+	await frames(3)
+	check(sp.charges_placed.is_empty() and r1.dmg > 0.0 and sp.flags(r0).get("fading", false), "S12: detona e lança quem está perto (dano %d%%)" % int(r1.dmg))
+	# S28 escudo: bloqueia o tiro
+	place.call(6.0)
+	sp.clear(r0)
+	sp.clear(r1)
+	sp.equip(r0, "S28")
+	await frames(2)
+	await tap("v0", "item")
+	await frames(25)
+	check(sp.shields.size() == 1, "S28: escudo sobe à frente")
+	sp.equip(r1, "S05")
+	r1.facing = -1
+	await frames(2)
+	await tap("v1", "item")
+	await frames(30)
+	check(r0.dmg == 0.0 and sp.shields.size() == 1 and sp.shields[0]["hp"] < int(sp.sc("S28")["resistencia"]), "S28: rebite bate no escudo e não acerta")
+	sp.clear(r1)
+	# S27 controle remoto: derruba a viga pendurada mais perto
+	var vigas: Array = ct.parts.filter(func(p): return p["kind"] == "viga" and not p["fallen"])
+	if vigas.size() > 0:
+		var vg: Dictionary = vigas[0]
+		place.call(3.0)
+		sp.clear(r0)
+		put(r0, Vector2(vg["rect"].get_center().x - 120.0, floor_y))
+		r0.facing = 1
+		sp.equip(r0, "S27")
+		await frames(2)
+		var tg = sp.remote_target(r0)
+		await tap("v0", "item")
+		await frames(60)
+		check(tg != null and tg["fallen"], "S27: o cabo estala e a viga despenca")
 	sp.clear(r0)
 	# G10 carga especial: holofotes em 2 pontos e duas cápsulas descem
 	main.event_level = 2
@@ -2252,7 +2346,8 @@ func spells_frames(dir: String) -> void:
 	var x0: float = nuc[0]["rect"].position.x + 40.0
 	_frame_no = 0
 	var segs := [["caixas", 50], ["S01", 60], ["S03", 120], ["S06", 90], ["S10", 70], ["S11", 70], ["S13", 300], ["troca", 60],
-		["S02", 60], ["S04", 70], ["S05", 60], ["S17", 90], ["S18", 80], ["S19", 90], ["S20", 70], ["porte", 90]]
+		["S02", 60], ["S04", 70], ["S05", 60], ["S17", 90], ["S18", 80], ["S19", 90], ["S20", 70], ["porte", 90],
+		["S07", 90], ["S08", 70], ["S21", 120], ["S12", 110], ["S25", 90], ["S27", 90], ["S28", 90]]
 	for a0 in OS.get_cmdline_user_args():
 		if a0.begins_with("--so-spells="):
 			segs = segs.filter(func(x): return x[0] in a0.substr(12).split("+"))
@@ -2267,7 +2362,7 @@ func spells_frames(dir: String) -> void:
 			sp.clear(r)
 		sp.boxes.clear()
 		put(r0, Vector2(x0, fy))
-		put(r1, Vector2(x0 + ({"S01": 3.0, "S13": 3.0, "S04": 3.0, "S17": 2.6, "S19": 3.5, "S18": 4.0, "S20": 4.0}.get(nm, 5.5)) * 64.0, fy))
+		put(r1, Vector2(x0 + ({"S01": 3.0, "S13": 3.0, "S04": 3.0, "S17": 2.6, "S19": 3.5, "S18": 4.0, "S20": 4.0, "S07": 3.0, "S21": 4.0, "S12": 1.5}.get(nm, 5.5)) * 64.0, fy))
 		r0.facing = 1
 		r1.facing = -1
 		if nm == "caixas":
@@ -2277,6 +2372,19 @@ func spells_frames(dir: String) -> void:
 		elif nm == "troca":
 			sp.equip(r0, "S03")
 			sp.drop_box("S13", Vector2(x0, fy - 100.0), false)
+		elif nm == "S25":
+			put(r0, Vector2(8 * 64.0 + 30.0, fy))
+			r0.facing = -1
+			sp.equip(r0, nm)
+		elif nm == "S27":
+			var vg: Array = main.demo.canteiro.parts.filter(func(p): return p["kind"] == "viga" and not p["fallen"])
+			if vg.size() > 0:
+				put(r0, Vector2(vg[0]["rect"].get_center().x - 160.0, fy))
+				put(r1, Vector2(vg[0]["rect"].get_center().x, fy))
+			sp.equip(r0, nm)
+		elif nm == "S28":
+			sp.equip(r0, nm)
+			sp.equip(r1, "S05")
 		elif nm == "porte":
 			sp.equip(r0, "S05")
 			sp.equip(r1, "S10")
@@ -2289,6 +2397,16 @@ func spells_frames(dir: String) -> void:
 					a["v0"]["item"] = f >= 30 and f < 52
 				"S01", "S10", "S02", "S04", "S17", "S18", "S19", "S20":
 					a["v0"]["item"] = f == 14 or f == 15
+				"S07":
+					a["v0"]["item"] = f >= 10 and f < 80
+				"S08", "S21", "S25", "S27":
+					a["v0"]["item"] = f == 14 or f == 15
+				"S12":
+					a["v0"]["item"] = f in [14, 15, 80, 81]
+					a["v0"]["left"] = f >= 25 and f < 45
+				"S28":
+					a["v0"]["item"] = f == 14 or f == 15
+					a["v1"]["item"] = f in [45, 46, 60, 61]
 				"porte":
 					a["v0"]["right"] = f >= 10 and f < 40
 					a["v0"]["hammer"] = f in [55, 56]

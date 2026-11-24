@@ -296,6 +296,22 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 		"S18": it_ok = absf(dy) < 30.0 and target.is_on_floor() and absf(dx) > 90.0 and absf(dx) < 420.0
 		"S19": it_ok = absf(dy) < 70.0 and absf(dx) > 90.0 and absf(dx) < 300.0
 		"S20": it_ok = absf(dy) < 60.0 and absf(dx) > 100.0 and absf(dx) < 420.0
+		"S07": it_ok = absf(dy) < 60.0 and absf(dx) < 320.0
+		"S08": it_ok = absf(dy) < 40.0 and absf(dx) > 120.0 and absf(dx) < 480.0
+		"S21": it_ok = absf(dy) < 50.0 and absf(dx) > 100.0 and absf(dx) < 400.0
+		"S28": it_ok = absf(dy) < 40.0 and absf(dx) > 200.0 and absf(dx) < 700.0 and main.rng.randf() < 0.05
+		"S27":
+			var tg = sp.remote_target(r)
+			it_ok = tg != null and target.position.x > tg["rect"].position.x and target.position.x < tg["rect"].end.x and target.position.y > tg["rect"].position.y
+		"S12":
+			var mine_c = null
+			for ch in sp.charges_placed:
+				if ch["owner"] == r.pid:
+					mine_c = ch
+			if mine_c == null:
+				it_ok = absf(dx) < 100.0 and absf(dy) < 40.0
+			else:
+				it_ok = mine_c["armed"] and target.rect().get_center().distance_to(mine_c["pos"]) < 130.0 and r.position.distance_to(mine_c["pos"]) > 150.0
 	if it_ok and main.rng.randf() < float(lv["use_items"]):
 		if signi(int(dx)) != r.facing:
 			cmd["dir"] = signi(int(dx))

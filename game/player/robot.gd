@@ -443,7 +443,8 @@ func _climb_update(dt: float) -> void:
 ## Retorna false se não pegou (invulnerável ou capacete).
 const ROBOT_HITS := ["rapido", "pesado", "martelao", "marretada", "combo", "combo_final", "cima", "baixo", "corrida",
 	"spell_punho", "spell_gelo", "spell_fogo", "spell_explosao",
-	"spell_laser", "spell_sismo", "spell_rebite", "spell_estaca", "spell_disco", "spell_bumerangue", "spell_mola"]
+	"spell_laser", "spell_sismo", "spell_rebite", "spell_estaca", "spell_disco", "spell_bumerangue", "spell_mola",
+	"spell_gancho", "spell_carga", "spell_viga"]
 
 func take_hit(dir: int, kind: String, by := -1) -> bool:
 	if invuln > 0.0 or god:
@@ -456,7 +457,7 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 		"spell_punho": "punho pneumático", "spell_gelo": "canhão criogênico", "spell_fogo": "armadura fornalha",
 		"spell_explosao": "fornalha explodiu", "spell_laser": "laser de corte", "spell_sismo": "marreta sísmica",
 		"spell_rebite": "rebite", "spell_estaca": "bate-estaca", "spell_disco": "disco de corte", "spell_bumerangue": "marreta-bumerangue",
-		"spell_mola": "canhão de molas"}.get(kind, kind)
+		"spell_mola": "canhão de molas", "spell_gancho": "gancho", "spell_carga": "carga de demolição", "spell_viga": "viga do guindaste"}.get(kind, kind)
 	last_attacker = by
 	hanging = false
 	var am: Dictionary = main.demo.cfg["amassometro"]
