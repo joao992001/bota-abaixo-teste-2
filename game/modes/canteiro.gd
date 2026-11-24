@@ -15,7 +15,7 @@ const LAYOUTS := {
 		"terreos": [[0, 17, 8, 5], [32, 17, 8, 5]],
 		# etapa 2 (Fundação, embaixo): plataformas sobre estaca [col, linha, largura], grelha do poço [col, linha, largura],
 		# pedaços da laje que caem na virada [col, largura] (sobre o piso da linha "piso")
-		"fundacao": {"estacas": [[8, 35, 5], [27, 35, 5], [18, 32, 4]], "grelha": [13, 41, 4], "piso": 41, "entulhos": [[8, 3], [27, 3]]}},
+		"fundacao": {"estacas": [[8, 35, 5], [27, 35, 5], [18, 32, 4]], "grelhas": [[13, 41, 4], [23, 41, 4]], "piso": 41, "entulhos": [[8, 3], [27, 3]]}},
 	"lab": {"seg_x": [3, 7, 11, 15, 19, 23], "nucleo": [2, 3], "laje_y": 12, "andaimes": [[5, 9, 4], [20, 9, 4]],
 		"vigas": [[11, 6, 6], [24, 4, 4]], "pilares": [12, 17]},
 }
@@ -73,9 +73,9 @@ func setup(m: Node, lv) -> void:
 	for i in fund.get("estacas", []).size():
 		var e: Array = fund["estacas"][i]
 		_add("estaca", Rect2(e[0] * T, e[1] * T, e[2] * T, 22), int(cfg["estaca_hp"]), false, true, i, 2)
-	if fund.has("grelha"):
-		var gr: Array = fund["grelha"]
-		_add("grelha", Rect2(gr[0] * T, gr[1] * T, gr[2] * T, 40), int(cfg["grelha_hp"]), false, false, 0, 2)
+	for i in fund.get("grelhas", []).size():   # poços de drenagem (abrem KO); o do meio fica sob o bate-estaca
+		var gr: Array = fund["grelhas"][i]
+		_add("grelha", Rect2(gr[0] * T, gr[1] * T, gr[2] * T, 40), int(cfg["grelha_hp"]), false, false, i, 2)
 	lv.extra_solid = func(c: Vector2i) -> bool: return owner_of.has(c)
 	lv.grab_solid = func(c: Vector2i) -> bool: return owner_of.has(c) and owner_of[c]["kind"] == "laje"
 

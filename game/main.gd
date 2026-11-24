@@ -66,6 +66,7 @@ var hud: Hud
 var rng := RandomNumberGenerator.new()
 var cam_zoom := 1.0
 var cam_center := Vector2(960, 512)
+var cam_vel := Vector2.ZERO        # câmera adaptativa: mola suave (sem tremer nem pular de um lado para o outro)
 const CAM_MAX := 1.9
 
 func _ready() -> void:
@@ -402,7 +403,11 @@ func _update_camera(dt: float) -> void:
 			for r in robots:
 				if r.alive and not r.finished and r.visible:
 					var p: Vector2 = r.rect().get_center()
-					for q in [p, p + r.velocity * float(demo.cfg.get("camera", {}).get("antecipa_s", 0.3))]:
+					var qs := [p]
+					# antecipa SÓ quem foi arremessado forte (andar, pular e esquivar não mexem a câmera à frente)
+					if r.stun_t > 0.0 and r.velocity.length() > 900.0:
+						qs.append(p + (r.velocity * float(demo.cfg.get("camera", {}).get("antecipa_s", 0.3))).limit_length(320.0))
+					for q in qs:
 						cb = Rect2(q, Vector2.ZERO) if cf else cb.expand(q)
 						cf = false
 			if not cf:
@@ -420,8 +425,21 @@ func _update_camera(dt: float) -> void:
 		tz = cam_lock[0]
 		tc = cam_lock[1]
 		k = 1.0
-	cam_zoom = lerpf(cam_zoom, tz, k)
-	cam_center = cam_center.lerp(tc, k)
+	if k < 1.0 and state == S.RUN and String(level.prop("camera", "")) == "adaptativa":
+		# mola criticamente amortecida + zona morta: a câmera desliza, não treme; afasta rápido, aproxima devagar
+		var dz := tc - cam_center
+		if absf(dz.x) < 40.0:
+			dz.x = 0.0
+		if absf(dz.y) < 30.0:
+			dz.y = 0.0
+		var w := 2.6
+		cam_vel += (dz * w * w - cam_vel * 2.0 * w) * dt
+		cam_center += cam_vel * dt
+		cam_zoom = lerpf(cam_zoom, tz, 1.0 - exp(-dt * (2.2 if tz < cam_zoom else 0.7)))
+	else:
+		cam_vel = Vector2.ZERO
+		cam_zoom = lerpf(cam_zoom, tz, k)
+		cam_center = cam_center.lerp(tc, k)
 	var hw := 960.0 / cam_zoom
 	var hh := 512.0 / cam_zoom
 	cam_center.x = clampf(cam_center.x, ao.x + hw, ao.x + lw - hw) if lw > hw * 2.0 else ao.x + lw / 2.0
@@ -429,7 +447,10 @@ func _update_camera(dt: float) -> void:
 	camera.zoom = Vector2(cam_zoom, cam_zoom)
 	camera.position = cam_center + Vector2(0, Data.ARENA_Y) - Vector2(0, 28) / cam_zoom
 	shake_amt = move_toward(shake_amt, 0.0, dt * 40.0)
-	camera.offset = Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)) * shake_amt
+	# tremor: menor e mais "pesado" (seno em vez de ruído a cada quadro, que parecia travamento)
+	var sa := minf(shake_amt, 10.0) * 0.7
+	var tt := Time.get_ticks_msec() / 1000.0
+	camera.offset = Vector2(sin(tt * 61.0), cos(tt * 53.0)) * sa
 	# fundo em paralaxe (camada própria, move menos que o mundo)
 	var zb := 1.0 + (cam_zoom - 1.0) * 0.4
 	var bc := Vector2(960, 540) + (cam_center - Vector2(960, 512)) * 0.5

@@ -45,8 +45,18 @@ def e1_grua():
     return fp.e1_grua(hook=False)
 
 
+def e1_longe():
+    """Céu + cidade numa camada só (menos camadas grandes = menos trabalho da placa de vídeo)."""
+    return e1_ceu() + e1_cidade()
+
+
+def e1_perto():
+    """Prédio + grua numa camada só."""
+    return e1_predio() + e1_grua()
+
+
 def e1_frente():
-    b = [f'<g transform="translate(-60,40) rotate(-12)" opacity="0.85"><rect x="0" y="0" width="560" height="22" fill="#3a3f4a"/>'
+    b = [f'<g transform="translate(-20,90) rotate(-12)" opacity="0.85"><rect x="0" y="0" width="560" height="22" fill="#3a3f4a"/>'
          f'<rect x="0" y="22" width="560" height="26" fill="#4a5060"/><rect x="0" y="48" width="560" height="22" fill="#3a3f4a"/>']
     for k in range(7):
         b.append(f'<circle cx="{40 + k * 76}" cy="35" r="6" fill="#6b7380"/>')
@@ -88,7 +98,7 @@ def e2_palco():
         for k in range(4):
             b.append(f'<path d="M{x0},{20 + k * 26} q{sgn * 30},10 {sgn * 50},-5" stroke="#b0562e" stroke-width="4" fill="none"/>')
     # paredes de contenção (3 tiles) com umidade, placa e musgo
-    WT = 8 * T   # topo das paredes (linha 34 do mapa): acima delas fica a abertura lateral (KO dos lados)
+    WT = 11 * T   # topo das paredes (linha 37 do mapa): acima delas fica a abertura lateral (KO dos lados)
     for (x0, w) in ((0, 3 * T), (W - 3 * T, 3 * T)):
         b.append(f'<rect x="{x0}" y="{2 * T}" width="{w}" height="{WT - 2 * T}" fill="#12161c"/>')   # vão escuro: terra lá fora
         b.append(R(x0, WT, w, H2 - WT, "#5d6b7d", 0, 3, dark="#454f5c"))
@@ -103,15 +113,16 @@ def e2_palco():
         b.append(f'<path d="M{x0 + 40},{FL - 50} q30,-30 60,0 q20,20 50,0" stroke="#4f7a52" stroke-width="10" fill="none" opacity="0.8"/>')
         for k in range(9):   # régua do nível da água
             b.append(f'<rect x="{x0 + (w - 40 if x0 == 0 else 14)}" y="{FL - 30 - k * 24}" width="26" height="4" fill="#9fe3f5"/>')
-    b.append(escada(3 * T + 6, 8 * T, FL))
-    b.append(escada(W - 3 * T - 32, 8 * T, FL))
+    b.append(escada(3 * T + 6, 11 * T, FL))
+    b.append(escada(W - 3 * T - 32, 11 * T, FL))
     # piso em 2 partes: nas cols 13–16 o POÇO de drenagem, coberto pela grelha (peça do jogo, quebra)
-    for (x0, x1) in ((3 * T, 13 * T), (17 * T, W - 3 * T)):
+    for (x0, x1) in ((3 * T, 13 * T), (17 * T, 23 * T), (27 * T, W - 3 * T)):
         b.append(R(x0, FL, x1 - x0, H2 - FL, "#7d8896", 0, 3, dark="#5d6878"))
         b.append(f'<rect x="{x0}" y="{FL}" width="{x1 - x0}" height="10" fill="#9aa4ae"/>')
-    b.append(f'<rect x="{13 * T}" y="{FL}" width="{4 * T}" height="{H2 - FL}" fill="#10141a"/>')
-    b.append(cd.zebra(13 * T - 8, FL + 2, 8, H2 - FL))
-    b.append(cd.zebra(17 * T, FL + 2, 8, H2 - FL))
+    for c0 in (13, 23):   # poços de drenagem (as grelhas são peças do jogo)
+        b.append(f'<rect x="{c0 * T}" y="{FL}" width="{4 * T}" height="{H2 - FL}" fill="#10141a"/>')
+        b.append(cd.zebra(c0 * T - 8, FL + 2, 8, H2 - FL))
+        b.append(cd.zebra((c0 + 4) * T, FL + 2, 8, H2 - FL))
     for k in range(int((W - 6 * T) // 180)):
         x = 3 * T + 40 + k * 180
         b.append(f'<path d="M{x},{FL + 10} V{H2}" stroke="#5d6878" stroke-width="3"/>')
@@ -151,7 +162,10 @@ SPRITES = {
     "grelha": (256, 40, lambda: R(0, 0, 256, 40, "#3a3f4a", 3, 1.6) + "".join(
         f'<rect x="{8 + k * 31}" y="4" width="14" height="32" rx="3" fill="#8d98a4"/>' for k in range(8))),
     "m_betoneira": (330, 170, lambda: f'<g transform="translate(70,160)">' + fp.betoneira(0, 0).split('<ellipse')[0] + '</g>'),
-    "m_esteira": (300, 70, lambda: fp.esteira(4, 64, 240)),
+    "m_esteira": (300, 70, lambda: R(4, 38, 240, 26, "#3e4752", 12, 1.8, dark="#252b33") + "".join(
+        f'<rect x="{10 + k * 28}" y="40" width="16" height="4" fill="#71829a"/>' for k in range(8)) + "".join(
+        f'<circle cx="{x}" cy="51" r="11" fill="#71829a"/><circle cx="{x}" cy="51" r="4" fill="#2a1a2e"/>' for x in (18, 230))
+        + R(254, 4, 30, 60, "#6b7783", 4, 1.4) + '<circle cx="269" cy="18" r="9" fill="#d94a3a"/>'),
     "m_tubo": (84, 84, lambda: E(42, 42, 38, 38, "#c4beb2", 2, dark="#9e9789") + '<circle cx="42" cy="42" r="22" fill="#7d776c"/><circle cx="42" cy="42" r="17" fill="#5a554d"/>'
                + '<path d="M42,6 V20" stroke="#9e9789" stroke-width="4"/>'),
     "m_serra": (76, 76, lambda: E(38, 38, 30, 30, "#c9d1d8", 1.6, dark="#8d98a4") + "".join(
@@ -173,8 +187,8 @@ SPRITES = {
 def main():
     os.makedirs(OUT, exist_ok=True)
     os.makedirs(SRC, exist_ok=True)
-    layers = {"e1_ceu": (W, H1, e1_ceu), "e1_cidade": (W, H1, e1_cidade), "e1_predio": (W, H1, e1_predio), "e1_grua": (W, H1, e1_grua),
-              "e1_frente": (W, H1, e1_frente), "e2_fundo": (W, H2, e2_fundo), "e2_palco": (W, H2, e2_palco)}
+    layers = {"e1_longe": (W, H1, e1_longe), "e1_perto": (W, H1, e1_perto), "e1_frente": (640, 200, e1_frente),
+              "e2_fundo": (W, H2, e2_fundo), "e2_palco": (W, H2, e2_palco)}
     for i, (name, (w, h, fn)) in enumerate(layers.items()):
         queue(wrap(w, h, fn(), 40 + i), f"{SRC}/{name}.svg", f"{OUT}/{name}.png", w, h, 1)
     for i, (name, (w, h, fn)) in enumerate(SPRITES.items()):

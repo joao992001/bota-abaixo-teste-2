@@ -26,7 +26,7 @@ func setup(m: Node) -> void:
 	key = String(m.level.prop("cena", "fase1"))
 	a1 = m.level.etapa_rect(1)
 	a2 = m.level.etapa_rect(2)
-	for n in ["e1_ceu", "e1_cidade", "e1_predio", "e1_grua", "e1_frente", "e2_fundo", "e2_palco", "nuvem", "nuvem_p", "balde",
+	for n in ["e1_longe", "e1_perto", "e1_frente", "e2_fundo", "e2_palco", "nuvem", "nuvem_p", "balde",
 			"carrinho_grua", "npc_tabua", "npc_carrinho", "npc", "npc_lanterna"]:
 		tex[n] = Data.tex("%s/%s" % [key, n])
 	_rng.seed = 77
@@ -116,36 +116,34 @@ func _draw() -> void:
 		_draw_e2()
 
 func _draw_e1() -> void:
-	_layer("e1_ceu", a1, 0.35, 0.06)
+	_layer("e1_longe", a1, 0.3, 0.06)
 	for c in clouds:
 		var p := _lp(a1, 0.3, 0.06, Vector2(c["x"] - 200.0, c["y"]))
 		var tx: Texture2D = tex["nuvem_p" if c["small"] else "nuvem"]
 		var sz := Vector2(tx.get_width(), tx.get_height()) / 2.0 * float(c["s"])
 		draw_texture_rect(tx, Rect2(p, sz), false)
-	_layer("e1_cidade", a1, 0.25, 0.05)
 	for b in birds:
-		var p := _lp(a1, 0.25, 0.05, Vector2(b["x"] - 100.0, b["y"]))
+		var p := _lp(a1, 0.3, 0.06, Vector2(b["x"] - 100.0, b["y"]))
 		var fl := sin(t * 9.0 + b["ph"]) * 6.0
 		draw_polyline(PackedVector2Array([p + Vector2(-10, 0), p + Vector2(-4, -fl), p, p + Vector2(4, -fl), p + Vector2(10, 0)]), Color("#5a7a86"), 3.0, true)
-	_layer("e1_predio", a1, 0.15, 0.04)
+	_layer("e1_perto", a1, 0.12, 0.04)
 	for sp in [Vector2(1560, 590), Vector2(1820, 830), Vector2(1480, 950)]:   # solda piscando (pulsos irregulares)
 		var on := fmod(t * 3.0 + sp.x * 0.01, 1.7) < 0.5
 		if on:
-			var p := _lp(a1, 0.15, 0.04, sp)
+			var p := _lp(a1, 0.12, 0.04, sp)
 			draw_circle(p, 22.0, Color(1.0, 0.96, 0.78, 0.45))
 			draw_circle(p, 6.0 + 2.0 * sin(t * 40.0), Color.WHITE)
 	for w in walkers:
 		var tx: Texture2D = tex[w["tex"]]
 		var hop: float = -sin(w["jump"] / 0.5 * PI) * 30.0 if w["jump"] > 0.0 else -absf(sin(t * 8.0 + w["x"])) * 3.0
-		var p := _lp(a1, 0.15, 0.04, Vector2(w["x"], w["y"] + hop))
+		var p := _lp(a1, 0.12, 0.04, Vector2(w["x"], w["y"] + hop))
 		var sz := Vector2(tx.get_width(), tx.get_height()) / 2.0 * float(w["s"])
 		draw_set_transform(p, 0.0, Vector2(-1.0 if w["v"] < 0.0 else 1.0, 1.0))
 		draw_texture_rect(tx, Rect2(Vector2(-sz.x * 0.4, -sz.y), sz), false)
 		draw_set_transform(Vector2.ZERO)
-	_layer("e1_grua", a1, 0.1, 0.03)
 	# carrinho correndo na lança + cabo + balde balançando
 	var tx_ := 900.0 + sin(t * 0.18) * 520.0
-	var pc := _lp(a1, 0.1, 0.03, Vector2(tx_, 172))
+	var pc := _lp(a1, 0.12, 0.04, Vector2(tx_, 172))
 	var cable := 220.0 + sin(t * 0.4) * 60.0
 	var sw := sin(t * 1.3) * 0.08
 	var pb := pc + Vector2(sin(sw), cos(sw)) * cable
@@ -197,9 +195,7 @@ func _draw_front() -> void:
 	if v.intersects(a1):
 		var tx: Texture2D = tex.get("e1_frente")
 		if tx != null:
-			var r := a1
-			r.position += _par(a1, -0.12)
-			front.draw_texture_rect(tx, r, false, Color(1, 1, 1, 0.9))
+			front.draw_texture_rect(tx, Rect2(a1.position + _par(a1, -0.12), Vector2(640, 200)), false, Color(1, 1, 1, 0.9))
 	if v.intersects(a2):
 		for k in 4:   # lâmpadas penduradas balançando (com brilho) e gotas
 			var x := a2.position.x + 380.0 + k * 600.0

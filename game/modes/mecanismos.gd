@@ -30,7 +30,7 @@ func _etapa() -> int:
 	return et.etapa if et != null and is_instance_valid(et) else 1
 
 func _on(inst: Dictionary) -> bool:
-	return inst["etapa"] == _etapa()
+	return inst["etapa"] == _etapa() and not inst["s"].get("gone", false)
 
 func _v(a) -> Vector2:
 	return Vector2(float(a[0]), float(a[1]))
@@ -72,6 +72,20 @@ func _prepara(inst: Dictionary) -> void:
 			s["h"] = 0.0
 		"vagonete":
 			s["x"] = -1.0
+
+## Virada: os mecanismos da etapa que desabou somem (corpos fora; caem como entulho).
+func desaba(etapa: int) -> void:
+	for inst in list:
+		if inst["etapa"] != etapa:
+			continue
+		var s: Dictionary = inst["s"]
+		for k in ["body", "plat"]:
+			if s.has(k) and is_instance_valid(s[k]):
+				s[k].queue_free()
+		s["gone"] = true
+		var p = inst["d"].get("pos", inst["d"].get("base", null))
+		if p != null:
+			main.dust(_v(p), 1.4)
 
 ## Robôs vivos que estão nesta etapa.
 func _robots() -> Array:
@@ -115,6 +129,9 @@ func _betoneira(inst: Dictionary, dt: float) -> void:
 		s["t"] = 0.0
 		s["fresh"] = float(d["fresco_s"])
 		Audio.play("lama", 0.8, -2.0)
+		if not s.get("told", false):
+			s["told"] = true
+			main.float_text(Vector2(float(d["faixa"][0] + d["faixa"][1]) / 2.0, float(d["chao"]) - 90), "CONCRETO FRESCO: GRUDA!", Color("#f2c84b"))
 		main.dust(Vector2(float(d["faixa"][0] + d["faixa"][1]) / 2.0, float(d["chao"])), 1.0)
 	s["fresh"] = maxf(float(s.get("fresh", 0.0)) - dt, 0.0)
 	if float(s["fresh"]) > 0.0:
@@ -262,9 +279,14 @@ func _bate_estaca(inst: Dictionary, dt: float) -> void:
 	if phase == "bate" and s.get("last", "") != "bate":
 		s["hit"] = {}
 	if phase != "bate" and s.get("last", "") == "bate":
-		main.shake(10.0)
+		main.shake(6.0)
 		Audio.play("pistao", 0.6, 0.0)
 		main.dust(Vector2(float(d["x"]), floor_y), 1.6)
+		var ct = main.demo.canteiro   # cada batida trinca a grelha do poço embaixo (abre sozinha depois de algumas)
+		if ct != null and is_instance_valid(ct):
+			for p in ct.parts:
+				if p["kind"] == "grelha" and not p["fallen"] and p["rect"].has_point(Vector2(float(d["x"]), p["rect"].get_center().y)):
+					ct.damage(p, 1, Vector2(float(d["x"]), floor_y))
 	s["last"] = phase
 	s["y"] = hy
 	s["phase"] = phase
@@ -426,8 +448,21 @@ func _draw() -> void:
 		match String(inst["tipo"]):
 			"betoneira":
 				var p := _v(d["pos"])
-				var spin := t * (6.0 if float(s["t"]) > float(d["ciclo_s"]) - float(d["aviso_s"]) else 2.0)
+				var aviso: bool = float(s["t"]) > float(d["ciclo_s"]) - float(d["aviso_s"])
+				var spin := t * (6.0 if aviso else 2.0)
 				draw_texture_rect(tex["m_betoneira"], Rect2(p + Vector2(-70, -160), Vector2(330, 170)), false)
+				# alavanca brilha quando alguém chega perto (dá para acionar a armadilha)
+				var lv := Rect2(float(d["alvo"][0]), float(d["alvo"][1]), float(d["alvo"][2]), float(d["alvo"][3]))
+				for r in _robots():
+					if r.position.distance_to(lv.get_center()) < 140.0:
+						draw_arc(lv.get_center(), 30.0 + 3.0 * sin(t * 8.0), 0, TAU, 20, Color(1, 0.9, 0.4, 0.8), 4.0, true)
+						break
+				var pour := float(s.get("fresh", 0.0)) > float(d["fresco_s"]) - 0.9
+				if pour:   # jato de concreto saindo da bica
+					var bx := p + Vector2(140, -66)
+					var fx := Vector2(float(d["faixa"][0] + d["faixa"][1]) / 2.0, float(d["chao"]) - 10)
+					draw_line(bx, fx, Color("#b9b2a6"), 18.0, true)
+					draw_line(bx, fx, Color("#d6d0c4"), 8.0, true)
 				for k in 3:   # listras do tambor correndo (tambor girando)
 					var u := fposmod(spin * 0.15 + k / 3.0, 1.0)
 					draw_line(p + Vector2(-40 + u * 90, -140 + u * 30), p + Vector2(-50 + u * 90, -60), Color(1, 0.82, 0.54, 0.8), 6.0, true)
@@ -436,8 +471,12 @@ func _draw() -> void:
 				var x1 := float(d["faixa"][1])
 				var ch := float(d["chao"])
 				if f > 0.0:
-					draw_rect(Rect2(x0, ch - 10, x1 - x0, 12), Color(0.72, 0.7, 0.66, minf(f, 1.0)))
-					draw_line(Vector2(x0 + 10, ch - 8), Vector2(x1 - 10, ch - 8), Color(1, 1, 1, 0.5 * minf(f, 1.0)), 3.0)
+					var al := minf(f, 1.0)
+					draw_rect(Rect2(x0, ch - 12, x1 - x0, 14), Color(0.72, 0.7, 0.66, al))
+					draw_line(Vector2(x0 + 10, ch - 9), Vector2(x1 - 10, ch - 9), Color(1, 1, 1, 0.5 * al), 3.0)
+					for k in 4:   # bolhas do concreto fresco
+						var bxx := x0 + 20.0 + fmod(k * 37.0 + t * 9.0, x1 - x0 - 40.0)
+						draw_circle(Vector2(bxx, ch - 12 - fmod(t * 6.0 + k, 1.0) * 4.0), 3.0, Color(0.9, 0.88, 0.84, al))
 				if float(s["t"]) > float(d["ciclo_s"]) - float(d["aviso_s"]) and fmod(t, 0.3) < 0.15:
 					draw_rect(Rect2(x0, ch - 4, x1 - x0, 6), Color("#f2c84b"))
 			"elevador":
@@ -457,11 +496,19 @@ func _draw() -> void:
 				draw_circle(Vector2(x + w / 2.0, y - 82), 9.0, Color("#f08a3d") if on and fmod(t, 0.4) < 0.25 else Color("#8a4a2a"))
 			"esteira":
 				var x0 := float(d["x"][0])
+				var x1 := float(d["x"][1])
 				var ch := float(d["chao"])
 				var dir := int(s.get("dir", int(d["dir"])))
-				draw_set_transform(Vector2(x0 + (float(d["x"][1]) - x0) / 2.0, ch - 30), 0.0, Vector2(-dir, 1))   # a arte aponta para a esquerda
-				draw_texture_rect(tex["m_esteira"], Rect2(-150, -36, 300, 70), false, Color(1.4, 1.4, 1.4) if s.get("blink", false) and fmod(t, 0.3) < 0.15 else Color.WHITE)
-				draw_set_transform(Vector2.ZERO)
+				# a esteira fica PARADA no lugar (antes ela era espelhada a cada inversão e parecia pular); só as setas andam
+				draw_texture_rect(tex["m_esteira"], Rect2(x0 - 8, ch - 66, 300, 70), false)
+				var blink: bool = s.get("blink", false) and fmod(t, 0.3) < 0.15
+				var sc := fposmod(t * float(d["vel"]) * 0.25 * dir, 40.0)
+				var x := x0 + sc
+				while x < x0 + 230.0:
+					var ax := x
+					var tip := Vector2(ax + dir * 8.0, ch - 17)
+					draw_colored_polygon(PackedVector2Array([tip, Vector2(ax - dir * 8.0, ch - 24), Vector2(ax - dir * 8.0, ch - 10)]), Color("#ffffff") if blink else Color("#f2c84b"))
+					x += 40.0
 			"tubos":
 				var p := _v(d["pos"])
 				var spots := [Vector2(0, 0), Vector2(78, 0), Vector2(156, 0), Vector2(39, -66), Vector2(117, -66), Vector2(78, -132)]

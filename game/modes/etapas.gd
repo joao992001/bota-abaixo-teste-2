@@ -61,10 +61,13 @@ func update(dt: float) -> void:
 				if not r.alive:
 					continue
 				r.invuln = maxf(r.invuln, 0.5)
-				# funil: quem está fora do buraco é puxado para dentro dele antes de chegar ao teto
-				if r.position.y < a2.position.y + 160.0:
+				# arco natural: a velocidade de lado calculada no desabamento leva cada um para dentro do buraco
+				if r.position.y < a2.position.y + 120.0:
+					var vx: float = r.get_meta("queda_vx", 0.0)
 					var tx := clampf(r.position.x, hole.x + 60.0, hole.y - 60.0)
-					r.push_vx = clampf((tx - r.position.x) * 5.0, -float(cfg["funil_vel"]), float(cfg["funil_vel"]))
+					if absf(tx - r.position.x) > 1.0 and r.position.y > a2.position.y - 220.0:
+						vx = clampf((tx - r.position.x) * 4.0, -float(cfg["funil_vel"]), float(cfg["funil_vel"]))   # correção final suave
+					r.push_vx = vx
 				if not (r.is_on_floor() and a2.has_point(r.position)):
 					landed = false
 			if (landed and st_t > 0.5) or st_t >= float(cfg["queda_max_s"]):
@@ -84,16 +87,32 @@ func _desaba() -> void:
 	main.shake(18.0)
 	Audio.play("terremoto", 1.0, 2.0)
 	Audio.play("explosao", 0.6, -2.0)
-	for r in main.robots:
-		if r.alive:
-			r.hanging = false
-			r.invuln = maxf(r.invuln, 1.0)
+	var a2: Rect2 = lv.etapa_rect(2)
+	var g: float = float(Data.ctrl["gravity"]) * float(cfg["gravidade_queda"])
+	var vivos: Array = main.robots.filter(func(r): return r.alive)
+	for i in vivos.size():
+		var r = vivos[i]
+		r.hanging = false
+		r.invuln = maxf(r.invuln, 1.0)
+		r.spell_lock = true   # sem controle durante a queda (cena)
+		# cada um cai num ponto diferente do buraco, no tempo que leva para chegar ao teto
+		var tx: float = lerpf(hole.x + 140.0, hole.y - 140.0, (i + 0.5) / maxf(vivos.size(), 1.0))
+		if absf(r.position.x - tx) < 200.0:
+			tx = clampf(r.position.x, hole.x + 100.0, hole.y - 100.0)
+		var dy: float = maxf(a2.position.y - r.position.y, 120.0)
+		var tf := sqrt(2.0 * dy / maxf(g, 1.0))
+		r.set_meta("queda_vx", clampf((tx - r.position.x) / tf, -float(cfg["funil_vel"]), float(cfg["funil_vel"])))
+		r.velocity.y = minf(r.velocity.y, -180.0)   # pulinho de susto antes de cair
+	var mc = main.demo.mecs
+	if mc != null and is_instance_valid(mc):
+		mc.desaba(1)
 
 ## Todos pousaram na etapa 2: câmera, KO e área de jogo passam para ela.
 func _chega() -> void:
 	var lv = main.level
 	state = "etapa"
 	etapa = 2
+	lv.etapa_n = 2
 	lv.area = lv.etapa_rect(2)
 	lv.ko_off = false
 	main.demo.banner = String(lv.prop("etapa2_nome", "ETAPA 2")).to_upper() + "!"
@@ -101,6 +120,9 @@ func _chega() -> void:
 	main.shake(10.0)
 	Audio.play("caixote_quebra", 0.6, 0.0)
 	for r in main.robots:
+		r.spell_lock = false
+		if r.has_meta("queda_vx"):
+			r.remove_meta("queda_vx")
 		if r.alive:
 			r.invuln = maxf(r.invuln, float(cfg["invuln_chegada_s"]))
 			main.dust(r.position, 1.2)

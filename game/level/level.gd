@@ -26,6 +26,7 @@ var anim_t := 0.0
 ## Área jogável ATUAL em px (fases em etapas: a câmera, o KO e a área de jogo seguem a etapa). Padrão = mapa inteiro.
 var area := Rect2()
 var ko_off := false          # virada: ninguém é eliminado durante a queda
+var etapa_n := 1             # etapa atual (fases em etapas): KO pode ter margens próprias ("ko1:", "ko2:")
 ## Tema visual da arena (cabeçalho "tema:" do .lvl): troca blocos, bloco fixo, tábuas e fundo (assets/temas/<tema>/).
 const THEMES := {
 	"canteiro": {"crack": "#5a3a1c", "rope": "#8a6a47"},
@@ -153,7 +154,7 @@ func set_cell_char(c: Vector2i, ch: String) -> void:
 
 ## Zona de KO no MUNDO (prop "ko: esq,cima,dir,baixo" em tiles além das bordas). Rect2() vazio = sem zona (regra antiga).
 func ko_rect() -> Rect2:
-	var k = props.get("ko", "")
+	var k = props.get("ko%d" % etapa_n, props.get("ko", ""))
 	if String(k) == "":
 		return Rect2()
 	var v := String(k).split(",")

@@ -598,6 +598,11 @@ func respawn(r, ahead := false) -> void:
 func _firm(lv, c: Vector2i) -> bool:
 	if not lv.is_solid(c) or lv.ch_at(c) in ["I", "T"]:
 		return false
+	if canteiro != null and is_instance_valid(canteiro) and canteiro.owner_of.has(c):
+		# estrutura do Canteiro: só laje/chão firme da etapa atual (nunca trecho avisado, rachado, plataforma solta ou grelha)
+		var p: Dictionary = canteiro.owner_of[c]
+		return p["kind"] in ["laje", "terreo"] and not p["fallen"] and p["warn_t"] <= 0.0 and p["crit_t"] <= 0.0 \
+			and int(p["state"]) < 2 and p["evt"] == "" and int(p.get("etapa", 1)) == canteiro.etapa_now()
 	if lv.blocks.has(c):
 		var b: Dictionary = lv.blocks[c]
 		return b["warn"] <= 0.0 and b["hp"] >= lv.block_hp and b["load"] < 0.5
