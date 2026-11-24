@@ -7,7 +7,7 @@
     "knock_x": 900,
     "knock_y": 420,
     "stun_hit_s": 0.3,
-    "stun_stomp_s": 0.6,
+    "stun_stomp_s": 0.28,
     "stomp_bounce": 760,
     "crumble_crack_s": 2.5,
     "crumble_break_s": 4.0,
@@ -432,6 +432,8 @@
       }
     ],
     "amassometro": {
+      "rapido": {"dano": 6, "kx": 190, "kx_por": 3.6, "ky": 170, "ky_por": 1.6},
+      "pesado": {"dano": 14, "kx": 320, "kx_por": 7.2, "ky": 280, "ky_por": 3.1},
       "nota": "empurrão = base + dano% × por; atordoamento = stun_base + dano% × stun_por (máx stun_max)",
       "chama": {
         "dano": 14,

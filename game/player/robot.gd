@@ -17,7 +17,26 @@ var coyote := 0.0
 var buffer := 0.0
 var var_jump := 0.0
 var wall_lock := 0.0
-var hammer_anim := 0.0
+var hammer_anim := 0.0        # (legado) tempo restante do golpe atual, para quem só quer saber "está golpeando"
+# golpes: "rapido" (golpe rápido, botão hammer) ou "pesado" (marretada pesada, botão heavy); fases preparo → ativo → recuperação
+var atk := ""
+var atk_t := 0.0              # tempo desde o começo do golpe
+var atk_hit := false          # o impacto já aconteceu (uma vez por golpe, no fim do preparo)
+var atk_landed := false       # o impacto pegou alguém
+var atk_cd := 0.0
+# esquiva: impulso curto; nos primeiros instantes protege SÓ contra golpes de robôs (não contra cenário)
+var dodge_t := 0.0            # tempo restante da esquiva
+var dodge_len := 0.0
+var dodge_dir := Vector2.ZERO
+var dodge_carry := Vector2.ZERO   # parte do arremesso que continua valendo durante a esquiva
+var dodge_cd := 0.0
+var guard_t := 0.0            # janela de proteção contra golpes de robôs
+var air_dodge := 1            # 1 esquiva por período no ar; volta SÓ ao pousar no chão
+# arremesso: stun_t = sem controle (curto); depois o controle volta aos poucos (recover_t)
+var recover_t := 0.0
+var recover_len := 0.0
+var hitstop := 0.0            # congelamento curtinho no impacto (atacante e atingido)
+var land_v := 0.0             # velocidade de queda no quadro do pouso (força do amortecimento)
 var hammer_left := 1
 var facing := 1
 var spring := false
@@ -102,9 +121,18 @@ func _physics_process(dt: float) -> void:
 	if not active or finished:
 		vis.tick(self, dt)
 		return
+	if hitstop > 0.0:
+		hitstop -= dt
+		vis.tick(self, dt)
+		return
 	var ix := _ix()
 	var on_floor := is_on_floor()
 	stun_t = maxf(stun_t - dt, 0.0)
+	if stun_t <= 0.0:
+		recover_t = maxf(recover_t - dt, 0.0)
+	atk_cd = maxf(atk_cd - dt, 0.0)
+	dodge_cd = maxf(dodge_cd - dt, 0.0)
+	guard_t = maxf(guard_t - dt, 0.0)
 	frozen_t = maxf(frozen_t - dt, 0.0)
 	invuln = maxf(invuln - dt, 0.0)
 	drop_t = maxf(drop_t - dt, 0.0) if not is_on_floor() else 0.0
@@ -144,6 +172,10 @@ func _physics_process(dt: float) -> void:
 		_hang_update(dt)
 		vis.tick(self, dt)
 		return
+	if dodge_t > 0.0:
+		_dodge_update(dt)
+		vis.tick(self, dt)
+		return
 	for k in fx_t:
 		fx_t[k] = maxf(fx_t[k] - dt, 0.0)
 	if _pressed("item") and item != "":
@@ -172,16 +204,30 @@ func _physics_process(dt: float) -> void:
 		var a := f("accel_ground") if ix != 0.0 else f("decel_ground")
 		if not on_floor:
 			a *= f("air_mult")
+		var tgt_k := 1.0
 		if stun_t > 0.0:
-			a *= 0.25   # empurrado: desliza longe
+			a *= 0.15   # arremessado, sem controle: segue o impulso
+		elif recover_t > 0.0:
+			# o controle volta aos poucos: corrige a rota sem cancelar o arremesso de uma vez
+			var ar: Dictionary = c["arremesso"]
+			a *= lerpf(float(ar["controle_inicial"]), 1.0, 1.0 - recover_t / maxf(recover_len, 0.01))
+		if atk == "rapido":
+			tgt_k = float(c["ataque_rapido"]["mov_mult"])
+		elif atk == "pesado":
+			var hp: Dictionary = c["ataque_pesado"]
+			if not atk_hit:
+				tgt_k = float(hp["mov_mult_preparo"])
+			elif not atk_landed and atk_t > float(hp["preparo"]) + float(hp["ativo"]):
+				tgt_k = float(hp["mov_mult_recupera_erro"])   # errou: fica exposto
 		if on_floor and main.events != null:
 			a *= main.events.slip   # evento Sabão: chão escorregadio
-		own_vx = move_toward(own_vx, ix * f("max_run") * speed_k * (float(main.demo.item_cfg("patins")["vel"]) if fx_t["patins"] > 0.0 else 1.0) * (float(main.demo.item_cfg("turbo")["vel"]) if fx_t["turbo"] > 0.0 else 1.0), a * dt)
+		own_vx = move_toward(own_vx, tgt_k * ix * f("max_run") * speed_k * (float(main.demo.item_cfg("patins")["vel"]) if fx_t["patins"] > 0.0 else 1.0) * (float(main.demo.item_cfg("turbo")["vel"]) if fx_t["turbo"] > 0.0 else 1.0), a * dt)
 	# pulo / parede
 	var wall_dir := 0 if on_floor else _wall_dir()
 	if on_floor:
 		air_jumps = 1
-	if buffer > 0.0 and not spring:
+		air_dodge = 1
+	if buffer > 0.0 and not spring and not (atk == "pesado" and not atk_hit):
 		if on_floor or coyote > 0.0:
 			_jump(ix)
 		elif wall_dir != 0 and grip > 0.05:
@@ -249,12 +295,20 @@ func _physics_process(dt: float) -> void:
 			main.dust(position + Vector2(wall_dir * 24, -40), 0.5)
 			Audio.play("parede", _pitch(), -4.0)
 	velocity.y = minf(velocity.y, max_fall)
-	# marreta (não trava o movimento)
-	if _pressed("hammer") and hammer_anim <= 0.0:
-		hammer_anim = f("hammer_time")
-		Audio.play("marreta_vento", _pitch())
-		main.try_hammer(self)
+	# golpes e esquiva
+	if _pressed("dodge") and _can_dodge(on_floor):
+		_start_dodge(on_floor)
+		vis.tick(self, dt)
+		return
+	if atk == "" and atk_cd <= 0.0:
+		if _pressed("heavy"):
+			_start_attack("pesado")
+		elif _pressed("hammer"):
+			_start_attack("rapido")
+	if atk != "":
+		_attack_update(dt, on_floor)
 	# mover
+	land_v = velocity.y
 	velocity.x = own_vx + ext_vx
 	_corner_correction(dt)
 	move_and_slide()
@@ -276,9 +330,7 @@ func _physics_process(dt: float) -> void:
 	var landed := is_on_floor() and not was_on_floor
 	was_on_floor = is_on_floor()
 	if landed:
-		Audio.play("aterrissa", _pitch(), -5.0)
-		vis.land()
-		main.dust(position)
+		_on_landed()
 	if floor_piece != null and is_instance_valid(floor_piece):
 		floor_piece.on_stand(self)
 	main.check_contacts(self)
@@ -324,7 +376,7 @@ func _air_jump(ix: float) -> void:
 	own_vx = maxf(absf(own_vx), absf(ix) * f("max_run") * 0.8) * (signf(ix) if ix != 0.0 else signf(own_vx))
 	var_jump = f("var_jump_time") * 0.6
 	buffer = 0.0
-	vis.stretch()
+	vis.double_jump()
 	main.dust(position + Vector2(0, -6), 0.7)
 
 ## Agarra a quina de um caixote: caindo, segurando na direção dela, com as mãos na altura do topo.
@@ -418,8 +470,13 @@ func _climb_update(dt: float) -> void:
 
 ## Golpe com o Amassômetro: soma dano e o empurrão cresce com ele. kind = chave em demolicao.amassometro.
 ## Retorna false se não pegou (invulnerável ou capacete).
+const ROBOT_HITS := ["rapido", "pesado", "martelao", "marretada"]
+
 func take_hit(dir: int, kind: String, by := -1) -> bool:
 	if invuln > 0.0 or god:
+		return false
+	if guard_t > 0.0 and by >= 0 and by != pid and kind in ROBOT_HITS:
+		_dodged()
 		return false
 	last_hit = 0.0
 	last_cause = {"marretada": "marretada", "martelao": "marretada", "explosao": "explosão", "bola": "bola"}.get(kind, kind)
@@ -435,7 +492,8 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 	if main.demo.rule() == "fuga":   # na Fuga o empurrão atrapalha, mas não decide sozinho
 		kx *= 0.6
 		ky *= 0.7
-	var stun := minf(float(am["stun_base"]) + dmg * float(am["stun_por"]), float(am["stun_max"]))
+	var ar: Dictionary = c["arremesso"]
+	var stun := minf(float(ar["sem_controle_base"]) + dmg * float(ar["sem_controle_por"]), float(ar["sem_controle_max"]))
 	if frozen_t > 0.0:
 		# pancada em quem está congelado: o gelo estilhaça e o empurrão é maior
 		var mult := float(main.demo.item_cfg("congelador")["quebra_mult"])
@@ -446,6 +504,7 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 		main.demo.tools.shatter(rect().get_center())
 	main.float_text(position + Vector2(0, -100), "+%d%%" % int(k["dano"]), main.dmg_color(dmg))
 	_apply_knock(dir, kx, ky, stun)
+	vis.hurt(clampf((kx + ky) / 1400.0, 0.25, 1.0), dir)
 	PlayerInput.vibrate(pid, 0.35 + dmg / 300.0, 0.15 + dmg / 250.0, 0.12 + minf(dmg, 150.0) / 1000.0)
 	return true
 
@@ -465,7 +524,14 @@ func _apply_knock(dir: int, vx: float, vy: float, stun: float) -> void:
 	Audio.voice("voz_ai", vis.model)
 	var_jump = 0.0
 	stun_t = maxf(stun_t, stun)
-	vis.stretch()
+	recover_len = float(c["arremesso"]["retorno_s"])
+	recover_t = recover_len
+	# golpe interrompe o que estava fazendo
+	atk = ""
+	hammer_anim = 0.0
+	dodge_t = 0.0
+	hanging = false
+	vis.launch(Vector2(dir * vx, -vy))
 
 ## Tom dos sons do robô por jogador (P1 mais grave → P4 mais agudo).
 func _pitch() -> float:
@@ -567,3 +633,114 @@ func finish() -> void:
 	tw.tween_property(self, "scale", Vector2(0.85, 0.85), 0.25)
 	tw.parallel().tween_property(self, "modulate", Color(0.35, 0.3, 0.3, 0.0), 0.25)
 	tw.tween_callback(func(): visible = false)
+
+# ---------------------------------------------------------------- golpes, esquiva e pouso
+
+## Começa um golpe. O impacto acontece no fim do preparo (sincronizado com a animação).
+func _start_attack(kind: String) -> void:
+	atk = kind
+	atk_t = 0.0
+	atk_hit = false
+	atk_landed = false
+	hammer_anim = _atk_total()
+	if kind == "rapido":
+		Audio.play("marreta_vento", _pitch() * 1.25, -4.0)
+	else:
+		Audio.play("marreta_vento", _pitch() * 0.8, 1.0)
+		var_jump = minf(var_jump, 0.04)
+	vis.attack(kind)
+
+func _atk_cfg() -> Dictionary:
+	return c["ataque_rapido"] if atk == "rapido" else c["ataque_pesado"]
+
+func _atk_total() -> float:
+	var ac := _atk_cfg()
+	var rec := float(ac["recupera"]) if atk == "rapido" else (float(ac["recupera_acerto"]) if atk_landed else float(ac["recupera_erro"]))
+	return float(ac["preparo"]) + float(ac["ativo"]) + rec
+
+func _attack_update(dt: float, on_floor: bool) -> void:
+	atk_t += dt
+	var ac := _atk_cfg()
+	if not atk_hit and atk_t >= float(ac["preparo"]):
+		atk_hit = true
+		atk_landed = main.try_attack(self, atk)
+		if atk == "pesado" and on_floor:
+			own_vx += facing * float(ac["avanco_px_s"])   # o peso do golpe leva o corpo junto
+	hammer_anim = maxf(_atk_total() - atk_t, 0.0)
+	if atk_t >= _atk_total():
+		atk = ""
+		hammer_anim = 0.0
+		atk_cd = float(ac["recarga"])
+
+func _can_dodge(on_floor: bool) -> bool:
+	if dodge_cd > 0.0 or stun_t > 0.0 or frozen_t > 0.0 or hanging or climb_t >= 0.0:
+		return false
+	if atk == "pesado" or (atk == "rapido" and not atk_hit):
+		return false
+	return on_floor or air_dodge > 0
+
+func _start_dodge(on_floor: bool) -> void:
+	var dc: Dictionary = c["esquiva"]
+	var ix := PlayerInput.axis_x(pid)
+	var iy := 0.0
+	if not on_floor:
+		iy = (1.0 if PlayerInput.held(pid, "down") else 0.0) - (1.0 if PlayerInput.held(pid, "up") else 0.0)
+	var d := Vector2(ix, iy)
+	if d == Vector2.ZERO:
+		d = Vector2(facing, 0)
+	dodge_dir = d.normalized()
+	if dodge_dir.x != 0.0:
+		facing = int(signf(dodge_dir.x))
+	# arremessado: parte do impulso continua (a esquiva ajuda, mas não anula um golpe forte)
+	dodge_carry = Vector2(own_vx, velocity.y) * (0.6 * recover_t / maxf(recover_len, 0.01) if recover_t > 0.0 else 0.0)
+	dodge_len = float(dc["duracao"])
+	dodge_t = dodge_len
+	guard_t = float(dc["protecao"])
+	dodge_cd = float(dc["recarga"])
+	if not on_floor:
+		air_dodge = 0
+	atk = ""
+	hammer_anim = 0.0
+	var_jump = 0.0
+	buffer = 0.0
+	Audio.play("soprador", 1.6 + pid * 0.05, -9.0)
+	main.dust(position + Vector2(-dodge_dir.x * 14.0, -4.0), 0.6 if on_floor else 0.4)
+	vis.dodge(dodge_dir, on_floor)
+
+func _dodge_update(dt: float) -> void:
+	var dc: Dictionary = c["esquiva"]
+	dodge_t = maxf(dodge_t - dt, 0.0)
+	var k := 1.0 - dodge_t / maxf(dodge_len, 0.01)          # 0 → 1
+	var spd := float(dc["vel"]) * lerpf(1.0, float(dc["vel_final"]), k * k)
+	velocity = dodge_dir * spd + dodge_carry * (1.0 - k * 0.5)
+	if was_on_floor and dodge_dir.y >= 0.0:
+		velocity.y = maxf(velocity.y, 0.0) + 40.0   # no chão: desliza grudado (desce rampa/borda naturalmente)
+	land_v = velocity.y
+	move_and_slide()   # colide normalmente: a esquiva não atravessa parede nem chão
+	own_vx = velocity.x
+	if is_on_wall():
+		own_vx = 0.0
+	if dodge_t <= 0.0:
+		own_vx = velocity.x
+		velocity.y *= float(dc["vel_final"])
+	var landed := is_on_floor() and not was_on_floor
+	was_on_floor = is_on_floor()
+	if is_on_floor():
+		air_dodge = 1
+		air_jumps = 1
+	if landed:
+		_on_landed()
+	main.check_contacts(self)
+
+## Esquivou de um golpe de robô na janela de proteção.
+func _dodged() -> void:
+	Audio.play("menu_mover", 1.5, -2.0)
+	main.float_text(position + Vector2(0, -112), "ESQUIVOU!", Color.WHITE)
+	vis.dodged_flash = 1.0
+
+func _on_landed() -> void:
+	air_dodge = 1
+	var hard := clampf((land_v - 300.0) / 900.0, 0.0, 1.0)
+	Audio.play("aterrissa", _pitch() * (1.0 - hard * 0.15), -5.0 + hard * 4.0)
+	vis.land(hard, stun_t > 0.0 or recover_t > 0.0)
+	main.dust(position, 1.0 + hard * 0.8)

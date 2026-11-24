@@ -239,6 +239,74 @@ def hammer_svg():
         '<path d="M42.5,14.1 L46,28 L43.4,28.1 L41,14.2 Z" fill="#7b858f" opacity="0.8"/></g>'), rough(seed=13, scale=0.8))
 
 
+# ------------------------------------------------------------------ dano (Amassômetro)
+# formas do corpo de cada modelo (para recortar o dano) + caixa onde espalhar as marcas
+BODY_CLIP = {
+    "lata": ([rect_d(53, 40, 22, 45, 4)], (55, 44, 73, 82)),
+    "tv": (["M44,35 L84,34 L84.5,66 L44.5,67 Z", rect_d(56, 64, 16, 23, 2)], (46, 37, 82, 84)),
+    "baixinho": ([ellipse_d(64, 60, 23, 23), rect_d(56, 80, 16, 17, 3)], (46, 44, 82, 94)),
+    "pescocao": ([rect_d(53, 70, 22, 23, 3), "M51,42 C51,34 58,31 66,31 C75,31 80,36 79,43 C78,50 71,52 64,52 C56,52 51,49 51,42 Z"], (52, 33, 77, 91)),
+    "brutamontes": (["M38,52 C38,46 44,44 50,44 L78,44 C84,44 90,46 90,52 L84,92 C84,96 80,97 76,97 L52,97 C48,97 44,96 44,92 Z", rect_d(55, 37, 18, 18, 5)], (42, 46, 86, 94)),
+    "varapau": ([rect_d(58, 34, 12, 38, 3), "M55,22 C55,15 59,13 64,13 C69,13 73,15 73,22 C73,28 69,31 64,31 C59,31 55,28 55,22 Z"], (57, 15, 71, 70)),
+    "barril": (["M47,56 C42,64 42,90 47,98 C52,101 76,101 81,98 C86,90 86,64 81,56 C76,53 52,53 47,56 Z"], (45, 58, 83, 97)),
+    "bolha": (["M50,70 L78,70 L80,92 L48,92 Z", rect_d(46, 64, 36, 8, 3), "M45,66 C45,44 52,35 64,35 C76,35 83,44 83,66 Z"], (47, 40, 81, 90)),
+}
+WIRES = ["#d14d35", "#f2c84b", "#4f86d9"]
+
+
+def damage_svg(model, lvl):
+    import random as _r
+    paths, (x0, y0, x1, y1) = BODY_CLIP[model]
+    rnd = _r.Random(list(MODELS).index(model) * 7 + 3)
+    w, h = x1 - x0, y1 - y0
+    pts = lambda: (rnd.uniform(x0 + w * 0.1, x1 - w * 0.1), rnd.uniform(y0 + h * 0.1, y1 - h * 0.1))
+    spots = [pts() for _ in range(9)]
+    clip = "".join(f'<path d="{d}"/>' for d in paths)
+    b = [f'<clipPath id="dc">{clip}</clipPath><g clip-path="url(#dc)">']
+    s_ = max(min(w, h) / 30.0, 0.55)
+    # estágio 1: amassados (mancha escura + reflexo claro na borda) e riscos
+    for (x, y) in spots[:3 + (2 if lvl >= 3 else 0)]:
+        rx, ry = rnd.uniform(3.2, 5.2) * s_ * (1.3 if lvl >= 3 else 1.0), rnd.uniform(2.2, 3.6) * s_
+        b.append(f'<ellipse cx="{x:.1f}" cy="{y:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" fill="#2a1a2e" opacity="0.22"/>')
+        b.append(f'<path d="M{x - rx:.1f},{y + 0.4:.1f} Q{x:.1f},{y + ry * 1.3:.1f} {x + rx:.1f},{y + 0.4:.1f}" stroke="#ffffff" stroke-width="0.8" fill="none" opacity="0.55"/>')
+    for k in range(4):
+        x, y = pts()
+        l = rnd.uniform(3, 6) * s_
+        b.append(f'<path d="M{x:.1f},{y:.1f} l{l:.1f},{rnd.uniform(-1.5, 1.5):.1f}" stroke="#ffffff" stroke-width="0.6" opacity="0.6"/>')
+    if lvl >= 2:
+        # rachaduras e um remendo de fita adesiva em X
+        for (x, y) in spots[5:7]:
+            d = f"M{x:.1f},{y:.1f}"
+            cx, cy = x, y
+            for _ in range(4):
+                cx += rnd.uniform(1.5, 3.5) * s_ * rnd.choice([-1, 1])
+                cy += rnd.uniform(1.0, 3.0) * s_
+                d += f" L{cx:.1f},{cy:.1f}"
+            b.append(f'<path d="{d}" stroke="#2a1a2e" stroke-width="1.1" fill="none" stroke-linejoin="round" opacity="0.8"/>')
+        tx, ty = spots[7]
+        for ang in (35, -35):
+            b.append(f'<rect x="{tx - 6 * s_:.1f}" y="{ty - 1.6 * s_:.1f}" width="{12 * s_:.1f}" height="{3.2 * s_:.1f}" fill="#d9d4c4" '
+                     f'transform="rotate({ang} {tx:.1f} {ty:.1f})" opacity="0.95"/>')
+    if lvl >= 3:
+        # buraco com fios aparecendo e fuligem
+        hx, hy = spots[8]
+        hr = 4.2 * s_
+        b.append(f'<ellipse cx="{hx:.1f}" cy="{hy:.1f}" rx="{hr * 1.9:.1f}" ry="{hr * 1.5:.1f}" fill="#2a1a2e" opacity="0.25"/>')
+        b.append(f'<path d="M{hx - hr:.1f},{hy:.1f} L{hx - hr * 0.4:.1f},{hy - hr * 0.9:.1f} L{hx + hr * 0.5:.1f},{hy - hr * 0.7:.1f} '
+                 f'L{hx + hr:.1f},{hy + 0.2:.1f} L{hx + hr * 0.3:.1f},{hy + hr * 0.9:.1f} L{hx - hr * 0.6:.1f},{hy + hr * 0.7:.1f} Z" fill="#1c1626"/>')
+        for k, col in enumerate(WIRES):
+            ox = (k - 1) * hr * 0.45
+            b.append(f'<path d="M{hx + ox:.1f},{hy:.1f} q{rnd.uniform(-3, 3) * s_:.1f},{3 * s_:.1f} {rnd.uniform(-2, 2) * s_:.1f},{5.5 * s_:.1f}" '
+                     f'stroke="{col}" stroke-width="1.1" fill="none" stroke-linecap="round"/>')
+    b.append('</g>')
+    return wrap("".join(b), 170 + lvl)
+
+
+def bolt_svg():
+    return doc(12, 12, '<g filter="url(#rough)"><circle cx="6" cy="6" r="4.2" fill="#9aa4ae"/><circle cx="6" cy="6" r="1.6" fill="#5d6b7d"/>'
+                       '<path d="M3.5,6 H8.5" stroke="#5d6b7d" stroke-width="1"/></g>', rough(seed=17, scale=0.4))
+
+
 def main():
     for model in MODELS:
         for ci in range(4):
@@ -249,6 +317,10 @@ def main():
     queue(hand_svg(), f"{SRC}/mao.svg", f"{OUT}/mao.png", 16, 16, K)
     queue(foot_svg(), f"{SRC}/pe.svg", f"{OUT}/pe.png", 24, 14, K)
     queue(hammer_svg(), f"{SRC}/marreta.svg", f"{OUT}/marreta.png", 64, 64, K)
+    queue(bolt_svg(), f"{SRC}/parafuso.svg", f"{OUT}/parafuso.png", 12, 12, K)
+    for model in MODELS:
+        for lvl in (1, 2, 3):
+            queue(damage_svg(model, lvl), f"{SRC}/dano{lvl}_{model}.svg", f"{OUT}/dano{lvl}_{model}.png", 128, 128, K)
     os.makedirs(OUT, exist_ok=True)
     keys = ("nome", "hat", "hips", "shoulders", "hand_back", "hand_front", "antenna", "eyes", "top", "limb_w", "hand_s", "voz", "danca")
     meta = {"cores": COLORS, "membros": [shade(c, -0.5) for c in COLORS], "ordem": list(MODELS),

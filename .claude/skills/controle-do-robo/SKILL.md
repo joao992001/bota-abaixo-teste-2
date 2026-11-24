@@ -14,6 +14,14 @@ pulo, gravidade, parede, marreta, hitbox 48×72) e `data/modos.json` → `demoli
 Depois gravidade normal, metade perto do ápice se segurar. ("Impulso e corte ao soltar" com os mesmos números dá pulo 4× menor.)
 Pulo duplo: `air_jumps` (recarrega no chão, parede e borda). Coyote e buffer em `controller.json`.
 
+## Golpes, esquiva e arremesso (2026-11-24)
+- `atk` = "rapido"/"pesado" com fases preparo → ativo → recuperação; o impacto (`main.try_attack` → `demo.attack`) acontece
+  **no fim do preparo**, sincronizado com a animação. Só a pesada quebra caixote/chão/barril; as duas passam TNT e derrubam o rei.
+- Esquiva: `dodge_t`, `guard_t` (protege só de golpe/pisão de robô; nunca de cenário), `air_dodge` (1 por período no ar, volta só
+  ao pousar). Não atravessa geometria (usa `move_and_slide`).
+- Arremesso: `stun_t` = sem controle (curto, cresce com o dano); depois `recover_t` devolve o controle aos poucos; `hitstop`
+  congela atacante e atingido por alguns centésimos.
+
 ## Sensação
 - Responder no mesmo quadro; animação nunca atrasa o input; hitbox nunca muda com a animação.
 - Squash ao aterrissar, stretch ao pular, poeira e som curto.

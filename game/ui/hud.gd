@@ -342,7 +342,7 @@ func _draw_run() -> void:
 			var note := Rect2(360, 740, 1200, 116)
 			panel(note)
 			Kit.text(self, Vector2(note.position.x, note.position.y + 50), String(main.demo.arena.get("dica", "")), 34, DARK, HORIZONTAL_ALIGNMENT_CENTER, note.size.x)
-			Kit.text(self, Vector2(note.position.x, note.position.y + 90), "MARRETA quebra e empurra  ·  PULE na cabeça  ·  ITEM usa o que você pegou", 24, Kit.SOFT, HORIZONTAL_ALIGNMENT_CENTER, note.size.x)
+			Kit.text(self, Vector2(note.position.x, note.position.y + 90), "GOLPE rápido  ·  MARRETADA pesada quebra  ·  ESQUIVA escapa  ·  ITEM usa", 24, Kit.SOFT, HORIZONTAL_ALIGNMENT_CENTER, note.size.x)
 	if main.countdown > 0.0:
 		var go: bool = main.countdown <= 0.6
 		var s := "VAI!" if go else "PRONTOS?"

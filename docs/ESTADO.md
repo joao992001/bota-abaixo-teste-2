@@ -7,8 +7,14 @@ Repositórios (GitHub privado, ramo `main`): `joao992001/bota-abaixo` = versão 
 ## ▶ Retomar aqui (sessão nova)
 Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, nesta ordem:
 1. **Robôs: 8 modelos só de aparência** no lugar da Garagem — **FEITO** (commit 6b089e1).
-2. **Movimento, combate e animação** — PRÓXIMO. Movimentos novos e animações muito mais fluidas (andar, pular, atacar…).
-   O usuário vai mandar um relatório com os detalhes: leia-o inteiro e devolva um plano curto antes de mexer no código.
+2. **Movimento, combate e animação** — FEITO (2026-11-24), relatório em `docs/relatorio_personagem_combate.md`.
+   Golpe rápido (X/□) × marretada pesada (Y/△, preparo/impacto/recuperação, só ela quebra caixote/chão/barril);
+   esquiva (RB/RT) no chão e 1× no ar (volta só ao pousar; protege só de golpe/pisão de robô); arremesso com perda de controle
+   curta e retorno gradual; hitstop. Animação por molas em tudo (idle com tique, corrida, derrapagem, pivô na virada, pulo,
+   mortal no pulo duplo, esquiva com rastro, golpes com arco, atingido com clarão, giro no arremesso, pouso amortecido) e dano
+   no corpo em 3 estágios (`dano1..3_<modelo>.png`, faísca, fumaça, plaquinha solta, parafuso voando). Números: `data/controller.json`
+   (`ataque_rapido`, `ataque_pesado`, `esquiva`, `arremesso`, `hitstop`) e `modos.json` (`amassometro.rapido/pesado`) —
+   VALORES INICIAIS, a calibrar jogando. Vitrine: `-- --combate=DIR` (quadros → GIF). Testes: `--autotest --so=combate`.
 3. **Fases e câmera** — DEPOIS do movimento (as medidas do pulo/golpe definem as fases). Retirar as 24 arenas atuais
    (+ antigas, `tools/mapas/`, prévias `game/assets/ui/arena_*.png`), deixando 1 arena-base provisória por modo para o jogo
    abrir e os testes rodarem; depois criar um modelo de fase padrão, com câmera e regras próprias por modo.

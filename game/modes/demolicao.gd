@@ -219,7 +219,7 @@ func update(dt: float) -> void:
 		if a.velocity.y <= 120.0 or a.stun_t > 0.0:
 			continue
 		for b in alive:
-			if a == b or b.stomp_immune > 0.0 or b.invuln > 0.0 or b.god:
+			if a == b or b.stomp_immune > 0.0 or b.invuln > 0.0 or b.god or b.guard_t > 0.0:
 				continue
 			var head: float = b.rect().position.y
 			if absf(a.position.y - head) < 16.0 and absf(a.position.x - b.position.x) < 38.0:
@@ -239,6 +239,10 @@ func update(dt: float) -> void:
 				if not b.absorb():
 					b.dmg += float(cfg["amassometro"]["pisao"]["dano"])
 					b.stun_t = c("stun_stomp_s")
+					b.recover_len = float(b.c["arremesso"]["retorno_s"]) * 0.5
+					b.recover_t = b.recover_len
+					b.atk = ""
+					b.vis.hurt(0.5, 0)
 					PlayerInput.vibrate(b.pid, 0.6, 0.3, 0.18)
 					PlayerInput.vibrate(a.pid, 0.25, 0.0, 0.06)
 					Audio.voice("voz_ai", b.vis.model)
@@ -615,26 +619,38 @@ func _draw_canvas() -> void:
 # ---------------------------------------------------------------- marreta
 ## Marretada: empurra o robô à frente e quebra o caixote à frente (no corpo ou no chão).
 ## Segurando ▼, quebra o caixote embaixo de você mesmo. Martelão: 1 golpe quebra, empurra mais.
-func hammer(r) -> void:
-	var big: bool = r.fx_t["martelao"] > 0.0
-	var reach := c("hammer_reach_px") * (1.3 if big else 1.0)
+## Golpe rápido ("rapido"): só combate (robôs, passa a TNT, derruba o capacete) e alavancas.
+## Marretada pesada ("pesado"): golpe mais forte + destruição (caixotes, chão com ▼, barris) e alavancas.
+## O Martelão (item) fortalece só a pesada. Retorna true se acertou um robô.
+func attack(r, kind: String) -> bool:
+	var heavy := kind == "pesado"
+	var big: bool = heavy and r.fx_t["martelao"] > 0.0
+	var ac: Dictionary = r.c["ataque_pesado"] if heavy else r.c["ataque_rapido"]
+	var reach := float(ac["alcance_px"]) * (1.3 if big else 1.0)
 	var mult := float(item_cfg("martelao")["knock_mult"]) if big else 1.0
 	var rr: Rect2 = r.rect()
-	var hit := Rect2(rr.end.x if r.facing > 0 else rr.position.x - reach, rr.position.y, reach, rr.size.y)
+	var hit := Rect2(rr.end.x if r.facing > 0 else rr.position.x - reach, rr.position.y - (10.0 if heavy else 0.0), reach, rr.size.y + (10.0 if heavy else 0.0))
 	var hit_robot := false
+	var hs: Dictionary = r.c["hitstop"]
 	for o in main.robots:
 		if o != r and o.alive and hit.intersects(o.rect()):
-			o.take_hit(r.facing, "martelao" if big else "marretada", r.pid)
-			PlayerInput.vibrate(r.pid, 0.3, 0.0, 0.07)   # quem acertou sente o golpe
+			if not o.take_hit(r.facing, ("martelao" if big else "pesado") if heavy else "rapido", r.pid):
+				continue
+			var stop := minf(float(hs["pesado" if heavy else "rapido"]) + o.dmg * float(hs["por_dano"]), float(hs["max"]))
+			o.hitstop = stop
+			r.hitstop = stop
+			PlayerInput.vibrate(r.pid, 0.45 if heavy else 0.25, 0.0, 0.08 if heavy else 0.05)   # quem acertou sente o golpe
 			pass_bomb(r.pid, o.pid)
-			Audio.play("bonk", 1.0 / mult)
-			main.spark(o.rect().get_center(), 6)
-			main.shake(5.0 * mult)
+			Audio.play("bonk", (0.85 if heavy else 1.2) / mult, 2.0 if heavy else -3.0)
+			main.spark(o.rect().get_center(), 9 if heavy else 4)
+			main.shake((7.0 if heavy else 2.5) * mult)
+			main.impact_fx(o.rect().get_center() + Vector2(-r.facing * 10, 0), r.facing, 1.0 if heavy else 0.3)
 			hit_robot = true
-	if fx != null and is_instance_valid(fx) and fx.hammer_hit(r, hit.grow(8)):
-		hit_robot = true   # alavanca ou barril
-	if hit_robot:
-		return
+	if fx != null and is_instance_valid(fx) and fx.hammer_hit(r, hit.grow(8), heavy):
+		if not hit_robot:
+			r.hitstop = float(hs["rapido"])
+	if hit_robot or not heavy:
+		return hit_robot
 	var lv = main.level
 	var feet_row := int((r.position.y + 2.0) / 64.0)
 	var targets: Array = []
@@ -656,7 +672,10 @@ func hammer(r) -> void:
 			lv.damage(cell, int(item_cfg("martelao")["block_damage"]) if big or rule() == "batata" else 1)   # Batata: 1 golpe quebra
 			break_reason = ""
 			break_by = -1
-			return
+			r.hitstop = float(hs["rapido"])
+			main.shake(4.0)
+			return false
+	return false
 
 ## Água: não mata; volta do alto com dano extra. Rede: quica e rasga depois de algumas quedas.
 func _update_water_and_nets(dt: float, alive: Array) -> void:
@@ -1461,7 +1480,7 @@ func _update_mode_items(dt: float) -> void:
 					sh["t"] = 999.0
 					Audio.play("cola")
 				else:
-					o.take_hit(signi(int(sh["vel"].x)) if sh["vel"].x != 0.0 else 1, "marretada", sh["owner"])
+					o.take_hit(signi(int(sh["vel"].x)) if sh["vel"].x != 0.0 else 1, "rapido", sh["owner"])
 					Audio.play("bonk")
 				break
 		if sh["t"] > 3.0:

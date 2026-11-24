@@ -35,6 +35,7 @@ var winner := -1
 var debug := false
 var floaters: Array = []     # textos flutuantes {pos, text, color, t}
 var puffs: Array = []        # poeira {pos, t, r}
+var impacts: Array = []      # estouro de impacto dos golpes {pos, dir, s, t, rot}
 var sparks: Array = []       # estrelinhas {pos, vel, t, rot}
 var shake_amt := 0.0
 var shake_on := true          # OPÇÕES > tremor da tela
@@ -111,7 +112,7 @@ func _ready() -> void:
 	PlayerInput.pad_changed.connect(_on_pad_changed)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens") or a.begins_with("--oficina") or a.begins_with("--parede") or a.begins_with("--intro") or a.begins_with("--maquete") or a.begins_with("--robos") or a.begins_with("--espiar"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens") or a.begins_with("--oficina") or a.begins_with("--parede") or a.begins_with("--intro") or a.begins_with("--maquete") or a.begins_with("--robos") or a.begins_with("--combate") or a.begins_with("--espiar"):
 			state = S.JOIN   # testes e capturas começam direto na entrada de jogadores
 			var scr: GDScript = load("res://tests/driver.gd")
 			if scr == null or not scr.can_instantiate():
@@ -340,6 +341,9 @@ func _physics_process(dt: float) -> void:
 	for p in puffs:
 		p["t"] += dt
 	puffs = puffs.filter(func(x): return x["t"] < 0.45)
+	for im in impacts:
+		im["t"] += dt
+	impacts = impacts.filter(func(x): return x["t"] < 0.2)
 	for s in sparks:
 		s["t"] += dt
 		s["pos"] += s["vel"] * dt
@@ -461,8 +465,8 @@ func _join_update() -> void:
 			cycle_robot(i, -1)
 		if PlayerInput.pressed(i, "down"):
 			cycle_robot(i, 1)
-		if PlayerInput.pressed(i, "item") and not PlayerInput.held(i, "back") and not players[i].get("bot", false):
-			# ITEM: adiciona bot; com a mesa cheia, tira os bots
+		if PlayerInput.pressed(i, "heavy") and not PlayerInput.held(i, "back") and not players[i].get("bot", false):
+			# Y/△ (marretada pesada): adiciona bot; com a mesa cheia, tira os bots
 			if players.size() < 4:
 				add_bot()
 			else:
@@ -662,8 +666,13 @@ func remove_last_bot() -> void:
 			PlayerInput.slots.remove_at(i)
 			return
 
-func try_hammer(r: CharacterBody2D) -> void:
-	demo.hammer(r)
+## Bloco de números de data/controller.json (testes e ferramentas).
+func c_ctrl(key: String) -> Dictionary:
+	return Data.ctrl[key]
+
+## Impacto de um golpe ("rapido" ou "pesado"). true = acertou um robô.
+func try_attack(r: CharacterBody2D, kind: String) -> bool:
+	return demo.attack(r, kind)
 
 func danger_near(r: CharacterBody2D) -> bool:
 	var c: Vector2 = r.rect().get_center()
@@ -695,6 +704,20 @@ func spark(pos: Vector2, n := 5) -> void:
 		var a := rng.randf_range(0, TAU)
 		sparks.append({"pos": pos, "vel": Vector2.from_angle(a) * rng.randf_range(120, 320), "t": 0.0, "rot": rng.randf_range(0, TAU)})
 
+## Estouro de impacto do golpe (estrela serrilhada branca/amarela + anel). s = força (0,5 rápido, 1 pesado).
+func impact_fx(pos: Vector2, dir: int, s: float) -> void:
+	impacts.append({"pos": pos, "dir": dir, "s": s, "t": 0.0, "rot": rng.randf_range(0, TAU)})
+
+## Anel de ar (pulo duplo, recuperou o equilíbrio no ar).
+func ring_fx(pos: Vector2, s: float) -> void:
+	impacts.append({"pos": pos, "dir": 0, "s": s, "t": 0.0, "rot": 0.0, "ring": true})
+
+## Parafuso que pula do robô quando ele passa de um estágio de amassado.
+func pop_bolt(pos: Vector2, dir: int) -> void:
+	var d: Node2D = Debris.new()
+	d.setup([{"tex": [Data.tex("robo/parafuso")], "rect": Rect2(-6, -6, 12, 12), "mod": Color.WHITE}], pos, dir, Vector2(dir * 140.0, -260.0))
+	world.add_child(d)
+
 ## Tremor leve de câmera (desligável nas OPÇÕES).
 func shake(amount: float) -> void:
 	if shake_on:
@@ -715,6 +738,32 @@ func _draw_overlay() -> void:
 		var k: float = p["t"] / 0.45
 		var sz: float = p["r"] * 3.0 * (0.8 + k * 0.7)
 		overlay.draw_texture_rect(puff, Rect2(p["pos"] + Vector2(-sz / 2, -sz * 0.75 - k * 14), Vector2(sz, sz)), false, Color(1, 1, 1, 1.0 - k * k))
+	for im in impacts:
+		var k: float = im["t"] / 0.2
+		var e := 1.0 - pow(1.0 - k, 3.0)
+		if im.get("ring", false):
+			var rr2: float = (20.0 + 40.0 * e) * float(im["s"])
+			overlay.draw_set_transform(im["pos"], 0.0, Vector2(1.0, 0.38))
+			overlay.draw_arc(Vector2.ZERO, rr2, 0, TAU, 28, Color(1, 1, 1, 0.9 * (1.0 - k)), 5.0 * (1.0 - k) + 1.0, true)
+			overlay.draw_set_transform(Vector2.ZERO)
+			continue
+		var R: float = (34.0 + 46.0 * float(im["s"])) * (0.55 + 0.45 * e)
+		var pts := PackedVector2Array()
+		var inner := PackedVector2Array()
+		for i in 16:
+			var a: float = float(im["rot"]) + i * TAU / 16.0
+			var rr := R * (1.0 if i % 2 == 0 else 0.5)
+			pts.append(im["pos"] + Vector2.from_angle(a) * rr * Vector2(1.25, 1.0))
+			inner.append(im["pos"] + Vector2.from_angle(a) * rr * 0.55 * Vector2(1.25, 1.0))
+		if k < 0.55:
+			overlay.draw_colored_polygon(pts, Color(1.0, 0.86, 0.35, 1.0 - k))
+			overlay.draw_colored_polygon(inner, Color(1, 1, 1, 1.0 - k))
+		overlay.draw_arc(im["pos"], R * 1.15, 0, TAU, 28, Color(1, 1, 1, (1.0 - k) * 0.9), 4.0 * (1.0 - k) + 1.0, true)
+		# riscos de velocidade na direção do golpe
+		for j in 3:
+			var y0 := (j - 1) * 14.0
+			var x0: float = -float(im["dir"]) * (20.0 + 40.0 * e)
+			overlay.draw_line(im["pos"] + Vector2(x0, y0), im["pos"] + Vector2(x0 - float(im["dir"]) * 30.0 * (1.0 - k), y0), Color(1, 1, 1, 1.0 - k), 3.0, true)
 	var star := Data.tex("cenario/brilho")
 	for sp in sparks:
 		var k: float = sp["t"] / 0.4
@@ -729,7 +778,7 @@ func _draw_overlay() -> void:
 			overlay.draw_line(Vector2(hk.x, -400), hk, Color("#5a6370"), 3.0, true)
 			overlay.draw_arc(hk + Vector2(0, 8), 9, 0, PI, 10, Color("#5a6370"), 4.0, true)
 	for r in robots:
-		if r.alive and r.visible and r.stun_t > 0.0:
+		if r.alive and r.visible and r.stun_t > 0.12:
 			var hc: Vector2 = r.rect().position + Vector2(24, -10)
 			for k in 3:
 				var ang := Time.get_ticks_msec() / 160.0 + k * TAU / 3.0

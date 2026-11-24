@@ -8,12 +8,13 @@ extends Node
 ##   cima (Y / △), direita (B / ○), LB ou LT item · Start pausa/começa · B / ○ ou Select volta nos menus.
 ## Conectar/desconectar a qualquer hora: aviso na tela; se cair no meio da partida, o jogo pausa.
 
-const ACTIONS := ["left", "right", "up", "down", "jump", "hammer", "item", "start", "back"]
+## hammer = golpe rápido · heavy = marretada pesada · dodge = esquiva
+const ACTIONS := ["left", "right", "up", "down", "jump", "hammer", "heavy", "dodge", "item", "start", "back"]
 const KEYMAP := {
 	"kb_a": {"left": [KEY_A], "right": [KEY_D], "up": [KEY_W], "down": [KEY_S],
-		"jump": [KEY_SPACE], "hammer": [KEY_F, KEY_E], "item": [KEY_G, KEY_Q], "start": [KEY_ENTER], "back": [KEY_BACKSPACE, KEY_ESCAPE]},
+		"jump": [KEY_SPACE], "hammer": [KEY_F, KEY_E], "heavy": [KEY_R], "dodge": ["shift_l", KEY_C], "item": [KEY_G, KEY_Q], "start": [KEY_ENTER], "back": [KEY_BACKSPACE, KEY_ESCAPE]},
 	"kb_b": {"left": [KEY_LEFT], "right": [KEY_RIGHT], "up": [KEY_UP], "down": [KEY_DOWN],
-		"jump": ["ctrl_r", KEY_KP_0, KEY_L], "hammer": [KEY_PERIOD, KEY_SLASH, KEY_KP_ENTER, KEY_K], "item": [KEY_COMMA, KEY_J, KEY_KP_1], "start": [KEY_ENTER], "back": [KEY_DELETE]},
+		"jump": ["ctrl_r", KEY_L], "hammer": [KEY_PERIOD, KEY_K], "heavy": [KEY_SLASH, KEY_KP_ENTER, KEY_I], "dodge": [KEY_KP_0, KEY_O], "item": [KEY_COMMA, KEY_J, KEY_KP_1], "start": [KEY_ENTER], "back": [KEY_DELETE]},
 }
 
 var slots: Array = []   # dispositivo de cada jogador (índice = jogador)
@@ -28,7 +29,7 @@ var _ja := {}           # controle -> {eixo: valor}, pelos eventos
 var last_raw := {}      # controle -> último botão/eixo cru recebido (tela TESTAR CONTROLES)
 var custom := {}        # mapeamento aprendido em CONFIGURAR CONTROLE: guid -> {ação: [tipo "b"/"a", índice, sinal]}
 const CUSTOM_PATH := "user://controles.cfg"
-const LEARN_ACTIONS := ["jump", "hammer", "item", "start", "back", "left", "right", "up", "down"]
+const LEARN_ACTIONS := ["jump", "hammer", "heavy", "dodge", "item", "start", "back", "left", "right", "up", "down"]
 var toasts: Array = []  # avisos de controle conectado/desconectado: {text, t, ok}
 var vibration := true   # OPÇÕES: vibração dos controles
 signal pad_changed(dev: String, connected: bool)
@@ -184,8 +185,10 @@ func _read(dev: String) -> Dictionary:
 		s["up"] = y < -0.45 or jbtn(j, JOY_BUTTON_DPAD_UP)
 		s["down"] = y > 0.45 or jbtn(j, JOY_BUTTON_DPAD_DOWN)
 		s["jump"] = jbtn(j, JOY_BUTTON_A)
-		s["hammer"] = jbtn(j, JOY_BUTTON_X) or jbtn(j, JOY_BUTTON_RIGHT_SHOULDER) or jaxis(j, JOY_AXIS_TRIGGER_RIGHT) > 0.5
-		s["item"] = jbtn(j, JOY_BUTTON_Y) or jbtn(j, JOY_BUTTON_B) or jbtn(j, JOY_BUTTON_LEFT_SHOULDER) or jaxis(j, JOY_AXIS_TRIGGER_LEFT) > 0.5
+		s["hammer"] = jbtn(j, JOY_BUTTON_X)
+		s["heavy"] = jbtn(j, JOY_BUTTON_Y)
+		s["dodge"] = jbtn(j, JOY_BUTTON_RIGHT_SHOULDER) or jaxis(j, JOY_AXIS_TRIGGER_RIGHT) > 0.5
+		s["item"] = jbtn(j, JOY_BUTTON_LEFT_SHOULDER) or jaxis(j, JOY_AXIS_TRIGGER_LEFT) > 0.5
 		s["start"] = jbtn(j, JOY_BUTTON_START)
 		s["back"] = jbtn(j, JOY_BUTTON_BACK) or jbtn(j, JOY_BUTTON_B)
 		var cm: Dictionary = custom.get(Input.get_joy_guid(j), {})
@@ -241,6 +244,7 @@ func key_down(k) -> bool:
 	if k is String:
 		match k:
 			"ctrl_r": return _keys.get("%d:%d" % [KEY_CTRL, KEY_LOCATION_RIGHT], false)
+			"shift_l": return _keys.get("%d:%d" % [KEY_SHIFT, KEY_LOCATION_LEFT], false)
 		return false
 	for loc in [KEY_LOCATION_UNSPECIFIED, KEY_LOCATION_LEFT, KEY_LOCATION_RIGHT]:
 		if _keys.get("%d:%d" % [k, loc], false):

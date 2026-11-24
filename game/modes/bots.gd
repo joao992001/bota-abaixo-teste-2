@@ -38,6 +38,8 @@ func update(dt: float) -> void:
 			if st["cmd"].get("jump", false) and st["jump_hold"] <= 0 and r.is_on_floor():
 				st["jump_hold"] = st["cmd"].get("jump_frames", 14)
 			st["pulse_hammer"] = st["cmd"].get("hammer", false)
+			st["pulse_heavy"] = st["cmd"].get("heavy", false)
+			st["pulse_dodge"] = st["cmd"].get("dodge", false)
 			st["pulse_item"] = st["cmd"].get("item", false)
 		var cmd: Dictionary = st["cmd"]
 		if r.is_on_floor() and not cmd.get("distracted", false) and r.fall_reason == "distraído":
@@ -100,6 +102,12 @@ func update(dt: float) -> void:
 		if st["pulse_hammer"] and not prev.get("hammer", false):
 			inp["hammer"] = true
 			st["pulse_hammer"] = false
+		if st.get("pulse_heavy", false) and not prev.get("heavy", false):
+			inp["heavy"] = true
+			st["pulse_heavy"] = false
+		if st.get("pulse_dodge", false) and not prev.get("dodge", false):
+			inp["dodge"] = true
+			st["pulse_dodge"] = false
 		if st["pulse_item"] and not prev.get("item", false):
 			inp["item"] = true
 			st["pulse_item"] = false
@@ -242,13 +250,20 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 		return cmd
 	var dx: float = target.position.x - pos.x
 	var dy: float = target.position.y - pos.y
-	# 3) atacar de perto
+	# 3a) rival preparando a marretada pesada virado para mim: esquiva para longe (bots melhores fazem mais)
+	if absf(dx) < 130.0 and absf(dy) < 60.0 and target.atk == "pesado" and not target.atk_hit \
+			and signi(int(-dx)) == target.facing and r.dodge_cd <= 0.0 and main.rng.randf() < float(lv["hammer_acc"]) * 0.7:
+		cmd["dodge"] = true
+		cmd["dir"] = -signi(int(dx)) if dx != 0.0 else -r.facing
+		return _safe(r, cmd, lv)
+	# 3) atacar de perto: golpe rápido na maioria; marretada pesada quando o rival já está amassado
 	if absf(dx) < 78.0 and absf(dy) < 50.0:
 		if signi(int(dx)) != r.facing and absf(dx) > 4.0:
 			cmd["dir"] = signi(int(dx))   # vira para o rival
 		if main.rng.randf() < float(lv["hammer_acc"]) and st.get("hammer_cd", 0.0) <= 0.0:
-			cmd["hammer"] = true
-			st["hammer_cd"] = float(lv["hammer_cooldown_s"])
+			var heavy: bool = (target.dmg > 60.0 and main.rng.randf() < 0.45) or main.rng.randf() < 0.12
+			cmd["heavy" if heavy else "hammer"] = true
+			st["hammer_cd"] = float(lv["hammer_cooldown_s"]) * (1.6 if heavy else 1.0)
 		return _safe(r, cmd, lv)
 	# 4) itens: cada um tem sua hora
 	var use_ok: bool = main.rng.randf() < float(lv["use_items"])

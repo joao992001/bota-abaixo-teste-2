@@ -518,9 +518,12 @@ func _barrel_break(b: Dictionary) -> void:
 	Audio.play("caixote_quebra", 0.8)
 
 ## Marretada perto de uma alavanca ou de um barril. true = acertou algo daqui.
-func hammer_hit(r, reach: Rect2) -> bool:
+## heavy = marretada pesada (chuta barril); o golpe rápido só puxa alavanca.
+func hammer_hit(r, reach: Rect2, heavy := true) -> bool:
 	var hit := false
 	for b in barrels:
+		if not heavy:
+			break
 		if reach.grow(10).has_point(b["pos"]):
 			b["vx"] = r.facing * 560.0
 			b["vy"] = -260.0

@@ -390,8 +390,8 @@ func _draw_howto(ci: CanvasItem) -> void:
 	Kit.paper(ci, r)
 	var tips := [
 		["robo", "Derrube os outros no poço de espinhos. O último em pé ganha uma ★."],
-		["marreta", "MARRETA: quebra o caixote à frente (3 golpes) e empurra quem estiver ali."],
-		["pisao", "PULE NA CABEÇA de alguém para deixá-lo tonto.\n▼ + MARRETA quebra o chão embaixo de você."],
+		["marreta", "GOLPE RÁPIDO (X/□): empurra e interrompe. MARRETADA PESADA (Y/△): demora,\nmas arremessa longe e quebra caixotes (▼ + pesada quebra o chão). Errou? Fica exposto."],
+		["pisao", "ESQUIVA (RB/R1): escapa de golpes por um instante, no chão ou 1 vez no ar.\nArremessado? Segure a direção para corrigir e use a esquiva para se salvar."],
 		["itens", "Bolhas de item (botão ITEM usa): TNT, furadeira, cola, teletransporte, raio laser,\nbomba de vórtice, soprador, raio congelante · martelão, ímã, botas de mola e foguete."],
 		["parado", "Caixote racha se você fica parado em cima. No fim da rodada, TERREMOTO!"],
 	]
@@ -418,7 +418,7 @@ func _draw_howto(ci: CanvasItem) -> void:
 		var lines: PackedStringArray = String(tips[i][1]).split("\n")
 		for k in lines.size():
 			Kit.text(ci, Vector2(r.position.x + 260, y + 44 - (lines.size() - 1) * 18 + k * 40), lines[k], 32, Color("#2a1a2e"))
-	Kit.text(ci, Vector2(0, 1050), "Teclado A: WASD · Espaço pula · F marreta · G item     Teclado B: setas · Ctrl dir. pula · ponto marreta · vírgula item     Controle: A · X · Y", 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
+	Kit.text(ci, Vector2(0, 1050), "Teclado A: WASD · Espaço pula · F golpe · R pesada · Shift esq. esquiva · G item     Teclado B: setas · Ctrl dir. pula · ponto golpe · / pesada · 0 num. esquiva · vírgula item", 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 1920, 6)
 
 func _draw_options(ci: CanvasItem) -> void:
 	ci.draw_rect(Rect2(0, 0, 1920, 1080), Color(0.16, 0.1, 0.18, 0.45))
@@ -568,13 +568,13 @@ func _draw_pad_card(ci: CanvasItem, j: int, r: Rect2, k: int) -> void:
 	Kit.pad_btn(ci, c + Vector2(-34, -40), 12, "select", st, Input.is_joy_button_pressed(j, JOY_BUTTON_BACK))
 	Kit.pad_btn(ci, c + Vector2(34, -40), 12, "start", st, Input.is_joy_button_pressed(j, JOY_BUTTON_START))
 	# o que faz cada botão no jogo
-	var y := r.position.y + 520
-	for line in [[["baixo"], " pula"], [["esquerda"], " ", ["rb"], " marreta"], [["cima"], " ", ["lb"], " item"], [["start"], " pausa / começa"], [["direita"], " volta nos menus"]]:
+	var y := r.position.y + 500
+	for line in [[["baixo"], " pula"], [["esquerda"], " golpe rápido"], [["cima"], " marretada pesada"], [["rb"], " esquiva"], [["lb"], " item"], [["start"], " pausa / começa"], [["direita"], " volta nos menus"]]:
 		var parts: Array = []
 		for e in line:
 			parts.append(e)
-		Kit.pad_hint(ci, r.get_center().x, y, parts, 26, dark, st)
-		y += 48
+		Kit.pad_hint(ci, r.get_center().x, y, parts, 24, dark, st)
+		y += 38
 
 # ---------------------------------------------------------------- intro animada (abre o jogo)
 ## O logo cai e quica, bate levantando poeira, os robôs entram correndo e acenam, e o logo desliza até o menu.
@@ -663,7 +663,7 @@ func _draw_intro(ci: CanvasItem) -> void:
 		Kit.text(ci, Vector2(0, 1030), "aperte qualquer botão", 30, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, 1920, 6, Color(0.12, 0.3, 0.33, a))
 
 # ---------------------------------------------------------------- configurar controle (aprende os sinais do controle)
-const LEARN_NAMES := {"jump": "PULAR", "hammer": "MARRETA", "item": "ITEM", "start": "START (começar / pausar)", "back": "VOLTAR (nos menus)",
+const LEARN_NAMES := {"jump": "PULAR", "hammer": "GOLPE RÁPIDO", "heavy": "MARRETADA PESADA", "dodge": "ESQUIVA", "item": "ITEM", "start": "START (começar / pausar)", "back": "VOLTAR (nos menus)",
 	"left": "ESQUERDA (analógico ou direcional)", "right": "DIREITA", "up": "CIMA", "down": "BAIXO"}
 var cfg_step := -1          # -1 = esperando escolher o controle; 0..8 = ação; 9 = pronto
 var cfg_joy := -1

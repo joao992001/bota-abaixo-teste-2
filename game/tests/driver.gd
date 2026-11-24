@@ -16,6 +16,10 @@ func _run() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--shot="):
 			shot = a.substr(7)
+		if a.begins_with("--combate="):
+			await combate_frames(a.trim_prefix("--combate="))
+			get_tree().quit()
+			return
 		if a.begins_with("--anim="):
 			anim = a.substr(7)
 		if a.begins_with("--intro="):
@@ -239,7 +243,7 @@ func autotest() -> void:
 	check(PlayerInput.dev_held("kb_b", "jump"), "Ctrl direito faz o teclado B pular")
 	await key_event(KEY_CTRL, false, KEY_LOCATION_RIGHT)
 	await key_event(KEY_F, true)
-	check(PlayerInput.dev_held("kb_a", "hammer"), "F é a marreta do teclado A")
+	check(PlayerInput.dev_held("kb_a", "hammer"), "F é o golpe rápido do teclado A")
 	await key_event(KEY_F, false)
 	main.players.clear()   # o Ctrl direito simulado fez o teclado B entrar: limpa para o resto do teste
 	PlayerInput.slots.clear()
@@ -363,11 +367,13 @@ func demolicao_test() -> void:
 	await frames(3)
 	var cell := Vector2i(13, 9)
 	var hp0: int = int(main.demo.cfg["block_hp"])
-	await tap("v0", "hammer")
+	await tap("v0", "heavy")
+	await frames(18)
 	check(main.level.blocks.has(cell) and main.level.blocks[cell]["hp"] == hp0 - 1, "1ª marretada racha o caixote do chão à frente")
 	for k in hp0 - 1:
-		await frames(16)
-		await tap("v0", "hammer")
+		await frames(34)   # a marretada que erra o robô fica presa ~0,7 s (abertura real)
+		await tap("v0", "heavy")
+		await frames(18)
 	check(not main.level.blocks.has(cell), "%dª marretada quebra o caixote" % hp0)
 	await demo_round()
 	r0 = main.robots[0]
@@ -377,18 +383,20 @@ func demolicao_test() -> void:
 	r0.facing = 1
 	await frames(3)
 	var x1: float = r1.position.x
-	await tap("v0", "hammer")
-	check(r1.stun_t > 0.0 and absf(r1.dmg - 12.0) < 0.1, "marretada atordoa e soma 12%% no Amassômetro (%.0f%%)" % r1.dmg)
+	await tap("v0", "heavy")
+	await frames(18)
+	check(r1.recover_t > 0.0 and absf(r1.dmg - 14.0) < 0.1, "marretada pesada arremessa e soma 14%% no Amassômetro (%.0f%%)" % r1.dmg)
 	await frames(30)
 	var push_low: float = r1.position.x - x1
 	put(r1, Vector2(col_x(11) + 60, 576))
 	r1.dmg = 120.0
 	await frames(16)
 	x1 = r1.position.x
-	await tap("v0", "hammer")
+	await tap("v0", "heavy")
+	await frames(18)
 	await frames(30)
 	var push_high: float = r1.position.x - x1
-	check(push_low > 20.0 and push_low < 200.0 and push_high > push_low * 3.0, "amassado voa mais longe: 12%% → %.0f px, 120%% → %.0f px" % [push_low, push_high])
+	check(push_low > 20.0 and push_low < 200.0 and push_high > push_low * 3.0, "amassado voa mais longe: 14%% → %.0f px, 120%% → %.0f px" % [push_low, push_high])
 	# invulnerável não sofre golpe
 	await demo_round()
 	r0 = main.robots[0]
@@ -398,7 +406,8 @@ func demolicao_test() -> void:
 	r0.facing = 1
 	r1.invuln = 2.0
 	await frames(3)
-	await tap("v0", "hammer")
+	await tap("v0", "heavy")
+	await frames(18)
 	check(r1.dmg == 0.0 and r1.stun_t == 0.0, "invulnerável (começo da rodada) não leva golpe")
 	# pulo duplo do propulsor
 	await demo_round()
@@ -495,6 +504,7 @@ func demolicao_test() -> void:
 	await controle_real_test()
 	await oficina_test()
 	await robos_test()
+	await combate_test()
 	await imagens_test()
 
 func menus_test() -> void:
@@ -773,7 +783,7 @@ func maquinas_test() -> void:
 	r0.facing = -1
 	put(r1, Vector2(col_x(13), 704))
 	await frames(3)
-	main.demo.hammer(r0)
+	main.demo.attack(r0, "pesado")
 	await frames(2)
 	check(main.level.ch_at(Vector2i(13, 11)) == "A" and fx.traps_open_t > 0.0, "Prensa: marretada na alavanca abre os alçapões")
 	await frames(20)
@@ -1024,7 +1034,7 @@ func submodos_test() -> void:
 	put(other, Vector2(col_x(12) + 50, 576))
 	hr.facing = 1
 	await frames(3)
-	main.demo.hammer(hr)
+	main.demo.attack(hr, "pesado")
 	await frames(2)
 	check(main.demo.bomb_holder == 1 - h, "Batata: marretada passou a dinamite para P%d" % (2 - h))
 	hr.invuln = 99.0
@@ -1194,7 +1204,7 @@ func itens_modos_test() -> void:
 	put(rr, Vector2(5 * 64 + 22, 21 * 64 - 2))
 	rr.facing = 1
 	await frames(5)
-	main.demo.hammer(rr)
+	main.demo.attack(rr, "pesado")
 	await frames(20)
 	check(main.level.blocks.size() < nb0, "Batata: 1 marretada quebra o caixote (%d → %d)" % [nb0, main.level.blocks.size()])
 	# lote 2a: itens novos da Batata
@@ -1503,6 +1513,132 @@ func robos_test() -> void:
 	check(ok, "todos os modelos desmontam na eliminação")
 	main.go_menu()
 
+## COMBATE (relatório de 2026-11-24): golpe rápido × marretada pesada, esquiva (chão/ar, só contra robôs),
+## arremesso com retorno gradual do controle. Cenários de aceitação da seção 8.
+func combate_test() -> void:
+	print("== Combate (rápido, pesado, esquiva, arremesso)")
+	main.mode = "demolicao"
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 5
+	main.event_level = 0
+	main.arena_choice = "demolicao"
+	if main.players.size() < 2:
+		PlayerInput.virtual = {"v0": {}, "v1": {}}
+		main.go_join()
+		await frames(2)
+		await tap("v0", "jump")
+		await tap("v1", "jump")
+	main.start_match()
+	await demo_round()
+	main.demo.item_t = 999.0
+	var r0 = main.robots[0]
+	var r1 = main.robots[1]
+	var am: Dictionary = main.demo.cfg["amassometro"]
+	# 1) golpe rápido: acerta, soma pouco, reação menor; não quebra caixote
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(11) + 60, 576))
+	r0.facing = 1
+	r1.dmg = 50.0
+	await frames(3)
+	await tap("v0", "hammer")
+	await frames(4)
+	var kx_fast: float = absf(r1.own_vx)
+	check(absf(r1.dmg - 50.0 - float(am["rapido"]["dano"])) < 0.1, "golpe rápido acerta e soma %d%% (%.0f%%)" % [int(am["rapido"]["dano"]), r1.dmg])
+	await frames(40)
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(11) + 60, 576))
+	r1.dmg = 50.0
+	await frames(3)
+	await tap("v0", "heavy")
+	await frames(6)
+	check(r1.dmg == 50.0, "marretada pesada tem preparo: ainda não acertou no 6º quadro")
+	await frames(14)
+	var kx_heavy: float = absf(r1.own_vx)
+	check(r1.dmg > 50.0 and kx_heavy > kx_fast * 1.4, "pesada empurra bem mais que a rápida (%.0f × %.0f)" % [kx_heavy, kx_fast])
+	await frames(60)
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(12), 576))
+	put(r1, Vector2(col_x(26), 576))
+	r0.facing = 1
+	await frames(3)
+	var cell := Vector2i(13, 9)
+	var hp0: int = main.level.blocks[cell]["hp"] if main.level.blocks.has(cell) else -1
+	await tap("v0", "hammer")
+	await frames(12)
+	check(hp0 > 0 and main.level.blocks.has(cell) and main.level.blocks[cell]["hp"] == hp0, "golpe rápido não quebra caixote")
+	# marretada que erra deixa aberto: ainda presa depois de 0,5 s
+	await frames(20)
+	await tap("v0", "heavy")
+	await frames(30)
+	check(r0.atk == "pesado", "marretada que erra deixa o robô exposto (ainda se recuperando)")
+	await frames(40)
+	check(r0.atk == "", "...e termina sem travar")
+	# 2) esquiva no chão: desloca rápido e, na janela, golpe de robô não pega
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(12), 576))
+	put(r1, Vector2(col_x(14), 576))
+	r0.facing = 1
+	r1.facing = -1
+	await frames(3)
+	var x0: float = r0.position.x
+	vset("v0", "dodge", true)
+	await frames(1)
+	vset("v0", "dodge", false)
+	check(r0.guard_t > 0.0 and r0.dodge_t > 0.0, "esquiva começa com a janela de proteção")
+	r1.atk = ""
+	var hit_during: bool = r0.take_hit(-1, "rapido", r1.pid)
+	check(not hit_during and r0.dmg == 0.0, "na janela da esquiva, golpe de robô não pega")
+	var env_hit: bool = r0.take_hit(-1, "explosao", -1)
+	check(env_hit and r0.dmg > 0.0, "esquiva NÃO protege de explosão/cenário")
+	await frames(12)
+	check(absf(r0.position.x - x0) > 60.0 or r0.dmg > 0.0, "esquiva desloca o robô (%.0f px)" % absf(r0.position.x - x0))
+	# 3) esquiva no ar: 1 por período no ar; golpe não devolve; pousar devolve
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(12), 150))
+	put(r1, Vector2(col_x(25), 576))
+	await frames(2)
+	await tap("v0", "dodge")
+	check(not r0.is_on_floor() and r0.air_dodge == 0, "esquiva no ar gasta a carga aérea")
+	await frames(8)
+	r0.take_hit(1, "rapido", r1.pid)
+	r0.hitstop = 0.0
+	r0.stun_t = 0.0
+	r0.dodge_cd = 0.0   # sem esperar a recarga: só a regra da carga aérea decide
+	await tap("v0", "dodge")
+	check(not r0.is_on_floor() and r0.air_dodge == 0 and r0.dodge_t == 0.0, "levar golpe no ar NÃO devolve a esquiva (sem 2ª esquiva no ar)")
+	for k in 120:
+		if r0.is_on_floor():
+			break
+		await frames(1)
+	await frames(2)
+	check(r0.is_on_floor() and r0.air_dodge == 1, "pousar devolve a esquiva aérea")
+	# 4) arremesso: sem controle curto, depois controle volta aos poucos; esquiva ajuda mas não anula
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(14), 400))
+	r0.dmg = 110.0
+	r0.take_hit(1, "pesado", r1.pid)
+	r0.hitstop = 0.0
+	check(r0.stun_t > 0.0 and r0.stun_t <= float(main.c_ctrl("arremesso")["sem_controle_max"]) + 0.01, "arremesso: perda de controle curta (%.2f s)" % r0.stun_t)
+	var v_launch: float = r0.own_vx
+	vset("v0", "left", true)
+	await frames(int(r0.stun_t * 60.0) + 6)
+	check(r0.recover_t > 0.0 and r0.own_vx > 0.0 and r0.own_vx < v_launch, "controle volta aos poucos: corrige sem cancelar o arremesso (%.0f → %.0f)" % [v_launch, r0.own_vx])
+	await tap("v0", "dodge")
+	await frames(2)
+	check(r0.air_dodge == 0 and r0.dodge_carry.x > 0.0, "esquiva na recuperação usa a mesma carga aérea e mantém parte do impulso")
+	vset("v0", "left", false)
+	await frames(90)
+	check(r0.stun_t == 0.0 and r0.atk == "" and r0.dodge_t == 0.0, "nenhum estado preso depois do arremesso")
+	await frames(2)
+
 ## Toda imagem pedida no código existe (a lama da Maré faltava e enchia o log de erros, travando o jogo).
 func imagens_test() -> void:
 	print("== Imagens")
@@ -1602,10 +1738,10 @@ func controle_real_test() -> void:
 	joy_btn(3, JOY_BUTTON_A, false)
 	await frames(40)
 	await joy_tap(3, JOY_BUTTON_X)
-	check(r0.hammer_anim > 0.0 or r0.vis.hammer_t > 0.0 or true, "X marreta")
+	check(PlayerInput.dev_held("joy3", "hammer") or r0.atk != "" or r0.atk_cd > 0.0, "X dá o golpe rápido")
 	joy_axis(3, JOY_AXIS_TRIGGER_RIGHT, 1.0)
 	await frames(2)
-	check(PlayerInput.held(0, "hammer"), "gatilho RT conta como marreta")
+	check(PlayerInput.held(0, "dodge"), "gatilho RT é a esquiva")
 	joy_axis(3, JOY_AXIS_TRIGGER_RIGHT, 0.0)
 	# CONFIGURAR CONTROLE: aprende um controle de botões trocados
 	main.go_menu()
@@ -1614,7 +1750,7 @@ func controle_real_test() -> void:
 	await frames(25)
 	await joy_tap(3, 9)   # qualquer botão: escolhe o controle
 	check(main.menus.cfg_joy == 3 and main.menus.cfg_step == 0, "configurar: escolheu o controle que apertou")
-	var seq := [["b", 2], ["b", 3], ["b", 1], ["b", 7], ["b", 6], ["a", 0, -1.0], ["a", 0, 1.0], ["a", 1, -1.0], ["a", 1, 1.0]]
+	var seq := [["b", 2], ["b", 3], ["b", 4], ["b", 9], ["b", 1], ["b", 7], ["b", 6], ["a", 0, -1.0], ["a", 0, 1.0], ["a", 1, -1.0], ["a", 1, 1.0]]
 	for st in seq:
 		await frames(30)
 		if st[0] == "b":
@@ -1628,7 +1764,7 @@ func controle_real_test() -> void:
 		await frames(4)
 	await frames(30)
 	var cm: Dictionary = PlayerInput.custom.get(Input.get_joy_guid(3), {})
-	check(cm.size() == 9 and cm["jump"] == ["b", 2, 1] and cm["left"][1] == 0 and cm["left"][2] < 0.0, "configurar: aprendeu as 9 ações (%s)" % str(cm.get("jump")))
+	check(cm.size() == 11 and cm["jump"] == ["b", 2, 1] and cm["dodge"] == ["b", 9, 1] and cm["left"][1] == 0 and cm["left"][2] < 0.0, "configurar: aprendeu as 11 ações (%s)" % str(cm.get("jump")))
 	await frames(90)
 	check(main.state == S.CONTROLES, "configurar: termina e abre o teste dos controles")
 	joy_btn(3, 2, true)
@@ -1663,8 +1799,8 @@ func controles_test() -> void:
 	PlayerInput.virtual = {"v0": {}, "v1": {}, "v9": {}}
 	await frames(2)
 	await tap("v0", "jump")
-	await tap("v0", "item")
-	check(main.players.size() == 2 and main.players[1].get("bot", false), "na entrada, ITEM (Y/△) adiciona bot")
+	await tap("v0", "heavy")
+	check(main.players.size() == 2 and main.players[1].get("bot", false), "na entrada, Y/△ adiciona bot")
 	await tap("v1", "jump")
 	check(main.players.size() == 3, "outro controle entra")
 	# controle cai no meio da partida: pausa; outro controle livre assume com START
@@ -1750,7 +1886,8 @@ func itens_test() -> void:
 	r0.facing = 1
 	main.demo.give(r0, "martelao")
 	await frames(2)
-	await tap("v0", "hammer")
+	await tap("v0", "heavy")
+	await frames(18)
 	check(not main.level.blocks.has(Vector2i(13, 9)), "martelão quebra o caixote em 1 golpe")
 	await demo_round()
 	r0 = main.robots[0]
@@ -2026,6 +2163,81 @@ func grab(dir: String, prefix: String) -> void:
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(dir.path_join("%s_%04d.png" % [prefix, _frame_no]))
 	_frame_no += 1
+
+## Vitrine das animações de movimento e combate (--combate=DIR): quadros a 30 por segundo para virar GIF.
+## P1 Lata: corre, derrapa, pulo + pulo duplo (mortal), esquiva no chão e no ar, golpes rápidos, marretada pesada.
+## P2 Brutamontes (amassado): apanha, é arremessado girando e se recupera no ar. P3 Varapau: erra a marretada (fica cravada).
+func combate_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	PlayerInput.virtual = {"v0": {}, "v1": {}, "v2": {}}
+	main.mode = "demolicao"
+	main.go_join()
+	await frames(2)
+	for d in ["v0", "v1", "v2"]:
+		await tap(d, "jump")
+	main.players[0]["model"] = 0
+	main.players[1]["model"] = 4
+	main.players[2]["model"] = 5
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 5
+	main.event_level = 0
+	main.arena_choice = "demolicao"
+	main.start_match()
+	await demo_round()
+	main.demo.item_t = 999.0
+	main.hud.visible = false
+	var r0 = main.robots[0]
+	var r1 = main.robots[1]
+	var r2 = main.robots[2]
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(19), 576))
+	put(r2, Vector2(col_x(24), 576))
+	r1.dmg = 45.0
+	r2.dmg = 90.0
+	r1.facing = -1
+	r2.facing = -1
+	main.cam_lock = [1.55, Vector2(col_x(17), 470)]
+	_frame_no = 0
+	var script := {
+		"v0": [[10, 40, "right"], [40, 58, "left"], [70, 84, "jump"], [96, 102, "jump"], [96, 120, "right"],
+			[150, 153, "dodge"], [150, 153, "right"], [175, 189, "jump"], [192, 195, "dodge"], [192, 195, "right"], [192, 195, "up"],
+			[240, 243, "hammer"], [258, 261, "hammer"], [276, 279, "hammer"], [330, 333, "heavy"],
+			[440, 443, "dodge"], [440, 443, "right"]],
+		"v1": [[372, 420, "left"], [395, 398, "dodge"], [395, 398, "left"]],
+		"v2": [[300, 303, "heavy"], [430, 433, "heavy"]],
+	}
+	for f in 520:
+		if f == 225:
+			put(r0, Vector2(col_x(16), 576))
+			put(r1, Vector2(col_x(17) + 10, 576))
+			r0.facing = 1
+			r1.dmg = 45.0
+		if f == 320:
+			r1.dmg = 135.0
+			put(r1, Vector2(col_x(17) + 10, 576))
+			r1.own_vx = 0.0
+		if f == 425:
+			put(r0, Vector2(col_x(12), 576))
+			put(r2, Vector2(col_x(14) + 20, 576))
+			r0.facing = 1
+		var a := {"v0": {}, "v1": {}, "v2": {}}
+		for d in script:
+			for seg in script[d]:
+				if f >= seg[0] and f < seg[1]:
+					a[d][seg[2]] = true
+		PlayerInput.virtual = a
+		for r in main.robots:
+			r.invuln = 0.0
+		var foco: Vector2 = r0.position
+		if f >= 225 and f < 425:
+			foco = (r0.position + r1.position) / 2.0
+		elif f >= 425:
+			foco = (r0.position + r2.position) / 2.0
+		main.cam_lock = [2.3, foco + Vector2(0, -60)]
+		await frames(1)
+		if f % 2 == 0:
+			await grab(dir, "c")
+	print("quadros: ", _frame_no)
 
 func anim_frames(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
@@ -2481,7 +2693,7 @@ func gifs_frames(arg: String) -> void:
 				main.demo.give(r1, "armadura")
 				put(r0, Vector2(col_x(14), 576))
 				await frames(15)
-				main.demo.hammer(r0)
+				main.demo.attack(r0, "pesado")
 			"molabomba":
 				main.demo.give(r1, "molabomba")
 				await frames(10)
