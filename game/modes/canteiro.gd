@@ -11,7 +11,8 @@ const T := 64
 ## Layouts: "1" = Canteiro de Obras; "lab" = fase do Laboratório (menor). O .lvl escolhe com "canteiro: <layout>".
 const LAYOUTS := {
 	"1": {"seg_x": [8, 12, 16, 20, 24, 28], "nucleo": [2, 3], "laje_y": 13, "andaimes": [[3, 10, 5], [32, 10, 5]],
-		"vigas": [[16, 8, 8], [10, 11, 4], [26, 11, 4], [9, 5, 4], [27, 5, 4]], "pilares": [17, 22]},
+		"vigas": [[16, 8, 8], [10, 11, 4], [26, 11, 4], [9, 5, 4], [27, 5, 4]], "pilares": [17, 22],
+		"terreos": [[0, 17, 8, 5], [32, 17, 8, 5]]},
 	"lab": {"seg_x": [3, 7, 11, 15, 19, 23], "nucleo": [2, 3], "laje_y": 12, "andaimes": [[5, 9, 4], [20, 9, 4]],
 		"vigas": [[11, 6, 6], [24, 4, 4]], "pilares": [12, 17]},
 }
@@ -56,6 +57,10 @@ func setup(m: Node, lv) -> void:
 	for i in VIGAS.size():
 		var v: Array = VIGAS[i]
 		_add("viga", Rect2(v[0] * T, v[1] * T, v[2] * T, 26), int(cfg["viga_hp"]), false, true, i)
+	var ters: Array = lay.get("terreos", [])
+	for i in ters.size():   # chão do térreo (dos lados): firme; só some na virada da fase (collapse_all)
+		var g: Array = ters[i]
+		_add("terreo", Rect2(g[0] * T, g[1] * T, g[2] * T, g[3] * T), 999, true, false, i)
 	lv.extra_solid = func(c: Vector2i) -> bool: return owner_of.has(c)
 	lv.grab_solid = func(c: Vector2i) -> bool: return owner_of.has(c) and owner_of[c]["kind"] == "laje"
 
@@ -135,7 +140,7 @@ func restore_body(p: Dictionary, r: Rect2) -> void:
 # ---------------------------------------------------------------- dano
 ## Aplica dano estrutural. O núcleo só treme e solta poeira.
 func damage(p: Dictionary, amount: int, at: Vector2) -> void:
-	if p["fallen"] or p["crit_t"] > 0.0 or p["evt"] != "":
+	if p["fallen"] or p["crit_t"] > 0.0 or p["evt"] != "" or p["kind"] == "terreo":
 		return
 	if main.events != null and main.events.inspecao:
 		# G09 Inspeção: estrutura reforçada (treme e faísca, não racha)
@@ -267,7 +272,7 @@ func _physics_process(dt: float) -> void:
 func _alert_pool() -> Array:
 	var pool := []
 	for p in parts:
-		if p["fallen"] or p["nucleo"] or p["crit_t"] > 0.0 or p["warn_t"] > 0.0 or p["evt"] != "":
+		if p["fallen"] or p["nucleo"] or p["crit_t"] > 0.0 or p["warn_t"] > 0.0 or p["evt"] != "" or p["kind"] == "terreo":
 			continue
 		var fresh := false
 		for r in main.robots:
@@ -333,6 +338,14 @@ func _draw() -> void:
 			for cx in [r.position.x + 40, r.end.x - 40]:
 				draw_line(Vector2(cx, -500), Vector2(cx, r.position.y) + o, Color("#5a4a3a"), 4.0, true)
 			draw_texture_rect(tex["viga"] if r.size.x > 300.0 else tex["viga4"], Rect2(r.position + Vector2(-10, -10) + o, Vector2(r.size.x + 20.0, 46)), false)
+	# chão do térreo (lados): terra batida com faixa clara no topo
+	for p in parts:
+		if p["kind"] == "terreo" and not p["fallen"]:
+			var r: Rect2 = p["rect"]
+			draw_rect(r, Color("#b9ab8f"))
+			draw_rect(Rect2(r.position, Vector2(r.size.x, 12)), Color("#d9ccb0"))
+			for k in int(r.size.x / 70.0):
+				draw_circle(r.position + Vector2(30 + k * 70, 40 + (k % 3) * 18), 4.0, Color("#958a72"))
 	# laje
 	for p in parts:
 		if p["kind"] != "laje" or p["fallen"]:
@@ -385,6 +398,22 @@ func _draw_sirens() -> void:
 			draw_circle(sp, 26.0, Color(1.0, 0.6, 0.2, 0.25))
 			var ang := t * 8.0
 			draw_colored_polygon(PackedVector2Array([sp, sp + Vector2.from_angle(ang - 0.25) * 120.0, sp + Vector2.from_angle(ang + 0.25) * 120.0]), Color(1.0, 0.75, 0.3, 0.18))
+
+## VIRADA da fase (modes/etapas.gd): TUDO desaba de uma vez (inclusive núcleo e térreo), em pedaços com física.
+func collapse_all() -> void:
+	for p in parts:
+		p["warn_t"] = 0.0
+		p["evt"] = ""
+		if not p["fallen"]:
+			_collapse(p)
+	cycle_state = "calma"
+	target = null
+
+## Aviso da virada: todas as peças tremem com a fita zebrada.
+func warn_all(s: float) -> void:
+	for p in parts:
+		if not p["fallen"] and p["kind"] != "terreo":
+			p["warn_t"] = s
 
 ## Quantos trechos/peças ainda de pé (testes e bots).
 func standing(kind := "") -> int:

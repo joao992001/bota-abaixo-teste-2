@@ -71,6 +71,15 @@ func reset_round() -> void:
 	var lvl: int = main.event_level
 	timer = float(cfg["primeiro_s"][lvl]) * main.rng.randf_range(0.85, 1.15)
 
+## Virada da fase: encerra tudo o que está ativo (restaura) sem mexer no ritmo.
+func stop_all() -> void:
+	for a in active.duplicate():
+		_cleanup(a)
+	active.clear()
+	for c in crates.duplicate():
+		_break_crate(c)
+	rivets.clear()
+
 func ev(id: String) -> Dictionary:
 	for e in cfg["lista"]:
 		if e["id"] == id:
@@ -159,9 +168,14 @@ func update(dt: float) -> void:
 	_update_bits(dt)
 	_update_crates(dt)
 	_update_rivets(dt)
+	wind = 0.0
+	gravity_mult = 1.0
+	inspecao = false
 	if main.event_level <= 0 or main.state != main.S.RUN or main.countdown > 0.0:
 		return
-	if not manual and active.size() < max_sim():
+	var et = main.demo.etapas if main.demo != null else null
+	var virando: bool = et != null and is_instance_valid(et) and et.state != "etapa"
+	if not manual and not virando and active.size() < max_sim():
 		timer -= dt
 		if timer <= 0.0:
 			var pool: Array = cfg["lista"].filter(func(e): return compatible(e["id"]) and eligible(e))
@@ -172,9 +186,6 @@ func update(dt: float) -> void:
 				var src: Array = other if not other.is_empty() else pool
 				_announce(src[main.rng.randi() % src.size()], -1.0)
 				timer = float(cfg["intervalo_s"][main.event_level]) * main.rng.randf_range(0.8, 1.2)
-	wind = 0.0
-	gravity_mult = 1.0
-	inspecao = false
 	for a in active.duplicate():
 		_step(a, dt)
 	wind = clampf(wind, -float(cfg["vento_max"]), float(cfg["vento_max"]))
@@ -1026,7 +1037,7 @@ func _ground_spots(free_tiles := 3) -> Array:
 				continue
 			if ct != null and ct.owner_of.has(c):
 				var p: Dictionary = ct.owner_of[c]
-				if p["kind"] != "laje" or p["fallen"] or p["crit_t"] > 0.0 or p["warn_t"] > 0.0:
+				if not (p["kind"] in ["laje", "terreo"]) or p["fallen"] or p["crit_t"] > 0.0 or p["warn_t"] > 0.0:
 					continue
 			var pos := Vector2(x * T + 32, y * T)
 			if not pr.has_point(pos):

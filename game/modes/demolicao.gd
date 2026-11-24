@@ -18,11 +18,13 @@ var canvas: Node2D           # desenha itens, dinamites e explosões no mundo
 var crumbling := false       # quebra por ter ficado parado em cima (culpa de quem estava em cima)
 const ArenaFx := preload("res://modes/arena_fx.gd")
 const Canteiro := preload("res://modes/canteiro.gd")
+const Etapas := preload("res://modes/etapas.gd")
 const Spells := preload("res://modes/spells.gd")
 const Kit := preload("res://ui/kit.gd")
 var fx: Node2D = null        # mecânicas da arena (plataformas, lama, bola, esteiras)
 var spells: Node2D = null     # caixas de spell, slots e efeitos (modes/spells.gd)
 var canteiro: Node2D = null  # estrutura destrutível do Canteiro de Obras (Derruba), quando a arena tem "canteiro: 1"
+var etapas: Node2D = null   # fase em etapas (modes/etapas.gd): virada cronometrada e queda para a etapa 2
 var arena := {}              # {id, nome, dica} da rodada atual
 var last_arena := ""
 var last_choice := ""         # rodízio: escolha da rodada anterior
@@ -127,6 +129,13 @@ func start_round() -> void:
 		main.world.add_child(canteiro)
 		main.world.move_child(canteiro, 2)
 		canteiro.setup(main, main.level)
+	if etapas != null and is_instance_valid(etapas):
+		etapas.queue_free()
+	etapas = null
+	if String(main.level.prop("etapa2", "")) != "":
+		etapas = Etapas.new()
+		main.world.add_child(etapas)
+		etapas.setup(main)
 	if spells != null and is_instance_valid(spells):
 		spells.queue_free()
 	spells = Spells.new()
@@ -171,6 +180,8 @@ func update(dt: float) -> void:
 	banner_t = maxf(banner_t - dt, 0.0)
 	_update_fx(dt)
 	main.events.update(dt)
+	if etapas != null and is_instance_valid(etapas):
+		etapas.update(dt)   # depois dos eventos: a queda mexe na gravidade do quadro
 	if fx != null and is_instance_valid(fx):
 		fx.update(dt, main.countdown <= 0.0)
 	if not go_played and main.countdown <= 0.6:
@@ -310,7 +321,7 @@ func update(dt: float) -> void:
 func play_rect() -> Rect2:
 	if fx != null and is_instance_valid(fx) and fx.scroll_on:
 		return Rect2(fx.scroll_center - Vector2(960, 512), Vector2(1920, 1024))
-	return Rect2(0, 0, main.level.cols * 64.0, main.level.rows * 64.0)
+	return main.level.area   # fase em etapas: a área da etapa atual
 
 ## Explosão: destrói caixotes no raio e lança os robôs para longe (TNT tem raio maior).
 func explode(pos: Vector2, rad := -1.0, by := -1) -> void:
@@ -533,7 +544,7 @@ func respawn(r, ahead := false) -> void:
 					best = c
 	if best.x < 0:
 		# não sobrou chão firme: o guindaste traz um caixote novo e o robô volta em cima dele
-		var spot: Vector2 = crown_home if rule() == "rei" else lv.spawns.get(r.pid % 4 + 1, Vector2(lv.cols * 32.0, 256.0))
+		var spot: Vector2 = crown_home if rule() == "rei" else lv.spawns.get((etapas.spawn_index(r.pid % 4 + 1) if etapas != null and is_instance_valid(etapas) else r.pid % 4 + 1), Vector2(lv.cols * 32.0, 256.0))
 		var cell := Vector2i(int(spot.x / 64.0), int(spot.y / 64.0))
 		if not lv.is_solid(cell):
 			lv.add_block(cell)

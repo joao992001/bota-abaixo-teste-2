@@ -1,0 +1,112 @@
+extends Node2D
+## FASE EM ETAPAS (cartilha do mapa, docs/manuais/derruba/mapa_cartilha.md): a virada é o ÚNICO momento de roteiro,
+## cronometrada e sempre igual. Etapa 1 → AVISO ("A OBRA VAI CEDER!", tudo treme com fita) → DESABA (a estrutura toda
+## cai em pedaços) → QUEDA (ninguém é eliminado; um funil leva todos para o buraco do teto da etapa 2; gravidade mais leve)
+## → ETAPA 2 (câmera, KO e área de jogo passam para a etapa 2; nascimentos 5–8).
+## Números: data/modos.json → demolicao.etapas. Área de cada etapa no .lvl: "etapa1:" / "etapa2:" (col,linha,larg,alt)
+## e o buraco por onde se cai: "buraco: col0,col1".
+
+var main: Node
+var cfg: Dictionary
+var etapa := 1
+var state := "etapa"          # etapa · aviso · queda
+var t := 0.0                  # tempo de rodada contado para a virada
+var st_t := 0.0
+var hole := Vector2.ZERO      # faixa x (px) do buraco do teto da etapa 2
+
+func setup(m: Node) -> void:
+	main = m
+	cfg = m.demo.cfg["etapas"]
+	var h := String(m.level.prop("buraco", "")).split(",")
+	if h.size() >= 2:
+		hole = Vector2(float(h[0]) * 64.0, float(h[1]) * 64.0)
+	else:
+		var a2: Rect2 = m.level.etapa_rect(2)
+		hole = Vector2(a2.position.x, a2.end.x)
+
+func virada_s() -> float:
+	return float(cfg["virada_s"])
+
+func update(dt: float) -> void:
+	if main.state != main.S.RUN or main.countdown > 0.0:
+		return
+	var lv = main.level
+	var ct = main.demo.canteiro
+	match state:
+		"etapa":
+			if etapa != 1:
+				return
+			t += dt
+			if t >= virada_s() - float(cfg["aviso_s"]):
+				state = "aviso"
+				st_t = float(cfg["aviso_s"])
+				main.demo.banner = "A OBRA VAI CEDER!"
+				main.demo.banner_t = st_t
+				Audio.play("alarme", 0.8, 0.0)
+				if ct != null and is_instance_valid(ct):
+					ct.warn_all(st_t)
+		"aviso":
+			st_t -= dt
+			main.shake(1.5 + 4.0 * (1.0 - st_t / float(cfg["aviso_s"])))
+			if fmod(st_t, 0.6) < dt:
+				Audio.play("pistao_aviso", 0.7, -4.0)
+			if st_t <= 0.0:
+				_desaba()
+		"queda":
+			st_t += dt
+			main.events.gravity_mult *= float(cfg["gravidade_queda"])
+			var a2: Rect2 = lv.etapa_rect(2)
+			var landed := true
+			for r in main.robots:
+				if not r.alive:
+					continue
+				r.invuln = maxf(r.invuln, 0.5)
+				# funil: quem está fora do buraco é puxado para dentro dele antes de chegar ao teto
+				if r.position.y < a2.position.y + 160.0:
+					var tx := clampf(r.position.x, hole.x + 60.0, hole.y - 60.0)
+					r.push_vx = clampf((tx - r.position.x) * 5.0, -float(cfg["funil_vel"]), float(cfg["funil_vel"]))
+				if not (r.is_on_floor() and a2.has_point(r.position)):
+					landed = false
+			if (landed and st_t > 0.5) or st_t >= float(cfg["queda_max_s"]):
+				_chega()
+
+## A estrutura inteira desaba: começa a queda.
+func _desaba() -> void:
+	var lv = main.level
+	state = "queda"
+	st_t = 0.0
+	var ct = main.demo.canteiro
+	if ct != null and is_instance_valid(ct):
+		ct.collapse_all()
+	main.events.stop_all()
+	lv.ko_off = true
+	lv.area = lv.etapa_rect(1).merge(lv.etapa_rect(2))
+	main.shake(18.0)
+	Audio.play("terremoto", 1.0, 2.0)
+	Audio.play("explosao", 0.6, -2.0)
+	for r in main.robots:
+		if r.alive:
+			r.hanging = false
+			r.invuln = maxf(r.invuln, 1.0)
+
+## Todos pousaram na etapa 2: câmera, KO e área de jogo passam para ela.
+func _chega() -> void:
+	var lv = main.level
+	state = "etapa"
+	etapa = 2
+	lv.area = lv.etapa_rect(2)
+	lv.ko_off = false
+	main.demo.banner = String(lv.prop("etapa2_nome", "ETAPA 2")).to_upper() + "!"
+	main.demo.banner_t = 2.0
+	main.shake(10.0)
+	Audio.play("caixote_quebra", 0.6, 0.0)
+	for r in main.robots:
+		if r.alive:
+			r.invuln = maxf(r.invuln, float(cfg["invuln_chegada_s"]))
+			main.dust(r.position, 1.2)
+			if not lv.area.grow(64).has_point(r.position):   # passou do tempo e ficou fora: nasce na etapa 2
+				main.demo.respawn(r)
+
+## Nascimento na etapa atual (spawns 1–4 na etapa 1, 5–8 na etapa 2).
+func spawn_index(i: int) -> int:
+	return i + (4 if etapa == 2 else 0)

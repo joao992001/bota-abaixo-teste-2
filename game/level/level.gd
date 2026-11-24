@@ -23,6 +23,9 @@ var belt_warn := false      # esteiras piscando antes de inverter
 var extra_solid := Callable()   # sólidos que se movem (plataformas do guindaste), para bots e itens
 var grab_solid := Callable()    # bordas extras que dá para agarrar (laje do Canteiro)
 var anim_t := 0.0
+## Área jogável ATUAL em px (fases em etapas: a câmera, o KO e a área de jogo seguem a etapa). Padrão = mapa inteiro.
+var area := Rect2()
+var ko_off := false          # virada: ninguém é eliminado durante a queda
 ## Tema visual da arena (cabeçalho "tema:" do .lvl): troca blocos, bloco fixo, tábuas e fundo (assets/temas/<tema>/).
 const THEMES := {
 	"canteiro": {"crack": "#5a3a1c", "rope": "#8a6a47"},
@@ -71,7 +74,7 @@ func load_level(level_id: String) -> void:
 		for x in cols:
 			var c := Vector2i(x, y)
 			var ch := ch_at(c)
-			if ch in ["1", "2", "3", "4"]:
+			if ch in ["1", "2", "3", "4", "5", "6", "7", "8"]:   # 5–8 = nascimentos da etapa 2
 				spawns[int(ch)] = Vector2(x * T + T / 2.0, (y + 1) * T)
 			elif ch == "K":
 				throne = Vector2(x * T + T / 2.0, (y + 1) * T)   # Rei da Obra: onde o capacete de ouro aparece
@@ -83,8 +86,16 @@ func load_level(level_id: String) -> void:
 			elif ch == "^":
 				# espinhos altos (1,5 tile), em pé no fundo do poço
 				hazard_rects.append(Rect2(x * T + 4, y * T + T - 100, T - 8, 100))
+	area = etapa_rect(1)
 	_build_colliders()
 	queue_redraw()
+
+## Retângulo (px) da etapa n ("etapa1: col,linha,largura,altura" no .lvl). Sem etapas = mapa inteiro.
+func etapa_rect(n: int) -> Rect2:
+	var v := String(props.get("etapa%d" % n, "")).split(",")
+	if v.size() < 4:
+		return Rect2(0, 0, cols * T, rows * T)
+	return Rect2(float(v[0]) * T, float(v[1]) * T, float(v[2]) * T, float(v[3]) * T)
 
 func ch_at(c: Vector2i) -> String:
 	if c.y < 0 or c.y >= grid.size() or c.x < 0 or c.x >= String(grid[c.y]).length():
@@ -150,7 +161,7 @@ func ko_rect() -> Rect2:
 	var tp := float(v[1]) * T
 	var r := float(v[2]) * T
 	var b := float(v[3]) * T
-	return Rect2(-l, -tp, cols * T + l + r, rows * T + tp + b)
+	return Rect2(area.position - Vector2(l, tp), area.size + Vector2(l + r, tp + b))
 
 func prop(key: String, default = null):
 	return props.get(key, default)

@@ -368,12 +368,13 @@ func _physics_process(dt: float) -> void:
 # ---------------------------------------------------------------- câmera
 ## Na corrida, aproxima para enquadrar todos os robôs ainda em jogo (1x a CAM_MAX); nas outras fases mostra a obra inteira.
 func _update_camera(dt: float) -> void:
-	var lw: float = level.cols * 64.0
-	var lh: float = level.rows * 64.0
+	var ao: Vector2 = level.area.position   # fases em etapas: a câmera fica na área da etapa atual
+	var lw: float = level.area.size.x
+	var lh: float = level.area.size.y
 	var zmin := minf(1.0, minf(1920.0 / lw, 1024.0 / lh))   # mapa maior que a tela: pode afastar um pouco
 	var zfloor := maxf(zmin, 0.72)                          # ...mas não muito (a câmera rola)
 	var tz := zmin
-	var tc := Vector2(lw, lh) / 2.0
+	var tc := ao + Vector2(lw, lh) / 2.0
 	if state in MENU_STATES:
 		tz = 1.25
 		tc = Vector2(1000, 470)
@@ -393,7 +394,7 @@ func _update_camera(dt: float) -> void:
 			tz = cam_zoom
 			tc = cam_center
 		tz = zmin   # arena inteira na tela, sempre (pedido: ver tudo, mesmo com poucos jogadores)
-		tc = Vector2(lw, lh) / 2.0
+		tc = ao + Vector2(lw, lh) / 2.0
 		if String(level.prop("camera", "")) == "adaptativa":
 			# câmera adaptativa (Derruba novo): enquadra todos os robôs vivos + para onde estão voando (antecipa arremesso)
 			var cb := Rect2()
@@ -423,8 +424,8 @@ func _update_camera(dt: float) -> void:
 	cam_center = cam_center.lerp(tc, k)
 	var hw := 960.0 / cam_zoom
 	var hh := 512.0 / cam_zoom
-	cam_center.x = clampf(cam_center.x, hw, lw - hw) if lw > hw * 2.0 else lw / 2.0
-	cam_center.y = clampf(cam_center.y, hh, lh - hh) if lh > hh * 2.0 else lh / 2.0
+	cam_center.x = clampf(cam_center.x, ao.x + hw, ao.x + lw - hw) if lw > hw * 2.0 else ao.x + lw / 2.0
+	cam_center.y = clampf(cam_center.y, ao.y + hh, ao.y + lh - hh) if lh > hh * 2.0 else ao.y + lh / 2.0
 	camera.zoom = Vector2(cam_zoom, cam_zoom)
 	camera.position = cam_center + Vector2(0, Data.ARENA_Y) - Vector2(0, 28) / cam_zoom
 	shake_amt = move_toward(shake_amt, 0.0, dt * 40.0)
@@ -437,7 +438,7 @@ func _update_camera(dt: float) -> void:
 		zb = maxf(zb, 1.15)
 		# posição da câmera em relação ao CENTRO do mapa (-1..1): suave mesmo quando a câmera abre o enquadramento
 		# (a conta antiga dividia pela folga da câmera, que vira ~0 com o mapa todo na tela → o fundo pulava de um lado ao outro)
-		var rel := ((cam_center - Vector2(lw, lh) / 2.0) / (Vector2(lw, lh) / 2.0)).clamp(Vector2(-1, -1), Vector2(1, 1))
+		var rel := ((cam_center - ao - Vector2(lw, lh) / 2.0) / (Vector2(lw, lh) / 2.0)).clamp(Vector2(-1, -1), Vector2(1, 1))
 		bc = Vector2(960, 540) + rel * Vector2(960, 540) * (1.0 - 1.0 / zb)
 	zb = maxf(zb, 1.0)
 	bc.x = clampf(bc.x, 960.0 / zb, 1920.0 - 960.0 / zb)
@@ -627,6 +628,8 @@ func check_contacts(r: CharacterBody2D) -> void:
 			return
 	if level.elevator_cell != Vector2i(-1, -1) and demo.rule() == "fuga" and rr.intersects(level.goal_rect):
 		finish(r)   # Fuga: chegou ao elevador primeiro
+	elif level.ko_off:
+		pass   # virada da fase: todos caem para a etapa 2 sem eliminação
 	elif level.ko_rect().has_area():
 		# KO no MUNDO (independente da câmera): saiu da zona em qualquer direção → explode na borda
 		if not level.ko_rect().has_point(r.position + Vector2(0, -36)):

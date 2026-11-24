@@ -329,6 +329,8 @@ func demo_round() -> void:
 	main.demo.start_round()
 	main.state = S.RUN
 	main.countdown = 0.0
+	if main.demo.etapas != null:
+		main.demo.etapas.t = -1e9   # testes longos: a virada da fase só acontece quando o teste pede (etapas_test)
 	for r in main.robots:
 		r.active = true
 	await frames(3)
@@ -503,6 +505,7 @@ func demolicao_test() -> void:
 	await canteiro_test()
 	await spells_test()
 	await eventos_test()
+	await etapas_test()
 	await imagens_test()
 
 func menus_test() -> void:
@@ -1267,7 +1270,7 @@ func canteiro_test() -> void:
 	await demo_round()
 	main.demo.spells.spawn_t = 999.0
 	var ct = main.demo.canteiro
-	check(ct != null and main.level.id == "canteiro_obras" and ct.standing() == 13, "Canteiro monta laje (6), andaimes (2) e vigas (5) (%s)" % [ct.standing() if ct != null else -1])
+	check(ct != null and main.level.id == "canteiro_obras" and ct.standing() == 15 and ct.standing("terreo") == 2, "Canteiro monta laje (6), andaimes (2), vigas (5) e o chão do térreo (2) (%s)" % [ct.standing() if ct != null else -1])
 	var r0 = main.robots[0]
 	var r1 = main.robots[1]
 	put(r1, Vector2(col_x(30), 13 * 64))
@@ -1605,6 +1608,49 @@ func eventos_test() -> void:
 	main.event_level = 0
 	ev.manual = false
 	ev.reset_round()
+
+## Fase em etapas (cartilha do mapa): a virada cronometrada — aviso, tudo desaba, queda sem KO e chegada na etapa 2.
+func etapas_test() -> void:
+	print("== Fase em etapas (virada do Canteiro)")
+	main.go_menu()
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	main.mode = "demolicao"
+	main.go_join()
+	await frames(2)
+	await tap("v0", "jump")
+	await tap("v1", "jump")
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 5
+	main.event_level = 0
+	main.arena_choice = "canteiro_obras"
+	main.start_match()
+	await demo_round()
+	var et = main.demo.etapas
+	var lv = main.level
+	check(et != null and et.etapa == 1 and lv.area == lv.etapa_rect(1), "Canteiro começa na etapa 1 (área = Térreo)")
+	var r0 = main.robots[0]
+	var r1 = main.robots[1]
+	put(r0, Vector2(2 * 64.0, 17 * 64.0))   # na ponta do térreo esquerdo (fora do buraco)
+	put(r1, Vector2(20 * 64.0, 13 * 64.0))   # no núcleo
+	for i in main.players.size():
+		main.demo.lives[i] = 9
+	var lives0 = main.demo.lives.duplicate()
+	et.t = et.virada_s() - float(et.cfg["aviso_s"]) - 0.05
+	await frames(6)
+	check(et.state == "aviso" and main.demo.banner.begins_with("A OBRA"), "aviso cronometrado: sirene + \"A OBRA VAI CEDER!\"")
+	await frames(int(float(et.cfg["aviso_s"]) * 60.0) + 4)
+	check(et.state == "queda" and main.demo.canteiro.parts.all(func(p): return p["fallen"]), "a estrutura TODA desaba (inclusive núcleo e térreo)")
+	var waited := 0
+	while et.state != "etapa" and waited < 400:
+		await frames(1)
+		waited += 1
+	var a2: Rect2 = lv.etapa_rect(2)
+	check(et.etapa == 2 and lv.area == a2 and not lv.ko_off, "chegam na etapa 2 (%.1f s de queda): câmera e KO passam para a Fundação" % (waited / 60.0))
+	check(r0.alive and r1.alive and main.demo.lives == lives0, "ninguém é eliminado na queda")
+	check(a2.has_point(r0.position) and a2.has_point(r1.position), "o funil leva até quem estava na ponta do térreo para dentro do buraco")
+	await frames(30)
+	check(r0.is_on_floor() and r1.is_on_floor(), "todos de pé no chão da Fundação")
+	main.event_level = 0
 
 func spells_test() -> void:
 	print("== Spells (Etapa 1) e eventos G01/G10")

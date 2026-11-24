@@ -1082,6 +1082,15 @@
         ]
       ],
       "conflitos_nota": "Pares que nunca rodam juntos (Relatório 04 §6.5 + segurança de geometria). Até max_simultaneos[intensidade] eventos compatíveis ao mesmo tempo."
+    },
+    "etapas": {
+      "nota": "Fase em etapas (cartilha do mapa): virada cronometrada (roteiro fixo). virada_s = tempo de rodada até a obra ceder; aviso_s = sirene antes; na queda a gravidade fica mais leve e um funil puxa todos para o buraco.",
+      "virada_s": 90,
+      "aviso_s": 3.0,
+      "queda_max_s": 3.5,
+      "gravidade_queda": 0.6,
+      "funil_vel": 900,
+      "invuln_chegada_s": 1.2
     }
   },
   "bots": {
