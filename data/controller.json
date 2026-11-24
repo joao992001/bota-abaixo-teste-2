@@ -29,5 +29,6 @@
   "ataque_pesado": {"preparo": 0.4, "ativo": 0.07, "recupera_acerto": 0.16, "recupera_erro": 0.5, "recarga": 0.9, "recarga_cancelada": 0.5, "alcance_px": 70, "mov_mult_preparo": 0.25, "mov_mult_recupera_erro": 0.15, "avanco_px_s": 260},
   "esquiva": {"vel": 1080, "duracao": 0.17, "protecao": 0.13, "recarga": 0.5, "vel_final": 0.35},
   "arremesso": {"sem_controle_base": 0.07, "sem_controle_por": 0.0018, "sem_controle_max": 0.32, "retorno_s": 0.5, "controle_inicial": 0.15, "giro_min_vel": 700},
-  "hitstop": {"rapido": 0.035, "pesado": 0.085, "por_dano": 0.0003, "max": 0.13}
+  "hitstop": {"rapido": 0.035, "pesado": 0.085, "por_dano": 0.0003, "max": 0.13},
+  "combo": {"janela_s": 0.4, "corrida_vel": 0.75, "alcance_cima_px": 70, "alcance_baixo_px": 70}
 }

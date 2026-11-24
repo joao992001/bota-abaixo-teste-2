@@ -275,6 +275,11 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 	if absf(dx) < 78.0 and absf(dy) < 50.0:
 		if signi(int(dx)) != r.facing and absf(dx) > 4.0:
 			cmd["dir"] = signi(int(dx))   # vira para o rival
+		# acertou o golpe rápido: continua a sequência (até o 3º, que arremessa) sem esperar a recarga
+		if (r.atk == "rapido" and r.atk_landed and r.combo_i < 2) or (r.atk == "" and r.combo_t > 0.0 and r.combo_i < 2):
+			if float(lv["hammer_acc"]) >= 0.5:   # bots médio/difícil continuam a sequência (sem sorteio: comportamento previsível)
+				cmd["hammer"] = true
+				return _safe(r, cmd, lv)
 		if main.rng.randf() < float(lv["hammer_acc"]) and st.get("hammer_cd", 0.0) <= 0.0:
 			# rival bem amassado + marreta pronta: bots bons finalizam com a pesada
 			var heavy: bool = r.heavy_cd <= 0.0 and ((target.dmg > 60.0 and main.rng.randf() < 0.35 + 0.6 * float(lv["hammer_acc"])) or main.rng.randf() < 0.12)

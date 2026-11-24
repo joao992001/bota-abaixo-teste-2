@@ -641,12 +641,32 @@ func attack(r, kind: String) -> bool:
 	var reach := float(ac["alcance_px"]) * (1.3 if big else 1.0)
 	var mult := float(item_cfg("martelao")["knock_mult"]) if big else 1.0
 	var rr: Rect2 = r.rect()
-	var hit := Rect2(rr.end.x if r.facing > 0 else rr.position.x - reach, rr.position.y - (10.0 if heavy else 0.0), reach, rr.size.y + (10.0 if heavy else 0.0))
+	# a área começa DENTRO do corpo (meio): quem está colado/sobreposto também leva
+	var cx: float = rr.get_center().x
+	var w := reach + rr.size.x / 2.0
+	var hit := Rect2(cx if r.facing > 0 else cx - w, rr.position.y - (10.0 if heavy else 0.0), w, rr.size.y + (10.0 if heavy else 0.0))
+	var hk := ("martelao" if big else "pesado") if heavy else "rapido"
+	var hdir: int = r.facing
+	if not heavy:
+		var cc: Dictionary = r.c["combo"]
+		match r.atk_dir:
+			"cima":
+				hit = Rect2(cx - 56, rr.position.y - float(cc["alcance_cima_px"]), 112, float(cc["alcance_cima_px"]) + 30)
+				hk = "cima"
+			"baixo":
+				hit = Rect2(cx - 50, rr.end.y - 30, 100, float(cc["alcance_baixo_px"]) + 30)
+				hk = "baixo"
+			"corrida":
+				hit = Rect2(cx if r.facing > 0 else cx - w - 20, rr.position.y, w + 20, rr.size.y)
+				hk = "corrida"
+			_:
+				hk = "combo_final" if r.combo_i == 2 else "combo"
 	var hit_robot := false
 	var hs: Dictionary = r.c["hitstop"]
 	for o in main.robots:
 		if o != r and o.alive and hit.intersects(o.rect()):
-			if not o.take_hit(r.facing, ("martelao" if big else "pesado") if heavy else "rapido", r.pid):
+			var odir := hdir if absf(o.position.x - r.position.x) < 6.0 else signi(int(o.position.x - r.position.x))
+			if not o.take_hit(odir if not heavy else r.facing, hk, r.pid):
 				continue
 			var stop := minf(float(hs["pesado" if heavy else "rapido"]) + o.dmg * float(hs["por_dano"]), float(hs["max"]))
 			o.hitstop = stop

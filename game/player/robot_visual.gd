@@ -676,6 +676,24 @@ func current_pose() -> Dictionary:
 			var wind := -0.5 if not jab_alt else 2.5
 			var hit_ang := 1.8 if not jab_alt else -0.35
 			var hf_hit := Vector2(18, 0) if not jab_alt else Vector2(16, -20)
+			match String(robot.atk_dir):
+				"cima":   # varre por cima da cabeça
+					wind = 2.2
+					hit_ang = -0.7
+					hf_hit = Vector2(6, -38)
+				"baixo":  # marreta para baixo no ar
+					wind = -2.5
+					hit_ang = 3.0
+					hf_hit = Vector2(6, 16)
+				"corrida":  # investida: braço todo à frente
+					wind = -0.9
+					hit_ang = 1.6
+					hf_hit = Vector2(26, -4)
+				_:
+					if int(robot.combo_i) == 2:   # 3º golpe da sequência: giro grande que arremessa
+						wind = -2.6
+						hit_ang = 2.3
+						hf_hit = Vector2(20, 4)
 			if not robot.atk_hit:
 				var k := _ease_out(at / pre)
 				ang = lerpf(float(s_ham[0]), wind, k)
@@ -689,7 +707,7 @@ func current_pose() -> Dictionary:
 				hb = hb.lerp(Vector2(-10, -6), k)
 				feet[1] = feet[1].lerp(Vector2(10, 0), k)
 				smear_from = wind
-				smear_a = 0.8
+				smear_a = 1.0 if (int(robot.combo_i) == 2 or String(robot.atk_dir) != "frente") else 0.8
 			else:
 				smear_a = maxf(smear_a - 0.3, 0.0)
 				ang = float(s_ham[0])

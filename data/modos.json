@@ -487,6 +487,41 @@
         "kx_por": 6.0,
         "ky": 520,
         "ky_por": 2.5
+      },
+      "combo": {
+        "dano": 6,
+        "kx": 100,
+        "kx_por": 1.0,
+        "ky": 130,
+        "ky_por": 0.3
+      },
+      "combo_final": {
+        "dano": 9,
+        "kx": 320,
+        "kx_por": 6.0,
+        "ky": 280,
+        "ky_por": 2.6
+      },
+      "cima": {
+        "dano": 6,
+        "kx": 60,
+        "kx_por": 0.5,
+        "ky": 560,
+        "ky_por": 3.2
+      },
+      "baixo": {
+        "dano": 7,
+        "kx": 60,
+        "kx_por": 0.5,
+        "ky": -420,
+        "ky_por": -2.6
+      },
+      "corrida": {
+        "dano": 8,
+        "kx": 380,
+        "kx_por": 5.2,
+        "ky": 220,
+        "ky_por": 1.8
       }
     },
     "aderencia": {

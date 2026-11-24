@@ -1505,7 +1505,7 @@ func combate_test() -> void:
 	await tap("v0", "hammer")
 	await frames(4)
 	var kx_fast: float = absf(r1.own_vx)
-	check(absf(r1.dmg - 50.0 - float(am["rapido"]["dano"])) < 0.1, "golpe rápido acerta e soma %d%% (%.0f%%)" % [int(am["rapido"]["dano"]), r1.dmg])
+	check(absf(r1.dmg - 50.0 - float(am["combo"]["dano"])) < 0.1, "golpe rápido acerta e soma %d%% (%.0f%%)" % [int(am["combo"]["dano"]), r1.dmg])
 	await frames(40)
 	put(r0, Vector2(col_x(11), 576))
 	put(r1, Vector2(col_x(11) + 60, 576))
@@ -1600,6 +1600,61 @@ func combate_test() -> void:
 	await frames(90)
 	check(r0.stun_t == 0.0 and r0.atk == "" and r0.dodge_t == 0.0, "nenhum estado preso depois do arremesso")
 	await frames(2)
+	# 6) combate de perto: colado acerta; sequência de 3 mantém perto e o 3º arremessa; golpes com direção
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(11) + 4, 576))
+	r0.facing = 1
+	r1.dmg = 30.0
+	await frames(3)
+	await tap("v0", "hammer")
+	await frames(6)
+	check(r1.dmg > 30.0, "colado (sobreposto) o golpe rápido acerta")
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(11) + 46, 576 - 90))   # ao lado: fora da área do pisão na cabeça
+	r1.velocity = Vector2.ZERO
+	r1.invuln = 0.0
+	r1.last_cause = ""
+	vset("v0", "up", true)
+	await tap("v0", "hammer")
+	vset("v0", "up", false)
+	await frames(6)
+	check(r1.last_cause == "cima" and r1.position.y < 576 - 90 - 10, "▲ + golpe joga o rival de cima para o alto")
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	r0.facing = 1
+	put(r0, Vector2(col_x(11), 576))
+	await frames(30)
+	put(r1, Vector2(col_x(11) + 40, 576))
+	r1.dmg = 30.0
+	var near := true
+	for k in 3:
+		await tap("v0", "hammer")
+		await frames(8)
+		if k < 2 and absf(r1.position.x - r0.position.x) > 140.0:
+			near = false
+	check(r0.combo_i == 2 and near, "sequência: 2 golpes mantêm o rival perto e chega ao 3º (combo %d)" % r0.combo_i)
+	await frames(10)
+	check(absf(r1.own_vx) > 250.0 or absf(r1.position.x - r0.position.x) > 120.0, "o 3º golpe da sequência arremessa")
+	await demo_round()
+	r0 = main.robots[0]
+	r1 = main.robots[1]
+	put(r0, Vector2(col_x(14), 90))
+	put(r1, Vector2(col_x(14) + 6, 90 + 80))
+	r1.invuln = 0.0
+	r0.invuln = 0.0
+	await frames(2)
+	vset("v0", "down", true)
+	await tap("v0", "hammer")
+	vset("v0", "down", false)
+	await frames(6)
+	check(r1.last_cause == "baixo" and r1.velocity.y > 200.0, "▼ + golpe no ar joga o rival para baixo")
 	# 5) marretada pesada: recarga própria, esquiva cancela o preparo, golpe do rival interrompe
 	await demo_round()
 	r0 = main.robots[0]
@@ -2125,6 +2180,7 @@ func bots_test() -> void:
 	main.players[1]["level"] = 2
 	main.demo.cfg["quake_start_s"] = 999.0
 	var crumble0 = main.demo.cfg["crumble_break_s"]
+	main.demo.lives_setting = 1   # "derruba" = 1 eliminação (não herda vidas de outro teste)
 	main.demo.cfg["crumble_break_s"] = 999.0   # mede só o bot: o caixote que racha sob quem fica parado derrubava os dois
 	main.start_match()
 	main.countdown = 0.0

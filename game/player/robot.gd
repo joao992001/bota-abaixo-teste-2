@@ -24,6 +24,9 @@ var atk_t := 0.0              # tempo desde o começo do golpe
 var atk_hit := false          # o impacto já aconteceu (uma vez por golpe, no fim do preparo)
 var atk_landed := false       # o impacto pegou alguém
 var atk_cd := 0.0
+var atk_dir := "frente"        # golpe rápido: "frente", "cima", "baixo" (no ar), "corrida"
+var combo_i := 0              # sequência de golpes rápidos: 0, 1, 2 (o 3º arremessa)
+var combo_t := 0.0            # janela para encadear o próximo golpe
 var heavy_cd := 0.0           # recarga só da marretada pesada (o golpe rápido segue livre)
 # esquiva: impulso curto; nos primeiros instantes protege SÓ contra golpes de robôs (não contra cenário)
 var dodge_t := 0.0            # tempo restante da esquiva
@@ -132,6 +135,7 @@ func _physics_process(dt: float) -> void:
 	if stun_t <= 0.0:
 		recover_t = maxf(recover_t - dt, 0.0)
 	atk_cd = maxf(atk_cd - dt, 0.0)
+	combo_t = maxf(combo_t - dt, 0.0)
 	heavy_cd = maxf(heavy_cd - dt, 0.0)
 	dodge_cd = maxf(dodge_cd - dt, 0.0)
 	guard_t = maxf(guard_t - dt, 0.0)
@@ -309,7 +313,12 @@ func _physics_process(dt: float) -> void:
 			else:
 				vis.denied()   # ainda recarregando: a marreta treme e faz "clanc"
 		elif _pressed("hammer"):
-			_start_attack("rapido")
+			_pick_quick(on_floor)
+	# acertou o golpe rápido: pode encadear o próximo já na recuperação (sequência de 3)
+	if atk == "rapido" and atk_hit and atk_landed and combo_i < 2 and _pressed("hammer"):
+		combo_t = float(c["combo"]["janela_s"])
+		atk = ""
+		_pick_quick(on_floor)
 	if atk != "":
 		_attack_update(dt, on_floor)
 	# mover
@@ -475,7 +484,7 @@ func _climb_update(dt: float) -> void:
 
 ## Golpe com o Amassômetro: soma dano e o empurrão cresce com ele. kind = chave em demolicao.amassometro.
 ## Retorna false se não pegou (invulnerável ou capacete).
-const ROBOT_HITS := ["rapido", "pesado", "martelao", "marretada"]
+const ROBOT_HITS := ["rapido", "pesado", "martelao", "marretada", "combo", "combo_final", "cima", "baixo", "corrida"]
 
 func take_hit(dir: int, kind: String, by := -1) -> bool:
 	if invuln > 0.0 or god:
@@ -658,6 +667,25 @@ func _start_attack(kind: String) -> void:
 		var_jump = minf(var_jump, 0.04)
 	vis.attack(kind)
 
+## Golpe rápido com direção (▲ cima, ▼ no ar = baixo, correndo = investida) ou a sequência de 3 para a frente.
+func _pick_quick(on_floor: bool) -> void:
+	var cc: Dictionary = c["combo"]
+	if PlayerInput.held(pid, "up"):
+		atk_dir = "cima"
+	elif not on_floor and PlayerInput.held(pid, "down"):
+		atk_dir = "baixo"
+	elif on_floor and absf(own_vx) > f("max_run") * float(cc["corrida_vel"]):
+		atk_dir = "corrida"
+		own_vx += facing * 220.0
+	else:
+		atk_dir = "frente"
+	if atk_dir == "frente":
+		combo_i = (combo_i + 1) % 3 if combo_t > 0.0 else 0
+	else:
+		combo_i = 0
+	combo_t = 0.0
+	_start_attack("rapido")
+
 func _atk_cfg() -> Dictionary:
 	return c["ataque_rapido"] if atk == "rapido" else c["ataque_pesado"]
 
@@ -676,6 +704,8 @@ func _attack_update(dt: float, on_floor: bool) -> void:
 			own_vx += facing * float(ac["avanco_px_s"])   # o peso do golpe leva o corpo junto
 	hammer_anim = maxf(_atk_total() - atk_t, 0.0)
 	if atk_t >= _atk_total():
+		if atk == "rapido" and atk_landed:
+			combo_t = float(c["combo"]["janela_s"])
 		if atk == "pesado":
 			heavy_cd = float(ac["recarga"])
 		atk = ""
@@ -686,7 +716,7 @@ func _can_dodge(on_floor: bool) -> bool:
 	if dodge_cd > 0.0 or stun_t > 0.0 or frozen_t > 0.0 or hanging or climb_t >= 0.0:
 		return false
 	# a esquiva cancela o PREPARO da marretada (finta); depois do impacto, não
-	if (atk == "pesado" and atk_hit) or (atk == "rapido" and not atk_hit):
+	if (atk == "pesado" and atk_hit and not atk_landed) or (atk == "rapido" and not atk_hit):
 		return false
 	return on_floor or air_dodge > 0
 
