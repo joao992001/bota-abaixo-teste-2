@@ -44,7 +44,8 @@ Nascimentos: 4 por ato, simétricos ou equivalentes, longe de Z7 e da base que c
 
 ## 4. Atos e transição
 - **2 atos** por mapa (o 3º, curto, fica como opção para depois).
-- **Gatilho da virada** (o que vier primeiro): ~60% da estrutura demolível caída **ou** ~90 s de rodada.
+- **Gatilho da virada: cronometrado** (roteiro fixo, sempre igual, ~90 s, número no data). Tudo o resto (demolições,
+  eventos) é **parcialmente aleatório e dependente da batalha**; a virada é o único momento de roteiro.
   Aviso de 3 s: sirene geral, a câmera recua, faixa "A OBRA VAI CEDER!".
 - **Transição (2–3 s, cinematográfica):** ninguém é eliminado, todos ficam invulneráveis, a câmera fica travada no
   enquadramento da cena, o Amassômetro e as spells continuam. Os robôs chegam juntos ao Ato 2, cada um num nascimento do

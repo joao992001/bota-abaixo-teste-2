@@ -2,8 +2,17 @@
 
 Segue a cartilha `docs/manuais/derruba/mapa_cartilha.md`. Duas etapas na mesma partida:
 **Etapa 1 — TÉRREO DA OBRA** → virada **"A OBRA CEDE"** (todos caem) → **Etapa 2 — FUNDAÇÃO (subsolo)**.
-Esquema visual: `art/out/fase1_canteiro_catalogo.png`. Códigos: **E** estrutura · **D** demolição · **M** mecanismo ·
+Esquema visual: `art/out/fase1_canteiro_catalogo.png`. **Prancha de arte (telas):** `art/out/fase1_etapa1.png` e
+`art/out/fase1_etapa2.png` (gerador `art/src/cenarios/fase1_prancha.py`, reaproveita as peças do Canteiro e o elenco). Códigos: **E** estrutura · **D** demolição · **M** mecanismo ·
 **V** evento · **A** ambiente (fundo vivo). "Motor" = o que já existe no jogo e pode ser reaproveitado.
+
+## Regras do acaso × roteiro (definidas pelo usuário em 2026-11-24)
+| Elemento | Como acontece |
+|---|---|
+| **Demolições** | **parcialmente aleatórias + causadas pela batalha**: marretadas, arremessos, spells, mecanismos e eventos danificam as peças; por cima disso há desgaste aleatório (o ciclo da obra escolhe trechos, rachaduras surgem, a resistência das peças varia um pouco a cada partida). Cada partida desmorona diferente. |
+| **Eventos** | **da fase e sorteados**: só os do catálogo da etapa, no ritmo e na intensidade dos AJUSTES; compõem o quadro da fase, mas nunca na mesma ordem. |
+| **Mecanismos** | ciclo próprio legível + gatilhos dos jogadores (marretar a alavanca, o registro, o botão…) |
+| **Virada (Etapa 1 → 2)** | **roteiro fixo e cronometrado**: sempre no mesmo tempo da rodada (padrão 90 s, no data), sempre a mesma cena bonita. A demolição não muda o horário. |
 
 ---
 ## ETAPA 1 — TÉRREO DA OBRA
@@ -63,7 +72,7 @@ despeja concreto em 2 faixas marcadas (combina com M1).
 ## VIRADA — "A OBRA CEDE" (storyboard)
 | Tempo | Tela |
 |---|---|
-| Gatilho | ~60% das estruturas demolíveis caídas **ou** ~90 s de rodada |
+| Gatilho | **cronometrado**: ~90 s de rodada (número no data), sempre igual |
 | −3,0 s | sirene geral, rachaduras correndo por TODA a laje (inclusive o núcleo), poeira caindo do teto, faixa **"A OBRA VAI CEDER!"**, a câmera recua |
 | 0 s | o chão inteiro se parte em pedaços grandes |
 | 0 → 2 s | **QUEDA:** a câmera desce junto; robôs caem girando entre pedaços de laje (dá para se mexer um pouco no ar); as camadas do Térreo sobem e saem, as da Fundação entram (lâmpadas penduradas passando na frente) |
@@ -128,6 +137,6 @@ G14 Chuva de Rebites (cai pelo buraco do teto) · G04 Sobrecarga Magnética (do 
 ## O que precisa ser aprovado
 1. As listas de cada catálogo (estruturas, demolições, mecanismos, eventos e fundo) das duas etapas: tirar, trocar ou
    acrescentar.
-2. Os números iniciais: virada com 60% caído ou 90 s; 5 mecanismos na Etapa 1 e 4 na Etapa 2.
+2. Os números iniciais: virada cronometrada em ~90 s; 5 mecanismos na Etapa 1 e 4 na Etapa 2.
 3. A forma de construir: Fundação no mesmo mundo, embaixo do Térreo.
 Depois disso: **prancha de arte** das duas etapas (fundo detalhado + palco + mecanismos) e só então o código.
