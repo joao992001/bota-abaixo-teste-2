@@ -19,9 +19,10 @@ Registrados conforme o usuário testa. Só corrigir quando ele disser que termin
 ## Lote Canteiro (2026-11-24) — anotado; corrigir SÓ quando o usuário autorizar
 | # | O que acontece | Onde | Situação |
 |---|---|---|---|
-| 12 | **Grave:** itens ("spells") atravessam a laje principal e não ficam em cima dela. Provável causa: o item procura chão pelos tiles, e a laje é montada por `modes/canteiro.gd` (não é tile). | Canteiro · itens | pendente |
-| 13 | Fundo dá umas tremidas com a câmera adaptativa (paralaxe/zoom do fundo). | Canteiro · câmera/fundo | pendente |
-| 14 | Mais plataformas no Canteiro, para ter mais lugares para ir. | Canteiro · layout | pendente (ideia) |
+| 12 | **Grave:** itens ("spells") atravessam a laje principal e não ficam em cima dela. Provável causa: o item procura chão pelos tiles, e a laje é montada por `modes/canteiro.gd` (não é tile). | Canteiro · itens | **feito** (2026-11-25): item pousa na laje/andaimes/vigas e cai junto quando o trecho desaba |
+| 13 | Fundo dá umas tremidas com a câmera adaptativa (paralaxe/zoom do fundo). | Canteiro · câmera/fundo | **feito** (2026-11-25): paralaxe do fundo calculada pelo centro do mapa (antes pulava quando a câmera abria) |
+| 14 | Mais plataformas no Canteiro, para ter mais lugares para ir. | Canteiro · layout | **feito** (2026-11-25): +4 vigas curtas penduradas (2 baixas ao lado do núcleo, 2 no alto) |
 | 15 | Combate pouco dinâmico sem itens: colado no rival quase não acerta golpe; falta velocidade/fluidez entre golpes. | Combate | **feito** (2026-11-25): golpe colado acerta; sequência de 3 golpes rápidos (2 mantêm perto, 3º arremessa); ▲ golpe para cima, ▼ no ar golpe para baixo, golpe em corrida; esquiva cancela o fim do golpe que acertou. Números: `amassometro.combo/combo_final/cima/baixo/corrida` e `controller.json → combo` |
 | 16 | Bots caem sozinhos com frequência em arena aberta (beira, trecho caindo, recuperação). Também ficam presos na navegação: o teste "bot difícil derruba um jogador parado" voltou a falhar na bateria completa (bot preso do outro lado da arena de teste). | Bots | pendente |
 | 17 | Refazer toda a árvore de itens ("spells") e os eventos do mapa, alinhados ao novo plano do jogo. | Itens · eventos | pendente (planejar junto) |
+| 18 | Depois que o robô cai pelo fundo da arena, ele fica um tempo visível lá embaixo antes de explodir (print do usuário: P2/P4 parados embaixo, "-1 VIDA"). Provável: zona de KO de baixo longe demais da laje (`ko:` do canteiro_obras.lvl) e/ou câmera seguindo quem está caindo. | Canteiro · KO por baixo | pendente |

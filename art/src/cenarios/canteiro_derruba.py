@@ -334,6 +334,7 @@ def main():
     pieces = {
         "andaime": (5 * T, 12 * T, lambda: andaime_body(pad, pad, 5 * T, 12 * T, 401)),
         "viga": (8 * T, 26, lambda: viga_body(pad, pad, 8 * T, 501).split('<path d="M' + str(pad + 40), 1)[0] if False else viga_solo(pad, pad, 8 * T, 501)),
+        "viga4": (4 * T, 26, lambda: viga_solo(pad, pad, 4 * T, 503)),
         "pilar": (2 * T - 16, 8 * T, lambda: pilar_body(pad, pad, 2 * T - 16, 8 * T, 317)),
         "escora": (4 * T, 8 * T, lambda: escora_body(pad, pad, 8 * T, 321)),
     }

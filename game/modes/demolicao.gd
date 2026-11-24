@@ -369,7 +369,8 @@ func _update_items(dt: float, alive: Array) -> void:
 			it["plat_x"] = pp.x
 			it["pos"].y = pp.y - 26.0
 			it["vy"] = 0.0
-		elif lv.extra_solid.is_valid() and lv.extra_solid.call(cell):
+		elif lv.extra_solid.is_valid() and lv.extra_solid.call(cell) and (canteiro == null or not is_instance_valid(canteiro)):
+			# (plataformas móveis antigas: quem segura o item é a plataforma; no Canteiro a laje é chão de verdade)
 			it["plat"] = null
 			it["vy"] = minf(it["vy"] + 900.0 * dt, 260.0)   # desce de paraquedas
 			it["pos"].y += it["vy"] * dt

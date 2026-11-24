@@ -12,7 +12,9 @@ const SEG_X := [8, 12, 16, 20, 24, 28]
 const NUCLEO := [2, 3]
 const LAJE_Y := 13
 const ANDAIMES := [[3, 10, 5], [32, 10, 5]]
-const VIGA := [16, 8, 8]
+## vigas penduradas por cabos [col, linha do topo, largura]: a grande no meio, 2 baixas (2 tiles acima da laje, dá para
+## passar por baixo) e 2 no alto (alcançáveis com pulo duplo a partir dos andaimes). Todas caem de vez.
+const VIGAS := [[16, 8, 8], [10, 11, 4], [26, 11, 4], [9, 5, 4], [27, 5, 4]]
 const PILARES := [17, 22]
 
 var main: Node
@@ -31,14 +33,16 @@ var tex := {}
 func setup(m: Node, lv) -> void:
 	main = m
 	cfg = m.demo.cfg["canteiro"]
-	for k in ["laje_0", "laje_1", "laje_2", "andaime", "viga", "pilar", "escora"]:
+	for k in ["laje_0", "laje_1", "laje_2", "andaime", "viga", "viga4", "pilar", "escora"]:
 		tex[k] = Data.tex("canteiro/" + k)
 	for i in SEG_X.size():
 		_add("laje", Rect2(SEG_X[i] * T, LAJE_Y * T, 4 * T, 2 * T), int(cfg["laje_hp"]), i in NUCLEO, false, i)
 	for i in ANDAIMES.size():
 		var a: Array = ANDAIMES[i]
 		_add("andaime", Rect2(a[0] * T - 6, a[1] * T, a[2] * T + 12, 20), int(cfg["andaime_hp"]), false, true, i)
-	_add("viga", Rect2(VIGA[0] * T, VIGA[1] * T, VIGA[2] * T, 26), int(cfg["viga_hp"]), false, true, 0)
+	for i in VIGAS.size():
+		var v: Array = VIGAS[i]
+		_add("viga", Rect2(v[0] * T, v[1] * T, v[2] * T, 26), int(cfg["viga_hp"]), false, true, i)
 	lv.extra_solid = func(c: Vector2i) -> bool: return owner_of.has(c)
 	lv.grab_solid = func(c: Vector2i) -> bool: return owner_of.has(c) and owner_of[c]["kind"] == "laje"
 	cycle_t = float(cfg["primeiro_ciclo_s"])
@@ -134,7 +138,7 @@ func _collapse(p: Dictionary) -> void:
 			debris.append({"tex": tex["andaime"], "size": Vector2(340, 788), "pos": Vector2(mid, r.position.y + 384),
 				"vel": Vector2(out * 140, -40), "rot": 0.0, "spin": out * 1.1, "t": 0.0})
 		"viga":
-			debris.append({"tex": tex["viga"], "size": Vector2(532, 46), "pos": r.get_center(), "vel": Vector2(0, 60),
+			debris.append({"tex": tex["viga"] if r.size.x > 300.0 else tex["viga4"], "size": Vector2(r.size.x + 20.0, 46), "pos": r.get_center(), "vel": Vector2(0, 60),
 				"rot": 0.0, "spin": 2.2, "t": 0.0})
 			main.float_text(r.get_center() + Vector2(0, -60), "CABO ROMPEU!", Color.WHITE)
 
@@ -248,7 +252,7 @@ func _draw() -> void:
 			var r: Rect2 = p["rect"]
 			for cx in [r.position.x + 40, r.end.x - 40]:
 				draw_line(Vector2(cx, -500), Vector2(cx, r.position.y) + o, Color("#5a4a3a"), 4.0, true)
-			draw_texture_rect(tex["viga"], Rect2(r.position + Vector2(-10, -10) + o, Vector2(532, 46)), false)
+			draw_texture_rect(tex["viga"] if r.size.x > 300.0 else tex["viga4"], Rect2(r.position + Vector2(-10, -10) + o, Vector2(r.size.x + 20.0, 46)), false)
 	# laje
 	for p in parts:
 		if p["kind"] != "laje" or p["fallen"]:

@@ -1809,7 +1809,7 @@ func canteiro_test() -> void:
 	await demo_round()
 	main.demo.item_t = 999.0
 	var ct = main.demo.canteiro
-	check(ct != null and main.level.id == "canteiro_obras" and ct.standing() == 9, "Canteiro monta laje (6), andaimes (2) e viga (%s)" % [ct.standing() if ct != null else -1])
+	check(ct != null and main.level.id == "canteiro_obras" and ct.standing() == 13, "Canteiro monta laje (6), andaimes (2) e vigas (5) (%s)" % [ct.standing() if ct != null else -1])
 	ct.cycle_t = 999.0
 	var r0 = main.robots[0]
 	var r1 = main.robots[1]
@@ -1832,6 +1832,16 @@ func canteiro_test() -> void:
 	await frames(80)
 	check(seg["fallen"] and not main.level.is_solid(Vector2i(9, 13)), "o trecho desaba e a colisão some junto")
 	check(r0.position.y > 13 * 64 + 40 or main.demo.lives.get(0, 5) < 5, "quem estava em cima cai")
+	# item pousa na laje (não atravessa) e cai junto quando o trecho desaba
+	var seg2 = ct.parts[1]
+	main.demo.items.clear()
+	main.demo.items.append({"kind": main.demo.cfg["itens"]["kinds"][0], "pos": Vector2(seg2["rect"].get_center().x, 300.0), "vy": 0.0, "t": 0.0})
+	await frames(150)
+	var it: Dictionary = main.demo.items[0] if main.demo.items.size() > 0 else {}
+	check(not it.is_empty() and absf(it["pos"].y + 26.0 - seg2["rect"].position.y) < 8.0, "item pousa em cima da laje (y %.0f, laje %.0f)" % [it.get("pos", Vector2.ZERO).y + 26.0, seg2["rect"].position.y])
+	ct.damage(seg2, 99, seg2["rect"].get_center())
+	await frames(int(float(ct.cfg["aviso_queda_s"]) * 60.0) + 40)
+	check(main.demo.items.is_empty() or main.demo.items[0]["pos"].y > seg2["rect"].position.y + 40.0, "trecho desabou: o item cai junto")
 	# núcleo nunca cai
 	var nuc = ct.parts[2]
 	for k in 20:

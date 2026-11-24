@@ -441,9 +441,10 @@ func _update_camera(dt: float) -> void:
 	if lw > 1920.0 or lh > 1024.0:
 		# mapa grande: o fundo fica um pouco ampliado e rola uma fração do caminho
 		zb = maxf(zb, 1.15)
-		var rel := Vector2((cam_center.x - hw) / maxf(lw - hw * 2.0, 1.0), (cam_center.y - hh) / maxf(lh - hh * 2.0, 1.0))
-		rel = rel.clamp(Vector2.ZERO, Vector2.ONE)
-		bc = Vector2(960, 540) + (rel - Vector2(0.5, 0.5)) * Vector2(1920, 1080) * (1.0 - 1.0 / zb)
+		# posição da câmera em relação ao CENTRO do mapa (-1..1): suave mesmo quando a câmera abre o enquadramento
+		# (a conta antiga dividia pela folga da câmera, que vira ~0 com o mapa todo na tela → o fundo pulava de um lado ao outro)
+		var rel := ((cam_center - Vector2(lw, lh) / 2.0) / (Vector2(lw, lh) / 2.0)).clamp(Vector2(-1, -1), Vector2(1, 1))
+		bc = Vector2(960, 540) + rel * Vector2(960, 540) * (1.0 - 1.0 / zb)
 	zb = maxf(zb, 1.0)
 	bc.x = clampf(bc.x, 960.0 / zb, 1920.0 - 960.0 / zb)
 	bc.y = clampf(bc.y, 540.0 / zb, 1080.0 - 540.0 / zb)
