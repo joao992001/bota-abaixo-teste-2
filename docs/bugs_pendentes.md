@@ -15,3 +15,13 @@ Registrados conforme o usuário testa. Só corrigir quando ele disser que termin
 | 9 | Variedade de visual (tema/"skin" da fase) em TODOS os modos: hoje Cidade à Noite só aparece na Fuga e no Rei, Galpão só na Batata etc. Cada modo deve ter a mesma quantidade de fases e os mesmos temas visuais; muda o layout (caixas, rolagem, espinhos ou não), não a falta de temas. Derruba: layouts e quantidade bons, mas pouca variedade de tema. | Todos os modos | **feito** (12 temas, 6 fases por modo) |
 | 10 | Interações no cenário (alavanca, porta que abre e fecha etc.) quase não existem no jogo: criar novas para Rei da Obra e Batata (e onde couber). | Mecânicas de arena | **feito** (portas, alavancas, alçapões, trampolins, tubos, prensas, gangorras) |
 | 11 | Itens por modo: os itens atuais (dano/empurrão) fazem sentido na Derruba, mas não na Batata, no Rei e na Fuga. Criar itens próprios de cada modo (ex.: Batata: arremessar a TNT sem acerto garantido; Rei: ficar intocável uns segundos e depois jogar todos longe; Fuga: itens de corrida/atrapalhar). | Itens · todos os modos | **feito** (8–9 itens por modo, aprovados) |
+
+## Lote Canteiro (2026-11-24) — anotado; corrigir SÓ quando o usuário autorizar
+| # | O que acontece | Onde | Situação |
+|---|---|---|---|
+| 12 | **Grave:** itens ("spells") atravessam a laje principal e não ficam em cima dela. Provável causa: o item procura chão pelos tiles, e a laje é montada por `modes/canteiro.gd` (não é tile). | Canteiro · itens | pendente |
+| 13 | Fundo dá umas tremidas com a câmera adaptativa (paralaxe/zoom do fundo). | Canteiro · câmera/fundo | pendente |
+| 14 | Mais plataformas no Canteiro, para ter mais lugares para ir. | Canteiro · layout | pendente (ideia) |
+| 15 | Combate pouco dinâmico sem itens: colado no rival quase não acerta golpe; falta velocidade/fluidez entre golpes. | Combate | pendente (repensar) |
+| 16 | Bots caem sozinhos com frequência em arena aberta (beira, trecho caindo, recuperação). | Bots · Canteiro | pendente |
+| 17 | Refazer toda a árvore de itens ("spells") e os eventos do mapa, alinhados ao novo plano do jogo. | Itens · eventos | pendente (planejar junto) |
