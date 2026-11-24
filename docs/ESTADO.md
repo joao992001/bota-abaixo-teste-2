@@ -87,6 +87,14 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
       faíscas, tremor de tela) → recuperação. Efeito no chão rico (placas, pedras, poeira, anel), nunca só uma linha.
    6. Alcances generosos (o usuário pediu mais alcance em disco e bumerangue). Sem ajuda a quem perde.
    7. Conferir 1 prancha de quadros-chave antes de entregar; GIF + .exe no fim.
+   8. **Mira em 8 direções** (2026-11-24): `aim_vec`/`aim_dir`/`aim_local` — ▲/▼ (▼ só no ar) somam com ◄►; sem nada =
+      frente. Braço e arma giram em volta do ombro (`RobotVis.SHOULDER/ARM`), bico idem. Segurar = a mira gira aos poucos.
+      Aplicado: punho, laser, gelo, rebiteira, ímã, ventilador, gancho, laço, bumerangue, jato da fornalha; mola 3 ângulos;
+      carga com ▲/▼ é arremessada e gruda; escudo com ▲ vira teto; ponte com ▲ vira rampa; controle remoto ▲ troca a viga;
+      teleporte 7 tiles. Ficam fixas: marreta sísmica, disco, bate-estaca, andaime relâmpago.
+   9. **Plataformas:** `_hard_at` (paredes, chão, blocos, laje) para tiros e feixes; plataformas vazadas (andaimes, vigas,
+      tábuas, ponte, andaime relâmpago) são atravessadas por tiros; `_grab_at` (gancho/carga) agarra em tudo; o que rola
+      usa a plataforma como chão vindo de cima; só o escudo de solda segura tiro além do sólido.
    **Etapa 3 FEITA (2026-11-24), aguardando aprovação:** S07 Turboventilador (segurar, cone de vento com rajadas, empurra
    sem tirar o controle), S08 Gancho (▲ 45°; parede puxa o dono, rival leva tranco), S21 Laço Elástico (liga os dois; esticado
    puxa ambos), S12 Carga Remota (instala, arma em 0,5 s, 2º toque detona; danifica o Canteiro), S25 Ponte Dobrável (painéis

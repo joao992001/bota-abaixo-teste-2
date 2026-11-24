@@ -25,7 +25,9 @@ const SPELL_TOOLS := {"S01": ["s01_canhao", Vector2(52, 26), Vector2(30, 34), Ve
 	"S21": ["s21_laco", Vector2(56, 28), Vector2(29, 50), Vector2(124, 32)]}
 const WEAPONS := ["S01", "S02", "S03", "S05", "S06", "S20", "S07", "S08", "S21"]
 const CARRY_HF := Vector2(17, -31)      # mão da frente carregando a arma (baixa, pronta)
-const AIM_HF := Vector2(21, -38)        # mão da frente mirando
+const AIM_HF := Vector2(21, -38)        # mão da frente mirando reto
+const SHOULDER := Vector2(3, -38)       # ombro da frente: a mão gira em volta dele para mirar em 8 direções
+const ARM := 18.0
 ## Spells sem arma: objeto nas costas (andaime dobrado, marreta sísmica, fornalha desmontada) ou na mão de trás.
 const BACK_PROPS := {"S04": ["s04_marreta", Vector2(30, 60), 2.55], "S10": ["s10_trouxa", Vector2(34, 23), 1.35],
 	"S13": ["s13_costas", Vector2(40, 35), 0.0], "S25": ["s25_tabua", Vector2(46, 15), 1.45]}
@@ -598,27 +600,24 @@ func current_pose() -> Dictionary:
 	var sid: String = sf.get("spell", "")
 	var prep: float = sf.get("prep", -1.0)
 	var fire: float = sf.get("fire", -1.0)
-	var aiming: bool = prep >= 0.0 or (fire >= 0.0 and fire < 0.32) or (sf.get("channel", false) and sid in ["S06", "S11", "S07"])
+	var aiming: bool = prep >= 0.0 or (fire >= 0.0 and fire < 0.32) or (sf.get("channel", false) and sid in ["S06", "S11", "S07", "S17"])
 	if sid != "" and aiming and not sf.get("armor", false):
 		var kick := clampf(1.0 - fire / 0.22, 0.0, 1.0) if fire >= 0.0 and prep < 0.0 else 0.0
 		var buzz := Vector2(sin(t * 80.0), cos(t * 71.0)) * 1.4 * maxf(prep, 0.0)   # treme carregando
+		var aa := float(sf.get("aim_a", 0.0))   # ângulo da mira no espaço do robô (0 = frente, −π/2 = cima)
 		match sid:
 			"S01":
-				if prep >= 0.0:   # puxa o punho para trás, corpo carregando
-					p["hf_abs"] = Vector2(20, -40).lerp(Vector2(2, -38), ease(prep, 0.5)) + buzz
-					p["hb_abs"] = Vector2(14, -34) + buzz * 0.5
+				var ad := Vector2.from_angle(aa)
+				if prep >= 0.0:   # puxa o punho para trás (na direção da mira), corpo carregando
+					p["hf_abs"] = SHOULDER + ad * lerpf(ARM, 2.0, ease(prep, 0.5)) + buzz
+					p["hb_abs"] = SHOULDER + Vector2(-6, 6) + buzz * 0.5
 					lean = lerpf(lean, -0.16 * prep, 0.5)
-				else:             # SOCO: braço esticado à frente, corpo vai junto
-					p["hf_abs"] = Vector2(26 - 8.0 * (1.0 - kick), -40)
+				else:             # SOCO: braço esticado na direção, corpo vai junto
+					p["hf_abs"] = SHOULDER + ad * (ARM + 6.0 - 8.0 * (1.0 - kick))
 					p["hb_abs"] = Vector2(-10, -32)
-					lean = lerpf(lean, 0.18 * kick + 0.04, 0.6)
+					lean = lerpf(lean, (0.18 * kick + 0.04) * cos(aa), 0.6)
 				p["tool"] = "S01"
-			"S06" when sf.get("channel", false):   # segurando o ímã: braços esticados, corpo puxando para trás
-				var hold_buzz := Vector2(sin(t * 70.0), cos(t * 61.0)) * 1.6
-				p["hf_abs"] = Vector2(24, -40) + hold_buzz
-				p["hb_abs"] = Vector2(18, -37) + hold_buzz
-				p["tool"] = "S06"
-				lean = lerpf(lean, -0.2, 0.4)
+				p["tool_ang"] = aa
 			"S04":   # marreta sísmica: ergue bem alto e crava no chão
 				if prep >= 0.0:
 					p["hammer_ang"] = lerpf(-0.6, -2.7, ease(prep, 0.4))
@@ -638,20 +637,18 @@ func current_pose() -> Dictionary:
 				lean = lerpf(lean, -0.1 + 0.25 * u, 0.5)
 			"S17":   # aponta para onde a estaca vai cair
 				p["hf_abs"] = Vector2(26, -30)
-			"S07" when sf.get("channel", false):   # segurando o ventilador: corpo inclinado contra o próprio vento
-				var hb2 := Vector2(sin(t * 70.0), cos(t * 61.0)) * 1.2
-				p["hf_abs"] = AIM_HF + hb2
-				p["hb_abs"] = AIM_HF + Vector2(-8, 3) + hb2
-				p["tool"] = "S07"
-				lean = lerpf(lean, 0.16, 0.4)
 			"S12", "S27", "S28", "S25":   # aperta o botão / instala apontando
 				p["hf_abs"] = Vector2(24, -34 + 4.0 * kick)
-			"S03", "S06", "S02", "S05", "S20", "S08", "S21":
-				p["hf_abs"] = Vector2(21 - 9.0 * kick, -38 - 4.0 * kick) + buzz
-				p["hb_abs"] = Vector2(13 - 7.0 * kick, -35 - 3.0 * kick) + buzz * 0.6
+			"S03", "S06", "S02", "S05", "S20", "S08", "S21", "S07":
+				# mira em 8 direções: mão gira em volta do ombro, a arma acompanha; coice para trás na linha do tiro
+				var ad := Vector2.from_angle(aa)
+				var hold := Vector2(sin(t * 70.0), cos(t * 61.0)) * 1.4 if sf.get("channel", false) else Vector2.ZERO
+				p["hf_abs"] = SHOULDER + ad * (ARM - 9.0 * kick) + buzz + hold
+				p["hb_abs"] = p["hf_abs"] + Vector2(-9, 4).rotated(aa)
 				p["tool"] = sid
-				p["tool_ang"] = -0.35 * kick
-				lean = lerpf(lean, 0.06 - 0.14 * kick, 0.5)
+				p["tool_ang"] = aa - 0.35 * kick
+				var back := -0.2 if sid == "S06" and sf.get("channel", false) else (0.16 if sid == "S07" and sf.get("channel", false) else 0.06 - 0.14 * kick)
+				lean = lerpf(lean, back - 0.12 * clampf(-sin(aa), 0.0, 1.0), 0.5)
 			"S10":   # aponta onde o andaime abre
 				p["hf_abs"] = Vector2(24, -46 - 10.0 * kick)
 			"S11":   # mirando: dedos na testa, concentrado; ao ir, estala os dedos para cima
@@ -673,7 +670,7 @@ func current_pose() -> Dictionary:
 	elif sf.get("armor", false) and float(sf.get("flame", 0.0)) > 0.05:
 		var fk := float(sf.get("flame", 0.0))
 		lean = lerpf(lean, -0.14 * fk, 0.5)   # segurando o jato: corpo jogado para trás, tremendo
-		p["hf_abs"] = Vector2(20, -34) + Vector2(sin(t * 60.0), cos(t * 55.0)) * 1.5 * fk
+		p["hf_abs"] = SHOULDER + Vector2.from_angle(float(sf.get("aim_a", 0.0))) * ARM + Vector2(sin(t * 60.0), cos(t * 55.0)) * 1.5 * fk
 		p["hb_abs"] = Vector2(-14, -30)
 		for i in 2:
 			feet[i] = feet[i].lerp(Vector2(-10.0 + i * 14.0, 0), 0.6)

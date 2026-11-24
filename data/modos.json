@@ -635,7 +635,7 @@
         "familia": "controle",
         "raridade": "incomum",
         "cargas": 2,
-        "alcance_tiles": 5,
+        "alcance_tiles": 7,
         "mira_vel": 760,
         "mira_max_s": 1.6,
         "recupera_s": 0.2

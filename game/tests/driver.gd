@@ -1779,6 +1779,83 @@ func spells_test() -> void:
 		await frames(60)
 		check(tg != null and tg["fallen"], "S27: o cabo estala e a viga despenca")
 	sp.clear(r0)
+	# ===== Mira em 8 direções e regra das plataformas
+	var and0: Dictionary = ct.parts.filter(func(p): return p["kind"] == "andaime")[0]
+	check(not sp._hard_at(and0["rect"].get_center()) and sp._grab_at(and0["rect"].get_center()) and sp._hard_at(nuc[0]["rect"].get_center()),
+		"plataforma vazada não para tiro (mas o gancho agarra); a laje para")
+	place.call(6.0)
+	sp.clear(r0)
+	sp.equip(r0, "S03")
+	await frames(2)
+	vset("v0", "up", true)
+	await tap("v0", "item")
+	await frames(int(float(sp.sc("S03")["preparo"]) * 60.0) + 2)
+	vset("v0", "up", false)
+	check(sp.shots.size() > 0 and sp.shots[0]["vel"].y < -500.0 and absf(sp.shots[0]["vel"].x) < 1.0, "▲: canhão de gelo atira para cima")
+	await frames(30)
+	place.call(6.0)
+	sp.clear(r0)
+	sp.equip(r0, "S08")
+	await frames(2)
+	vset("v0", "up", true)
+	vset("v0", "right", true)
+	await tap("v0", "item")
+	vset("v0", "up", false)
+	vset("v0", "right", false)
+	check(sp.hooks.size() == 1 and sp.hooks[0]["vel"].y < 0.0 and sp.hooks[0]["vel"].x > 0.0, "▲►: gancho sai na diagonal")
+	await frames(60)
+	place.call(4.0)
+	sp.clear(r0)
+	sp.equip(r0, "S06")
+	await frames(2)
+	vset("v0", "item", true)
+	vset("v0", "up", true)
+	await frames(30)
+	check(sp.slot[0]["aim"].y < -0.5, "ímã: a mira gira para cima enquanto segura (%s)" % str(sp.slot[0]["aim"]))
+	vset("v0", "item", false)
+	vset("v0", "up", false)
+	await frames(3)
+	place.call(6.0)
+	sp.clear(r0)
+	sp.equip(r0, "S28")
+	await frames(2)
+	vset("v0", "up", true)
+	await tap("v0", "item")
+	vset("v0", "up", false)
+	check(sp.shields.size() > 0 and sp.shields[-1].get("roof", false), "▲: escudo de solda vira teto")
+	place.call(6.0)
+	sp.clear(r0)
+	sp.equip(r0, "S12")
+	await frames(2)
+	vset("v0", "up", true)
+	await tap("v0", "item")
+	vset("v0", "up", false)
+	await frames(110)
+	check(sp.charges_placed.size() == 1 and not sp.charges_placed[0].get("flying", false) and sp.charges_placed[0]["pos"].distance_to(r0.position) > 40.0, "▲: carga arremessada gruda numa superfície")
+	sp.charges_placed.clear()
+	sp.shields.clear()   # o teto de solda do teste anterior seguraria a mola
+	place.call(6.0)
+	sp.clear(r0)
+	sp.equip(r0, "S20")
+	await frames(2)
+	vset("v0", "up", true)
+	await tap("v0", "item")
+	await frames(int(float(sp.sc("S20")["preparo"]) * 60.0) + 2)
+	vset("v0", "up", false)
+	check(sp.springs.size() > 0 and sp.springs[0]["vel"].y < -600.0, "▲: canhão de molas em arco alto")
+	await frames(60)
+	sp.clear(r0)
+	put(r0, Vector2(8 * 64.0 + 30.0, floor_y))
+	r0.facing = -1
+	sp.equip(r0, "S25")
+	await frames(3)
+	vset("v0", "up", true)
+	vset("v0", "left", true)
+	await tap("v0", "item")
+	vset("v0", "up", false)
+	vset("v0", "left", false)
+	check(sp.bridges.size() > 0 and float(sp.bridges[-1].get("slope", 0.0)) > 0.3, "▲: ponte vira rampa")
+	sp.clear(r0)
 	# G10 carga especial: holofotes em 2 pontos e duas cápsulas descem
 	main.event_level = 2
 	main.events.manual = true
@@ -2347,7 +2424,9 @@ func spells_frames(dir: String) -> void:
 	_frame_no = 0
 	var segs := [["caixas", 50], ["S01", 60], ["S03", 120], ["S06", 90], ["S10", 70], ["S11", 70], ["S13", 300], ["troca", 60],
 		["S02", 60], ["S04", 70], ["S05", 60], ["S17", 90], ["S18", 80], ["S19", 90], ["S20", 70], ["porte", 90],
-		["S07", 90], ["S08", 70], ["S21", 120], ["S12", 110], ["S25", 90], ["S27", 90], ["S28", 90]]
+		["S07", 90], ["S08", 70], ["S21", 120], ["S12", 110], ["S25", 90], ["S27", 90], ["S28", 90],
+		["lasercima", 70], ["gelodiag", 70], ["ganchocima", 90], ["ventocima", 80], ["fogocima", 140], ["socobaixo", 60]]
+	var mira_sp := {"lasercima": "S02", "gelodiag": "S03", "ganchocima": "S08", "ventocima": "S07", "fogocima": "S13", "socobaixo": "S01"}
 	for a0 in OS.get_cmdline_user_args():
 		if a0.begins_with("--so-spells="):
 			segs = segs.filter(func(x): return x[0] in a0.substr(12).split("+"))
@@ -2385,6 +2464,14 @@ func spells_frames(dir: String) -> void:
 		elif nm == "S28":
 			sp.equip(r0, nm)
 			sp.equip(r1, "S05")
+		elif mira_sp.has(nm):
+			sp.equip(r0, mira_sp[nm])
+			if nm == "ganchocima":
+				var vg2: Array = main.demo.canteiro.parts.filter(func(p): return p["kind"] == "viga" and not p["fallen"])
+				if vg2.size() > 0:
+					put(r0, Vector2(vg2[0]["rect"].position.x - 60.0, fy))
+			if nm in ["ventocima", "socobaixo"]:
+				put(r1, Vector2(x0 + 1.6 * 64.0, fy))
 		elif nm == "porte":
 			sp.equip(r0, "S05")
 			sp.equip(r1, "S10")
@@ -2407,6 +2494,28 @@ func spells_frames(dir: String) -> void:
 				"S28":
 					a["v0"]["item"] = f == 14 or f == 15
 					a["v1"]["item"] = f in [45, 46, 60, 61]
+				"lasercima":
+					a["v0"]["up"] = true
+					a["v0"]["item"] = f == 14 or f == 15
+				"gelodiag":
+					a["v0"]["up"] = f >= 8
+					a["v0"]["right"] = f >= 8 and f < 12
+					a["v0"]["item"] = f == 14 or f == 15
+				"ganchocima":
+					a["v0"]["up"] = f >= 8 and f < 20
+					a["v0"]["right"] = f >= 8 and f < 11
+					a["v0"]["item"] = f == 14 or f == 15
+				"ventocima":
+					a["v0"]["up"] = f >= 8
+					a["v0"]["item"] = f >= 10 and f < 75
+				"fogocima":
+					a["v0"]["item"] = (f == 14 or f == 15) or (f >= 60 and f < 130)
+					a["v0"]["up"] = f >= 60 and f < 95
+				"socobaixo":
+					a["v0"]["jump"] = f >= 4 and f < 18
+					a["v0"]["right"] = f >= 4 and f < 14
+					a["v0"]["down"] = f >= 20
+					a["v0"]["item"] = f == 20 or f == 21
 				"porte":
 					a["v0"]["right"] = f >= 10 and f < 40
 					a["v0"]["hammer"] = f in [55, 56]
