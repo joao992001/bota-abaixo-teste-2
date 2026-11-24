@@ -8,14 +8,21 @@ extends Node2D
 ##   zebrada marcando o trecho → ele cede). Números: data/modos.json → demolicao.canteiro.
 
 const T := 64
-const SEG_X := [8, 12, 16, 20, 24, 28]
-const NUCLEO := [2, 3]
-const LAJE_Y := 13
-const ANDAIMES := [[3, 10, 5], [32, 10, 5]]
+## Layouts: "1" = Canteiro de Obras; "lab" = fase do Laboratório (menor). O .lvl escolhe com "canteiro: <layout>".
+const LAYOUTS := {
+	"1": {"seg_x": [8, 12, 16, 20, 24, 28], "nucleo": [2, 3], "laje_y": 13, "andaimes": [[3, 10, 5], [32, 10, 5]],
+		"vigas": [[16, 8, 8], [10, 11, 4], [26, 11, 4], [9, 5, 4], [27, 5, 4]], "pilares": [17, 22]},
+	"lab": {"seg_x": [3, 7, 11, 15, 19, 23], "nucleo": [2, 3], "laje_y": 12, "andaimes": [[5, 9, 4], [20, 9, 4]],
+		"vigas": [[11, 6, 6], [24, 4, 4]], "pilares": [12, 17]},
+}
+var SEG_X: Array = []
+var NUCLEO: Array = []
+var LAJE_Y := 13
+var ANDAIMES: Array = []
 ## vigas penduradas por cabos [col, linha do topo, largura]: a grande no meio, 2 baixas (2 tiles acima da laje, dá para
 ## passar por baixo) e 2 no alto (alcançáveis com pulo duplo a partir dos andaimes). Todas caem de vez.
-const VIGAS := [[16, 8, 8], [10, 11, 4], [26, 11, 4], [9, 5, 4], [27, 5, 4]]
-const PILARES := [17, 22]
+var VIGAS: Array = []
+var PILARES: Array = []
 
 var main: Node
 var cfg: Dictionary
@@ -34,6 +41,13 @@ func setup(m: Node, lv) -> void:
 	cfg = m.demo.cfg["canteiro"]
 	for k in ["laje_0", "laje_1", "laje_2", "andaime", "viga", "viga4", "pilar", "escora"]:
 		tex[k] = Data.tex("canteiro/" + k)
+	var lay: Dictionary = LAYOUTS.get(String(lv.prop("canteiro", "1")), LAYOUTS["1"])
+	SEG_X = lay["seg_x"]
+	NUCLEO = lay["nucleo"]
+	LAJE_Y = int(lay["laje_y"])
+	ANDAIMES = lay["andaimes"]
+	VIGAS = lay["vigas"]
+	PILARES = lay["pilares"]
 	for i in SEG_X.size():
 		_add("laje", Rect2(SEG_X[i] * T, LAJE_Y * T, 4 * T, 2 * T), int(cfg["laje_hp"]), i in NUCLEO, false, i)
 	for i in ANDAIMES.size():

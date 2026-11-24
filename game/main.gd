@@ -110,7 +110,6 @@ func _ready() -> void:
 	lab = Laboratorio.new()
 	lab.setup(self)
 	add_child(lab)
-	lab.load_saved()   # ajustes salvos no Laboratório valem no jogo todo
 	PlayerInput.pad_changed.connect(_on_pad_changed)
 	var args := OS.get_cmdline_user_args()
 	for a in args:

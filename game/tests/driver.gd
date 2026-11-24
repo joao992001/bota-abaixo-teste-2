@@ -1126,31 +1126,27 @@ func combate_test() -> void:
 ## LABORATÓRIO: abre pela tela inicial, ajusta número ao vivo, mede pulo, boneco obedece, salva/volta ao padrão.
 func lab_test() -> void:
 	print("== Laboratório")
-	if FileAccess.file_exists(main.lab.SAVE_PATH):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(main.lab.SAVE_PATH))
-	for p in main.lab.PARAMS:
-		main.lab.set_value(p, float(main.lab.defaults[main.lab._key(p)]))
 	main.go_menu()
 	PlayerInput.virtual = {"v0": {}, "v1": {}}
 	await frames(2)
 	main.menus.sel = 0
 	await tap("v0", "down")
 	await tap("v0", "jump")
-	check(main.sandbox and main.lab_mode and main.level.id == "laboratorio" and main.robots.size() == 2, "menu ▸ LABORATÓRIO abre a sala de medição com 1 jogador + boneco")
+	check(main.sandbox and main.lab_mode and main.level.id == "laboratorio" and main.demo.canteiro != null and main.robots.size() == 2, "menu ▸ LABORATÓRIO abre a fase de teste destrutível (1 jogador + boneco)")
 	main.countdown = 0.0
 	for r in main.robots:
 		r.active = true
 		r.invuln = 0.0
 	var lab = main.lab
 	var r0 = main.robots[0]
-	put(r0, Vector2(col_x(8), 12 * 64))
+	check(main.demo.canteiro.parts.any(func(p): return p["kind"] == "viga") and main.demo.canteiro.parts.any(func(p): return p["kind"] == "andaime"), "a fase tem laje em trechos, andaimes e vigas penduradas")
+	put(r0, Vector2(col_x(9), 12 * 64))
 	await frames(20)
 	vset("v0", "jump", true)
 	await frames(30)
 	vset("v0", "jump", false)
 	await frames(60)
 	check(lab.last_jump != "", "mede o pulo (%s)" % lab.last_jump)
-	# boneco que dá marretada
 	lab.dummy_i = lab.DUMMY.find("marretada")
 	var saw := false
 	for k in 150:
@@ -1160,76 +1156,50 @@ func lab_test() -> void:
 			break
 	check(saw, "boneco obedece o comportamento (dá marretada)")
 	lab.dummy_i = 0
-	# painel: ajuste ao vivo do preparo da pesada
+	# menu curto
 	await tap("v0", "start")
-	check(lab.open and main.paused, "START abre o painel do laboratório")
-	var idx := -1
-	for i in lab.PARAMS.size():
-		if lab.PARAMS[i][2] == ["ataque_pesado", "preparo"]:
-			idx = i
-	lab.sel = lab.rows().find("num%d" % idx)
-	var before: float = float(Data.ctrl["ataque_pesado"]["preparo"])
-	await tap("v0", "right")
-	var after: float = float(Data.ctrl["ataque_pesado"]["preparo"])
-	check(absf(after - before - 0.01) < 0.0001, "◄► muda o número ao vivo (%.2f → %.2f)" % [before, after])
-	lab.sel = lab.rows().find("salvar")
-	await tap("v0", "jump")
-	check(FileAccess.file_exists(lab.SAVE_PATH) and lab.changed_count() == 1, "SALVAR grava os ajustes")
-	await frames(20)
-	lab.sel = lab.rows().find("padrao")
-	await tap("v0", "jump")
-	check(absf(float(Data.ctrl["ataque_pesado"]["preparo"]) - before) < 0.0001 and not FileAccess.file_exists(lab.SAVE_PATH), "PADRÃO volta aos valores de fábrica e apaga o salvo")
-	await frames(20)
-	# medidores somem/voltam com VOLTAR durante o jogo
-	await tap("v0", "start")
-	check(not lab.open, "START fecha o painel")
-	await tap("v0", "back")
-	check(not lab.show_meters, "VOLTAR esconde os medidores")
-	await tap("v0", "back")
-	check(lab.show_meters, "VOLTAR mostra de novo")
-	# spells, eventos e arena (o que era da Oficina)
-	var r0b = main.robots[0]
-	r0b.invuln = 0.0
-	main.kill(r0b, -1, null)
-	await frames(2)
-	check(r0b.alive and main.state == S.RUN, "no Laboratório, cair não tira ninguém")
-	await tap("v0", "start")
-	lab.sel = lab.rows().find("dar_spell")
+	check(lab.open and main.paused and lab.rows().size() <= 10, "START abre o menu curto (%d linhas)" % lab.rows().size())
+	lab.sel = lab.rows().find("spell")
 	lab.spell_i = lab.spells().find("S03")
 	await tap("v0", "jump")
-	check(main.demo.spells.hud_info(0).get("id", "") == "S03" and not lab.open, "painel: DAR SPELL entrega o canhão criogênico e fecha")
-	await tap("v0", "start")
-	lab.sel = lab.rows().find("caixa")
-	var nb: int = main.demo.spells.boxes.size()
-	await tap("v0", "jump")
-	check(main.demo.spells.boxes.size() == nb + 1, "painel: CAIXA DO CÉU solta uma caixa")
-	await tap("v0", "start")
-	lab.sel = lab.rows().find("evento")
-	lab.event_i = 1   # G10 (a sala de régua não tem estrutura para o G01)
-	await tap("v0", "jump")
-	check(main.events.phase == "aviso" and not lab.open, "painel: EVENTO AGORA dispara o evento")
-	await tap("v0", "start")
-	lab.sel = lab.rows().find("bot")
-	await tap("v0", "right")
-	var n_before: int = main.robots.size()
-	lab.sel = lab.rows().find("arena")
-	await tap("v0", "right")
-	await tap("v0", "jump")
-	await frames(5)
-	check(main.level.id == "canteiro_obras" and main.demo.canteiro != null and main.robots.size() == n_before and main.sandbox, "painel: arena CANTEIRO mantém todos (%d robôs)" % main.robots.size())
+	check(main.demo.spells.hud_info(0).get("id", "") == "S03" and not lab.open, "menu: SPELL entrega a escolhida ao P1")
 	await tap("v0", "start")
 	lab.sel = lab.rows().find("evento")
 	lab.event_i = 0
 	await tap("v0", "jump")
-	check(main.events.phase == "aviso" and main.demo.canteiro.cycle_state == "aviso", "no Canteiro, G01 dispara pelo painel")
-	await frames(10)
+	check(main.events.phase == "aviso" and main.demo.canteiro.cycle_state == "aviso", "menu: EVENTO dispara (G01 funciona na fase do Laboratório)")
+	await tap("v0", "start")
+	lab.sel = lab.rows().find("bot")
+	var nb: int = main.robots.size()
+	await tap("v0", "right")
+	check(main.robots.size() == nb + 1, "menu: + BOT")
+	await tap("v0", "start")
+	await frames(240)
+	var ct = main.demo.canteiro
+	ct.damage(ct.parts[0], 99, ct.parts[0]["rect"].get_center())
+	await frames(int(float(ct.cfg["aviso_queda_s"]) * 60.0) + 10)
+	check(ct.parts.any(func(p): return p["fallen"]), "trechos da fase caem")
+	await tap("v0", "start")
+	lab.sel = lab.rows().find("reiniciar")
+	await tap("v0", "jump")
+	await frames(5)
+	check(main.demo.canteiro.parts.all(func(p): return not p["fallen"]) and main.robots.size() == nb + 1, "menu: REINICIAR FASE repõe tudo e mantém bots/bonecos")
+	# medidores no jogo
+	await tap("v0", "back")
+	check(lab.show_meters, "VOLTAR mostra os medidores")
+	await tap("v0", "back")
+	check(not lab.show_meters, "VOLTAR esconde de novo")
+	r0 = main.robots[0]
+	r0.invuln = 0.0
+	main.kill(r0, -1, null)
+	await frames(2)
+	check(r0.alive and main.state == S.RUN, "no Laboratório, cair não tira ninguém")
 	await tap("v0", "start")
 	lab.sel = lab.rows().find("sair")
 	await tap("v0", "jump")
 	check(main.state == S.MENU and not main.lab_mode and not main.sandbox and not main.paused and Engine.time_scale == 1.0, "SAIR volta ao menu")
 	await frames(20)
 
-## Capturas do Laboratório (--lab=DIR): medidores em ação e o painel de ajustes.
 func lab_shots(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	PlayerInput.virtual = {"v0": {}}
@@ -1257,8 +1227,7 @@ func lab_shots(dir: String) -> void:
 	await frames(70)
 	await snap(dir, "lab_medidas")
 	await tap("v0", "start")
-	main.lab.sel = main.lab.rows().find("dar_spell")
-	main.lab.scroll = 0
+	main.lab.sel = 0
 	await frames(4)
 	await snap(dir, "lab_painel")
 
