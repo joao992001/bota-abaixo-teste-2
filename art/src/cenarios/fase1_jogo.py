@@ -88,20 +88,23 @@ def e2_palco():
         for k in range(4):
             b.append(f'<path d="M{x0},{20 + k * 26} q{sgn * 30},10 {sgn * 50},-5" stroke="#b0562e" stroke-width="4" fill="none"/>')
     # paredes de contenção (3 tiles) com umidade, placa e musgo
+    WT = 8 * T   # topo das paredes (linha 34 do mapa): acima delas fica a abertura lateral (KO dos lados)
     for (x0, w) in ((0, 3 * T), (W - 3 * T, 3 * T)):
-        b.append(R(x0, 2 * T, w, H2 - 2 * T, "#5d6b7d", 0, 3, dark="#454f5c"))
-        for yy in range(2 * T + 60, H2, 120):
+        b.append(f'<rect x="{x0}" y="{2 * T}" width="{w}" height="{WT - 2 * T}" fill="#12161c"/>')   # vão escuro: terra lá fora
+        b.append(R(x0, WT, w, H2 - WT, "#5d6b7d", 0, 3, dark="#454f5c"))
+        b.append(cd.zebra(x0, WT, w, 10))
+        for yy in range(WT + 60, H2, 120):
             b.append(f'<path d="M{x0},{yy} H{x0 + w}" stroke="#454f5c" stroke-width="4"/>')
         for k in range(4):
             sx = x0 + 30 + k * 40
-            sy = rnd.uniform(160, 520)
+            sy = rnd.uniform(WT + 20, WT + 200)
             b.append(f'<path d="M{sx},{sy:.0f} q8,{rnd.uniform(120, 240):.0f} -2,{rnd.uniform(240, 380):.0f} h14 q-6,-200 2,-{rnd.uniform(280, 380):.0f} Z" fill="#3f4855" opacity="0.55"/>')
-        b.append(R(x0 + 30, 420, w - 60, 80, "#6b7783", 4, 1.6) + "".join(f'<circle cx="{x0 + 44 + j * 36}" cy="434" r="4" fill="#9aa4ae"/>' for j in range(4)))
+        b.append(R(x0 + 30, WT + 60, w - 60, 80, "#6b7783", 4, 1.6) + "".join(f'<circle cx="{x0 + 44 + j * 36}" cy="{WT + 74}" r="4" fill="#9aa4ae"/>' for j in range(4)))
         b.append(f'<path d="M{x0 + 40},{FL - 50} q30,-30 60,0 q20,20 50,0" stroke="#4f7a52" stroke-width="10" fill="none" opacity="0.8"/>')
         for k in range(9):   # régua do nível da água
             b.append(f'<rect x="{x0 + (w - 40 if x0 == 0 else 14)}" y="{FL - 30 - k * 24}" width="26" height="4" fill="#9fe3f5"/>')
-    b.append(escada(3 * T + 6, 2 * T, FL))
-    b.append(escada(W - 3 * T - 32, 2 * T, FL))
+    b.append(escada(3 * T + 6, 8 * T, FL))
+    b.append(escada(W - 3 * T - 32, 8 * T, FL))
     # piso em 2 partes: nas cols 13–16 o POÇO de drenagem, coberto pela grelha (peça do jogo, quebra)
     for (x0, x1) in ((3 * T, 13 * T), (17 * T, W - 3 * T)):
         b.append(R(x0, FL, x1 - x0, H2 - FL, "#7d8896", 0, 3, dark="#5d6878"))

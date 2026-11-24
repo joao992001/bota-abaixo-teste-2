@@ -1,4 +1,8 @@
-# FASE 1 do Derruba — CANTEIRO DE OBRAS · Catálogo (PROPOSTA para aprovar antes de construir)
+# FASE 1 do Derruba — CANTEIRO DE OBRAS · Catálogo (IMPLEMENTADO em 2026-11-24)
+
+> Implementado como descrito, com 3 ajustes feitos na construção: o poço (E12/D8) foi para as colunas 13–16 (não fica sob
+> o pilar central), os pedaços da laje (E16) ficam nas colunas 8 e 27, e a estaca central fica sobre piso firme.
+> Números em `data/modos.json` (`etapas`, `mecanismos.fase1`, `eventos.por_fase.fase1`, `canteiro`).
 
 Segue a cartilha `docs/manuais/derruba/mapa_cartilha.md`. Duas etapas na mesma partida:
 **Etapa 1 — TÉRREO DA OBRA** → virada **"A OBRA CEDE"** (todos caem) → **Etapa 2 — FUNDAÇÃO (subsolo)**.

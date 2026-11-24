@@ -15,7 +15,10 @@ Conceito APROVADO; virada escolhida = A (a obra cede, todos caem e a luta segue 
 estruturas E1–E18, demolições D1–D12, mecanismos M1–M9, eventos por etapa (+ V1 Concretagem, V2 Desmoronamento, V3 Enchente),
 fundo vivo por camada e storyboard da queda. Regras do usuário: demolições e eventos ALEATÓRIOS + dependentes da batalha;
 virada CRONOMETRADA (roteiro fixo). **Prancha de arte das 2 etapas feita** (`art/out/fase1_etapa1.png`, `fase1_etapa2.png`) —
-aguardando aprovação para começar o código (sistema de etapas/virada, fundo animado em camadas, mecanismos M1–M9, V1–V3).
+**FASE 1 IMPLEMENTADA (2026-11-24, blocos A–E):** virada cronometrada (`modes/etapas.gd`, `level.area`), cena viva
+(`modes/cena.gd` + camadas de `art/src/cenarios/fase1_jogo.py`), 9 mecanismos (`modes/mecanismos.gd`), demolições novas
+(escoras, passarela, estacas, grelha/poço, entulho da laje), eventos por etapa + V1–V3. Manual oficial: `docs/manuais/derruba/mapa.md`;
+skill `criar-fase`. Vitrine `--fase=DIR`. Aguardando o usuário jogar.
 G05/G09 ganharam função (caixa na carga + gancho que solta; drone conserta e recolhe) — FEITO.
 **ÚLTIMO (2026-11-24): ELENCO NOVO DE 5 ROBÔS** (pedido do usuário: os 8 modelos "olhavam para a câmera e batiam com
 uma mão"). Marretão (marreta de 2 mãos), Picareta (pernas de pássaro), Chave (mecânico, chave inglesa), Britadeira

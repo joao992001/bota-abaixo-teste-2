@@ -1192,7 +1192,7 @@ func lab_test() -> void:
 	lab.event_i = 0
 	await tap("v0", "jump")
 	check(main.events.phase == "aviso" and main.demo.canteiro.cycle_state == "aviso", "menu: EVENTO dispara (G01 funciona na fase do Laboratório)")
-	var nel: Array = main.events.cfg["lista"].filter(func(e): return not main.events.eligible(e) and e["id"] != "G01")
+	var nel: Array = main.events.cfg["lista"].filter(func(e): return not main.events.eligible(e) and e["id"] != "G01" and not String(e["id"]).begins_with("V"))
 	check(nel.is_empty(), "todos os eventos funcionam na fase do Laboratório (fora: %s)" % str(nel.map(func(e): return e["id"])))
 	await tap("v0", "start")
 	lab.sel = lab.rows().find("bot")
