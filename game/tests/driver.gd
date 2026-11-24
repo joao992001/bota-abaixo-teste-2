@@ -1889,7 +1889,7 @@ func spells_test() -> void:
 	await frames(2)
 	await tap("v0", "item")
 	await frames(20)
-	check(sp.flags(r0).get("form", "") == "S14" and r0.spell_speed < 1.0, "S14: vira empilhadeira (mais lenta)")
+	check(sp.flags(r0).get("armor_set", "") == "S14" and r0.spell_speed < 1.0 and r0.vis.visible, "S14: veste a armadura de empilhadeira (mais lenta)")
 	place.call(1.3)
 	await frames(2)
 	await tap("v0", "item")
@@ -1905,26 +1905,32 @@ func spells_test() -> void:
 	sp.equip(r0, "S15")
 	await frames(2)
 	await tap("v0", "item")
-	await frames(10)
-	check(r0.spell_form == "bola" and not r0.vis.visible, "S15: vira bola")
+	await frames(28)
+	check(r0.spell_form == "bola" and not r0.vis.visible, "S15: as cascas fecham e vira bola")
 	vset("v0", "right", true)
 	await frames(50)
 	vset("v0", "right", false)
 	check(r1.dmg > 0.0, "S15: atropela o rival (dano %d%%)" % int(r1.dmg))
 	await frames(int(float(sp.sc("S15")["duracao_s"]) * 60.0))
 	check(r0.spell_form == "" and r0.vis.visible and sp.hud_info(0).is_empty(), "S15: abre de volta no fim")
-	# S16 propulsor: pulso no ar (sem falha no teste)
+	# S16 jetpack: segurar = voar gastando combustível; acabou, a mochila cai
 	place.call(6.0)
-	sp.sc("S16")["falha_chance"] = 0.0
 	sp.equip(r0, "S16")
 	await frames(2)
-	vset("v0", "up", true)
-	await tap("v0", "item")
-	vset("v0", "up", false)
-	check(r0.velocity.y < -500.0 and sp.hud_info(0)["charges"] == 2, "S16: pulso para cima (vy %.0f)" % r0.velocity.y)
-	sp.sc("S16")["falha_chance"] = 0.12
+	var y16: float = r0.position.y
+	vset("v0", "item", true)
+	await frames(40)
+	check(y16 - r0.position.y > 120.0 and sp.slot[0]["energy"] < float(sp.sc("S16")["combustivel_s"]) - 0.4 and r0.spell_fly, "S16: segurando, voa (subiu %.0f px)" % (y16 - r0.position.y))
+	vset("v0", "right", true)
+	var x16: float = r0.position.x
+	await frames(25)
+	vset("v0", "right", false)
+	check(r0.position.x - x16 > 80.0, "S16: pilota para o lado voando (%.0f px)" % (r0.position.x - x16))
+	await frames(int(float(sp.sc("S16")["combustivel_s"]) * 60.0))
+	vset("v0", "item", false)
+	await frames(2)
+	check(sp.hud_info(0).is_empty() and not r0.spell_fly, "S16: combustível acabou, a mochila cai")
 	await frames(60)
-	sp.clear(r0)
 	# S31 broca: rival na frente leva dano contínuo
 	place.call(1.2)
 	sp.equip(r0, "S31")
@@ -1932,7 +1938,7 @@ func spells_test() -> void:
 	await tap("v0", "item")
 	place.call(1.2)
 	await frames(40)
-	check(r1.dmg > 0.0 and not r0.vis.visible, "S31: broca fura quem está na frente (dano %d%%)" % int(r1.dmg))
+	check(r1.dmg > 0.0 and sp.flags(r0).get("armor_set", "") == "S31", "S31: veste a broca e fura quem está na frente (dano %d%%)" % int(r1.dmg))
 	sp.clear(r0)
 	# S33 soldador: arco curto e conserto de trecho rachado
 	place.call(1.2)
@@ -2538,7 +2544,7 @@ func spells_frames(dir: String) -> void:
 		["S02", 60], ["S04", 70], ["S05", 60], ["S17", 90], ["S18", 80], ["S19", 90], ["S20", 70], ["porte", 90],
 		["S07", 90], ["S08", 70], ["S21", 120], ["S12", 110], ["S25", 90], ["S27", 90], ["S28", 90],
 		["lasercima", 70], ["gelodiag", 70], ["ganchocima", 90], ["ventocima", 80], ["fogocima", 140], ["socobaixo", 60], ["ganchocaixa", 70], ["murotteto", 80],
-		["S14", 120], ["S15", 110], ["S16", 90], ["S31", 90], ["S33", 100], ["S34", 100]]
+		["S14", 130], ["S15", 120], ["S16", 100], ["S31", 100], ["S33", 100], ["S34", 110]]
 	var mira_sp := {"lasercima": "S02", "gelodiag": "S03", "ganchocima": "S08", "ventocima": "S07", "fogocima": "S13", "socobaixo": "S01"}
 	for a0 in OS.get_cmdline_user_args():
 		if a0.begins_with("--so-spells="):
@@ -2639,28 +2645,25 @@ func spells_frames(dir: String) -> void:
 				"ganchocaixa":
 					a["v0"]["item"] = f == 14 or f == 15
 				"S14":
-					a["v0"]["item"] = f in [8, 9, 40, 41]
-					a["v0"]["right"] = f >= 22 and f < 30
+					a["v0"]["item"] = f in [16, 17, 56, 57]
+					a["v0"]["right"] = f >= 34 and f < 42
 				"S15":
-					a["v0"]["item"] = f in [8, 9]
-					a["v0"]["right"] = f >= 22 and f < 80
+					a["v0"]["item"] = f in [16, 17]
+					a["v0"]["right"] = f >= 40 and f < 95
 				"S16":
-					a["v0"]["jump"] = f >= 4 and f < 16
-					a["v0"]["up"] = f >= 18 and f < 24
-					a["v0"]["item"] = f in [20, 21, 45, 46, 65, 66]
-					a["v0"]["right"] = f >= 44 and f < 70
+					a["v0"]["item"] = f >= 16 and f < 84
+					a["v0"]["right"] = f >= 40 and f < 60
+					a["v0"]["left"] = f >= 66 and f < 80
 				"S31":
-					a["v0"]["item"] = f in [8, 9]
-					a["v0"]["right"] = f >= 25 and f < 60
+					a["v0"]["item"] = f in [16, 17]
+					a["v0"]["right"] = f >= 40 and f < 62
+					a["v0"]["up"] = f >= 70 and f < 80
 				"S33":
-					a["v0"]["item"] = (f == 8 or f == 9) or (f >= 35 and f < 80)
+					a["v0"]["item"] = (f == 16 or f == 17) or (f >= 45 and f < 85)
 				"S34":
-					a["v0"]["item"] = f in [8, 9]
-					a["v0"]["right"] = f >= 30 and f < 60
-					a["v0"]["hammer"] = f in [62, 63]
-				"murotteto":
-					a["v0"]["up"] = f >= 40
-					a["v0"]["item"] = f in [10, 11, 44, 45]
+					a["v0"]["item"] = f in [16, 17]
+					a["v0"]["right"] = f >= 50 and f < 80
+					a["v0"]["hammer"] = f in [82, 83]
 				"porte":
 					a["v0"]["right"] = f >= 10 and f < 40
 					a["v0"]["hammer"] = f in [55, 56]

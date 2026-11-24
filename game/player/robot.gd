@@ -60,6 +60,7 @@ var wall_side := 0            # lado da parede em que está escorregando (desenh
 var frozen_t := 0.0           # congelado (S03 Canhão Criogênico): preso no gelo; agitar o direcional quebra mais rápido
 var size_k := 1.0             # S34 Minirobô: tamanho (a hitbox acompanha o desenho)
 var spell_hit := 1.0          # força dos golpes DESTE robô nos outros (minirobô empurra menos)
+var spell_fly := false        # S16 jetpack ligado: sem gravidade (o jetpack controla a subida)
 var spell_form := ""          # transformação que muda o movimento ("bola" = S15 rola com inércia)
 var body_cs: CollisionShape2D
 var hammer_out := false       # S19: a marreta está voando (sem marretada pesada até voltar)
@@ -258,7 +259,7 @@ func _physics_process(dt: float) -> void:
 		else:
 			var_jump = 0.0
 	# gravidade
-	if var_jump <= 0.0:
+	if var_jump <= 0.0 and not spell_fly:
 		var g := f("gravity")
 		if main.events != null:
 			g *= main.events.gravity_mult   # evento Gravidade Baixa

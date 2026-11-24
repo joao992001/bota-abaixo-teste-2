@@ -520,6 +520,141 @@ def s33_mascara():
     return b
 
 
+# ---------------------------------------------------------------- Etapa 4 refeita: ARMADURAS (o robô veste a máquina)
+# Mesmo molde da Fornalha (150x130, janela do rosto centrada em (75,50)); o jogo põe sobre o corpo e desenha o rosto.
+def _ombreiras(cor, dark, seed, faixa="#f2c84b"):
+    b = []
+    for x0 in (4, 112):
+        b.append(shape(f"om{seed}{x0}", rect_d(x0, 18, 34, 26, 10), cor, seed + x0, (x0 - 2, 16, x0 + 36, 46), k=2.0, dark=dark))
+        b.append(f'<rect x="{x0 + 4}" y="22" width="26" height="6" rx="2" fill="{faixa}"/>')
+    return b
+
+
+def a14_frente():
+    """Mecha Empilhadeira (frente): cabine amarela com SANTO-ANTÔNIO (barras) e janela retangular para o rosto,
+    luzes de alerta, faixa zebrada embaixo — 150x130."""
+    b = []
+    body = "M20,30 C20,20 28,14 40,14 H110 C122,14 130,20 130,30 V108 C130,118 122,124 112,124 H38 C28,124 20,118 20,108 Z"
+    b.append(shape("a14f", body, "#f2c84b", 141, (18, 12, 132, 126), k=2.4, dark="#c49a2a", light="#ffe08a"))
+    b += _ombreiras("#4a5566", "#2e3642", 142, "#f2c84b")
+    b.append(f'<rect x="47" y="32" width="56" height="36" rx="5" fill="{INK}"/><rect x="51" y="36" width="48" height="28" rx="3" fill="#2b3d4f"/>')
+    b.append('<path d="M56,40 L66,34" stroke="#ffffff" stroke-width="3" opacity="0.6" stroke-linecap="round"/>')
+    b.append(f'<path d="M40,72 V10 H110 V72" stroke="{INK}" stroke-width="8" fill="none" stroke-linejoin="round"/>')
+    b.append('<path d="M40,72 V10 H110 V72" stroke="#3e4752" stroke-width="4" fill="none" stroke-linejoin="round"/>')
+    b.append('<circle cx="75" cy="6" r="6" fill="#ff8a3a"/><circle cx="75" cy="6" r="3" fill="#fff1b8"/>')
+    b.append('<rect x="24" y="96" width="102" height="14" fill="#f2c84b"/>')
+    for x in range(24, 124, 12):
+        b.append(f'<path d="M{x},110 L{x + 7},96 L{x + 11},96 L{x + 4},110 Z" fill="{INK}"/>')
+    for (x, y) in ((30, 82), (120, 82)):
+        b.append(f'<circle cx="{x}" cy="{y}" r="3.4" fill="{METAL_L}"/>')
+    return b
+
+
+def a14_costas():
+    """Mecha Empilhadeira (costas): contrapeso de aço com escape — 150x130."""
+    b = [shape("a14c", rect_d(26, 22, 98, 96, 16), "#4a5566", 143, (24, 20, 126, 120), k=2.2, dark="#2e3642")]
+    b.append('<rect x="34" y="70" width="82" height="12" fill="#f2c84b"/>')
+    b.append(shape("a14e", rect_d(100, 0, 14, 28, 3), METAL_D, 144, (98, -2, 116, 30), k=1.6))
+    return b
+
+
+def a14_mastro():
+    """Mastro da empilhadeira com trilhos e correntes — 40x120 (o garfo é desenhado pelo jogo e sobe nele)."""
+    b = [shape("a14m", rect_d(4, 2, 32, 116, 4), "#4a5566", 145, (2, 0, 38, 120), k=1.8, dark="#2e3642", light="#71829a")]
+    b.append(f'<rect x="12" y="6" width="16" height="108" fill="{INK}"/>')
+    b.append('<path d="M16,8 V112 M24,8 V112" stroke="#9aa4ae" stroke-width="2" stroke-dasharray="4 3"/>')
+    for y in (20, 60, 100):
+        b.append(f'<rect x="4" y="{y}" width="32" height="5" fill="#f2c84b"/>')
+    return b
+
+
+def a31_frente():
+    """Modo Broca (frente): placas laranja pesadas, vigia redonda com aro de aço, grade de ventilação — 150x130."""
+    b = []
+    body = "M22,34 C22,22 32,14 46,14 H104 C118,14 128,22 128,34 V104 C128,116 120,124 108,124 H42 C30,124 22,116 22,104 Z"
+    b.append(shape("a31f", body, "#f08a3d", 146, (20, 12, 130, 126), k=2.4, dark="#b05a20", light="#ffb27a"))
+    b += _ombreiras("#71829a", "#4a5566", 147)
+    b.append('<circle cx="75" cy="50" r="27" fill="#9aa4ae"/><circle cx="75" cy="50" r="21" fill="#2b3d4f"/>')
+    for k in range(6):
+        a_ = k * math.pi / 3
+        b.append(f'<circle cx="{75 + 24 * math.cos(a_):.1f}" cy="{50 + 24 * math.sin(a_):.1f}" r="2.2" fill="#4a5566"/>')
+    for y in (88, 98, 108):
+        b.append(f'<rect x="46" y="{y}" width="58" height="5" rx="2" fill="#7a3a10"/>')
+    return b
+
+
+def a31_costas():
+    """Modo Broca (costas): motor com 2 pistões e cano de escape soltando fumaça — 150x130."""
+    b = [shape("a31c", rect_d(30, 22, 90, 90, 14), "#4a5566", 148, (28, 20, 122, 114), k=2.2, dark="#2e3642")]
+    for x in (48, 84):
+        b.append(shape(f"a31p{x}", rect_d(x, 4, 18, 26, 4), METAL, 149 + x, (x - 2, 2, x + 20, 32), k=1.4, dark=METAL_D))
+    b.append(shape("a31e", rect_d(108, 0, 12, 34, 3), METAL_D, 150, (106, -2, 122, 36), k=1.4))
+    return b
+
+
+def a31_braco():
+    """Broca que vira o braço: colar laranja + cone com sulcos — 112x56 (pega à esquerda, ponta à direita)."""
+    b = [shape("a31k", rect_d(2, 10, 28, 36, 6), "#f08a3d", 151, (0, 8, 32, 48), k=1.6, dark="#b05a20")]
+    b.append(f'<rect x="26" y="14" width="8" height="28" fill="{INK}"/>')
+    b.append(shape("a31b", "M32,6 L110,28 L32,50 Z", METAL, 152, (30, 4, 112, 52), k=2.0, dark=METAL_D, light=METAL_L))
+    return b
+
+
+def a33_frente():
+    """Modo Soldador (frente): peito de aço azulado, capacete com VISOR de solda verde (o rosto aparece escurecido),
+    protetor de couro marrom no peito — 150x130."""
+    b = []
+    body = "M22,34 C22,20 34,10 50,10 H100 C116,10 128,20 128,34 V104 C128,116 120,124 108,124 H42 C30,124 22,116 22,104 Z"
+    b.append(shape("a33f", body, "#4f6a8a", 153, (20, 8, 130, 126), k=2.4, dark="#334a66", light="#7894b4"))
+    b += _ombreiras("#3e4752", "#252b33", 154, "#f08a3d")
+    b.append(f'<rect x="44" y="30" width="62" height="40" rx="8" fill="{INK}"/><rect x="49" y="35" width="52" height="30" rx="5" fill="#1d3a22"/>')
+    b.append(shape("a33a", rect_d(40, 78, 70, 40, 8), "#8f5a2c", 155, (38, 76, 112, 120), k=1.8, dark="#5e3a1a"))
+    b.append('<path d="M46,84 H104" stroke="#5e3a1a" stroke-width="2" stroke-dasharray="4 3"/>')
+    b.append('<circle cx="40" cy="50" r="5" fill="#f2c84b"/><circle cx="110" cy="50" r="5" fill="#f2c84b"/>')
+    return b
+
+
+def a33_costas():
+    """Modo Soldador (costas): 2 cilindros de gás (oxigênio verde e acetileno vermelho) com válvulas — 150x130."""
+    b = []
+    for x, cor, dk in ((40, "#3c9a46", "#256a2e"), (80, "#d94a3a", "#9e2a20")):
+        b.append(shape(f"a33c{x}", rect_d(x, 16, 32, 100, 14), cor, 156 + x, (x - 2, 14, x + 34, 118), k=2.0, dark=dk))
+        b.append(f'<rect x="{x + 10}" y="6" width="12" height="12" rx="2" fill="{METAL}"/>')
+    return b
+
+
+def a33_tocha():
+    """Maçarico grande que vira o braço do soldador — 96x40 (pega à esquerda, bico à direita)."""
+    b = [shape("a33t", rect_d(2, 12, 44, 16, 6), "#3e4752", 157, (0, 10, 48, 30), k=1.6)]
+    b.append(shape("a33b", rect_d(44, 14, 32, 12, 3), METAL, 158, (42, 12, 78, 28), k=1.4, dark=METAL_D, light=METAL_L))
+    b.append(shape("a33n", "M76,15 L94,18 L94,22 L76,25 Z", "#c9a03a", 159, (74, 13, 96, 27), k=1.2))
+    b.append('<path d="M10,28 C6,36 18,38 24,32" stroke="#d94a3a" stroke-width="3" fill="none"/>')
+    return b
+
+
+def a34_raio():
+    """Minirrobô: raio encolhedor (prato parabólico + bobina + gatilho) — 72x48."""
+    b = [shape("a34", rect_d(4, 16, 36, 18, 5), "#8a63d2", 160, (2, 14, 42, 36), k=1.6, dark="#5e3fa0")]
+    b.append(f'<rect x="12" y="32" width="10" height="14" rx="2" fill="{INK}"/>')
+    b.append(shape("a34d", "M40,25 C48,8 64,6 70,4 V46 C64,44 48,42 40,25 Z", METAL_L, 161, (38, 2, 72, 48), k=1.4, dark=METAL))
+    b.append('<circle cx="52" cy="25" r="4" fill="#3fc1c9"/><path d="M52,25 L68,25" stroke="#3fc1c9" stroke-width="2"/>')
+    return b
+
+
+def a16_jato():
+    """Jetpack: 2 tanques de foguete presos por cintas, bicos embaixo, aletas e manômetro — 72x84."""
+    b = []
+    for x in (8, 38):
+        b.append(shape(f"a16t{x}", rect_d(x, 10, 26, 54, 12), "#d94a3a", 162 + x, (x - 2, 8, x + 28, 66), k=2.0, dark="#9e2a20", light="#ff8a6a"))
+        b.append(f'<path d="M{x + 2},70 H{x + 24} L{x + 20},82 H{x + 6} Z" fill="#3e4752"/>')
+        b.append(f'<rect x="{x + 4}" y="16" width="6" height="40" rx="3" fill="#ffffff" opacity="0.35"/>')
+    b.append(f'<rect x="4" y="30" width="64" height="8" fill="{METAL_D}"/><rect x="30" y="0" width="12" height="12" rx="6" fill="#f2c84b"/>')
+    b.append(f'<path d="M36,6 L39,3" stroke="{INK}" stroke-width="2"/>')
+    for x in (4, 64):
+        b.append(f'<path d="M{x},50 L{x - 4 if x < 30 else x + 4},64 L{x},64 Z" fill="#3e4752"/>')
+    return b
+
+
 PIECES = {  # nome: (largura, altura, função)
     "s01_canhao": (128, 64, s01_canhao), "s01_luva": (64, 50, s01_luva),
     "s03_canhao": (128, 64, s03_canhao),
@@ -533,6 +668,10 @@ PIECES = {  # nome: (largura, altura, função)
     "s14_chassi": (128, 80, s14_chassi), "s14_garfo": (48, 96, s14_garfo), "s15_bola": (96, 96, s15_bola),
     "s16_mochila": (64, 72, s16_mochila), "s31_broca": (96, 64, s31_broca), "s31_esteira": (112, 28, s31_esteira),
     "s33_mascara": (56, 48, s33_mascara),
+    "a14_frente": (150, 130, a14_frente), "a14_costas": (150, 130, a14_costas), "a14_mastro": (40, 120, a14_mastro),
+    "a31_frente": (150, 130, a31_frente), "a31_costas": (150, 130, a31_costas), "a31_braco": (112, 56, a31_braco),
+    "a33_frente": (150, 130, a33_frente), "a33_costas": (150, 130, a33_costas), "a33_tocha": (96, 40, a33_tocha),
+    "a34_raio": (72, 48, a34_raio), "a16_jato": (72, 84, a16_jato),
     "s28_macarico": (64, 32, s28_macarico), "s25_tabua": (64, 20, s25_tabua),
 }
 
