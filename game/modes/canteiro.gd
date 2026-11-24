@@ -36,6 +36,8 @@ var t := 0.0
 var cycle_state := "calma"
 var target = null
 var tex := {}
+var quiet := false             # virada da fase: desaba tudo sem um texto por peça
+var pillars_down := false      # virada: os pilares do núcleo também caem
 
 func setup(m: Node, lv) -> void:
 	main = m
@@ -208,7 +210,8 @@ func _collapse(p: Dictionary) -> void:
 			if not p["nucleo"]:   # as escoras vão junto, tombando
 				debris.append({"tex": tex["escora"], "size": Vector2(276, 532), "pos": Vector2(mid, r.end.y + 250),
 					"vel": Vector2(out * 90, 40), "rot": 0.0, "spin": out * 1.4, "t": 0.0})
-			main.float_text(r.get_center() + Vector2(0, -80), "DESABOU!", Color("#f2c84b"))
+			if not quiet:
+				main.float_text(r.get_center() + Vector2(0, -80), "DESABOU!", Color("#f2c84b"))
 		"andaime":
 			# a torre tomba para fora e cai
 			debris.append({"tex": tex["andaime"], "size": Vector2(340, 788), "pos": Vector2(mid, r.position.y + 384),
@@ -216,7 +219,8 @@ func _collapse(p: Dictionary) -> void:
 		"viga":
 			debris.append({"tex": tex["viga"] if r.size.x > 300.0 else tex["viga4"], "size": Vector2(r.size.x + 20.0, 46), "pos": r.get_center(), "vel": Vector2(0, 60),
 				"rot": 0.0, "spin": 2.2, "t": 0.0})
-			main.float_text(r.get_center() + Vector2(0, -60), "CABO ROMPEU!", Color.WHITE)
+			if not quiet:
+				main.float_text(r.get_center() + Vector2(0, -60), "CABO ROMPEU!", Color.WHITE)
 
 func _crumb(p: Dictionary) -> void:
 	var r: Rect2 = p["rect"]
@@ -325,7 +329,8 @@ func _draw() -> void:
 		if p["kind"] == "laje" and not p["nucleo"] and not p["fallen"]:
 			draw_texture_rect(tex["escora"], Rect2(Vector2(p["rect"].position.x - 10, ly + 2 * T - 16) + _shake_off(p) * 0.5, Vector2(276, 532)), false)
 	for col in PILARES:
-		draw_texture_rect(tex["pilar"], Rect2(col * T + 8 - 10, ly + 2 * T - 14, 132, 532), false)
+		if not pillars_down:
+			draw_texture_rect(tex["pilar"], Rect2(col * T + 8 - 10, ly + 2 * T - 14, 132, 532), false)
 	# andaimes e viga
 	for p in parts:
 		if p["fallen"] or p["evt"] == "G13":
@@ -401,11 +406,19 @@ func _draw_sirens() -> void:
 
 ## VIRADA da fase (modes/etapas.gd): TUDO desaba de uma vez (inclusive núcleo e térreo), em pedaços com física.
 func collapse_all() -> void:
+	quiet = true
 	for p in parts:
 		p["warn_t"] = 0.0
 		p["evt"] = ""
 		if not p["fallen"]:
 			_collapse(p)
+	quiet = false
+	pillars_down = true
+	for col in PILARES:   # os pilares tombam em pedaços
+		var x: float = col * T + 64.0
+		for k in 4:
+			debris.append({"tex": tex["pilar"], "size": Vector2(132, 133), "pos": Vector2(x, LAJE_Y * T + 2 * T + 70 + k * 133),
+				"vel": Vector2(randf_range(-160, 160), randf_range(-200, 40)), "rot": 0.0, "spin": randf_range(-2.5, 2.5), "t": 0.0})
 	cycle_state = "calma"
 	target = null
 

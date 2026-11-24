@@ -36,6 +36,10 @@ func _run() -> void:
 			await elenco_frames(a.trim_prefix("--elenco="))
 			get_tree().quit()
 			return
+		if a.begins_with("--fase="):
+			await fase_frames(a.trim_prefix("--fase="))
+			get_tree().quit()
+			return
 		if a.begins_with("--eventos="):
 			await eventos_frames(a.trim_prefix("--eventos="))
 			get_tree().quit()
@@ -2861,6 +2865,43 @@ func elenco_frames(dir: String) -> void:
 			await frames(1)
 			if f % 2 == 0:
 				await grab(dir, "el%d" % m)
+	print("quadros: ", _frame_no)
+
+## Vitrine da FASE em etapas (--fase=DIR): 4 bots lutando no Térreo, a virada inteira (aviso, desaba, queda) e a luta
+## na Fundação. 1 quadro a cada 4 (15/s).
+func fase_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	main.go_menu()
+	main.mode = "demolicao"
+	main.go_join()
+	await frames(2)
+	for k in 4:
+		main.add_bot()
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 9
+	main.event_level = 2
+	main.arena_choice = "canteiro_obras"
+	main.start_match()
+	await demo_round()
+	main.countdown = 0.0
+	var et = main.demo.etapas
+	et.t = 0.0
+	_frame_no = 0
+	var f := 0
+	var after := -1
+	while f < 1500:
+		if f == 300:
+			et.t = et.virada_s() - float(et.cfg["aviso_s"]) - 0.05
+		if et.etapa == 2 and after < 0:
+			after = f
+		if after >= 0 and f - after > 330:
+			break
+		for i in main.players.size():
+			main.demo.lives[i] = 9
+		await frames(1)
+		if f % 4 == 0:
+			await grab(dir, "fase")
+		f += 1
 	print("quadros: ", _frame_no)
 
 ## Vitrine dos eventos (--eventos=DIR, --so-eventos=G02+G05): cada evento do aviso ao fim, 1 quadro a cada 3.

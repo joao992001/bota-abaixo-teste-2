@@ -349,7 +349,8 @@ func _draw_art() -> void:
 	var tile := Vector2(T, T)
 	_draw_ropes_and_planks()
 	_draw_scaffolds()
-	for y in rows:
+	var sem_arte := int(props.get("sem_arte_de", rows))   # fase com cena desenhada (modes/cena.gd): estas linhas não usam caixote
+	for y in mini(rows, sem_arte):
 		for x in cols:
 			var c := Vector2i(x, y)
 			var pos := Vector2(x * T, y * T)

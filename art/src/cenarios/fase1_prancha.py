@@ -100,15 +100,16 @@ GROUND_Y = 17 * T          # chão dos lados (térreo)
 LAJE_Y = 13 * T
 
 
-def e1_sky():
+def e1_sky(clouds=True, birds=True):
     b = ['<defs><linearGradient id="sk1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fd0e2"/><stop offset="0.65" stop-color="#cdeef0"/>'
          '<stop offset="1" stop-color="#fbeed2"/></linearGradient>'
          '<radialGradient id="sun1"><stop offset="0" stop-color="#fff6d0"/><stop offset="1" stop-color="#fff6d0" stop-opacity="0"/></radialGradient>'
          '<linearGradient id="nv1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9f5f2" stop-opacity="0"/><stop offset="1" stop-color="#e3eeea"/></linearGradient></defs>',
          f'<rect width="{W}" height="{H}" fill="url(#sk1)"/>', f'<circle cx="420" cy="230" r="300" fill="url(#sun1)"/>', '<circle cx="420" cy="230" r="70" fill="#fff3c4"/>']
     for (cx, cy, s) in ((760, 180, 1.1), (1500, 120, 0.8), (2250, 210, 1.2), (1150, 330, 0.55), (200, 420, 0.6)):
-        b.append(cloud(cx, cy, s))
-    for (x, y) in ((980, 300), (1010, 285), (1040, 305), (1820, 380), (1850, 370)):   # pássaros
+        if clouds:
+            b.append(cloud(cx, cy, s))
+    for (x, y) in (((980, 300), (1010, 285), (1040, 305), (1820, 380), (1850, 370)) if birds else ()):   # pássaros
         b.append(f'<path d="M{x - 10},{y} q5,-7 10,0 q5,-7 10,0" stroke="#5a7a86" stroke-width="3" fill="none"/>')
     return "".join(b)
 
@@ -132,7 +133,7 @@ def e1_far():
     return "".join(b)
 
 
-def e1_building():
+def e1_building(live=True):
     """Prédio em construção (C1/C2): pilares, lajes, tela de proteção, andaime na fachada, solda piscando, operários."""
     x0, x1, top = 1260, 1960, 360
     b = []
@@ -145,17 +146,18 @@ def e1_building():
     b.append(f'<rect x="{x0 + 408}" y="{top + 360}" width="270" height="120" fill="#f08a3d" opacity="0.3"/>')    # tela laranja
     for k in range(10):
         b.append(f'<path d="M{x0 + 136 + k * 40},{top + 120} V{top + 240}" stroke="#ffffff" stroke-width="1.5" opacity="0.4"/>')
-    for (sx, sy) in ((x0 + 300, top + 230), (x0 + 560, top + 470), (x0 + 220, top + 590)):   # solda piscando
+    for (sx, sy) in (((x0 + 300, top + 230), (x0 + 560, top + 470), (x0 + 220, top + 590)) if live else ()):   # solda piscando
         b.append(f'<circle cx="{sx}" cy="{sy}" r="22" fill="#fff4c8" opacity="0.45"/><circle cx="{sx}" cy="{sy}" r="7" fill="#ffffff"/>')
         for a in range(0, 360, 60):
             b.append(f'<path d="M{sx},{sy} l{12 * math.cos(math.radians(a)):.1f},{12 * math.sin(math.radians(a)):.1f}" stroke="#fff4c8" stroke-width="2"/>')
-    b.append(npc(x0 + 420, top + 120, "#8fb2a8", "tabua", 0.8))
-    b.append(npc(x0 + 640, top + 360, "#a99ab8", "", 0.8))
+    if live:
+        b.append(npc(x0 + 420, top + 120, "#8fb2a8", "tabua", 0.8))
+        b.append(npc(x0 + 640, top + 360, "#a99ab8", "", 0.8))
     b.append(lattice(x1 + 30, GROUND_Y, x1 + 30, top - 20, 22, "#86aab0", 3))   # andaime de fachada
     return "".join(b)
 
 
-def e1_grua():
+def e1_grua(hook=True):
     """ASSINATURA: grua amarela gigante, lança sobre a cena, contrapeso, carrinho com balde de concreto (G05/V1)."""
     mx = 2230
     b = [lattice(mx, GROUND_Y + 40, mx, 150, 46, "#e7b941", 6)]
@@ -166,6 +168,8 @@ def e1_grua():
     b.append(R(mx + 180, 160, 120, 90, "#9aa4ae", 6, 2))  # contrapeso
     b.append(f'<path d="M{mx + 190},{205} h100" stroke="{INK}" stroke-width="4" opacity="0.4"/>')
     hx = 900   # carrinho + cabo + balde
+    if not hook:
+        hx = -9999
     b.append(R(hx - 30, 160, 60, 24, "#c49a2a", 4, 1.6))
     b.append(f'<path d="M{hx},{184} V{430}" stroke="#3a3a46" stroke-width="4"/>')
     b.append(S(f"M{hx - 34},{440} L{hx + 34},{440} L{hx + 20},{500} L{hx - 20},{500} Z", "#8d98a4", (hx - 36, 438, hx + 36, 502), k=1.6))

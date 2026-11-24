@@ -19,12 +19,14 @@ var crumbling := false       # quebra por ter ficado parado em cima (culpa de qu
 const ArenaFx := preload("res://modes/arena_fx.gd")
 const Canteiro := preload("res://modes/canteiro.gd")
 const Etapas := preload("res://modes/etapas.gd")
+const Cena := preload("res://modes/cena.gd")
 const Spells := preload("res://modes/spells.gd")
 const Kit := preload("res://ui/kit.gd")
 var fx: Node2D = null        # mecânicas da arena (plataformas, lama, bola, esteiras)
 var spells: Node2D = null     # caixas de spell, slots e efeitos (modes/spells.gd)
 var canteiro: Node2D = null  # estrutura destrutível do Canteiro de Obras (Derruba), quando a arena tem "canteiro: 1"
 var etapas: Node2D = null   # fase em etapas (modes/etapas.gd): virada cronometrada e queda para a etapa 2
+var cena: Node2D = null     # cena viva da fase (modes/cena.gd): fundo em camadas animado
 var arena := {}              # {id, nome, dica} da rodada atual
 var last_arena := ""
 var last_choice := ""         # rodízio: escolha da rodada anterior
@@ -136,6 +138,15 @@ func start_round() -> void:
 		etapas = Etapas.new()
 		main.world.add_child(etapas)
 		etapas.setup(main)
+	if cena != null and is_instance_valid(cena):
+		cena.queue_free()
+	cena = null
+	if String(main.level.prop("cena", "")) != "":
+		cena = Cena.new()
+		main.world.add_child(cena)
+		main.world.move_child(cena, 0)   # atrás de tudo (mapa, estrutura, robôs)
+		cena.setup(main)
+	main.bg.visible = cena == null
 	if spells != null and is_instance_valid(spells):
 		spells.queue_free()
 	spells = Spells.new()
