@@ -258,14 +258,39 @@ def s02_laser():
 
 
 def s05_rebiteira():
-    """Rebiteira Ricochete: pistola pneumática com mangueira e cano curto — 128x64."""
-    b = [shape("s5c", "M10,18 C10,12 16,10 24,10 H86 C94,10 98,16 98,22 V32 C98,38 94,40 86,40 H24 C16,40 10,36 10,30 Z",
-               "#e0b040", 83, (8, 8, 100, 42), k=2.0, dark="#a87a20", light="#ffe08a")]
-    b.append(shape("s5p", rect_d(96, 18, 26, 14, 3), METAL, 84, (94, 16, 124, 34), k=1.6, dark=METAL_D))
-    b.append(f'<rect x="30" y="38" width="16" height="22" rx="4" fill="{INK}"/>')
-    b.append('<path d="M14,30 C2,40 4,56 18,60" stroke="#3e4752" stroke-width="5" fill="none" stroke-linecap="round"/>')
-    for x in (52, 62, 72):
-        b.append(f'<circle cx="{x}" cy="25" r="3.4" fill="{METAL_L}"/>')
+    """Rebiteira Ricochete: pistola pneumática gorda — cilindro de aço, cabo de pistola, pente de rebites em cima,
+    bico com mola e mangueira de ar — 128x64 (cabo em x≈40, bico em x≈124)."""
+    b = []
+    b.append('<path d="M14,34 C0,40 2,58 18,60 C26,61 30,56 34,54" stroke="#2e3642" stroke-width="6" fill="none" stroke-linecap="round"/>')
+    b.append(shape("s5g", "M30,34 L50,34 L46,60 C46,62 44,63 42,63 L30,63 C28,63 27,61 27,59 Z", "#3e4752", 83, (26, 32, 52, 64), k=1.6, dark="#252b33"))
+    b.append(shape("s5c", "M12,20 C12,12 18,9 26,9 H92 C100,9 104,14 104,22 V30 C104,38 100,40 92,40 H26 C18,40 12,36 12,30 Z",
+               METAL, 84, (10, 7, 106, 42), k=2.0, dark=METAL_D, light=METAL_L))
+    b.append('<rect x="20" y="16" width="70" height="7" rx="3" fill="#f08a3d"/>')
+    b.append(shape("s5m", rect_d(46, 0, 34, 12, 3), "#3e4752", 85, (44, -2, 82, 14), k=1.4))
+    for x in (53, 63, 73):
+        b.append(f'<path d="M{x - 4},10 A4,4 0 0 1 {x + 4},10 Z" fill="#f2c84b"/>')
+    b.append(shape("s5n", rect_d(102, 15, 14, 20, 3), "#f08a3d", 86, (100, 13, 118, 37), k=1.4, dark="#b05a20"))
+    b.append(shape("s5t", rect_d(114, 19, 12, 12, 2), METAL_D, 87, (112, 17, 128, 33), k=1.2))
+    b.append(f'<circle cx="122" cy="25" r="3" fill="{INK}"/>')
+    for x in (30, 40):
+        b.append(f'<circle cx="{x}" cy="30" r="2.4" fill="{METAL_D}"/>')
+    return b
+
+
+def s04_marreta():
+    """Marreta Sísmica: cabeça de aço enorme com faixa zebrada, amortecedor de pistão e núcleo laranja aceso;
+    cabo longo com fita — 64x128 (cabeça em cima, pega em (32,120))."""
+    b = []
+    b.append(shape("s4c", rect_d(27, 34, 10, 92, 4), "#8f5a2c", 91, (25, 32, 39, 128), k=1.6, dark="#5e3a1a"))
+    for y in (98, 106, 114):
+        b.append(f'<rect x="26" y="{y}" width="12" height="4" fill="#2a1a2e"/>')
+    b.append(shape("s4p", rect_d(24, 26, 16, 14, 3), METAL_D, 92, (22, 24, 42, 42), k=1.4))
+    b.append(shape("s4h", rect_d(2, 2, 60, 30, 7), "#4a5566", 93, (0, 0, 64, 34), k=2.2, dark="#2e3642", light="#71829a"))
+    b.append('<rect x="2" y="12" width="60" height="9" fill="#f2c84b"/>')
+    for x in range(4, 60, 10):
+        b.append(f'<path d="M{x},21 L{x + 5},12 L{x + 9},12 L{x + 4},21 Z" fill="{INK}"/>')
+    b.append('<rect x="0" y="4" width="6" height="26" rx="2" fill="#9aa4ae"/><rect x="58" y="4" width="6" height="26" rx="2" fill="#9aa4ae"/>')
+    b.append('<circle cx="32" cy="7" r="4" fill="#ff8a3a"/><circle cx="32" cy="7" r="2" fill="#ffe2b0"/>')
     return b
 
 
@@ -312,7 +337,7 @@ PIECES = {  # nome: (largura, altura, função)
     "s13_frente": (150, 130, s13_frente), "s13_costas": (150, 130, s13_costas),
     "g10_capsula": (128, 160, g10_capsula),
     "s02_laser": (128, 64, s02_laser), "s05_rebiteira": (128, 64, s05_rebiteira), "s18_disco": (64, 64, s18_disco),
-    "s20_canhao": (128, 64, s20_canhao), "s17_estaca": (64, 192, s17_estaca),
+    "s20_canhao": (128, 64, s20_canhao), "s17_estaca": (64, 192, s17_estaca), "s04_marreta": (64, 128, s04_marreta),
 }
 
 

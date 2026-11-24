@@ -71,6 +71,11 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
    pular escapa), S05 Rebiteira (rebite reto, ▲/▼ 45°, até 2 ricochetes), S17 Bate-Estaca (faixa zebrada → estaca desce e
    lança para cima, danifica peça do Canteiro), S18 Disco de Corte (rola no chão, bate e volta para a mão), S19
    Marreta-Bumerangue (sem pesada enquanto voa, volta garantido), S20 Canhão de Molas (mola saltitante, BOING forte).
+   **Revisão 2 do usuário (2026-11-24) aplicada:** armas carregadas com as duas mãos (marreta vai para as costas; ao
+   golpear, a arma vai para as costas), objetos de spell nas costas/mão (marreta sísmica, trouxa do andaime, fornalha,
+   disco, controle remoto do bate-estaca); tiros saem do bico de cada arma (`muzzle`); feixe do laser refeito; marreta
+   sísmica com arte própria e tremor rico (placas do piso levantando, rachadura incandescente, pedras, anel de choque);
+   rebiteira e rebite novos; bate-estaca com mira segurando (como o teleporte); disco e marreta-bumerangue com mais alcance.
    PRÓXIMO: Etapa 3 controle+engenharia (S07,S08,S21,S12,S25,S27,S28) → Etapa 4 transformações (S14,S15,S16,S31,S33,S34) →
    Etapa 5 eventos (G05,G06,G11,G12,G13,G02,G03,G04,G14,G09) + matriz de conflitos. REJEITADOS (nunca reintroduzir):
    S09,S22,S23,S24,S26,S29,S30,S32; G07,G08,G15,G16,G17,G18. Testar só no Derruba/Canteiro.

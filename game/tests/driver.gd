@@ -1626,13 +1626,27 @@ func spells_test() -> void:
 	sp.equip(r0, "S17")
 	await frames(2)
 	await tap("v0", "item")
-	check(sp.piles.size() == 1 and r1.dmg == 0.0, "S17: marca a faixa antes de descer")
+	check(sp.piles.size() == 1 and r1.dmg == 0.0, "S17: toque rápido marca a faixa à frente antes de descer")
 	var y_before: float = r1.position.y
 	var top_y: float = y_before
 	for k in int(float(sp.sc("S17")["marca_s"]) * 60.0) + 40:
 		await frames(1)
 		top_y = minf(top_y, r1.position.y)
 	check(r1.dmg > 0.0 and y_before - top_y > 2.0 * 64.0, "S17: estaca lança o rival para cima (%.1f tiles, %s)" % [(y_before - top_y) / 64.0, r1.last_cause])
+	# mirar segurando: a marca anda com o direcional
+	place.call(6.0)
+	sp.equip(r0, "S17")
+	await frames(2)
+	vset("v0", "item", true)
+	await frames(2)
+	var mx0: float = sp.pile_aims[0]["x"] if sp.pile_aims.has(0) else 0.0
+	vset("v0", "right", true)
+	await frames(15)
+	vset("v0", "right", false)
+	var mx1: float = sp.pile_aims[0]["x"] if sp.pile_aims.has(0) else 0.0
+	vset("v0", "item", false)
+	await frames(3)
+	check(mx1 - mx0 > 100.0 and sp.piles.size() >= 1 and absf(sp.piles[-1]["x"] - mx1) < 20.0, "S17: segurando, a mira anda (%.0f → %.0f) e a estaca cai lá" % [mx0, mx1])
 	# S18 disco: rola, acerta e volta para a mão
 	place.call(4.0)
 	sp.clear(r0)
@@ -2238,7 +2252,7 @@ func spells_frames(dir: String) -> void:
 	var x0: float = nuc[0]["rect"].position.x + 40.0
 	_frame_no = 0
 	var segs := [["caixas", 50], ["S01", 60], ["S03", 120], ["S06", 90], ["S10", 70], ["S11", 70], ["S13", 300], ["troca", 60],
-		["S02", 60], ["S04", 70], ["S05", 60], ["S17", 90], ["S18", 80], ["S19", 90], ["S20", 70]]
+		["S02", 60], ["S04", 70], ["S05", 60], ["S17", 90], ["S18", 80], ["S19", 90], ["S20", 70], ["porte", 90]]
 	for a0 in OS.get_cmdline_user_args():
 		if a0.begins_with("--so-spells="):
 			segs = segs.filter(func(x): return x[0] in a0.substr(12).split("+"))
@@ -2263,6 +2277,9 @@ func spells_frames(dir: String) -> void:
 		elif nm == "troca":
 			sp.equip(r0, "S03")
 			sp.drop_box("S13", Vector2(x0, fy - 100.0), false)
+		elif nm == "porte":
+			sp.equip(r0, "S05")
+			sp.equip(r1, "S10")
 		else:
 			sp.equip(r0, nm)
 		for f in int(sg[1]):
@@ -2272,6 +2289,9 @@ func spells_frames(dir: String) -> void:
 					a["v0"]["item"] = f >= 30 and f < 52
 				"S01", "S10", "S02", "S04", "S17", "S18", "S19", "S20":
 					a["v0"]["item"] = f == 14 or f == 15
+				"porte":
+					a["v0"]["right"] = f >= 10 and f < 40
+					a["v0"]["hammer"] = f in [55, 56]
 				"S05":
 					a["v0"]["item"] = f in [14, 15, 30, 31]
 					a["v0"]["up"] = f >= 28 and f < 33

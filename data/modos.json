@@ -656,24 +656,27 @@
         "cargas": 1,
         "distancia_tiles": 2.6,
         "largura_tiles": 1.2,
-        "marca_s": 0.65
+        "marca_s": 0.65,
+        "mira_vel": 700,
+        "mira_alcance_tiles": 7,
+        "mira_max_s": 2.0
       },
       "S18": {
         "familia": "ataque",
         "raridade": "incomum",
         "cargas": 2,
         "vel": 720,
-        "alcance_tiles": 7,
+        "alcance_tiles": 11,
         "volta_vel": 950,
-        "max_s": 2.6
+        "max_s": 3.6
       },
       "S19": {
         "familia": "ataque",
         "raridade": "comum",
         "cargas": 2,
-        "vel": 1050,
-        "alcance_tiles": 5,
-        "max_s": 2.4
+        "vel": 1250,
+        "alcance_tiles": 8,
+        "max_s": 3.4
       },
       "S20": {
         "familia": "ataque",

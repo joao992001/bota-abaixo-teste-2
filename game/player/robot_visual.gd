@@ -12,14 +12,21 @@ const ORIGIN := Vector2(64, 120)
 const GRIP := Vector2(32, 56)          # pega dentro da textura da marreta (64x64)
 const HAMMER_REST := 0.35
 const STRIDE := 46.0
-## Spells (modes/spells.gd): textura, tamanho na mão e ponto de pega (em px da arte de design, que é 2x a textura/2)
-const SPELL_TOOLS := {"S01": ["s01_canhao", Vector2(52, 26), Vector2(30, 34)], "S03": ["s03_canhao", Vector2(54, 27), Vector2(26, 40)],
-	"S06": ["s06_ima", Vector2(42, 30), Vector2(14, 40)], "S02": ["s02_laser", Vector2(54, 27), Vector2(19, 50)],
-	"S05": ["s05_rebiteira", Vector2(50, 25), Vector2(38, 50)], "S20": ["s20_canhao", Vector2(58, 29), Vector2(24, 54)]}
-const SPELL_HELD := {"S01": "s01_canhao", "S03": "s03_canhao", "S06": "s06_ima", "S10": "icone_engenharia", "S11": "icone_controle", "S02": "s02_laser", "S04": "icone_ataque",
-	"S05": "s05_rebiteira", "S17": "icone_ataque", "S18": "s18_disco", "S19": "icone_ataque", "S20": "s20_canhao",
-	"S13": "icone_transformacao"}
-
+## Spells (modes/spells.gd). Armas: [textura, tamanho na tela, pega e bico (px da arte de design)]. Com arma, a marreta
+## vai para as costas e o robô carrega a arma com as duas mãos; ao dar golpe, a arma vai para as costas e a marreta volta.
+const SPELL_TOOLS := {"S01": ["s01_canhao", Vector2(52, 26), Vector2(30, 34), Vector2(100, 33)],
+	"S03": ["s03_canhao", Vector2(56, 28), Vector2(26, 40), Vector2(124, 31)],
+	"S06": ["s06_ima", Vector2(44, 31), Vector2(14, 40), Vector2(106, 40)],
+	"S02": ["s02_laser", Vector2(58, 29), Vector2(19, 50), Vector2(122, 31)],
+	"S05": ["s05_rebiteira", Vector2(56, 28), Vector2(40, 52), Vector2(127, 25)],
+	"S20": ["s20_canhao", Vector2(60, 30), Vector2(24, 54), Vector2(124, 32)]}
+const WEAPONS := ["S01", "S02", "S03", "S05", "S06", "S20"]
+const CARRY_HF := Vector2(17, -31)      # mão da frente carregando a arma (baixa, pronta)
+const AIM_HF := Vector2(21, -38)        # mão da frente mirando
+## Spells sem arma: objeto nas costas (andaime dobrado, marreta sísmica, fornalha desmontada) ou na mão de trás.
+const BACK_PROPS := {"S04": ["s04_marreta", Vector2(30, 60), 2.55], "S10": ["s10_trouxa", Vector2(34, 23), 1.35],
+	"S13": ["s13_costas", Vector2(40, 35), 0.0]}
+const HAND_PROPS := {"S18": ["s18_disco", Vector2(24, 24)]}
 # aparência
 var color_idx := 0
 var model := 0
@@ -644,6 +651,13 @@ func current_pose() -> Dictionary:
 					p["hb_abs"] = Vector2(-8, -60 + 6.0 * kick)
 		for i in 2:
 			feet[i] = feet[i].lerp(Vector2(-6.0 + i * 10.0, 0), 0.6)   # pés firmes
+	elif sid in WEAPONS and robot != null and robot.atk == "" and not sf.get("fading", false):
+		# carregando a arma: as duas mãos nela, apontada um pouco para baixo, balança com a passada
+		var cbob := sin(t * 12.0) * 1.6 * run_k
+		p["hf_abs"] = CARRY_HF + Vector2(0, cbob)
+		p["hb_abs"] = CARRY_HF + Vector2(-9, 4 + cbob)
+		p["tool"] = sid
+		p["tool_ang"] = 0.32 - 0.12 * air_k
 	elif sf.get("armor", false) and float(sf.get("flame", 0.0)) > 0.05:
 		var fk := float(sf.get("flame", 0.0))
 		lean = lerpf(lean, -0.14 * fk, 0.5)   # segurando o jato: corpo jogado para trás, tremendo
@@ -974,6 +988,20 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 	if armor:   # armadura fornalha: membros grossos de ferro escuro
 		lw *= 1.0 + 0.9 * asm
 		limb = limb.lerp(Color("#5f4438"), 0.75 * asm)
+	var sid0: String = String(sf.get("spell", ""))
+	if lk.get("hammer", true) and tool != "" and not armor:
+		# arma na mão: a marreta fica presa nas costas, na diagonal
+		ci.draw_set_transform_matrix(base * bx * Transform2D(2.45, q * 0.8, 0.0, _v(sh[0]) + Vector2(-8, 6)))
+		ci.draw_texture(Data.tex("robo/marreta"), -GRIP * 4.0)
+	if sid0 in WEAPONS and tool == "" and not armor and not sf.get("fading", false):
+		# golpeando com a marreta: a arma vai para as costas
+		var spec0: Array = SPELL_TOOLS[sid0]
+		ci.draw_set_transform_matrix(base * bx * Transform2D(-2.2, Vector2.ONE, 0.0, _v(sh[0]) + Vector2(-10, 8)))
+		ci.draw_texture_rect(Data.tex("spells/" + spec0[0]), Rect2(-spec0[1] * 0.4, spec0[1] * 0.8), false)
+	if BACK_PROPS.has(sid0) and not armor and not sf.get("fading", false) and not (sid0 == "S04" and (float(sf.get("prep", -1.0)) >= 0.0 or float(sf.get("fire", -1.0)) >= 0.0)):
+		var bp: Array = BACK_PROPS[sid0]
+		ci.draw_set_transform_matrix(base * bx * Transform2D(float(bp[2]), _v(sh[0]) + Vector2(-12, 10)))
+		ci.draw_texture_rect(Data.tex("spells/" + bp[0]), Rect2(-bp[1] / 2.0, bp[1]), false)
 	if lk.get("hammer", true) and tool == "" and not armor:
 		var seis: bool = sf.get("spell", "") == "S04" and (float(sf.get("prep", -1.0)) >= 0.0 or (float(sf.get("fire", -1.0)) >= 0.0 and float(sf.get("fire", -1.0)) < 0.32))
 		if not seis:   # na marretada sísmica a marreta gigante é desenhada por modes/spells.gd
@@ -1033,13 +1061,21 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 		ci.draw_set_transform_matrix(base * bx)
 		ci.draw_arc(eye + drop, 10.4, 0, TAU, 20, Color("#c9a03a"), 3.0, true)
 		ci.draw_arc(eye + drop + Vector2(-1.5, -1.5), 6.4, PI * 1.1, PI * 1.6, 6, Color(1, 1, 1, 0.6), 1.6, true)
-	var held: String = SPELL_HELD.get(String(sf.get("spell", "")), "")
-	if held != "" and tool == "" and not armor and not sf.get("fading", false):
-		# a spell guardada aparece na mão de trás, balançando
-		ci.draw_set_transform_matrix(base * Transform2D(-0.3 + sin(tnow * 4.0) * 0.12, Vector2.ONE, 0.0, hb + Vector2(-2, -8)))
-		var tx := Data.tex("spells/" + held)
-		var hs := Vector2(30, 30) if tx.get_width() == tx.get_height() else Vector2(34, 34.0 * tx.get_height() / tx.get_width())
-		ci.draw_texture_rect(tx, Rect2(-hs / 2.0, hs), false)
+	if HAND_PROPS.has(sid0) and not armor and not sf.get("fading", false) and float(sf.get("fire", -1.0)) < 0.0:
+		var hp: Array = HAND_PROPS[sid0]
+		ci.draw_set_transform_matrix(base * Transform2D(-0.4, hb + Vector2(-2, -4)))
+		ci.draw_texture_rect(Data.tex("spells/" + hp[0]), Rect2(-hp[1] / 2.0, hp[1]), false)
+	if sid0 == "S17" and not sf.get("fading", false):   # controle remoto do bate-estaca, luz piscando
+		ci.draw_set_transform_matrix(base * Transform2D(-0.2, hb + Vector2(-1, -6)))
+		ci.draw_rect(Rect2(-6, -9, 12, 18), Color("#2a1a2e"))
+		ci.draw_rect(Rect2(-4.5, -7.5, 9, 15), Color("#f2c84b"))
+		ci.draw_circle(Vector2(0, -2), 3.0, Color("#d94a3a") if fmod(tnow, 0.5) < 0.25 else Color("#7a2a20"))
+		ci.draw_line(Vector2(3, -9), Vector2(5, -16), Color("#2a1a2e"), 1.6, true)
+	if sid0 == "S11" and not sf.get("fading", false):   # faísquinhas roxas orbitando a mão
+		ci.draw_set_transform_matrix(base)
+		for k in 3:
+			var a := tnow * 5.0 + k * TAU / 3.0
+			ci.draw_circle(hf + Vector2(cos(a), sin(a) * 0.6) * 10.0, 2.2, Color(0.72, 0.6, 1.0, 0.9))
 	if tool != "" and SPELL_TOOLS.has(tool):
 		# arma da spell presa na mão da frente (ponto de pega embaixo da mão)
 		var spec: Array = SPELL_TOOLS[tool]
