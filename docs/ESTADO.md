@@ -5,6 +5,9 @@ Repositórios (GitHub privado, ramo `main`): `joao992001/bota-abaixo` = versão 
 **`joao992001/bota-abaixo-teste-2` = cópia para as mudanças estruturais grandes (trabalhe aqui).**
 
 ## ▶ Retomar aqui (sessão nova)
+**MANUAIS DE CRIAÇÃO (2026-11-24):** `docs/manuais/` — `personagem.md` (universal), `derruba/spell.md`,
+`derruba/evento.md`. Seguir SEMPRE ao criar robô/spell/evento e atualizar quando algo novo for aprovado. Mapa: ainda sem manual
+(o usuário acha que o mapa do Derruba não está fechado).
 **ÚLTIMO (2026-11-24): ELENCO NOVO DE 5 ROBÔS** (pedido do usuário: os 8 modelos "olhavam para a câmera e batiam com
 uma mão"). Marretão (marreta de 2 mãos), Picareta (pernas de pássaro), Chave (mecânico, chave inglesa), Britadeira
 (baixinho, monta na britadeira), Pá (cabeça de cabine; a Garra-veículo foi vetada: SEMPRE humanoides). Fonte única:

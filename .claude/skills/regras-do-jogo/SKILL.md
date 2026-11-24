@@ -25,3 +25,6 @@ Fluxo: Menu → Modo → Arena do modo → Ajustes → Entrada (2–4, bots) →
 - Cada modo tem os próprios itens (`itens_lista`); item de dano é da Derruba.
 - Mudou regra → atualize os bots (`bots.gd`) e um teste em `game/tests/driver.gd`; rode `-- --autotest --so=<parte>`.
 - Medir ritmo: `-- --stats=4 [--sub=<modo>] [--so-arenas=a,b]`.
+
+**Spells e eventos do Derruba:** antes de criar ou mudar um, leia o manual — `docs/manuais/derruba/spell.md` e
+`docs/manuais/derruba/evento.md` (passo a passo oficial, com o que foi aprovado e reprovado).
