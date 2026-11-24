@@ -15,6 +15,9 @@ Reforma grande em andamento no `teste-2`, pedida pelo usuário em 2026-11-23, ne
    no corpo em 3 estágios (`dano1..3_<modelo>.png`, faísca, fumaça, plaquinha solta, parafuso voando). Números: `data/controller.json`
    (`ataque_rapido`, `ataque_pesado`, `esquiva`, `arremesso`, `hitstop`) e `modos.json` (`amassometro.rapido/pesado`) —
    VALORES INICIAIS, a calibrar jogando. Vitrine: `-- --combate=DIR` (quadros → GIF). Testes: `--autotest --so=combate`.
+2b. **LABORATÓRIO** (menu principal) — FEITO (2026-11-24): `game/ui/laboratorio.gd` + `levels/laboratorio.lvl`. Medidores,
+   bonecos com comportamento, 32 números ajustáveis ao vivo; o usuário calibra jogando e manda os valores (COPIAR) para virar
+   o padrão nos JSON. Ajustes salvos ficam em `user://laboratorio.json` e valem no jogo todo (PADRÃO apaga). Testes: `--so=lab`.
 3. **Fases e câmera** — DEPOIS do movimento (as medidas do pulo/golpe definem as fases). Retirar as 24 arenas atuais
    (+ antigas, `tools/mapas/`, prévias `game/assets/ui/arena_*.png`), deixando 1 arena-base provisória por modo para o jogo
    abrir e os testes rodarem; depois criar um modelo de fase padrão, com câmera e regras próprias por modo.

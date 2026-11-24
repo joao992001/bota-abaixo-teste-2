@@ -16,6 +16,10 @@ func _run() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--shot="):
 			shot = a.substr(7)
+		if a.begins_with("--lab="):
+			await lab_shots(a.trim_prefix("--lab="))
+			get_tree().quit()
+			return
 		if a.begins_with("--combate="):
 			await combate_frames(a.trim_prefix("--combate="))
 			get_tree().quit()
@@ -505,11 +509,13 @@ func demolicao_test() -> void:
 	await oficina_test()
 	await robos_test()
 	await combate_test()
+	await lab_test()
 	await imagens_test()
 
 func menus_test() -> void:
 	print("== Menus e pausa")
 	main.go_menu()
+	main.menus.sel = 0
 	PlayerInput.virtual = {"v0": {}}
 	await frames(2)
 	check(main.state == S.MENU and main.players.is_empty(), "volta ao menu principal sem jogadores")
@@ -571,7 +577,7 @@ func menus_test() -> void:
 	await tap("v0", "jump")
 	check(main.state == S.MENU and not main.paused, "pausa → MENU PRINCIPAL")
 	main.menus.sel = 0
-	for k in 3:
+	for k in 4:
 		await tap("v0", "down")
 	await tap("v0", "jump")
 	check(main.state == S.OPTIONS, "OPÇÕES abre")
@@ -1638,6 +1644,102 @@ func combate_test() -> void:
 	await frames(90)
 	check(r0.stun_t == 0.0 and r0.atk == "" and r0.dodge_t == 0.0, "nenhum estado preso depois do arremesso")
 	await frames(2)
+
+## LABORATÓRIO: abre pela tela inicial, ajusta número ao vivo, mede pulo, boneco obedece, salva/volta ao padrão.
+func lab_test() -> void:
+	print("== Laboratório")
+	if FileAccess.file_exists(main.lab.SAVE_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(main.lab.SAVE_PATH))
+	for p in main.lab.PARAMS:
+		main.lab.set_value(p, float(main.lab.defaults[main.lab._key(p)]))
+	main.go_menu()
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	await frames(2)
+	main.menus.sel = 0
+	for k in 2:
+		await tap("v0", "down")
+	await tap("v0", "jump")
+	check(main.sandbox and main.lab_mode and main.level.id == "laboratorio" and main.robots.size() == 2, "menu ▸ LABORATÓRIO abre a sala de medição com 1 jogador + boneco")
+	main.countdown = 0.0
+	for r in main.robots:
+		r.active = true
+		r.invuln = 0.0
+	var lab = main.lab
+	var r0 = main.robots[0]
+	put(r0, Vector2(col_x(8), 12 * 64))
+	await frames(20)
+	vset("v0", "jump", true)
+	await frames(30)
+	vset("v0", "jump", false)
+	await frames(60)
+	check(lab.last_jump != "", "mede o pulo (%s)" % lab.last_jump)
+	# boneco que dá marretada
+	lab.dummy_i = lab.DUMMY.find("marretada")
+	var saw := false
+	for k in 150:
+		await frames(1)
+		if main.robots[1].atk == "pesado":
+			saw = true
+			break
+	check(saw, "boneco obedece o comportamento (dá marretada)")
+	lab.dummy_i = 0
+	# painel: ajuste ao vivo do preparo da pesada
+	await tap("v0", "start")
+	check(lab.open and main.paused, "START abre o painel do laboratório")
+	var idx := -1
+	for i in lab.PARAMS.size():
+		if lab.PARAMS[i][2] == ["ataque_pesado", "preparo"]:
+			idx = i
+	lab.sel = lab.rows().find("num%d" % idx)
+	var before: float = float(Data.ctrl["ataque_pesado"]["preparo"])
+	await tap("v0", "right")
+	var after: float = float(Data.ctrl["ataque_pesado"]["preparo"])
+	check(absf(after - before - 0.01) < 0.0001, "◄► muda o número ao vivo (%.2f → %.2f)" % [before, after])
+	lab.sel = lab.rows().find("salvar")
+	await tap("v0", "jump")
+	check(FileAccess.file_exists(lab.SAVE_PATH) and lab.changed_count() == 1, "SALVAR grava os ajustes")
+	await frames(20)
+	lab.sel = lab.rows().find("padrao")
+	await tap("v0", "jump")
+	check(absf(float(Data.ctrl["ataque_pesado"]["preparo"]) - before) < 0.0001 and not FileAccess.file_exists(lab.SAVE_PATH), "PADRÃO volta aos valores de fábrica e apaga o salvo")
+	await frames(20)
+	lab.sel = lab.rows().find("sair")
+	await tap("v0", "jump")
+	check(main.state == S.MENU and not main.lab_mode and not main.sandbox, "SAIR volta ao menu")
+	await frames(20)
+
+## Capturas do Laboratório (--lab=DIR): medidores em ação e o painel de ajustes.
+func lab_shots(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	PlayerInput.virtual = {"v0": {}}
+	await frames(2)
+	main.lab.start("v0")
+	main.countdown = 0.0
+	for r in main.robots:
+		r.active = true
+		r.invuln = 0.0
+	await frames(30)
+	var r0 = main.robots[0]
+	put(r0, Vector2(col_x(12), 12 * 64))
+	r0.facing = 1
+	main.robots[1].dmg = 90.0
+	put(main.robots[1], Vector2(col_x(13) + 6, 12 * 64))
+	vset("v0", "jump", true)
+	await frames(30)
+	vset("v0", "jump", false)
+	await frames(60)
+	vset("v0", "heavy", true)
+	await frames(2)
+	vset("v0", "heavy", false)
+	await frames(10)
+	await snap(dir, "lab_golpe")
+	await frames(70)
+	await snap(dir, "lab_medidas")
+	await tap("v0", "start")
+	main.lab.sel = main.lab.rows().find("num12")
+	main.lab.scroll = main.lab.sel - 4
+	await frames(4)
+	await snap(dir, "lab_painel")
 
 ## Toda imagem pedida no código existe (a lama da Maré faltava e enchia o log de erros, travando o jogo).
 func imagens_test() -> void:

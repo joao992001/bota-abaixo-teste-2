@@ -14,6 +14,7 @@ const Bots := preload("res://modes/bots.gd")
 const Menus := preload("res://ui/menus.gd")
 const Eventos := preload("res://modes/eventos.gd")
 const Oficina := preload("res://ui/oficina.gd")
+const Laboratorio := preload("res://ui/laboratorio.gd")
 const T := 64
 
 enum S { JOIN, RUN, SCORE, WIN, MENU, MODES, HOWTO, OPTIONS, ARENAS, AJUSTES, EVENTOS, CONTROLES, INTRO, CONFIGPAD }
@@ -22,6 +23,8 @@ var paused := false
 const MENU_STATES := [S.MENU, S.MODES, S.HOWTO, S.OPTIONS, S.ARENAS, S.AJUSTES, S.EVENTOS, S.CONTROLES, S.INTRO, S.CONFIGPAD]
 var sandbox := false          # OFICINA: ambiente de testes (respawn infinito, rodada sem fim)
 var oficina: Node = null
+var lab: Node = null
+var lab_mode := false        # LABORATÓRIO (uma Oficina de medição/calibragem)
 var perf_acc := {}             # tempo gasto por parte (medição --perf)
 var lost_pads: Array = []      # jogadores cujo controle desconectou no meio da partida (índices)
 var timer := 0.0
@@ -109,10 +112,14 @@ func _ready() -> void:
 	oficina = Oficina.new()
 	oficina.setup(self)
 	add_child(oficina)
+	lab = Laboratorio.new()
+	lab.setup(self)
+	add_child(lab)
+	lab.load_saved()   # ajustes salvos no Laboratório valem no jogo todo
 	PlayerInput.pad_changed.connect(_on_pad_changed)
 	var args := OS.get_cmdline_user_args()
 	for a in args:
-		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens") or a.begins_with("--oficina") or a.begins_with("--parede") or a.begins_with("--intro") or a.begins_with("--maquete") or a.begins_with("--robos") or a.begins_with("--combate") or a.begins_with("--espiar"):
+		if a == "--autotest" or a.begins_with("--shot") or a.begins_with("--anim") or a.begins_with("--demo") or a.begins_with("--menus") or a.begins_with("--arenas") or a.begins_with("--video") or a.begins_with("--stats") or a.begins_with("--perf") or a.begins_with("--itens") or a.begins_with("--oficina") or a.begins_with("--parede") or a.begins_with("--intro") or a.begins_with("--maquete") or a.begins_with("--robos") or a.begins_with("--combate") or a.begins_with("--lab") or a.begins_with("--espiar"):
 			state = S.JOIN   # testes e capturas começam direto na entrada de jogadores
 			var scr: GDScript = load("res://tests/driver.gd")
 			if scr == null or not scr.can_instantiate():
@@ -148,7 +155,11 @@ func _on_pad_changed(dev: String, connected: bool) -> void:
 			paused = true
 			menus.pause_sel = 0
 
-# ---------------------------------------------------------------- oficina (testes)
+# ---------------------------------------------------------------- oficina / laboratório (testes)
+## Quem cuida do modo de testes atual: o Laboratório ou a Oficina (mesmo jeito de usar: painel, tick, desenho).
+func tester() -> Node:
+	return lab if lab_mode else oficina
+
 ## Outro dispositivo apertou PULAR na Oficina: entra na hora.
 func _sandbox_join() -> void:
 	if players.size() >= 4:
@@ -245,7 +256,7 @@ func load_options() -> void:
 ## Volta ao menu principal: sem jogadores, arena da Demolição ao fundo.
 func go_menu() -> void:
 	if sandbox:
-		oficina.stop()
+		tester().stop()
 		sandbox = false
 	paused = false
 	lost_pads.clear()
@@ -290,8 +301,8 @@ func _physics_process(dt: float) -> void:
 	if _reassign_lost_pads():
 		return   # o START que assumiu o controle não conta como "continuar"
 	if paused:
-		if sandbox and oficina.open:
-			oficina.update()
+		if sandbox and tester().open:
+			tester().update()
 		else:
 			menus.update_pause()
 		hud.queue_redraw()
@@ -300,7 +311,7 @@ func _physics_process(dt: float) -> void:
 	if state in [S.RUN, S.SCORE]:
 		for i in players.size():
 			if sandbox and not players[i].get("bot", false) and PlayerInput.pressed(i, "start"):
-				oficina.toggle()   # na Oficina, START abre o painel de testes
+				tester().toggle()   # na Oficina/Laboratório, START abre o painel de testes
 				return
 			if not players[i].get("bot", false) and PlayerInput.pressed(i, "start"):
 				paused = true
@@ -314,7 +325,7 @@ func _physics_process(dt: float) -> void:
 		S.JOIN: _join_update()
 		S.RUN:
 			if sandbox:
-				oficina.tick()
+				tester().tick()
 				_sandbox_join()
 			var t0 := Time.get_ticks_usec()
 			bots.update(dt)
@@ -783,6 +794,8 @@ func _draw_overlay() -> void:
 			for k in 3:
 				var ang := Time.get_ticks_msec() / 160.0 + k * TAU / 3.0
 				overlay.draw_texture_rect(star, Rect2(hc + Vector2(cos(ang) * 22, sin(ang) * 7) - Vector2(7, 7), Vector2(14, 14)), false)
+	if lab_mode and state == S.RUN:
+		lab.draw_world(overlay)
 	if debug:
 		for r in robots:
 			overlay.draw_rect(r.rect(), Color(0, 1, 0, 0.8), false, 2)
@@ -804,7 +817,7 @@ func _input(e: InputEvent) -> void:
 			KEY_F11: toggle_fullscreen()
 			KEY_TAB:
 				if sandbox and state == S.RUN:
-					oficina.toggle()
+					tester().toggle()
 			KEY_B:
 				if state == S.JOIN:
 					add_bot()

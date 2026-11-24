@@ -94,6 +94,8 @@ func pick_arena() -> Dictionary:
 	var choice: String = main.arena_choice
 	if choice == "oficina":
 		return {"id": "oficina", "nome": "Oficina", "dica": "Teste à vontade: START abre o painel", "musica": "partida"}
+	if choice == "laboratorio":
+		return {"id": "laboratorio", "nome": "Laboratório", "dica": "Meça e ajuste: START abre o painel", "musica": "fabrica"}
 	if choice != "sorteio" and choice == last_choice and main.round_no > 1:
 		# rodízio (como em Gang Beasts): a 1ª rodada na escolhida, depois a próxima fase do modo
 		var ids: Array = list.map(func(a): return a["id"])

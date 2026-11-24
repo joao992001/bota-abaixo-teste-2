@@ -25,6 +25,8 @@ Medidas por modelo em `assets/robo/modelos.json`. **Nunca** deixar a animação 
 - Capturas (com `xvfb-run -a` e `--rendering-driver opengl3`): `--robos=DIR`, `--menus=DIR`, `--arenas=DIR`, `--espiar=DIR,arena,modo,s`,
   `--itens=DIR`, `--parede=DIR`, `--oficina=DIR`, `--intro=DIR`. Ritmo: `--stats=N`.
 - Diga sempre o que rodou e o que não rodou.
+- Calibrar movimento/combate: menu ▸ LABORATÓRIO (`ui/laboratorio.gd`; painel com os números de `controller.json`/`modos.json`
+  ao vivo, medidores, bonecos). Capturas: `--lab=DIR`. Valores mandados pelo usuário (COPIAR) viram o padrão nos JSON.
 
 ## Exportar
 `GODOT=/caminho/godot-4.7.1 tools/exportar.sh` → `out/build/windows/Bota-Abaixo.exe` (arquivo único) e Linux; instalador só com

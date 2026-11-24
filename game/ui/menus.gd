@@ -5,7 +5,7 @@ extends Node
 const Kit := preload("res://ui/kit.gd")
 const RobotVis := preload("res://player/robot_visual.gd")
 
-const MENU_ITEMS := ["JOGAR", "OFICINA", "COMO JOGAR", "OPÇÕES", "SAIR"]
+const MENU_ITEMS := ["JOGAR", "OFICINA", "LABORATÓRIO", "COMO JOGAR", "OPÇÕES", "SAIR"]
 const PAUSE_ITEMS := ["CONTINUAR", "REINICIAR PARTIDA", "MENU PRINCIPAL"]
 const STAR_GOALS := [3, 5, 7]
 
@@ -66,9 +66,10 @@ func update(dt: float) -> void:
 				match sel:
 					0: main.state = S.MODES
 					1: main.oficina.start(_who_confirmed())
-					2: main.state = S.HOWTO
-					3: main.state = S.OPTIONS
-					4: main.get_tree().quit()
+					2: main.lab.start(_who_confirmed())
+					3: main.state = S.HOWTO
+					4: main.state = S.OPTIONS
+					5: main.get_tree().quit()
 		S.MODES:
 			var modes: Array = main.demo.cfg["modos"]
 			mode_sel = posmod(mode_sel + move_h(), modes.size())
@@ -205,8 +206,8 @@ func draw(ci: CanvasItem) -> void:
 		S.INTRO: _draw_intro(ci)
 		S.CONFIGPAD: _draw_config(ci)
 	if main.paused:
-		if main.sandbox and main.oficina.open:
-			main.oficina.draw(ci)
+		if main.sandbox and main.tester().open:
+			main.tester().draw(ci)
 		else:
 			_draw_pause(ci)
 
