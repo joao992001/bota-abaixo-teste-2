@@ -238,35 +238,38 @@ def tool_brit():
     return out
 
 
-# 5 GARRA — escavadeira: esteiras no lugar das pernas, cabine com o rosto na janela, braço hidráulico com caçamba.
-def t_garra(c, e):
-    out = S(rect_d(-15, -30, 28, 28, 5), c, (-16, -31, 14, -1), k=0.7)
-    out += S(rect_d(-4, -27, 14, 13, 3), "#cdeff7", (-5, -28, 11, -13), k=0.4)
-    out += face_eye(2, -21, 2.2, e) + face_eye(7.5, -21.3, 2.0, e)
-    out += mouth(5, -16.5, 5, e) if e in ("grito", "esquiva") else ""
-    out += f'<rect x="-15" y="-9" width="28" height="4" fill="{YEL}"/>'
-    out += f'<rect x="-13" y="-38" width="4" height="9" rx="1.5" fill="{STEEL_D}"/>'
+# 5 PÁ — operário de máquina pesada: cabeça de cabine (rosto na janelinha, giroflex), escapamento nas costas,
+# pistões hidráulicos nas pernas, pá enorme (finca no chão para saltar).
+def t_pa(c, e):
+    out = S(rect_d(-7, -44, 5, 20, 2), STEEL_D, (-8, -45, -1, -23), k=0.3)
+    out += f'<circle cx="-4.5" cy="-46" r="2.6" fill="#8a8a8a" opacity="0.7"/>'
+    out += S("M-12,-2 C-15,-14 -15,-30 -11,-36 L11,-36 C15,-30 15,-14 12,-2 C6,1 -6,1 -12,-2 Z", c, (-16, -37, 16, 2), k=0.7)
+    out += f'<rect x="-13" y="-13" width="26" height="5" fill="{YEL}"/>'
+    for i in range(4):
+        out += f'<path d="M{-11 + i * 7},-8 l4,-5 l3,0 l-4,5 Z" fill="{INK}"/>'
+    out += f'<circle cx="6" cy="-26" r="3.2" fill="{shade(c, -0.35)}"/><circle cx="6" cy="-26" r="1.3" fill="{STEEL_L}"/>'
     return out
 
 
-def h_garra(c, e):
-    return f'<circle cx="0" cy="-2" r="3" fill="{"#ff8a3a" if e in ("forca", "grito") else "#f08a3d"}"/>'
-
-
-def tool_garra():
-    out = S("M-2,-6 L10,-9 C18,-10 22,-4 22,2 L16,12 L12,8 L14,3 L4,6 L-2,6 Z", YEL, (-3, -11, 23, 13), k=0.6, dark=YEL_D)
-    for x, y in ((14, 12), (18, 10), (22, 6)):
-        out += f'<path d="M{x - 2},{y - 3} L{x + 1},{y + 3} L{x + 3},{y - 1} Z" fill="{STEEL}"/>'
-    out += f'<circle cx="0" cy="0" r="3.4" fill="{STEEL_D}"/>'
+def h_pa(c, e):
+    out = S(rect_d(-10, -22, 22, 20, 5), c, (-11, -23, 13, -1), k=0.5)
+    out += S(rect_d(-2, -19, 13, 12, 3), "#cdeff7", (-3, -20, 12, -6), k=0.4)
+    out += f'<path d="M0,-17 L4,-17 L1,-9 L-1,-9 Z" fill="#ffffff" opacity="0.6"/>'
+    out += face_eye(4, -13, 2.0, e) + face_eye(8.6, -13.2, 1.8, e)
+    if e in ("grito", "esquiva"):
+        out += mouth(6.5, -8.6, 3.6, e)
+    on = "#ff8a3a" if e in ("forca", "grito") else "#f08a3d"
+    out += f'<rect x="-2" y="-26" width="7" height="5" rx="2" fill="{on}"/><rect x="-3" y="-22" width="9" height="1.6" fill="{STEEL_D}"/>'
+    out += f'<rect x="-10" y="-6" width="22" height="3.4" rx="1.5" fill="{STEEL_D}"/>'
     return out
 
 
-def treads(c, lean, dash=False):
-    out = S(rect_d(-22, -14, 44, 14, 7), "#3e4752", (-23, -15, 23, 1), k=0.6, dark="#252b33")
-    for x in (-15, -5, 5, 15):
-        out += f'<circle cx="{x}" cy="-7" r="4.2" fill="{STEEL}"/><circle cx="{x}" cy="-7" r="1.6" fill="{INK}"/>'
-    for x in range(-20, 22, 5):
-        out += f'<rect x="{x}" y="-15.5" width="2.4" height="2.4" fill="#252b33"/>'
+def tool_pa():
+    out = f'<path d="M-16,-6 C-23,-6 -23,6 -16,6" stroke="{INK}" stroke-width="2.6" fill="none"/><path d="M-21,-5 L-21,5" stroke="{INK}" stroke-width="2.6"/>'
+    out += S(rect_d(-17, -2.1, 49, 4.2, 2), WOOD, (-18, -3, 33, 3), k=0.5, dark=WOOD_D)
+    out += S(rect_d(29, -3.6, 7, 7.2, 1.5), STEEL_D, (28, -5, 37, 5), k=0.4)
+    out += S("M35,-10 C40,-12 50,-11 55,-8 C59,-4 59,4 55,8 C50,11 40,12 35,10 Z", STEEL, (34, -13, 60, 13), k=0.6, dark=STEEL_D, light=STEEL_L)
+    out += f'<path d="M38,-6 C44,-3 44,3 38,6" stroke="{STEEL_L}" stroke-width="1.6" fill="none"/>'
     return out
 
 
@@ -283,9 +286,9 @@ CHARS = {
     "britadeira": dict(nome="BRITADEIRA", desc="o baixinho: pula na britadeira", hip_h=14, torso=t_brit, head=h_brit,
                        head_at=(2, -24), sh_b=(-10, -18), sh_f=(10, -18), hip_b=(-6, -3), hip_f=(6, -3), arm=(11, 11, 5.6),
                        leg=(8, 8, 7), knee=1, boot=(13, 7), hand=4.4, tool=tool_brit, grips=[(0, 8), (0, -8)]),
-    "garra": dict(nome="GARRA", desc="a escavadeira: esteiras e braço hidráulico", hip_h=14, torso=t_garra, head=h_garra,
-                  head_at=(-11, -38), sh_b=None, sh_f=(10, -20), hip_b=None, hip_f=None, arm=(20, 20, 7.5),
-                  leg=None, knee=1, boot=None, hand=0, tool=tool_garra, grips=[(0, 0)]),
+    "pa": dict(nome="PÁ", desc="o operário: cabeça de cabine, pá que vira apoio", hip_h=28, torso=t_pa, head=h_pa,
+               head_at=(1, -36), sh_b=(-9, -31), sh_f=(9, -31), hip_b=(-6, -2), hip_f=(6, -2), arm=(14, 14, 6.4),
+               leg=(14, 13, 7.6), knee=1, boot=(15, 8), hand=4.8, tool=tool_pa, grips=[(0, 0), (-13, 0)]),
 }
 
 
@@ -311,8 +314,6 @@ def draw(cid, pose, col):
             knee, end = ik(hp, ft, a, b, (lambda q: q[0]) if ch["knee"] > 0 else (lambda q: -q[0]))
             lc = limbb if side == "b" else limbc
             parts[key] = limb(hp, knee, w, lc) + limb(knee, end, w * 0.9, lc) + boot((end[0], end[1] + 3), ch["boot"][0], ch["boot"][1], shade(col, -0.55) if side == "b" else shade(col, -0.4))
-    else:
-        parts["back_leg"] = f'<g transform="translate({hip[0]:.1f},{0}) rotate({lean * 0.4:.1f} 0 0)">{treads(col, lean)}</g>'
     # tronco + cabeça
     torso = f'<g transform="translate({hip[0]:.2f},{hip[1]:.2f}) rotate({lean:.2f})">{ch["torso"](col, e)}'
     ha = ch["head_at"]
@@ -327,15 +328,8 @@ def draw(cid, pose, col):
         el, end = ik(shb, grips[1], a, b, elbow_pref)
         parts["back_arm"] = limb(shb, el, w, limbb) + limb(el, end, w * 0.9, limbb)
         parts["back_hand"] = glove(end, ch["hand"], back=True)
-    if cid == "garra":   # braço telescópico: a haste estica até a caçamba
-        el, end = ik(shf, G, a, b, lambda q: -q[1])
-        reach = math.hypot(G[0] - el[0], G[1] - el[1])
-        parts["front_arm"] = (limb(shf, el, w, YEL_D) + limb(el, G, w * 0.8, YEL)
-                              + f'<path d="M{shf[0]:.1f},{shf[1] - 4:.1f} L{el[0]:.1f},{el[1] - 4:.1f}" stroke="{STEEL}" stroke-width="2.6"/>'
-                              + f'<circle cx="{el[0]:.1f}" cy="{el[1]:.1f}" r="4" fill="{STEEL_D}"/>')
-        if reach > b + 1:
-            mid = (el[0] + (G[0] - el[0]) * b / reach, el[1] + (G[1] - el[1]) * b / reach)
-            parts["front_arm"] += f'<path d="M{mid[0]:.1f},{mid[1]:.1f} L{G[0]:.1f},{G[1]:.1f}" stroke="{STEEL_L}" stroke-width="3"/>'
+    if False:
+        pass
     else:
         el, end = ik(shf, grips[0], a, b, elbow_pref)
         parts["front_arm"] = limb(shf, el, w, limbc) + limb(el, end, w * 0.9, limbc) + glove(end, ch["hand"] * 1.05)
@@ -442,13 +436,16 @@ POSES = {
         "esquiva": dict(lean=-10, dy=-18, feet=[(-8, -14), (8, -12)], tool=(16, -38, 62), face="esquiva",
                         fx_b=[("poeira", -20, 0, 0.9), ("linhas", -48, -36, 3, 14, 1)]),
     },
-    "garra": {
-        "parado": dict(lean=0, tool=(30, -24, 62)),
-        "rapido": dict(lean=6, tool=(58, -40, 0), face="ataque", fx=[("linhas", 72, -50, 3, 12, -1), ("estrela", 82, -40, 9)]),
-        "pesado_prep": dict(lean=-10, tool=(-4, -88, -80), face="forca"),
-        "pesado_golpe": dict(lean=10, tool=(40, -14, 100), face="grito", fx=[("onda", 50, 0, 28), ("pedras", 50, 0), ("estrela", 50, -2, 11)],
-                             fx_b=[("arco", 10, -40, 50, -120, 60, 10)]),
-        "esquiva": dict(lean=-14, dx=4, tool=(20, -52, -60), face="esquiva", fx_b=[("poeira", -26, 0, 1.0), ("linhas", -54, -30, 4, 18, 1)]),
+    "pa": {
+        "parado": dict(lean=4, feet=[(-10, 0), (10, 0)], tool=(14, -40, 45)),
+        "rapido": dict(lean=14, dy=3, feet=[(-14, 0), (17, 0)], tool=(32, -42, 0), face="ataque",
+                       fx=[("linhas", 92, -54, 3, 12, -1), ("estrela", 92, -42, 9)]),
+        "pesado_prep": dict(lean=-16, dy=4, feet=[(-14, 0), (12, 0)], tool=(-6, -74, -112), face="forca", head=-6),
+        "pesado_golpe": dict(lean=30, dy=10, feet=[(-17, 0), (18, 0)], tool=(32, -30, 64), face="grito",
+                             fx=[("onda", 56, 0, 30), ("estrela", 56, -4, 13), ("pedras", 56, 0)], fx_b=[("arco", 4, -44, 54, -140, 55, 11)]),
+        "esquiva": dict(lean=-24, dy=-34, dx=-10, feet=[(-22, -30), (-10, -38)], tool=(6, -56, 86), face="esquiva",
+                        fx_b=[("poeira", 12, 0, 0.9), ("linhas", -60, -70, 3, 16, 1)]),
+
     },
 }
 POSE_NAMES = [("parado", "PARADO"), ("rapido", "GOLPE RÁPIDO"), ("pesado_prep", "PESADO: PREPARO"), ("pesado_golpe", "PESADO: IMPACTO"), ("esquiva", "ESQUIVA")]
