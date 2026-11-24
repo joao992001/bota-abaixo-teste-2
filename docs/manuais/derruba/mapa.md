@@ -48,6 +48,12 @@ andaimes, máquina dentro de torre) antes de mandar.
 - Peças de outra etapa não podem aparecer em sorteios (caixas, ciclo G01, inspeção): filtre por `etapa`.
 - Nada de pilar em cima de peça que quebra (o poço foi mudado de lugar).
 - Na chegada da virada, quem ficou fora (ou em cima do teto) renasce embaixo.
+- **Palco sempre sobre o vazio (pedido do usuário):** em toda etapa, cair do piso em qualquer ponto = KO, rápido. Nada de
+  bordas pretas que matam, paredes até o teto ou poço com parede (o robô se agarrava na fresta). Vãos visíveis e abertos.
+- **Cada máquina precisa fazer sentido onde está** (serra numa bancada no chão, não em cima de uma passarela solta; nada de
+  esteira jogada num canto). Leia a composição como uma pessoa olhando a tela.
+- **Câmera:** mola suave + zona morta; só antecipa arremesso forte; tremor pequeno (o ruído a cada quadro parecia lag).
+- **Virada:** derrubar também os mecanismos da etapa; cada robô cai em arco até um ponto com PISO embaixo, sem controle.
 - **Toda etapa precisa de saída para KO** em pelo menos 2 lados (a Fundação nasceu fechada pelas paredes até o teto e as
   rodadas de bots não acabavam): paredes da bacia param 6 linhas abaixo do teto (abertura lateral) + buraco em cima + poço.
   Confira com o teste `rodadas só de bots terminam` (`--so=bots`).

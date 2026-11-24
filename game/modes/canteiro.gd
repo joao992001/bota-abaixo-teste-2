@@ -15,7 +15,7 @@ const LAYOUTS := {
 		"terreos": [[0, 17, 8, 5], [32, 17, 8, 5]],
 		# etapa 2 (Fundação, embaixo): plataformas sobre estaca [col, linha, largura], grelha do poço [col, linha, largura],
 		# pedaços da laje que caem na virada [col, largura] (sobre o piso da linha "piso")
-		"fundacao": {"estacas": [[8, 35, 5], [27, 35, 5], [18, 32, 4]], "grelhas": [[13, 41, 4], [23, 41, 4]], "piso": 41, "entulhos": [[8, 3], [27, 3]]}},
+		"fundacao": {"estacas": [[8, 35, 5], [27, 35, 5], [18, 32, 4]], "grelhas": [], "piso": 41, "entulhos": [[7, 3], [30, 3]]}},
 	"lab": {"seg_x": [3, 7, 11, 15, 19, 23], "nucleo": [2, 3], "laje_y": 12, "andaimes": [[5, 9, 4], [20, 9, 4]],
 		"vigas": [[11, 6, 6], [24, 4, 4]], "pilares": [12, 17]},
 }

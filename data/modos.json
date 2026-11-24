@@ -1238,25 +1238,6 @@
           "move_s": 2.5
         },
         {
-          "id": "M3",
-          "tipo": "esteira",
-          "etapa": 1,
-          "x": [
-            330,
-            505
-          ],
-          "chao": 1088,
-          "dir": -1,
-          "vel": 190,
-          "inverte_s": 7,
-          "alvo": [
-            330,
-            1040,
-            175,
-            48
-          ]
-        },
-        {
           "id": "M4",
           "tipo": "tubos",
           "etapa": 1,
@@ -1278,27 +1259,24 @@
           "tipo": "serra",
           "etapa": 1,
           "pos": [
-            596,
-            640
-          ],
-          "passarela": [
-            512,
-            680
+            400,
+            1088
           ],
           "ligada_s": 2,
-          "desligada_s": 4
+          "desligada_s": 4,
+          "bancada": true
         },
         {
           "id": "M6",
           "tipo": "bate_estaca",
           "etapa": 2,
-          "x": 1568,
+          "x": 1440,
           "topo": 1944,
           "chao": 2624,
           "ciclo_s": 5,
           "aviso_s": 1.0,
           "alvo": [
-            1520,
+            1392,
             1924,
             96,
             140
@@ -1320,10 +1298,10 @@
           "lentidao": 0.6,
           "dreno_s": 6,
           "alvo": [
-            2275,
-            2400,
-            66,
-            66
+            2048,
+            2444,
+            64,
+            64
           ],
           "fase_s": 2
         },
@@ -1332,12 +1310,12 @@
           "tipo": "vagonete",
           "etapa": 2,
           "x": [
-            260,
-            2300
+            470,
+            800
           ],
           "chao": 2624,
           "vel": 300,
-          "ciclo_s": 12,
+          "ciclo_s": 8,
           "aviso_s": 1.2,
           "fase_s": 3
         },

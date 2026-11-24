@@ -99,6 +99,7 @@ func _desaba() -> void:
 		var tx: float = lerpf(hole.x + 140.0, hole.y - 140.0, (i + 0.5) / maxf(vivos.size(), 1.0))
 		if absf(r.position.x - tx) < 200.0:
 			tx = clampf(r.position.x, hole.x + 100.0, hole.y - 100.0)
+		tx = _over_floor(tx, a2)   # cai sempre em cima de piso (nunca num vão)
 		var dy: float = maxf(a2.position.y - r.position.y, 120.0)
 		var tf := sqrt(2.0 * dy / maxf(g, 1.0))
 		r.set_meta("queda_vx", clampf((tx - r.position.x) / tf, -float(cfg["funil_vel"]), float(cfg["funil_vel"])))
@@ -106,6 +107,18 @@ func _desaba() -> void:
 	var mc = main.demo.mecs
 	if mc != null and is_instance_valid(mc):
 		mc.desaba(1)
+
+## x mais perto de tx que tem piso embaixo na etapa 2 (os vãos entre as lajes são KO).
+func _over_floor(tx: float, a2: Rect2) -> float:
+	var lv = main.level
+	for k in 24:
+		for sg in [1, -1]:
+			var x: float = tx + sg * k * 32.0
+			var c := int(floor(x / 64.0))
+			for row in range(int(a2.position.y / 64.0) + 4, int(a2.end.y / 64.0)):
+				if lv.is_solid(Vector2i(c, row)) and lv.is_solid(Vector2i(c - 1, row)) and lv.is_solid(Vector2i(c + 1, row)):
+					return x
+	return tx
 
 ## Todos pousaram na etapa 2: câmera, KO e área de jogo passam para ela.
 func _chega() -> void:

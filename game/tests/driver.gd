@@ -1694,7 +1694,7 @@ func mecanismos_test() -> void:
 			r.dmg = 0.0
 			r.stun_t = 0.0
 			r.invuln = 0.0
-	check(mc != null and mc.list.size() == 9, "a Fase 1 tem 9 mecanismos (%d)" % (0 if mc == null else mc.list.size()))
+	check(mc != null and mc.list.size() == 8, "a Fase 1 tem 8 mecanismos (%d)" % (0 if mc == null else mc.list.size()))
 	# M1 betoneira
 	calm.call()
 	var m1: Dictionary = get.call("M1")
@@ -1702,13 +1702,6 @@ func mecanismos_test() -> void:
 	mc.hammer_hit(Rect2(Vector2(m1["d"]["alvo"][0], m1["d"]["alvo"][1]), Vector2(20, 20)), false, 1)
 	await frames(int(float(m1["d"]["aviso_s"]) * 60.0) + 10)
 	check(float(m1["s"].get("fresh", 0.0)) > 0.0 and r0.env_slow < 1.0, "M1 betoneira: marretar a alavanca despeja concreto e quem pisa fica lento")
-	# M3 esteira
-	calm.call()
-	put(r0, Vector2(470, 1088))
-	await frames(4)
-	var x0: float = r0.position.x
-	await frames(40)
-	check(r0.position.x < x0 - 40.0, "M3 esteira: leva quem está em cima para fora")
 	# M2 elevador
 	var m2: Dictionary = get.call("M2")
 	var ys := []
@@ -1734,7 +1727,7 @@ func mecanismos_test() -> void:
 	# M5 serra
 	calm.call()
 	var m5: Dictionary = get.call("M5")
-	put(r0, Vector2(600, 640))
+	put(r0, Vector2(400, 1088))
 	var hurt := false
 	for k in 400:
 		await frames(1)
@@ -1745,7 +1738,7 @@ func mecanismos_test() -> void:
 		if not r0.alive:
 			break
 		if k % 30 == 0:
-			put(r0, Vector2(600, 640))
+			put(r0, Vector2(400, 1088))
 	check(hurt, "M5 serra: a lâmina sobe em ciclo e machuca")
 	# V1 Concretagem (evento da Etapa 1)
 	calm.call()
@@ -1763,8 +1756,7 @@ func mecanismos_test() -> void:
 			if v1["phase"] == "ativo" and r0.env_slow < 1.0:
 				break
 		check(r0.env_slow < 1.0, "V1: quem pisa no concreto fresco fica lento")
-	mc.hammer_hit(Rect2(560, 630, 40, 30), true, 0)
-	check(m5["s"].get("broken", false), "D6 passarela: marretada pesada parte a passarela")
+
 	# etapa 2
 	var et = main.demo.etapas
 	et.t = et.virada_s()
@@ -1784,18 +1776,18 @@ func mecanismos_test() -> void:
 	ct.hammer(r0, er, false)
 	await frames(int(float(ct.cfg["aviso_queda_s"]) * 60.0) + 10)
 	check(est["fallen"], "D9 estaca: 2 marretadas e a plataforma de cima cai")
-	# D8 grelha: 3 pesadas abrem o poço; quem está em cima cai e é eliminado
-	var gr: Dictionary = ct.parts.filter(func(p): return p["kind"] == "grelha")[0]
-	put(r1, Vector2(gr["rect"].get_center().x, gr["rect"].position.y))
-	for k in 3:
-		ct.hammer(r0, Rect2(gr["rect"].position + Vector2(20, 6), Vector2(20, 20)), false)
+	# vãos entre as lajes da Fundação: cair = KO (rápido, sem parede para se agarrar)
+	put(r1, Vector2(14.5 * 64.0, fl - 200.0))
+	r1.velocity = Vector2.ZERO
 	var lv1: int = main.demo.lives[1]
+	var tko := 0
 	for k in 240:
 		await frames(1)
 		r1.invuln = 0.0
 		if main.demo.lives[1] < lv1:
+			tko = k
 			break
-	check(gr["fallen"] and main.demo.lives[1] < lv1, "D8 grelha: 3 marretadas abrem o poço e quem estava em cima cai (KO)")
+	check(main.demo.lives[1] < lv1 and tko < 90, "Fundação: cair no vão entre as lajes elimina logo (%d quadros)" % tko)
 	await frames(120)
 	# M6 bate-estaca
 	calm.call()
@@ -1803,7 +1795,7 @@ func mecanismos_test() -> void:
 	for k in 420:
 		await frames(1)
 		if k % 20 == 0:
-			put(r0, Vector2(1568, fl))
+			put(r0, Vector2(1440, fl))
 		r0.invuln = 0.0
 		if r0.dmg > 0.0:
 			hit6 = true
@@ -1820,7 +1812,7 @@ func mecanismos_test() -> void:
 		if hmax > 60.0:
 			break
 	check(hmax > 60.0, "M7 alagamento: a água sobe no fundo")
-	put(r1, Vector2(900, fl))
+	put(r1, Vector2(1200, fl))
 	var choque := false
 	for k in 420:
 		await frames(1)
@@ -1848,7 +1840,7 @@ func mecanismos_test() -> void:
 	for k in 900:
 		await frames(1)
 		if k % 30 == 0:
-			put(r0, Vector2(1300, fl))
+			put(r0, Vector2(650, fl))
 			r0.invuln = 0.0
 		if r0.dmg > 0.0 and r0.last_cause == "vagonete":
 			hit8 = true
@@ -2738,6 +2730,7 @@ func bots_test() -> void:
 		await frames(1)
 		if main.state == S.SCORE:
 			rounds += 1
+			print("    rodada %d acabou em %.0f s (arena %s, etapa %s)" % [rounds, i / 60.0, main.level.id, str(main.demo.etapas.etapa) if main.demo.etapas != null else "-"])
 			main.timer = 0.0
 			await frames(3)
 			if rounds >= 4 or main.state == S.WIN:

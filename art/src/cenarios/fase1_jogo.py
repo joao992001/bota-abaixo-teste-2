@@ -97,50 +97,40 @@ def e2_palco():
         b.append(f'<path d="M{x0},0 L{x0 + sgn * 26},50 L{x0 - sgn * 8},86 L{x0 + sgn * 30},{2 * T} L{x0 - sgn * 4},{2 * T} Z" fill="#4a5566"/>')
         for k in range(4):
             b.append(f'<path d="M{x0},{20 + k * 26} q{sgn * 30},10 {sgn * 50},-5" stroke="#b0562e" stroke-width="4" fill="none"/>')
-    # paredes de contenção (3 tiles) com umidade, placa e musgo
-    WT = 11 * T   # topo das paredes (linha 37 do mapa): acima delas fica a abertura lateral (KO dos lados)
-    for (x0, w) in ((0, 3 * T), (W - 3 * T, 3 * T)):
-        b.append(f'<rect x="{x0}" y="{2 * T}" width="{w}" height="{WT - 2 * T}" fill="#12161c"/>')   # vão escuro: terra lá fora
-        b.append(R(x0, WT, w, H2 - WT, "#5d6b7d", 0, 3, dark="#454f5c"))
-        b.append(cd.zebra(x0, WT, w, 10))
-        for yy in range(WT + 60, H2, 120):
-            b.append(f'<path d="M{x0},{yy} H{x0 + w}" stroke="#454f5c" stroke-width="4"/>')
-        for k in range(4):
-            sx = x0 + 30 + k * 40
-            sy = rnd.uniform(WT + 20, WT + 200)
-            b.append(f'<path d="M{sx},{sy:.0f} q8,{rnd.uniform(120, 240):.0f} -2,{rnd.uniform(240, 380):.0f} h14 q-6,-200 2,-{rnd.uniform(280, 380):.0f} Z" fill="#3f4855" opacity="0.55"/>')
-        b.append(R(x0 + 30, WT + 60, w - 60, 80, "#6b7783", 4, 1.6) + "".join(f'<circle cx="{x0 + 44 + j * 36}" cy="{WT + 74}" r="4" fill="#9aa4ae"/>' for j in range(4)))
-        b.append(f'<path d="M{x0 + 40},{FL - 50} q30,-30 60,0 q20,20 50,0" stroke="#4f7a52" stroke-width="10" fill="none" opacity="0.8"/>')
-        for k in range(9):   # régua do nível da água
-            b.append(f'<rect x="{x0 + (w - 40 if x0 == 0 else 14)}" y="{FL - 30 - k * 24}" width="26" height="4" fill="#9fe3f5"/>')
-    b.append(escada(3 * T + 6, 11 * T, FL))
-    b.append(escada(W - 3 * T - 32, 11 * T, FL))
-    # piso em 2 partes: nas cols 13–16 o POÇO de drenagem, coberto pela grelha (peça do jogo, quebra)
-    for (x0, x1) in ((3 * T, 13 * T), (17 * T, 23 * T), (27 * T, W - 3 * T)):
-        b.append(R(x0, FL, x1 - x0, H2 - FL, "#7d8896", 0, 3, dark="#5d6878"))
+    # o VAZIO embaixo do piso (cair = KO): escuro que some para baixo
+    b.append('<defs><linearGradient id="vz" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d1015" stop-opacity="0.2"/>'
+             '<stop offset="1" stop-color="#05070a"/></linearGradient></defs>')
+    b.append(f'<rect x="0" y="{FL + T}" width="{W}" height="{H2 - FL - T}" fill="url(#vz)"/>')
+    # 3 lajes de fundação (piso, 1 tile) sobre pilares que somem no escuro; vãos abertos entre elas
+    for (c0, c1) in ((3, 13), (16, 24), (27, 37)):
+        x0, x1 = c0 * T, c1 * T
+        for px in range(x0 + 60, x1 - 40, 220):
+            b.append(R(px, FL + T - 4, 46, H2 - FL, "#4a5566", 3, 2, dark="#323a46"))
+        b.append(R(x0, FL, x1 - x0, T, "#7d8896", 4, 3, dark="#5d6878"))
         b.append(f'<rect x="{x0}" y="{FL}" width="{x1 - x0}" height="10" fill="#9aa4ae"/>')
-    for c0 in (13, 23):   # poços de drenagem (as grelhas são peças do jogo)
-        b.append(f'<rect x="{c0 * T}" y="{FL}" width="{4 * T}" height="{H2 - FL}" fill="#10141a"/>')
-        b.append(cd.zebra(c0 * T - 8, FL + 2, 8, H2 - FL))
-        b.append(cd.zebra((c0 + 4) * T, FL + 2, 8, H2 - FL))
-    for k in range(int((W - 6 * T) // 180)):
-        x = 3 * T + 40 + k * 180
-        b.append(f'<path d="M{x},{FL + 10} V{H2}" stroke="#5d6878" stroke-width="3"/>')
-        b.append(f'<rect x="{x + 30}" y="{FL + 90 + (k % 2) * 30}" width="18" height="12" fill="#a1988a" transform="rotate({k * 20} {x + 30} {FL + 90})"/>')
+        for k in range(int((x1 - x0) // 180)):
+            x = x0 + 40 + k * 180
+            b.append(f'<rect x="{x + 30}" y="{FL + 28}" width="18" height="12" fill="#a1988a" transform="rotate({k * 20} {x + 30} {FL + 28})"/>')
+        for ex, sg in ((x0, -1), (x1, 1)):   # ferros na borda da laje + faixa de perigo
+            for k in range(3):
+                b.append(f'<path d="M{ex},{FL + 14 + k * 16} l{sg * 9},{2 - k}" stroke="#b0562e" stroke-width="3" stroke-linecap="round"/>')
+        b.append(cd.zebra(x0 + 4, FL - 2, 40, 7) + cd.zebra(x1 - 44, FL - 2, 40, 7))
+    # registro da bomba (cano saindo do piso, à esquerda do bloco direito)
+    b.append(f'<path d="M{32 * T + 16},{FL} V{FL - 150} H{33 * T}" stroke="#7a4a2e" stroke-width="22" fill="none"/>')
+    b.append(f'<circle cx="{32 * T + 16}" cy="{FL - 150}" r="26" fill="none" stroke="#d94a3a" stroke-width="8"/>'
+             f'<path d="M{32 * T - 10},{FL - 150} h52 M{32 * T + 16},{FL - 176} v52" stroke="#d94a3a" stroke-width="6"/>')
+    for k in range(8):   # régua do nível da água no bloco esquerdo
+        b.append(f'<rect x="{7 * T - 34}" y="{FL - 20 - k * 22}" width="22" height="4" fill="#9fe3f5"/>')
     # blocos de fundação (linhas 13–14)
-    for x0 in (3 * T, 32 * T):
-        b.append(R(x0, 13 * T, 5 * T, 2 * T, "#6f7b8a", 4, 2.6, dark="#56606d"))
-        b.append(f'<path d="M{x0 + 10},{13 * T + 40} H{x0 + 5 * T - 10}" stroke="#56606d" stroke-width="4"/>')
+    for x0 in (3 * T, 33 * T):
+        b.append(R(x0, 13 * T, 4 * T, 2 * T, "#6f7b8a", 4, 2.6, dark="#56606d"))
+        b.append(f'<path d="M{x0 + 10},{13 * T + 40} H{x0 + 4 * T - 10}" stroke="#56606d" stroke-width="4"/>')
     # baldrames (linha 11) e plataformas com estaca (linhas 9 e 6)
     for (c0, n) in ((4, 4), (32, 4)):
         b.append(R(c0 * T, 11 * T, n * T, 18, "#a8582e", 3, 1.8, dark="#7a3a18"))
         for xx in (c0 * T + 14, (c0 + n) * T - 22):
             b.append(f'<path d="M{xx},{11 * T + 18} V{13 * T}" stroke="#7a3a18" stroke-width="6"/>')
     # (as plataformas com estaca são peças do jogo: quebram — sprites "plataforma" e "estaca")
-    # registro da bomba (parede direita)
-    b.append(f'<path d="M{W - 3 * T},{FL - 260} H{W - 3 * T - 60} V{FL - 20}" stroke="#7a4a2e" stroke-width="22" fill="none"/>')
-    b.append(f'<circle cx="{W - 3 * T - 60}" cy="{FL - 190}" r="26" fill="none" stroke="#d94a3a" stroke-width="8"/>'
-             f'<path d="M{W - 3 * T - 86},{FL - 190} h52 M{W - 3 * T - 60},{FL - 216} v52" stroke="#d94a3a" stroke-width="6"/>')
     return "".join(b)
 
 

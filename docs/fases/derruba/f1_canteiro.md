@@ -2,6 +2,10 @@
 
 > Implementado como descrito, com 3 ajustes feitos na construção: o poço (E12/D8) foi para as colunas 13–16 (não fica sob
 > o pilar central), os pedaços da laje (E16) ficam nas colunas 8 e 27, e a estaca central fica sobre piso firme.
+> **Revisão do usuário (2026-11-24, depois de jogar):** saíram a esteira (M3) e a passarela (E7/D6) — composição sem
+> sentido; a serra (M5) virou SERRA DE BANCADA no chão, sob o andaime. A Fundação deixou de ser bacia com paredes:
+> agora são **3 lajes de fundação sobre o vazio** (cols 3–12, 16–23, 27–36) com **2 vãos sempre abertos** — cair do piso
+> em qualquer ponto = KO (como no Térreo); sem grelhas (D8 saiu). Bate-estaca em x 1440, vagonete só na laje esquerda.
 > Números em `data/modos.json` (`etapas`, `mecanismos.fase1`, `eventos.por_fase.fase1`, `canteiro`).
 
 Segue a cartilha `docs/manuais/derruba/mapa_cartilha.md`. Duas etapas na mesma partida:

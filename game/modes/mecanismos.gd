@@ -62,7 +62,8 @@ func _prepara(inst: Dictionary) -> void:
 			s["body"] = _body(Rect2(base.x, base.y, float(d["largura"]), 18), 2, true, true)
 		"serra":
 			var p := _v(d["pos"])
-			s["plat"] = _body(Rect2(float(d["passarela"][0]), p.y, float(d["passarela"][1]) - float(d["passarela"][0]), 14), 2, true)
+			if d.has("passarela"):
+				s["plat"] = _body(Rect2(float(d["passarela"][0]), p.y, float(d["passarela"][1]) - float(d["passarela"][0]), 14), 2, true)
 			s["k"] = 0.0
 		"tubos":
 			s["pile"] = 6
@@ -220,8 +221,8 @@ func _serra(inst: Dictionary, dt: float) -> void:
 	var s: Dictionary = inst["s"]
 	if s.get("broken", false):
 		return
-	var on_top := 0   # D6: 2 robôs pulando em cima partem a passarela
-	for r in _robots():
+	var on_top := 0   # D6: 2 robôs pulando em cima partem a passarela (só a serra de passarela)
+	for r in (_robots() if d.has("passarela") else []):
 		if r.is_on_floor() and r.position.x > float(d["passarela"][0]) and r.position.x < float(d["passarela"][1]) and absf(r.position.y - float(d["pos"][1])) < 10.0:
 			on_top += 1
 	if on_top >= 2:
@@ -235,7 +236,7 @@ func _serra(inst: Dictionary, dt: float) -> void:
 	s["warn"] = k > on + off - 0.8
 	if float(s["k"]) > 0.6:
 		var p := _v(d["pos"])
-		var hr := Rect2(p.x - 34.0, p.y - 70.0, 68.0, 70.0)
+		var hr := Rect2(p.x - 34.0, p.y - (110.0 if not d.has("passarela") else 70.0), 68.0, 70.0)
 		s["cd"] = s.get("cd", {})
 		for r in _robots():
 			if r.rect().intersects(hr) and float(s["cd"].get(r.pid, 0.0)) <= t:
@@ -429,7 +430,7 @@ func hammer_hit(hit: Rect2, heavy: bool, by := -1) -> bool:
 				s["t"] = float(s["t"]) - 2.0
 		return true
 	for inst in list:   # D6: marretada pesada na passarela
-		if inst["tipo"] == "serra" and _on(inst) and heavy and not inst["s"].get("broken", false):
+		if inst["tipo"] == "serra" and _on(inst) and heavy and inst["d"].has("passarela") and not inst["s"].get("broken", false):
 			var d2: Dictionary = inst["d"]
 			var pr := Rect2(float(d2["passarela"][0]), float(d2["pos"][1]) - 10.0, float(d2["passarela"][1]) - float(d2["passarela"][0]), 34.0)
 			if pr.intersects(hit):
@@ -520,6 +521,18 @@ func _draw() -> void:
 					draw_set_transform(Vector2.ZERO)
 			"serra":
 				var p := _v(d["pos"])
+				if not d.has("passarela"):   # serra de BANCADA no chão: pés, tampo e a lâmina subindo pela fenda
+					var kb := float(s["k"])
+					draw_set_transform(p + Vector2(0, -44 - 30 * kb), t * 30.0 * kb, Vector2.ONE)
+					draw_texture_rect(tex["m_serra"], Rect2(-38, -38, 76, 76), false)
+					draw_set_transform(Vector2.ZERO)
+					draw_rect(Rect2(p.x - 70, p.y - 44, 140, 18), Color("#4a5566"))
+					draw_rect(Rect2(p.x - 70, p.y - 44, 140, 5), Color("#71829a"))
+					for lx in [p.x - 60, p.x + 50]:
+						draw_rect(Rect2(lx, p.y - 26, 10, 26), Color("#3a3f4a"))
+					draw_rect(Rect2(p.x - 6, p.y - 47, 12, 6), Color("#2a1a2e"))
+					draw_circle(p + Vector2(58, -52), 6.0, Color("#d94a3a") if s.get("warn", false) and fmod(t, 0.2) < 0.1 else Color("#7a2a20"))
+					continue
 				var x0 := float(d["passarela"][0])
 				var x1 := float(d["passarela"][1])
 				if s.get("broken", false):   # metades penduradas + serra caída lá embaixo
@@ -558,8 +571,14 @@ func _draw() -> void:
 					var x0 := float(d["x"][0])
 					var x1 := float(d["x"][1])
 					var ch := float(d["chao"])
-					draw_rect(Rect2(x0, ch - h, x1 - x0, h), Color(0.31, 0.53, 0.66, 0.5))
+					var row := Vector2i(0, int((ch + 8.0) / T))
+					for cx in range(int(x0 / T), int(ceil(x1 / T))):   # só por cima do piso (nos vãos a água escorre)
+						row.x = cx
+						if main.level.is_solid(row):
+							draw_rect(Rect2(cx * T, ch - h, T, h), Color(0.31, 0.53, 0.66, 0.5))
 					for x in range(int(x0) + 40, int(x1), 160):
+						if not main.level.is_solid(Vector2i(int((x + 40) / T), row.y)):
+							continue
 						var wy := ch - h + sin(t * 3.0 + x * 0.02) * 3.0
 						draw_polyline(PackedVector2Array([Vector2(x, wy), Vector2(x + 20, wy - 5), Vector2(x + 40, wy), Vector2(x + 60, wy - 5), Vector2(x + 80, wy)]), Color(0.75, 0.91, 0.94, 0.8), 3.0, true)
 			"vagonete":
