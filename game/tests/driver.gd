@@ -40,6 +40,10 @@ func _run() -> void:
 			await fase_frames(a.trim_prefix("--fase="))
 			get_tree().quit()
 			return
+		if a.begins_with("--equipa="):
+			await equipa_frames(a.trim_prefix("--equipa="))
+			get_tree().quit()
+			return
 		if a.begins_with("--eventos="):
 			await eventos_frames(a.trim_prefix("--eventos="))
 			get_tree().quit()
@@ -1645,8 +1649,14 @@ func etapas_test() -> void:
 	for i in main.players.size():
 		main.demo.lives[i] = 9
 	var lives0 = main.demo.lives.duplicate()
+	var sp = main.demo.spells
+	sp.spawn_t = 999.0
+	sp.boxes.clear()
+	sp.drop_box("S02", Vector2(6 * 64.0, 17 * 64.0), false)   # caixa no térreo: tem de cair junto para a Fundação
 	et.t = et.virada_s() - float(et.cfg["aviso_s"]) - 0.05
 	await frames(6)
+	sp.equip(r1, "S16")   # jetpack ligado bem na virada (bug: voava para fora da queda)
+	sp.use(r1)
 	check(et.state == "aviso" and main.demo.banner.begins_with("A OBRA"), "aviso cronometrado: sirene + \"A OBRA VAI CEDER!\"")
 	await frames(int(float(et.cfg["aviso_s"]) * 60.0) + 4)
 	check(et.state == "queda" and main.demo.canteiro.parts.all(func(p): return p["fallen"] or int(p["etapa"]) == 2), "a estrutura TODA da etapa 1 desaba (inclusive núcleo e térreo)")
@@ -1661,6 +1671,11 @@ func etapas_test() -> void:
 	check(a2.has_point(r0.position) and a2.has_point(r1.position), "o funil leva até quem estava na ponta do térreo para dentro do buraco")
 	await frames(30)
 	check(r0.is_on_floor() and r1.is_on_floor(), "todos de pé no chão da Fundação")
+	check(String(sp.flags(r1).get("spell", "")) != "S16", "o jetpack desliga na virada (ninguém foge da queda voando)")
+	sp.spawn_box()
+	await frames(150)
+	var bx_ok: bool = sp.boxes.size() >= 1 and sp.boxes.all(func(b): return a2.has_point(b["pos"]) and b["pos"].y > a2.position.y + 140.0)
+	check(bx_ok, "caixas de spell caem DENTRO da Fundação (nenhuma presa em cima do teto): %s" % [sp.boxes.map(func(b): return b["pos"])])
 	main.event_level = 0
 
 ## Mecanismos da Fase 1 (catálogo M1–M9): cada um faz o que promete e responde à marretada.
@@ -3096,6 +3111,54 @@ func fase_frames(dir: String) -> void:
 			await grab(dir, "fase")
 		f += 1
 	print("quadros: ", _frame_no)
+
+## Prancha de conferência: os robôs do elenco com cada tipo de spell (arma carregada, mirando, armaduras, jetpack,
+## kit e objeto nas costas). --equipa=DIR → 2 passadas (modelos 0-3 e 1-4), 1 quadro por estado.
+func equipa_frames(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	var states := [["S03", "carrega"], ["S02", "mira"], ["S13", "usa"], ["S14", "usa"], ["S31", "usa"], ["S33", "usa"], ["S16", "voa"], ["S13", "kit"], ["S04", "costas"], ["S34", "usa"]]
+	for pass_i in 2:
+		main.go_menu()
+		PlayerInput.virtual = {"v0": {}, "v1": {}, "v2": {}, "v3": {}}
+		main.mode = "demolicao"
+		main.go_join()
+		await frames(2)
+		for d in ["v0", "v1", "v2", "v3"]:
+			await tap(d, "jump")
+		for i in 4:
+			main.players[i]["model"] = i + pass_i
+		main.game_mode = "derruba"
+		main.demo.lives_setting = 9
+		main.event_level = 0
+		main.arena_choice = "canteiro_obras"
+		main.start_match()
+		await demo_round()
+		var sp = main.demo.spells
+		sp.spawn_t = 999.0
+		main.hud.visible = false
+		for st in states:
+			for i in 4:
+				var r = main.robots[i]
+				sp.clear(r)
+				put(r, Vector2(760.0 + i * 190.0, 832.0))
+				r.facing = 1
+				r.invuln = 9.0
+			await frames(3)
+			for i in 4:
+				var r = main.robots[i]
+				sp.equip(r, st[0])
+				match st[1]:
+					"mira", "usa":
+						sp.use(r)
+					"voa":
+						sp.use(r)
+						sp.bot_hold[r.pid] = 3.0
+			main.cam_lock = [1.9, Vector2(1045, 740)]
+			await frames(40 if not st[1] in ["mira", "voa"] else 12)
+			for i in 4:
+				main.robots[i].invuln = 0.0
+			await frames(1)
+			await grab(dir, "eq%d_%s_%s" % [pass_i, st[0], st[1]])
 
 ## Vitrine dos eventos (--eventos=DIR, --so-eventos=G02+G05): cada evento do aviso ao fim, 1 quadro a cada 3.
 func eventos_frames(dir: String) -> void:

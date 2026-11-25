@@ -107,6 +107,15 @@ func _desaba() -> void:
 	var mc = main.demo.mecs
 	if mc != null and is_instance_valid(mc):
 		mc.desaba(1)
+	var sp = main.demo.spells
+	if sp != null and is_instance_valid(sp):
+		for r in vivos:   # voo (jetpack) e transformações acabam: ninguém escapa da queda
+			var sid: String = sp.flags(r).get("spell", "")
+			if sid in ["S16", "S13", "S14", "S15", "S31", "S33", "S34"]:
+				sp.clear(r)
+		for b in sp.boxes:   # caixas do Térreo caem pelo buraco (nunca em cima do teto da Fundação)
+			b["pos"].x = _over_floor(clampf(b["pos"].x, hole.x + 80.0, hole.y - 80.0), a2)
+			b["vy"] = 0.0
 
 ## x mais perto de tx que tem piso embaixo na etapa 2 (os vãos entre as lajes são KO).
 func _over_floor(tx: float, a2: Rect2) -> float:

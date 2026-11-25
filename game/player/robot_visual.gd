@@ -40,8 +40,17 @@ const CARRY_HF := Vector2(17, -31)      # mão da frente carregando a arma (baix
 const AIM_HF := Vector2(21, -38)        # mão da frente mirando reto
 const SHOULDER := Vector2(3, -38)       # ombro da frente: a mão gira em volta dele para mirar em 8 direções
 const ARM := 18.0
+## Ombro da frente de CADA modelo (o SHOULDER acima é o do desenho das spells): armas, mira e armaduras usam este.
+static func shoulder_of(model: int, armor := false) -> Vector2:
+	var g: Dictionary = Data.model_meta(model)
+	if armor:   # de armadura o braço sai da lateral da máquina, abaixo da vigia (nunca cruza o rosto)
+		return armor_shoulder(g)
+	return _v(g["shoulders"][1]) + Vector2(-2, 5)
+
+static func armor_shoulder(g: Dictionary) -> Vector2:
+	return (_v(g["eyes"][0]) + _v(g["eyes"][1])) / 2.0 + Vector2(18, 18)
 ## Spells sem arma: objeto nas costas (andaime dobrado, marreta sísmica, fornalha desmontada) ou na mão de trás.
-const BACK_PROPS := {"S04": ["s04_marreta", Vector2(30, 60), 2.55], "S10": ["s10_trouxa", Vector2(34, 23), 1.35],
+const BACK_PROPS := {"S04": ["s04_marreta", Vector2(30, 60), -0.5], "S10": ["s10_trouxa", Vector2(34, 23), 1.35],
 	"S25": ["s25_tabua", Vector2(46, 15), 1.45],
 	"S16": ["a16_jato", Vector2(38, 44), 0.0]}
 ## Kit da transformação levado NAS COSTAS antes de usar (como a Fornalha): peça de costas no meio das costas,
@@ -787,6 +796,11 @@ func current_pose() -> Dictionary:
 			feet[i] = feet[i].lerp(Vector2(-10.0 + i * 14.0, 0), 0.6)
 	elif sf.get("armor", false):
 		two_hand = false
+	if hf_set:   # poses das spells foram feitas para o ombro padrão: leva mãos para o ombro deste robô
+		var dsh := shoulder_of(model, sf.get("armor", false)) - SHOULDER
+		hf += dsh
+		if p.has("hb_abs"):
+			p["hb_abs"] += dsh
 	# subindo na borda
 	if robot != null and robot.climb_t >= 0.0:
 		var k: float = robot.climb_t
@@ -1138,7 +1152,7 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 	var kit_on: bool = KITS.has(sid0) and not armor and not sf.has("form") and not sf.get("fading", false)
 	if kit_on:   # kit nas costas (atrás do corpo): peça de costas + placa da frente dobrada espiando no ombro
 		var kd: Array = KITS[sid0]
-		var anchor: Vector2 = (_v(sh[0]) + _v(hips[0])) / 2.0 + Vector2(-9, -2) + (Vector2(-2, -16) if sid0 == "S34" else Vector2.ZERO)
+		var anchor: Vector2 = (_v(sh[0]) + _v(hips[0])) / 2.0 + Vector2(-9, 3) + (Vector2(-2, -16) if sid0 == "S34" else Vector2.ZERO)
 		if String(kd[3]) != "":
 			ci.draw_set_transform_matrix(base * bx * Transform2D(float(kd[5]), anchor + Vector2(-2, -20)))
 			ci.draw_texture_rect(Data.tex("spells/" + kd[3]), Rect2(-kd[4] / 2.0, kd[4]), false)
@@ -1284,7 +1298,7 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 			for k in 3:
 				var u := fposmod(tnow * 3.0 + k * 0.33, 1.0)
 				ci.draw_circle(Vector2(-grip.x + 4.0, -6.0 - u * 18.0), 3.0 + u * 4.0, Color(1, 1, 1, 0.6 * (1.0 - u) * pk))
-	_limb(ci, base, bx * _v(sh[1]), hf, limb, Vector2(0, 3), lw)
+	_limb(ci, base, bx * (_v(sh[1]).lerp(armor_shoulder(g), asm) if armor else _v(sh[1])), hf, limb, Vector2(0, 3), lw)
 	# brilho na cabeça da marreta no fim do preparo da pesada
 	var gl := float(pose.get("glint", 0.0))
 	if gl > 0.0:

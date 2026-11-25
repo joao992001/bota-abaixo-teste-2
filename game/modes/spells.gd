@@ -170,13 +170,24 @@ func spawn_box(at = null, special := false) -> void:
 		var src: Array = fixed if (not fixed.is_empty() and main.rng.randf() < 0.5) else pts
 		p = src[main.rng.randi() % src.size()]["pos"]
 	var k := pick()
-	boxes.append({"fam": k["fam"], "id": k["id"], "charges": -1, "pos": Vector2(p.x, demo.play_rect().position.y - 60.0),
+	boxes.append({"fam": k["fam"], "id": k["id"], "charges": -1, "pos": Vector2(p.x, sky_y(p)),
 		"vy": 0.0, "t": 0.0, "land_t": 9.0, "block": {}, "special": special})
 	Audio.play("item", 0.8, -6.0)
 
+## De onde a caixa começa a cair sobre p: do alto da área de jogo, ou logo abaixo de um teto (a Fundação tem teto:
+## antes a caixa pousava em cima dele e ficava "lá em cima").
+func sky_y(p: Vector2) -> float:
+	var top: float = demo.play_rect().position.y - 60.0
+	var y := p.y - 70.0
+	while y > top:
+		if main.level.is_solid(Vector2i(int(floor(p.x / T)), int(floor(y / T)))):
+			return y + 70.0
+		y -= T
+	return top
+
 ## Laboratório: caixa de uma spell escolhida caindo do céu em x.
 func drop_box(id: String, at: Vector2, from_sky := true) -> void:
-	boxes.append({"fam": sc(id)["familia"], "id": id, "charges": -1, "pos": Vector2(at.x, demo.play_rect().position.y - 60.0) if from_sky else at,
+	boxes.append({"fam": sc(id)["familia"], "id": id, "charges": -1, "pos": Vector2(at.x, sky_y(at)) if from_sky else at,
 		"vy": 0.0, "t": 0.0, "land_t": 9.0, "block": {}, "special": false})
 
 func _update_boxes(dt: float, alive: Array) -> void:
@@ -344,7 +355,7 @@ func muzzle(r, id: String) -> Vector2:
 	var tx := Data.tex("spells/" + spec[0])
 	var dsz := Vector2(tx.get_width(), tx.get_height()) / 2.0
 	var a := aim_local(r)
-	var loc: Vector2 = RobotVis.SHOULDER + Vector2.from_angle(a) * RobotVis.ARM + ((spec[3] - spec[2]) * spec[1] / dsz).rotated(a)
+	var loc: Vector2 = RobotVis.shoulder_of(r.vis.model, bool(flags(r).get("armor", false))) + Vector2.from_angle(a) * RobotVis.ARM + ((spec[3] - spec[2]) * spec[1] / dsz).rotated(a)
 	return r.position + Vector2(r.facing * loc.x, loc.y)
 
 # ---------------------------------------------------------------- mira em 8 direções (padrão de todas as armas)
@@ -1678,7 +1689,9 @@ func _fire2(r, s: Dictionary) -> void:
 				v20 = Vector2(r.facing * float(c["vel"]) * 0.55, -float(c["subida"]) * 2.6)
 			elif av.y > 0.3:
 				v20 = Vector2(r.facing * float(c["vel"]) * 0.6, 420.0)
-			springs.append({"owner": r.pid, "pos": muzzle(r, "S20"), "vel": v20, "t": 0.0, "sq": 0.0})
+			var m20 := muzzle(r, "S20")
+			m20.y = maxf(m20.y, r.position.y - 42.0)   # sai na altura da cintura (ombro alto de alguns robôs = mola passava por cima)
+			springs.append({"owner": r.pid, "pos": m20, "vel": v20, "t": 0.0, "sq": 0.0})
 			Audio.play("pulo_mola", 1.3, 2.0)
 			r.own_vx -= r.facing * 260.0
 			main.shake(4.0)
