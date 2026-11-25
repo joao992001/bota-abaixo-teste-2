@@ -104,16 +104,48 @@ func _draw() -> void:
 	var v := _view()
 	if v.intersects(a1):
 		_draw_e1()
-	# terra entre as etapas (aparece durante a queda)
-	var gap := Rect2(a1.position.x - 600, a1.end.y - 40, a1.size.x + 1200, a2.position.y - a1.end.y + 80)
-	if v.intersects(gap):
-		draw_rect(gap, Color("#6b5a48"))
-		for k in 30:
-			var px := gap.position.x + fmod(k * 197.0, gap.size.x)
-			var py := gap.position.y + fmod(k * 61.0, gap.size.y)
-			draw_circle(Vector2(px, py), 6.0 + fmod(k * 3.7, 10.0), Color("#5a4a3a"))
 	if v.intersects(a2):
-		_draw_e2()
+		_draw_e2()   # desenha a terra e o poço por cima do fundo da etapa 2
+	else:
+		_between()
+
+## Terra entre as etapas com o POÇO aberto no buraco (por onde todos caem): dos lados terra, no meio a luz do dia
+## descendo até o teto quebrado da Fundação. Mundo fixo (sem paralaxe), para casar com o buraco do teto.
+func _between() -> void:
+	var hb := String(main.level.prop("buraco", "10,30")).split(",")
+	var h0 := float(hb[0]) * 64.0
+	var h1 := float(hb[1]) * 64.0
+	var y0 := a1.end.y - 40.0
+	var y1 := a2.position.y
+	var earth := Color("#6b5a48")
+	for r in [Rect2(a1.position.x - 600, y0, h0 - a1.position.x + 600, y1 - y0), Rect2(h1, y0, a1.end.x + 600 - h1, y1 - y0)]:
+		draw_rect(r, earth)
+		for k in 16:
+			var px: float = r.position.x + fmod(k * 197.0, r.size.x)
+			var py: float = r.position.y + fmod(k * 61.0, r.size.y)
+			draw_circle(Vector2(px, py), 6.0 + fmod(k * 3.7, 10.0), Color("#5a4a3a"))
+	# poço: claro em cima (céu da obra que caiu), escurece até o teto da Fundação
+	var yb := a2.position.y + 128.0
+	var top_c := Color("#dfeeea")
+	var bot_c := Color("#3a4656")
+	draw_polygon(PackedVector2Array([Vector2(h0, y0), Vector2(h1, y0), Vector2(h1, yb), Vector2(h0, yb)]),
+		PackedColorArray([top_c, top_c, bot_c, bot_c]))
+	# paredes do poço: terra rasgada com ferros pendendo
+	for e in [[h0, 1.0], [h1, -1.0]]:
+		var x: float = e[0]
+		var sg: float = e[1]
+		var pts := PackedVector2Array([Vector2(x, y0)])
+		var yy := y0
+		var k := 0
+		while yy < y1:
+			pts.append(Vector2(x + sg * (10.0 + fmod(k * 13.0, 22.0)), yy))
+			yy += 34.0
+			k += 1
+		pts.append(Vector2(x, y1))
+		draw_colored_polygon(pts, Color("#4f4236"))
+		for j in 3:
+			var fy := y0 + 40.0 + j * 52.0
+			draw_polyline(PackedVector2Array([Vector2(x, fy), Vector2(x + sg * 26.0, fy + 10.0), Vector2(x + sg * 38.0, fy + 30.0)]), Color("#b0562e"), 4.0, true)
 
 func _draw_e1() -> void:
 	_layer("e1_longe", a1, 0.3, 0.06)
@@ -159,6 +191,7 @@ func _draw_e1() -> void:
 
 func _draw_e2() -> void:
 	_layer("e2_fundo", a2, 0.15, 0.05)
+	_between()
 	# lanternas dos mineradores nas galerias e ratinhos
 	for m in miners:
 		var p := _lp(a2, 0.15, 0.05, Vector2(m["x"], m["y"]))
@@ -197,14 +230,15 @@ func _draw_front() -> void:
 		if tx != null:
 			front.draw_texture_rect(tx, Rect2(a1.position + _par(a1, -0.12), Vector2(640, 200)), false, Color(1, 1, 1, 0.9))
 	if v.intersects(a2):
-		for k in 4:   # lâmpadas penduradas balançando (com brilho) e gotas
-			var x := a2.position.x + 380.0 + k * 600.0
-			var l := 180.0 + 60.0 * (k % 2)
+		for k in 4:   # lâmpadas penduradas no teto (só onde HÁ teto: fora do buraco), balançando, com brilho, e gotas
+			var x: float = a2.position.x + [190.0, 450.0, 2110.0, 2370.0][k]
+			var l := 170.0 + 60.0 * (k % 2)
 			var ang := sin(t * 1.2 + k) * 0.08
 			var top := Vector2(x, a2.position.y + 128.0)
 			var lp := top + Vector2(sin(ang), cos(ang)) * l
 			front.draw_line(top, lp, Color("#2a1a2e"), 3.0, true)
-			front.draw_circle(lp + Vector2(0, 14), 70.0, Color(1.0, 0.91, 0.66, 0.12))
+			for g in 4:   # brilho macio (camadas), não um disco chapado
+				front.draw_circle(lp + Vector2(0, 14), 90.0 - g * 20.0, Color(1.0, 0.91, 0.66, 0.035 + g * 0.015))
 			front.draw_colored_polygon(PackedVector2Array([lp + Vector2(-16, 0), lp + Vector2(16, 0), lp + Vector2(10, 12), lp + Vector2(-10, 12)]), Color("#3a3a46"))
 			front.draw_circle(lp + Vector2(0, 14), 9.0, Color("#ffe7a8"))
 			var dy := fmod(t * 300.0 + k * 170.0, 700.0)

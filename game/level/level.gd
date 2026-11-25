@@ -506,9 +506,14 @@ func _draw_ropes_and_planks() -> void:
 			while x < cols and ch_at(Vector2i(x, y)) == "=":
 				x += 1
 			for rx in [x0 * T + 48.0, x * T - 48.0]:
+				var top := -200.0   # sobe até o teto mais próximo (ou fora da tela, se não houver)
+				for yu in range(y - 1, -1, -1):
+					if is_solid(Vector2i(int(rx / T), yu)):
+						top = (yu + 1) * T
+						break
 				var pts := PackedVector2Array()
 				for k in 25:
-					var yy := lerpf(-200.0, y * T + 6.0, k / 24.0)
+					var yy := lerpf(top, y * T + 6.0, k / 24.0)
 					pts.append(Vector2(rx + sin(k * 1.7 + rx) * 1.2, yy))
 				draw_polyline(pts, rope, 3.5, true)
 			for xx in range(x0, x):

@@ -420,6 +420,20 @@ func _update_camera(dt: float) -> void:
 			# câmera que rola: a arena manda (Torre sobe, Ponte avança); quem sai da tela está fora
 			tz = demo.fx.scroll_zoom
 			tc = demo.fx.scroll_center
+	var queda: bool = state == S.RUN and demo != null and demo.get("etapas") != null and is_instance_valid(demo.etapas) and demo.etapas.state == "queda"
+	if queda:
+		# virada: a câmera DESCE junto com os robôs num movimento só (sem afastar para o mapa inteiro nem pular),
+		# já no enquadramento da etapa 2; quando todos pousam ela já está no lugar
+		var a2: Rect2 = level.etapa_rect(2)
+		tz = minf(1.0, minf(1920.0 / a2.size.x, 1024.0 / a2.size.y))
+		var my := 0.0
+		var n := 0
+		for r in robots:
+			if r.alive:
+				my += r.position.y
+				n += 1
+		var c2 := a2.get_center()
+		tc = Vector2(c2.x, clampf((my / maxf(n, 1)) + 140.0 if n > 0 else c2.y, cam_center.y, c2.y))
 	var k := 1.0 - exp(-dt * 3.0)
 	if cam_lock.size() == 2:
 		tz = cam_lock[0]
@@ -428,11 +442,11 @@ func _update_camera(dt: float) -> void:
 	if k < 1.0 and state == S.RUN and String(level.prop("camera", "")) == "adaptativa":
 		# mola criticamente amortecida + zona morta: a câmera desliza, não treme; afasta rápido, aproxima devagar
 		var dz := tc - cam_center
-		if absf(dz.x) < 40.0:
+		if absf(dz.x) < 40.0 and not queda:
 			dz.x = 0.0
-		if absf(dz.y) < 30.0:
+		if absf(dz.y) < 30.0 and not queda:
 			dz.y = 0.0
-		var w := 2.6
+		var w := float(demo.cfg["etapas"]["camera_queda_mola"]) if queda else 2.6
 		cam_vel += (dz * w * w - cam_vel * 2.0 * w) * dt
 		cam_center += cam_vel * dt
 		cam_zoom = lerpf(cam_zoom, tz, 1.0 - exp(-dt * (2.2 if tz < cam_zoom else 0.7)))

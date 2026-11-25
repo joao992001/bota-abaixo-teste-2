@@ -61,6 +61,7 @@ func update(dt: float) -> void:
 				if not r.alive:
 					continue
 				r.invuln = maxf(r.invuln, 0.5)
+				r.velocity.y = minf(r.velocity.y, float(cfg["queda_vmax"]))   # queda lenta e legível (cena)
 				# arco natural: a velocidade de lado calculada no desabamento leva cada um para dentro do buraco
 				if r.position.y < a2.position.y + 120.0:
 					var vx: float = r.get_meta("queda_vx", 0.0)
@@ -101,7 +102,9 @@ func _desaba() -> void:
 			tx = clampf(r.position.x, hole.x + 100.0, hole.y - 100.0)
 		tx = _over_floor(tx, a2)   # cai sempre em cima de piso (nunca num vão)
 		var dy: float = maxf(a2.position.y - r.position.y, 120.0)
-		var tf := sqrt(2.0 * dy / maxf(g, 1.0))
+		var vm := float(cfg["queda_vmax"])
+		var d1 := vm * vm / (2.0 * maxf(g, 1.0))   # acelera até a velocidade limite e depois cai constante
+		var tf := sqrt(2.0 * dy / maxf(g, 1.0)) if dy <= d1 else vm / maxf(g, 1.0) + (dy - d1) / vm
 		r.set_meta("queda_vx", clampf((tx - r.position.x) / tf, -float(cfg["funil_vel"]), float(cfg["funil_vel"])))
 		r.velocity.y = minf(r.velocity.y, -180.0)   # pulinho de susto antes de cair
 	var mc = main.demo.mecs

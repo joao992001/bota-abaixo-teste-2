@@ -57,3 +57,12 @@ andaimes, máquina dentro de torre) antes de mandar.
 - **Toda etapa precisa de saída para KO** em pelo menos 2 lados (a Fundação nasceu fechada pelas paredes até o teto e as
   rodadas de bots não acabavam): paredes da bacia param 6 linhas abaixo do teto (abertura lateral) + buraco em cima + poço.
   Confira com o teste `rodadas só de bots terminam` (`--so=bots`).
+- **Transição entre etapas (revisão 2026-11-25):** queda lenta (`gravidade_queda` 0.35 + `queda_vmax`) e câmera em ROTEIRO
+  (`main._update_camera`, estado `queda`): zoom já da etapa 2 e uma descida contínua seguindo o grupo — nunca afastar
+  para o mapa inteiro (a câmera "ia para lá e para cá" e depois caía de uma vez).
+- **Tudo ligado ao cenário:** nada pendurado no nada. A terra entre as etapas tem o POÇO aberto no buraco (`cena._between`),
+  o céu do buraco é desenhado no mundo (em paralaxe ele descolava), cordas sobem só até o teto mais próximo, lâmpadas só
+  onde há teto, placas penduradas em canos, máquina inteira apoiada no piso (bate-estaca com esteira, cabine e mastro).
+- **Água:** lâmina sobre as lajes que TRANSBORDA em cachoeiras pelas bordas e jorra das bordas quebradas do teto, caindo na
+  primeira plataforma embaixo (água parada com borda reta parecia vidro).
+

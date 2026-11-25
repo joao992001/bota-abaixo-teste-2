@@ -72,18 +72,27 @@ HOLE = (10 * T, 30 * T)
 def e2_fundo():
     b = ['<defs><linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c3644"/><stop offset="1" stop-color="#1e2530"/></linearGradient></defs>',
          f'<rect width="{W}" height="{H2}" fill="url(#g2)"/>']
-    b.append(f'<rect x="{HOLE[0]}" y="0" width="{HOLE[1] - HOLE[0]}" height="140" fill="#bfe8f0"/>')
-    b.append(cloud(1150, 60, 0.6))
-    b.append(lattice(HOLE[0] - 40, 34, HOLE[1] + 40, 34, 18, "#e7b941", 4))
+    # (o céu/poço do buraco é desenhado pelo jogo em coordenadas do mundo — aqui, em paralaxe, ele descolava do buraco)
     for (x, w) in ((300, 260), (2000, 260)):   # galerias
         b.append(f'<path d="M{x},{FL - 30} V{460} q{w / 2},-150 {w},0 V{FL - 30} Z" fill="#161b23"/>')
     for y, col in ((250, "#7a4a2e"), (310, "#5d6b7d")):   # canos
         b.append(f'<path d="M0,{y} H{W}" stroke="{col}" stroke-width="30"/>')
         for x in range(120, W, 340):
             b.append(f'<rect x="{x}" y="{y - 22}" width="20" height="44" fill="#3a3a46"/>')
-    b.append(sign(620, 300, "ALAGA!", "#4f86a8", "#ffffff", 120, 40))
-    b.append(sign(1990, 330, "", tri=True, w=70, h=60))
+    b.append(hung_sign(560, 325, "ALAGA!", "#4f86a8", "#ffffff", 120, 40))   # placas penduradas no cano (não soltas no ar)
+    b.append(hung_sign(1960, 325, "", tri=True, w=70, h=60))
     return "".join(b)
+
+
+def hung_sign(x, pipe_y, txt, bg="#f2c84b", fg=INK, w=120, h=44, tri=False):
+    """Placa pendurada por duas correntes num cano (pipe_y = borda de baixo do cano)."""
+    y = pipe_y + 26
+    b = []
+    for cx in ((x + 14, x + w - 14) if not tri else (x + w / 2 - 6, x + w / 2 + 6)):
+        b.append(f'<path d="M{cx},{pipe_y - 8} V{y + (4 if not tri else 8)}" stroke="#3a3a46" stroke-width="3" stroke-dasharray="5 3"/>')
+        b.append(f'<circle cx="{cx}" cy="{pipe_y - 10}" r="5" fill="none" stroke="#3a3a46" stroke-width="3"/>')
+    s = sign(x, y, txt, bg, fg, w, h, tri)
+    return "".join(b) + s.split("/>", 1)[1]   # sem o poste da placa
 
 
 def e2_palco():
@@ -163,6 +172,19 @@ SPRITES = {
         f'L{38 + 36 * __import__("math").cos(__import__("math").radians(a) + 0.15):.1f},{38 + 36 * __import__("math").sin(__import__("math").radians(a) + 0.15):.1f}" stroke="#8d98a4" stroke-width="5"/>'
         for a in range(0, 360, 30)) + '<circle cx="38" cy="38" r="6" fill="#2a1a2e"/>'),
     "m_bancada": (110, 40, lambda: R(8, 6, 94, 30, "#4a5566", 4, 1.6)),
+    # torre do bate-estaca: esteira + cabine embaixo (apoiadas no chão), mastro de treliça até a roldana lá em cima.
+    # O mastro fica no x 120 do sprite (= x do martelo); a base do sprite é o piso.
+    "m_bate_torre": (260, 860, lambda: lattice(120, 820, 120, 60, 40, "#e7b941", 5)
+                     + '<path d="M120,330 L222,760" stroke="#c49a2a" stroke-width="7" stroke-linecap="round"/>'
+                     + '<path d="M120,470 L30,770" stroke="#c49a2a" stroke-width="6" stroke-linecap="round"/>'
+                     + R(92, 36, 56, 30, "#c49a2a", 4, 1.6, dark="#8a6a1a")
+                     + '<circle cx="120" cy="40" r="22" fill="#3a3a46"/><circle cx="120" cy="40" r="9" fill="#9aa4ae"/>'
+                     + R(40, 700, 190, 104, "#f2c84b", 8, 2.2, dark="#c49a2a")
+                     + R(150, 716, 64, 46, "#2b3d4f", 4, 1.2) + '<path d="M158,724 l18,-6" stroke="#bfe8f0" stroke-width="4" opacity="0.6"/>'
+                     + cd.zebra(44, 772, 100, 12)
+                     + '<circle cx="80" cy="740" r="14" fill="#3a3a46"/><circle cx="80" cy="740" r="6" fill="#9aa4ae"/>'
+                     + R(14, 800, 236, 52, "#3a3a46", 22, 1.6, dark="#252b33")
+                     + "".join(f'<circle cx="{x}" cy="826" r="15" fill="#71829a"/><circle cx="{x}" cy="826" r="5" fill="#2a1a2e"/>' for x in (44, 96, 148, 200, 224))),
     "m_martelo": (140, 110, lambda: R(10, 10, 120, 80, "#6b7783", 8, 2, dark="#4d5a6e") + cd.zebra(10, 74, 120, 14)),
     "m_vagonete": (170, 110, lambda: S("M10,20 L160,20 L140,82 L30,82 Z", "#a8582e", (8, 18, 162, 84), k=2, dark="#7a3a18")
                    + "".join(f'<rect x="{x}" y="{4 + (i % 2) * 6}" width="30" height="22" fill="#a1988a" transform="rotate(14 {x} 10)"/>' for i, x in enumerate((40, 80, 112)))

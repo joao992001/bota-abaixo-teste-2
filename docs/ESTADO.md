@@ -23,6 +23,8 @@ skill `criar-fase`. Vitrine `--fase=DIR`. Aguardando o usuário jogar.
 encaixadas nos 5 corpos (`RobotVis.shoulder_of`, vitrine `--equipa=DIR`); na virada jetpack/armaduras desligam e caixas
 caem pelo buraco; caixas nascem abaixo do teto da Fundação (`spells.sky_y`). Pendente: resposta do usuário sobre a S12
 (Carga Remota "acerta em tudo").
+**Revisão da Fundação (2026-11-25):** transição com câmera em roteiro e queda lenta; poço na terra; bate-estaca com torre;
+água transbordando em cachoeiras + jorros do teto; placas/lâmpadas/cordas presas ao cenário. Aguardando o usuário jogar.
 G05/G09 ganharam função (caixa na carga + gancho que solta; drone conserta e recolhe) — FEITO.
 **ÚLTIMO (2026-11-24): ELENCO NOVO DE 5 ROBÔS** (pedido do usuário: os 8 modelos "olhavam para a câmera e batiam com
 uma mão"). Marretão (marreta de 2 mãos), Picareta (pernas de pássaro), Chave (mecânico, chave inglesa), Britadeira

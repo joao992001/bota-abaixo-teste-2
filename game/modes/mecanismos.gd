@@ -22,7 +22,7 @@ func setup(m: Node) -> void:
 		var inst := {"tipo": d["tipo"], "etapa": int(d.get("etapa", 1)), "d": d, "s": {}}
 		list.append(inst)
 		_prepara(inst)
-	for n in ["m_betoneira", "m_esteira", "m_tubo", "m_serra", "m_bancada", "m_martelo", "m_vagonete", "m_gerador"]:
+	for n in ["m_betoneira", "m_esteira", "m_tubo", "m_serra", "m_bancada", "m_martelo", "m_vagonete", "m_gerador", "m_bate_torre"]:
 		tex[n] = Data.tex("%s/%s" % [key, n])
 
 func _etapa() -> int:
@@ -305,12 +305,14 @@ func _agua(inst: Dictionary, dt: float) -> void:
 	if float(s.get("enchente", 0.0)) > 0.0:   # V3 Enchente: a bomba falha e a água sobe bem alto
 		s["enchente"] = float(s["enchente"]) - dt
 		s["h"] = move_toward(float(s["h"]), float(d["altura"]) * float(s.get("enchente_mult", 2.4)), float(d["altura"]) * dt)
+		s["pour"] = true
 		var top0 := float(d["chao"]) - float(s["h"])
 		for r in _robots():
 			if r.position.x > float(d["x"][0]) and r.position.x < float(d["x"][1]) and r.position.y > top0:
 				r.env_slow = minf(r.env_slow, float(d["lentidao"]))
 		return
 	if float(s.get("dreno", 0.0)) > 0.0:
+		s["pour"] = false
 		s["dreno"] = float(s["dreno"]) - dt
 		s["h"] = move_toward(float(s["h"]), 0.0, float(d["altura"]) / 1.0 * dt)
 		return
@@ -325,6 +327,7 @@ func _agua(inst: Dictionary, dt: float) -> void:
 	elif k < 2.0 * sobe + fica:
 		target = float(d["altura"]) * (1.0 - (k - sobe - fica) / sobe)
 	s["h"] = target
+	s["pour"] = k < sobe + fica * 0.6   # despeja do teto enquanto sobe (e um pouco cheia)
 	var top := float(d["chao"]) - float(s["h"])
 	if float(s["h"]) > 8.0:
 		for r in _robots():
@@ -555,32 +558,21 @@ func _draw() -> void:
 				if s.get("warn", false) and fmod(t, 0.2) < 0.1:
 					draw_circle(p + Vector2(48, -30), 6.0, Color("#d94a3a"))
 			"bate_estaca":
+				# máquina inteira apoiada no piso (esteira + cabine + mastro até a roldana); o martelo sobe e desce
+				# pendurado no cabo, na frente do mastro
 				var x := float(d["x"])
-				var top := float(d["topo"]) - 300.0
-				var hy: float = s.get("y", float(d["topo"]))
-				draw_rect(Rect2(x - 22, top, 44, hy - top + 10), Color("#e7b941"))
-				for yy in range(int(top), int(hy), 40):
-					draw_line(Vector2(x - 22, yy), Vector2(x + 22, yy + 40), Color("#c49a2a"), 4.0)
-				draw_texture_rect(tex["m_martelo"], Rect2(x - 70, hy, 140, 110), false)
 				var ch := float(d["chao"])
+				var hy: float = s.get("y", float(d["topo"]))
+				if tex.has("m_bate_torre"):
+					draw_texture_rect(tex["m_bate_torre"], Rect2(x - 120, ch - 852, 260, 860), false)
+				var crown := Vector2(x, ch - 812)
+				draw_line(crown + Vector2(-6, 0), Vector2(x - 6, hy + 8), INK, 3.0, true)
+				draw_line(crown + Vector2(6, 0), Vector2(x + 6, hy + 8), INK, 3.0, true)
+				draw_texture_rect(tex["m_martelo"], Rect2(x - 70, hy, 140, 110), false)
 				var warn: bool = s.get("phase", "") == "aviso"
 				draw_rect(Rect2(x - 70, ch - 6, 140, 8), Color(0.85, 0.29, 0.23, 0.9 if warn and fmod(t, 0.2) < 0.1 else 0.5))
 			"agua":
-				var h: float = s["h"]
-				if h > 1.0:
-					var x0 := float(d["x"][0])
-					var x1 := float(d["x"][1])
-					var ch := float(d["chao"])
-					var row := Vector2i(0, int((ch + 8.0) / T))
-					for cx in range(int(x0 / T), int(ceil(x1 / T))):   # só por cima do piso (nos vãos a água escorre)
-						row.x = cx
-						if main.level.is_solid(row):
-							draw_rect(Rect2(cx * T, ch - h, T, h), Color(0.31, 0.53, 0.66, 0.5))
-					for x in range(int(x0) + 40, int(x1), 160):
-						if not main.level.is_solid(Vector2i(int((x + 40) / T), row.y)):
-							continue
-						var wy := ch - h + sin(t * 3.0 + x * 0.02) * 3.0
-						draw_polyline(PackedVector2Array([Vector2(x, wy), Vector2(x + 20, wy - 5), Vector2(x + 40, wy), Vector2(x + 60, wy - 5), Vector2(x + 80, wy)]), Color(0.75, 0.91, 0.94, 0.8), 3.0, true)
+				_draw_agua(d, s)
 			"vagonete":
 				var x0 := float(d["x"][0])
 				var x1 := float(d["x"][1])
@@ -603,3 +595,103 @@ func _draw() -> void:
 					for k in 4:
 						var a := randf() * TAU
 						draw_line(cb, cb + Vector2.from_angle(a) * randf_range(10, 26), Color("#ffd36b"), 3.0, true)
+
+## Água da Fundação (M7): o piso alaga por cima das lajes e TRANSBORDA pelas bordas em cachoeiras que somem no
+## vazio; enquanto sobe, ela despeja das bordas quebradas do teto (de onde vem a água).
+func _draw_agua(d: Dictionary, s: Dictionary) -> void:
+	var h: float = s["h"]
+	var x0 := float(d["x"][0])
+	var x1 := float(d["x"][1])
+	var ch := float(d["chao"])
+	var wcol := Color(0.33, 0.58, 0.72, 0.55)
+	var foam := Color(0.85, 0.95, 0.98, 0.85)
+	if s.get("pour", false):   # despejando das bordas quebradas do teto; cai na primeira coisa embaixo (plataforma ou piso)
+		var hb := String(main.level.prop("buraco", "10,30")).split(",")
+		var top: float = main.level.etapa_rect(2).position.y + 128.0
+		var ct = main.demo.canteiro
+		for xe in [float(hb[0]) * T + 16.0, float(hb[1]) * T - 16.0]:
+			var bot := ch - h
+			if ct != null and is_instance_valid(ct):
+				for p in ct.parts:
+					var pr: Rect2 = p["rect"]
+					if p["kind"] == "estaca" and not p["fallen"] and xe > pr.position.x and xe < pr.end.x and pr.position.y > top:
+						bot = minf(bot, pr.position.y)
+			_jorro(xe, top, bot, foam)
+	if h < 3.0:
+		return
+	# trechos de piso sólido dentro da faixa (as 3 lajes): lâmina d'água em cada um, cachoeira em cada borda
+	var row := int((ch + 8.0) / T)
+	var runs: Array = []
+	var cx := int(x0 / T)
+	while cx < int(ceil(x1 / T)):
+		if main.level.is_solid(Vector2i(cx, row)):
+			var c0 := cx
+			while cx < int(ceil(x1 / T)) and main.level.is_solid(Vector2i(cx, row)):
+				cx += 1
+			runs.append(Vector2(c0 * T, cx * T))
+		else:
+			cx += 1
+	for rn in runs:
+		var a: float = rn.x
+		var b: float = rn.y
+		draw_rect(Rect2(a, ch - h, b - a, h), wcol)
+		var wave := PackedVector2Array()
+		var xx := a
+		while xx <= b:
+			wave.append(Vector2(xx, ch - h + sin(t * 3.0 + xx * 0.03) * 2.5))
+			xx += 16.0
+		draw_polyline(wave, foam, 3.0, true)
+		for e in [[a, -1.0], [b, 1.0]]:
+			if main.level.is_solid(Vector2i(int(floor((e[0] + e[1] * 8.0) / T)), row)):
+				continue
+			_cachoeira(float(e[0]), float(e[1]), ch, h, wcol, foam)
+
+func _cachoeira(ex: float, sg: float, ch: float, h: float, wcol: Color, foam: Color) -> void:
+	var wv := clampf(6.0 + h * 0.3, 8.0, 34.0)   # mais água = cachoeira mais grossa
+	var L := 420.0
+	var n := 7
+	for k in n:   # desce pela borda da laje e some no escuro
+		var y0 := ch - h + k * L / n
+		var y1 := ch - h + (k + 1) * L / n
+		var o0 := sg * (2.0 + 10.0 * sqrt(float(k) / n))
+		var o1 := sg * (2.0 + 10.0 * sqrt(float(k + 1) / n))
+		var al := wcol.a * (1.0 - float(k) / n)
+		var wb0 := sin(t * 7.0 + y0 * 0.04) * 2.0
+		var wb1 := sin(t * 7.0 + y1 * 0.04) * 2.0
+		draw_colored_polygon(PackedVector2Array([Vector2(ex + o0, y0), Vector2(ex + o0 + sg * (wv + wb0), y0), Vector2(ex + o1 + sg * (wv + wb1), y1), Vector2(ex + o1, y1)]),
+			Color(wcol.r + 0.1, wcol.g + 0.1, wcol.b + 0.08, al))
+	for i in 6:   # fios de espuma correndo para baixo
+		var u := fmod(t * 1.6 + i * 0.17, 1.0)
+		var y := ch - h + u * L
+		var ox := sg * (2.0 + 10.0 * sqrt(u) + wv * (0.2 + 0.6 * fmod(i * 0.43, 1.0)))
+		draw_line(Vector2(ex + ox, y), Vector2(ex + ox, y + 22.0), Color(foam.r, foam.g, foam.b, foam.a * (1.0 - u)), 2.5, true)
+	draw_arc(Vector2(ex, ch - h + 6.0), 6.0, -PI / 2.0 if sg > 0 else PI, 0.0 if sg > 0 else PI * 1.5, 6, foam, 3.0, true)   # lábio da borda
+
+## Jorro de água caindo de cima (borda do teto) até `bot`: coluna que ondula, miolo claro, espuma descendo e respingo.
+func _jorro(xe: float, top: float, bot: float, foam: Color) -> void:
+	var L := bot - top
+	if L < 10.0:
+		return
+	var n := int(L / 24.0) + 1
+	var lft := PackedVector2Array()
+	var rgt := PackedVector2Array()
+	for k in n + 1:
+		var y := top + L * k / n
+		var w := 9.0 + 7.0 * float(k) / n + sin(t * 9.0 + y * 0.05) * 1.6   # alarga um pouco ao cair
+		lft.append(Vector2(xe - w + sin(t * 6.0 + y * 0.03) * 1.5, y))
+		rgt.append(Vector2(xe + w + sin(t * 6.0 + y * 0.03) * 1.5, y))
+	var poly := lft.duplicate()
+	rgt.reverse()
+	poly.append_array(rgt)
+	draw_colored_polygon(poly, Color(0.5, 0.76, 0.88, 0.55))
+	draw_line(Vector2(xe, top), Vector2(xe, bot), Color(0.82, 0.94, 0.98, 0.45), 6.0, true)
+	for i in 10:
+		var u := fmod(t * 2.2 + i * 0.1, 1.0)
+		var x := xe + (float(i % 3) - 1.0) * 6.0
+		draw_line(Vector2(x, top + u * L), Vector2(x, minf(top + u * L + 26.0, bot)), foam, 2.0, true)
+	for i in 7:   # respingo e névoa onde bate
+		var u := fmod(t * 2.6 + i * 0.143, 1.0)
+		var a := -PI * (0.12 + 0.76 * fmod(i * 0.37, 1.0))
+		draw_circle(Vector2(xe, bot) + Vector2.from_angle(a) * (6.0 + 26.0 * u), 4.0 * (1.0 - u) + 1.0, Color(foam.r, foam.g, foam.b, 0.9 * (1.0 - u)))
+	draw_circle(Vector2(xe, bot - 2.0), 16.0, Color(0.9, 0.97, 1.0, 0.35))
+
