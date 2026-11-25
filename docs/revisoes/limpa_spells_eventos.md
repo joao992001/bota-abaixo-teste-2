@@ -1,6 +1,8 @@
 # Limpa de SPELLS e EVENTOS (modo Derruba) — anotações do usuário, NÃO EXECUTAR ainda
 
-> Estado: **ideias registradas em 2026-11-25**. Nada aqui foi aplicado. Só executar quando o usuário pedir. Quando
+> Estado: **EXECUTADO em 2026-11-25** (o usuário pediu "pode executar"), exceto os itens marcados PENDENTE abaixo.
+> Códigos novos: Ataque A01–A08, Controle C01–C05, Engenharia E01–E03, Transformação T01–T07 (tabela em
+> `docs/manuais/derruba/spell.md`). Teste da limpa: `--so=limpa`. Quando
 > executar, atualizar `docs/manuais/derruba/spell.md` / `evento.md`, o manifesto do mapa e a biblioteca do Canteiro.
 > Lista de referência que o usuário viu: 26 spells (#1–26) e 15 eventos (#27–41).
 
@@ -9,6 +11,24 @@
   classe** (Ataque, Controle, Engenharia, Transformação) e **numerar em sequência dentro de cada classe**, juntando
   as que são da mesma classe. Proposta técnica a apresentar antes: novo esquema de ids (ex.: A01…, C01…, E01…, T01…)
   com tabela de equivalência ids antigos → novos, migrando dados, código, testes, arte e manuais juntos.
+
+## Feito
+- Ids por classe; S18 Disco, S25 Ponte, S28 Escudo e G09 Drone REMOVIDOS (dados, código, testes).
+- C02 Turboventilador mais forte (força 4200, vel 1100). C03 Gancho: alcance 12, passa por cima da plataforma ao chegar,
+  salvamento automático caindo sem mirar. E02 Carga Remota: sempre arremessa e GRUDA no rival (senão na superfície).
+  E03 Controle Remoto: vigas, andaimes, plataformas sobre estaca e as máquinas da cena. T03 Bola: acelera/freia/vira
+  firme, pula ~2 tiles com tolerância e quique no ar. T02 Mecha: garfo 170×130 px e investida que pega quem encostar.
+  A07 Marreta-Bumerangue: pose de prontidão com energia girando na ferramenta; voa a ferramenta do próprio robô (com a
+  skin) girando com rastro; pegada com tranco e faíscas. T04 Propulsor: fogo sai da mochila (por modelo) e a ferramenta não
+  cruza mais a cabeça no voo.
+- G06 Entulho 7 caixas; G03 gravidade 0,38; G04 força 560 / raio 520; G10 Carga Especial = 1–3 ARMADURAS; armaduras com
+  peso 7 nas caixas normais (DECIDIDO pela IA: "mais raras" — o usuário pode trocar para "só no evento").
+
+## PENDENTE (precisa de proposta/aprovação)
+- T06 Modo Soldador: jogabilidade própria (proposta enviada ao usuário).
+- T07 Minirrobô: ideia "altera a estatura" (para mais ou para menos) — opcional.
+- E01 Andaime Relâmpago: "talvez melhorar a lógica" — o usuário não definiu o quê.
+- G11 Interdição de Área: "morno" — candidato a melhorar.
 
 ## 1. Spells — decisões do usuário
 | # | Spell | Decisão | Detalhe |

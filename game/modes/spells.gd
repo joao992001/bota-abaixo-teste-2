@@ -1861,7 +1861,10 @@ func _update_attack2(dt: float) -> void:
 			if to.length() < 28.0 or h["t"] > float(c19["max_s"]) or not owner.alive:
 				h["dead"] = true
 				owner.hammer_out = false
-				owner.vis.s_sqx[0] = 1.15   # encaixa na mão
+				owner.vis.s_sqx[0] = 1.25   # PEGOU: tranco na mão, faíscas e anel
+				owner.vis.s_sqy[0] = 0.85
+				main.spark(hand(owner), 6)
+				main.ring_fx(hand(owner), 0.6)
 				Audio.play("chave", 0.8, 0.0)
 		for o in main.robots:
 			if o.pid != h["owner"] and o.alive and not (o.pid in h["hit"]) and o.rect().grow(10).has_point(h["pos"]):
@@ -2138,17 +2141,25 @@ func _draw_attack2() -> void:
 		draw_texture_rect_region(tex17, Rect2(x - 32, top_y - 50, 64, 50), Rect2(0, 0, 128, 96), mod)
 		draw_texture_rect_region(tex17, Rect2(x - 16 * sq, top_y, 32 * sq, pile_len - 26), Rect2(32, 92, 64, 236), mod)
 		draw_texture_rect_region(tex17, Rect2(x - 22 * sq, top_y + pile_len - 26, 44 * sq, 26), Rect2(20, 324, 88, 60), mod)
-	# A07 marreta girando com arco de rastro
-	var htex := Data.tex("robo/marreta")
+	# A07: voa a FERRAMENTA DO PRÓPRIO ROBÔ (com a skin), girando, com rastro de cópias, arco de energia e faíscas
 	for h in hammers:
-		for i in 4:
-			var aa: float = h["rot"] - i * 0.35 * h["dir"]
-			draw_set_transform(h["pos"], aa, Vector2(0.55, 0.55))
-			draw_texture(htex, -Vector2(128, 128), Color(1, 1, 1, 0.18 - i * 0.04))
-		draw_set_transform(h["pos"], h["rot"], Vector2(0.55, 0.55))
-		draw_texture(htex, -Vector2(128, 128))
+		var ow = main.robots[h["owner"]]
+		var mname: String = Data.MODELS[posmod(ow.vis.model, Data.MODELS.size())]
+		var g: Dictionary = Data.model_meta(ow.vis.model)
+		var htx := Data.tex("robo/ferramenta_" + mname + RobotVis._sk(ow.vis.look(), mname))
+		var tsz := Vector2(float(g["tool"][0]), float(g["tool"][1])) * 1.25
+		for i in 5:
+			var aa: float = h["rot"] - (i + 1) * 0.3 * h["dir"]
+			draw_set_transform(h["pos"] - h.get("vel", Vector2.ZERO).normalized() * i * 6.0, aa)
+			draw_texture_rect(htx, Rect2(-tsz / 2.0, tsz), false, Color(1, 0.8, 0.5, 0.22 - i * 0.04))
+		draw_set_transform(h["pos"], h["rot"])
+		draw_texture_rect(htx, Rect2(-tsz / 2.0, tsz), false)
 		draw_set_transform(Vector2.ZERO)
-		draw_arc(h["pos"], 46.0, h["rot"], h["rot"] + 1.6 * h["dir"], 12, Color(1, 1, 1, 0.5), 4.0, true)
+		var rr := maxf(tsz.y, tsz.x) * 0.55
+		draw_arc(h["pos"], rr, h["rot"], h["rot"] + 1.9 * h["dir"], 14, Color(1.0, 0.62, 0.2, 0.75), 5.0, true)
+		draw_arc(h["pos"], rr, h["rot"] + PI, h["rot"] + PI + 1.9 * h["dir"], 14, Color(1.0, 0.85, 0.35, 0.55), 3.0, true)
+		if fmod(t, 0.06) < 0.02:
+			main.spark(h["pos"] + Vector2.from_angle(h["rot"]) * rr, 1)
 	# A08 mola saltitante: espiral + para-choque vermelho, achata no quique
 	for m in springs:
 		var d := signf(m["vel"].x)
@@ -3137,8 +3148,11 @@ func _draw_etapa4() -> void:
 		var pw: float = float(slot[r.pid]["data"].get("power", 0.0))
 		var tilt := clampf(r.velocity.x / 600.0, -1.0, 1.0) * 0.38
 		var back := Vector2(0, 1).rotated(-tilt * 0.6)
+		# bicos na BASE DA MOCHILA de cada robô (mesma âncora do desenho: ombro de trás + (-12, 10); mochila 38x44)
+		var sh0: Vector2 = RobotVis._v(Data.model_meta(r.vis.model)["shoulders"][0])
+		var bp := sh0 + Vector2(-12.0, 10.0 + 20.0)
 		for nz in [-8.0, 8.0]:
-			var o: Vector2 = r.position + Vector2(-r.facing * 17.0 + nz * 0.8, -26.0) + Vector2(r.facing * tilt * 20.0, 0)
+			var o: Vector2 = r.position + Vector2(r.facing * (bp.x + nz * 0.8), bp.y) + Vector2(r.facing * tilt * 20.0, 0)
 			var L := 10.0 + 52.0 * pw * (0.85 + 0.15 * sin(t * 50.0 + nz))
 			var side := back.orthogonal() * (5.0 + 4.0 * pw)
 			draw_colored_polygon(PackedVector2Array([o - side, o + back * L, o + side]), Color(0.95, 0.4, 0.15, 0.9))

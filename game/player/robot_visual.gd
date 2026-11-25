@@ -771,6 +771,16 @@ func current_pose() -> Dictionary:
 				hf_set = true
 		for i in 2:
 			feet[i] = feet[i].lerp(Vector2(-6.0 + i * 10.0, 0), 0.6)
+	elif sid == "A07" and robot != null and robot.atk == "" and not robot.hammer_out and not sf.get("fading", false):
+		# MARRETA-BUMERANGUE equipada (2026-11-25: "não dá para perceber que está equipado"): a ferramenta fica ERGUIDA
+		# atrás da cabeça, pronta para o arremesso, balançando de leve; o desenho põe um brilho girando na cabeça dela
+		var fpr := _frame("pesado_prep")
+		var wob := sin(t * 5.0) * 0.08
+		hf = hf.lerp(_a2(fpr["hf"]), 0.6)
+		ang = lerpf(ang, ang + wrapf(float(fpr["a"]) - ang, -PI, PI), 0.6) + wob
+		lean = lerpf(lean, float(fpr["lean"]) * 0.5, 0.5)
+		p["a07_pronto"] = true
+		hf_set = true
 	elif sid in WEAPONS and robot != null and robot.atk == "" and not sf.get("fading", false):
 		var cbob := sin(t * 12.0) * 1.6 * run_k
 		hf = CARRY_HF + Vector2(0, cbob)
@@ -797,8 +807,11 @@ func current_pose() -> Dictionary:
 	elif sf.get("flying_on", false):
 		var vxk := clampf(float(sf.get("fly_vx", 0.0)) / 600.0, -1.0, 1.0) * float(robot.facing if robot != null else 1)
 		lean = lerpf(lean, 0.38 * vxk, 0.25)
-		p["hb_abs"] = Vector2(-20, -40 + sin(t * 9.0) * 3.0)
-		hf = Vector2(22, -42 + cos(t * 9.0) * 3.0)
+		# voando (2026-11-25: "animação bugada"): a ferramenta não fica mais erguida cruzando a cabeça; vai na mão da
+		# frente apontando para trás e para baixo (como quem segura firme no voo); a de trás segura a alça da mochila
+		p["hb_abs"] = Vector2(-10, -30 + sin(t * 9.0) * 2.0)
+		hf = Vector2(16, -24 + cos(t * 9.0) * 2.0)
+		ang = lerpf(ang, ang + wrapf(3.9 - ang, -PI, PI), 0.7)
 		two_hand = false
 		hf_set = true
 		for i in 2:
@@ -1245,6 +1258,14 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 			ci.draw_set_transform_matrix(base * Transform2D(ham_ang, hf))
 			var hcol := Color(0.58, 0.62, 0.72) if lk.get("ham_cd", false) else Color.WHITE
 			ci.draw_texture_rect(ttex, Rect2(-tgr, tsz), false, hcol)
+			if pose.get("a07_pronto", false):   # A07 equipada: energia girando em volta da cabeça da ferramenta
+				var hd := hf + Vector2(sin(ham_ang), -cos(ham_ang)) * reach * 0.85
+				ci.draw_set_transform_matrix(base)
+				ci.draw_arc(hd, 22.0, tnow * 9.0, tnow * 9.0 + 2.2, 12, Color(1.0, 0.62, 0.2, 0.9), 4.0, true)
+				ci.draw_arc(hd, 22.0, tnow * 9.0 + PI, tnow * 9.0 + PI + 2.2, 12, Color(1.0, 0.85, 0.35, 0.9), 4.0, true)
+				for k in 3:
+					var aa := tnow * 6.0 + k * TAU / 3.0
+					ci.draw_circle(hd + Vector2(cos(aa), sin(aa)) * 28.0, 3.0, Color("#ffd36b"))
 	if armor:   # frente da armadura por cima do corpo; o rosto do robô aparece na vigia
 		_armor_piece(ci, base * bx, aspec["front"], asm, aw, sf, asx)
 		var drop := Vector2(0, -(1.0 - asm) * 30.0)
