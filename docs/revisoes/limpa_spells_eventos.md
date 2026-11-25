@@ -32,5 +32,20 @@
 | 23 | S16 Propulsor Gambiarra | MANTER + **corrigir animação** | gosta; a animação está um pouco bugada |
 | — | demais (#1–6, #9, #10, #13) | sem comentário = MANTER como estão | lista de spells encerrada pelo usuário em 2026-11-25 |
 
-## 2. Eventos
-Sem comentários ainda (o usuário vai continuar).
+## 2. Eventos — decisões do usuário (2026-11-25)
+| # | Evento | Decisão | Detalhe |
+|---|---|---|---|
+| 29 | G06 Entrega de Entulho | MANTER + **mais quantidade** | "muito simples": mais caixas/entulho |
+| 30 | G10 Carga Especial | **MUDAR (grande)** | tem que ser especial de verdade: é o momento em que caem **ARMADURAS** (1, 2 ou 3). Junto: as armaduras (transformações) ficam **raras ou fora** das caixas normais, por serem as mais fortes — definir com o usuário (raridade maior × só no evento) |
+| 31 | G12 Troca de Andaimes | MANTER | faz muito sentido com a fase |
+| 32 | G13 Cabo Rompido | MANTER | faz muito sentido com a fase |
+| 33 | V1 Concretagem | MANTER (o usuário não lembrava) | a grua passa com o balde e despeja concreto em 2 faixas marcadas; quem pisa fica lento e não pula alto |
+| 34 | G03 Gravidade em Pane | MANTER + **efeito maior** | aumentar o efeito da gravidade |
+| 35 | G04 Sobrecarga Magnética | MANTER + **puxar mais** | aumentar a força que puxa os robôs |
+| 36 | G11 Interdição de Área | MANTER (morno) | "não ficou muito bom, mas também não é ruim" — candidato a melhorar |
+| 37 | G14 Chuva de Rebites | MANTER | "gostei, é boa" |
+| 38 | V2 Desmoronamento | MANTER | pedaços do Térreo despencam pelo poço em faixas marcadas na Fundação |
+| 39 | V3 Enchente | MANTER | faz sentido com o mapa |
+| 40 | G01 Sirene de Demolição | MANTER | "muito bom" — hoje é a ferramenta do diretor de destruição (sirene + fita → o trecho cede) |
+| 41 | G09 Inspeção de Segurança | **TIRAR do jogo** | não gostou (já estava fora do Canteiro) → REPROVADO |
+| 27, 28 | G02 Ventania, G05 Operação Guindaste | sem comentário = MANTER | |
