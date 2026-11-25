@@ -41,7 +41,8 @@ var target = null
 var tex := {}
 var fund := {}                 # layout da Fundação (etapa 2)
 var quiet := false             # virada da fase: desaba tudo sem um texto por peça
-var pillars_down := false      # virada: os pilares do núcleo também caem
+var pillars_down := false
+var mute_hit := false          # marretada do robô: o som é o clang aprovado (demolicao.gd), não a pancada da peça      # virada: os pilares do núcleo também caem
 
 func setup(m: Node, lv) -> void:
 	main = m
@@ -167,12 +168,14 @@ func damage(p: Dictionary, amount: int, at: Vector2) -> void:
 	p["shake"] = 0.3
 	main.dust(at, 0.9)
 	if p["nucleo"]:
-		Audio.play("caixote_pancada", 0.6, -4.0)
+		if not mute_hit:
+			Audio.play("caixote_pancada", 0.6, -4.0)
 		return
 	p["hp"] = maxi(int(p["hp"]) - amount, 0)
 	var frac := float(p["hp"]) / float(p["max"])
 	p["state"] = 0 if frac > 0.67 else (1 if frac > 0.34 else 2)
-	Audio.play("caixote_pancada", 0.55 + 0.1 * p["state"], -1.0)
+	if not mute_hit:
+		Audio.play("caixote_pancada", 0.55 + 0.1 * p["state"], -1.0)
 	main.spark(at, 3 + 2 * p["state"])
 	for k in 4 + 4 * p["state"]:
 		_crumb(p)

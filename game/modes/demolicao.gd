@@ -461,22 +461,34 @@ func attack(r, kind: String) -> bool:
 			r.hitstop = stop
 			PlayerInput.vibrate(r.pid, 0.45 if heavy else 0.25, 0.0, 0.08 if heavy else 0.05)   # quem acertou sente o golpe
 			pass_bomb(r.pid, o.pid)
-			Audio.play("bonk", (0.85 if heavy else 1.2) / mult, 2.0 if heavy else -3.0)
+			Audio.play("ba_impacto_pesado" if heavy else "ba_impacto_rapido")   # pancada metálica no robô (impacto confirmado)
 			main.spark(o.rect().get_center(), 9 if heavy else 4)
 			main.shake((7.0 if heavy else 2.5) * mult)
 			main.impact_fx(o.rect().get_center() + Vector2(-r.facing * 10, 0), r.facing, 1.0 if heavy else 0.3)
 			hit_robot = true
+	var struct_hit := false
 	if fx != null and is_instance_valid(fx) and fx.hammer_hit(r, hit.grow(8), heavy):
+		struct_hit = true
 		if not hit_robot:
 			r.hitstop = float(hs["rapido"])
-	if mecs != null and is_instance_valid(mecs) and mecs.hammer_hit(hit.grow(8), heavy, r.pid) and not hit_robot:
-		r.hitstop = float(hs["rapido"])   # controle de mecanismo da fase
-	if main.events.hammer_hit(hit.grow(8), heavy, r.pid) and not hit_robot:
-		r.hitstop = float(hs["rapido"])   # entulho do evento G06
+	if mecs != null and is_instance_valid(mecs) and mecs.hammer_hit(hit.grow(8), heavy, r.pid):
+		struct_hit = true
+		if not hit_robot:
+			r.hitstop = float(hs["rapido"])   # controle de mecanismo da fase
+	if main.events.hammer_hit(hit.grow(8), heavy, r.pid):
+		struct_hit = true
+		if not hit_robot:
+			r.hitstop = float(hs["rapido"])   # entulho do evento G06
 	if heavy and canteiro != null and is_instance_valid(canteiro):
-		if canteiro.hammer(r, hit, PlayerInput.held(r.pid, "down")) and not hit_robot:
-			r.hitstop = float(hs["rapido"])
-			main.shake(6.0)
+		canteiro.mute_hit = true   # o clang aprovado substitui a pancada genérica da peça
+		if canteiro.hammer(r, hit, PlayerInput.held(r.pid, "down")):
+			struct_hit = true
+			if not hit_robot:
+				r.hitstop = float(hs["rapido"])
+				main.shake(6.0)
+		canteiro.mute_hit = false
+	if not hit_robot and struct_hit:   # acertou estrutura/máquina: clang da marreta no metal (nunca junto do impacto no robô)
+		Audio.play("ba_marreta_pesada" if heavy else "ba_marreta_rapida")
 	if hit_robot or not heavy:
 		return hit_robot
 	var lv = main.level
@@ -494,7 +506,7 @@ func attack(r, kind: String) -> bool:
 			var center := Vector2(cell * 64) + Vector2(32, 32)
 			main.spark(center, 4)
 			main.dust(center, 0.8)
-			Audio.play("caixote_pancada", 0.85 if big else 1.0)
+			Audio.play("ba_marreta_pesada")
 			break_reason = "chão marretado"
 			break_by = r.pid
 			lv.damage(cell, main.level.block_hp if rule() == "batata" else 1)   # Batata: 1 golpe quebra
@@ -656,7 +668,9 @@ func intercept_kill(r) -> bool:
 		if lives[r.pid] <= 0:
 			return false
 		main.float_text(r.position + Vector2(0, -90), "-1 VIDA", main.player_color(r.pid))
-	Audio.play("eliminado", 1.2, -4.0)
+	if not r.get_meta("ko_fora", false):   # KO fora da arena: só a explosão (main.ko_blast)
+		Audio.play("eliminado", 1.2, -4.0)
+	r.remove_meta("ko_fora")
 	main.dust(r.position + Vector2(0, -30), 1.2)
 	r.dmg = 0.0
 	respawn(r)

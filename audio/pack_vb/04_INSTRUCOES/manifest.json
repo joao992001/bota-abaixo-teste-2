@@ -1,0 +1,245 @@
+{
+  "title": "BOTA-ABAIXO — Pacote de áudio base, mixagem B aprovada",
+  "date": "2026-11-25",
+  "approved_reference": "01_REFERENCIAS/REFERENCIA_APROVADA_GAMEPLAY_B_MUSICA_DISCRETA.mp3",
+  "dry_reference": "01_REFERENCIAS/REFERENCIA_APROVADA_SOMENTE_SFX.mp3",
+  "mixing": {
+    "music": "Rock Cartoon Divertido",
+    "approved_attenuation": "-14 dB relative to previous music layer, NOT automatically -14 dB on new BG audio file",
+    "bg_music_gain_vs_raw_source_db": -25.6,
+    "footsteps": "Files already contain -14 dB attenuation from movement V0.2; use low runtime footstep gain",
+    "priority": "heavy hits and offmap explosion > quick hits > jump/dash > footsteps and ambience",
+    "on_elimination": "duck music briefly (~0.43 linear reduction initially, 0.48 s release); match B preview, avoid clipping"
+  },
+  "assets": [
+    {
+      "file": "02_SFX/movimento/passo_metal_01.wav",
+      "category": "movimento",
+      "event": "footstep",
+      "source": "BOTA_ABAIXO_Movimentacao_V02_Ajustada/01_Corrida_Passo_A.wav",
+      "duration_seconds": 0.23,
+      "note": "Já atenuado -14 dB na fonte V0.2; NÃO aplicar outra atenuação automática de -14 dB"
+    },
+    {
+      "file": "02_SFX/movimento/passo_metal_02.wav",
+      "category": "movimento",
+      "event": "footstep",
+      "source": "BOTA_ABAIXO_Movimentacao_V02_Ajustada/02_Corrida_Passo_B.wav",
+      "duration_seconds": 0.23,
+      "note": "Já atenuado -14 dB na fonte V0.2; NÃO aplicar outra atenuação automática de -14 dB"
+    },
+    {
+      "file": "02_SFX/movimento/passo_metal_03.wav",
+      "category": "movimento",
+      "event": "footstep",
+      "source": "BOTA_ABAIXO_Movimentacao_V02_Ajustada/03_Corrida_Passo_C.wav",
+      "duration_seconds": 0.23,
+      "note": "Já atenuado -14 dB na fonte V0.2; NÃO aplicar outra atenuação automática de -14 dB"
+    },
+    {
+      "file": "02_SFX/movimento/passo_metal_04.wav",
+      "category": "movimento",
+      "event": "footstep",
+      "source": "BOTA_ABAIXO_Movimentacao_V02_Ajustada/04_Corrida_Passo_D.wav",
+      "duration_seconds": 0.23,
+      "note": "Já atenuado -14 dB na fonte V0.2; NÃO aplicar outra atenuação automática de -14 dB"
+    },
+    {
+      "file": "02_SFX/movimento/salto_01.wav",
+      "category": "movimento",
+      "event": "jump_1",
+      "source": "BOTA_ABAIXO_Movimentacao_V02_Ajustada/05_Salto_A.wav",
+      "duration_seconds": 0.32,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/movimento/salto_02.wav",
+      "category": "movimento",
+      "event": "jump_1",
+      "source": "BOTA_ABAIXO_Movimentacao_V02_Ajustada/06_Salto_B.wav",
+      "duration_seconds": 0.32,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/movimento/salto_duplo_01.wav",
+      "category": "movimento",
+      "event": "jump_2",
+      "source": "BOTA_ABAIXO_Movimentacao_V02_Ajustada/13_Salto_Duplo_A.wav",
+      "duration_seconds": 0.296,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/movimento/salto_duplo_02.wav",
+      "category": "movimento",
+      "event": "jump_2",
+      "source": "BOTA_ABAIXO_Movimentacao_V02_Ajustada/14_Salto_Duplo_B.wav",
+      "duration_seconds": 0.288,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/movimento/aterrissagem_leve.wav",
+      "category": "movimento",
+      "event": "landing",
+      "source": "BOTA_ABAIXO_Movimentacao_V02_Ajustada/07_Aterrissagem_Leve.wav",
+      "duration_seconds": 0.26,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/movimento/aterrissagem_pesada.wav",
+      "category": "movimento",
+      "event": "landing",
+      "source": "BOTA_ABAIXO_Movimentacao_V02_Ajustada/08_Aterrissagem_Pesada.wav",
+      "duration_seconds": 0.36,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/movimento/dash_solo.wav",
+      "category": "movimento",
+      "event": "dash",
+      "source": "BOTA_ABAIXO_Movimentacao_V02_Ajustada/15_Dash_Terrestre.wav",
+      "duration_seconds": 0.248,
+      "note": "Se dash e esquiva forem a mesma ação, usar apenas um som"
+    },
+    {
+      "file": "02_SFX/movimento/dash_aereo.wav",
+      "category": "movimento",
+      "event": "dash",
+      "source": "BOTA_ABAIXO_Movimentacao_V02_Ajustada/16_Dash_Aereo.wav",
+      "duration_seconds": 0.248,
+      "note": "Se dash e esquiva forem a mesma ação, usar apenas um som"
+    },
+    {
+      "file": "02_SFX/movimento/esquiva_solo.wav",
+      "category": "movimento",
+      "event": "dodge",
+      "source": "BOTA_ABAIXO_Movimentacao_V02_Ajustada/09_Esquiva_Terrestre.wav",
+      "duration_seconds": 0.285,
+      "note": "Não acumular com dash se representam uma única ação"
+    },
+    {
+      "file": "02_SFX/movimento/esquiva_aerea.wav",
+      "category": "movimento",
+      "event": "dodge",
+      "source": "BOTA_ABAIXO_Movimentacao_V02_Ajustada/10_Esquiva_Aerea.wav",
+      "duration_seconds": 0.285,
+      "note": "Não acumular com dash se representam uma única ação"
+    },
+    {
+      "file": "02_SFX/combate/marreta_rapida_metal.wav",
+      "category": "combate",
+      "event": "hammer_hits_structure",
+      "source": "BOTA_ABAIXO_Marretadas_Metal_V02/BOTA_Marretada_Rapida_Metal.wav",
+      "duration_seconds": 0.65,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/combate/marreta_pesada_metal.wav",
+      "category": "combate",
+      "event": "heavy_hammer_hits_structure",
+      "source": "BOTA_ABAIXO_Marretadas_Metal_V02/BOTA_Marretada_Pesada_Metal.wav",
+      "duration_seconds": 1.35,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/combate/impacto_robo_rapido_01.wav",
+      "category": "combate",
+      "event": "hammer_fast_hits_robot",
+      "source": "BOTA_ABAIXO_Colisoes_Robos_V01/BOTA_Impacto_Robo_Rapido_01.wav",
+      "duration_seconds": 0.676,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/combate/impacto_robo_rapido_02.wav",
+      "category": "combate",
+      "event": "hammer_fast_hits_robot",
+      "source": "BOTA_ABAIXO_Colisoes_Robos_V01/BOTA_Impacto_Robo_Rapido_02.wav",
+      "duration_seconds": 0.66,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/combate/impacto_robo_rapido_03.wav",
+      "category": "combate",
+      "event": "hammer_fast_hits_robot",
+      "source": "BOTA_ABAIXO_Colisoes_Robos_V01/BOTA_Impacto_Robo_Rapido_03.wav",
+      "duration_seconds": 0.65,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/combate/impacto_robo_rapido_04.wav",
+      "category": "combate",
+      "event": "hammer_fast_hits_robot",
+      "source": "BOTA_ABAIXO_Colisoes_Robos_V01/BOTA_Impacto_Robo_Rapido_04.wav",
+      "duration_seconds": 0.65,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/combate/impacto_robo_rapido_05.wav",
+      "category": "combate",
+      "event": "hammer_fast_hits_robot",
+      "source": "BOTA_ABAIXO_Colisoes_Robos_V01/BOTA_Impacto_Robo_Rapido_05.wav",
+      "duration_seconds": 0.65,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/combate/impacto_robo_pesado_01.wav",
+      "category": "combate",
+      "event": "hammer_heavy_hits_robot",
+      "source": "BOTA_ABAIXO_Colisoes_Robos_V01/BOTA_Impacto_Robo_Pesado_01.wav",
+      "duration_seconds": 1.403,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/combate/impacto_robo_pesado_02.wav",
+      "category": "combate",
+      "event": "hammer_heavy_hits_robot",
+      "source": "BOTA_ABAIXO_Colisoes_Robos_V01/BOTA_Impacto_Robo_Pesado_02.wav",
+      "duration_seconds": 1.371,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/combate/impacto_robo_pesado_03.wav",
+      "category": "combate",
+      "event": "hammer_heavy_hits_robot",
+      "source": "BOTA_ABAIXO_Colisoes_Robos_V01/BOTA_Impacto_Robo_Pesado_03.wav",
+      "duration_seconds": 1.338,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/combate/impacto_robo_pesado_04.wav",
+      "category": "combate",
+      "event": "hammer_heavy_hits_robot",
+      "source": "BOTA_ABAIXO_Colisoes_Robos_V01/BOTA_Impacto_Robo_Pesado_04.wav",
+      "duration_seconds": 1.318,
+      "note": ""
+    },
+    {
+      "file": "02_SFX/eliminacao/explosao_fora_arena_padrao.wav",
+      "category": "eliminacao",
+      "event": "offmap_ko",
+      "source": "BOTA_Explosao_Realista_V03/02_Explosao_Eliminacao_Curta.wav",
+      "duration_seconds": 1.55,
+      "note": "PADRÃO: explosão de eliminação da prévia aprovada"
+    },
+    {
+      "file": "02_SFX/eliminacao/explosao_fora_arena_longa_opcional.wav",
+      "category": "eliminacao",
+      "event": "optional_offmap_ko",
+      "source": "BOTA_Explosao_Realista_V03/01_Explosao_Detonacao_Forte.wav",
+      "duration_seconds": 2.05,
+      "note": "Alternativa referencial, não disparar simultaneamente ao padrão"
+    }
+  ],
+  "excluded": [
+    "rejected synthetic swoosh/wind assets",
+    "rejected arremesso flying sound",
+    "rejected metal-only elimination variants",
+    "rejected cartoon/mechanical pseudo explosions",
+    "unapproved spell and map event SFX"
+  ],
+  "notes": [
+    "Sound of flight following a hit is silent; only play a new contact SFX on actual collision.",
+    "User approved B composite; do not interpret it as approval of all alternative files.",
+    "This package is to install on CURRENT Godot project after audit, not the obsolete archive.",
+    "One-shot sound effects use wav; music uses OGG loop; MP3 files are references only."
+  ]
+}

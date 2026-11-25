@@ -5,6 +5,9 @@ description: "Sons e música de Bota-Abaixo com tools/sfxforge.py: lista de efei
 
 # Áudio
 
+**Leia antes `docs/manuais/audio.md`: desde 2026-11-25 o som vem de PACKS APROVADOS pelo usuário (`Audio.APROVADO`,
+ids `ba_*`). O sfxforge abaixo foi reprovado; use-o só se o usuário pedir. Não troque sons fora do escopo do pack.**
+
 Efeitos: `audio/sfx/*.json` → `python tools/sfxforge.py build` (acabamento automático: filtro, sala, volume por importância).
 Música: `audio/music/*.json` (motor "compositor") → `python tools/musica.py`.
 

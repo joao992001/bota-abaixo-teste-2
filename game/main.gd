@@ -275,21 +275,13 @@ func player_color(p: int) -> Color:
 	return Data.COLORS[clampi(p, 0, 3)]
 
 # ---------------------------------------------------------------- loop
-## Música de cada tela.
+## Música de cada tela: o TEMA aprovado (Rock Cartoon Divertido, pack VB) em loop no menu e em todas as partidas, sem
+## reiniciar entre telas; só a vitória tem a vinheta própria. Sem acelerar na tensão (mudaria o tom da música aprovada).
+const TEMA := "rock_cartoon"
 func _update_music() -> void:
-	var tense := false
 	match state:
 		S.WIN: Audio.music("vitoria", false)
-		S.RUN, S.SCORE:
-			var nm := "partida"
-			if mode == "demolicao" and demo.arena.has("musica"):
-				nm = String(demo.arena["musica"])   # cada família de arena tem sua música
-				tense = state == S.RUN and (demo.quaking
-					or (demo.rule() == "batata" and demo.bomb_holder >= 0 and demo.bomb_fuse < 3.0)
-					or (demo.fx != null and is_instance_valid(demo.fx) and demo.fx.scroll_on and demo.t > 20.0))
-			Audio.music(nm)
-		_: Audio.music("menu")
-	Audio.music_tempo(1.03 if tense else 1.0, 1.0 / 60.0)   # tensão: a música acelera um pouquinho
+		_: Audio.music(TEMA)
 
 func _physics_process(dt: float) -> void:
 	_update_music()
@@ -785,7 +777,9 @@ func ko_blast(r: CharacterBody2D) -> void:
 	r.position = at + Vector2(0, 36)
 	r.velocity = -dir * 900.0
 	shake(float(kc["tremor"]))
-	Audio.play("explosao", 0.9, 2.0)
+	Audio.play("ba_ko_fora")   # explosão aprovada: UMA por eliminação fora da arena (sem o som de peças caindo)
+	Audio.duck()
+	r.set_meta("ko_fora", true)
 	PlayerInput.vibrate(r.pid, 1.0, 1.0, 0.5)
 
 ## Anel de ar (pulo duplo, recuperou o equilíbrio no ar).

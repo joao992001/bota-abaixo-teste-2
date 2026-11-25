@@ -27,6 +27,10 @@ caem pelo buraco; caixas nascem abaixo do teto da Fundação (`spells.sky_y`). P
 água transbordando em cachoeiras + jorros do teto; placas/lâmpadas/cordas presas ao cenário. **FASE 1 FECHADA pelo usuário.**
 **Método de fases VALIDADO (2026-11-25):** `docs/manuais/derruba/mapa.md` (ordem com aprovações, checklist §5, registro de
 erros §7). Próxima fase: seguir a skill `criar-fase` desde o catálogo.
+**SOM — pack aprovado VB integrado (2026-11-25):** movimento (passo, pulo, pulo duplo, pouso, dash), golpes (impacto no robô ×
+clang na estrutura, nada no vazio), KO fora da arena (1 explosão + música abaixa) e tema Rock Cartoon em loop. Manual
+`docs/manuais/audio.md`; teste `--so=som`; prévia com som `tools/mixar_video.py`. Próximo: packs de spells/eventos/cenário
+(o usuário vai mandar); até lá não mexer nesses sons.
 G05/G09 ganharam função (caixa na carga + gancho que solta; drone conserta e recolhe) — FEITO.
 **ÚLTIMO (2026-11-24): ELENCO NOVO DE 5 ROBÔS** (pedido do usuário: os 8 modelos "olhavam para a câmera e batiam com
 uma mão"). Marretão (marreta de 2 mãos), Picareta (pernas de pássaro), Chave (mecânico, chave inglesa), Britadeira

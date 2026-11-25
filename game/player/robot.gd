@@ -386,7 +386,7 @@ func fx_flags() -> Dictionary:
 ## Pulo duplo do propulsor (um no ar; recarrega no chão, na parede e na borda).
 func _air_jump(ix: float) -> void:
 	air_jumps -= 1
-	Audio.play("pulo", _pitch() * 1.25)
+	Audio.play("ba_salto_duplo")
 	velocity.y = -_jump_speed() * float(main.demo.cfg["recuperacao"]["pulo_duplo"])
 	own_vx = maxf(absf(own_vx), absf(ix) * f("max_run") * 0.8) * (signf(ix) if ix != 0.0 else signf(own_vx))
 	var_jump = f("var_jump_time") * 0.6
@@ -456,14 +456,14 @@ func _hang_update(dt: float) -> void:
 			velocity.y = -_jump_speed() * 0.8
 			own_vx = -hang_dir * f("wall_jump_h_speed") * 0.7
 			wall_lock = f("wall_jump_lock_time")
-			Audio.play("pulo", _pitch())
+			Audio.play("ba_salto")
 			return
 		# escalada animada: sobe e passa por cima da quina (~0,16 s), sem teletransporte
 		hanging = false
 		climb_t = 0.0
 		climb_from = position
 		climb_to = Vector2(cell.x * 64.0 + 32.0 - hang_dir * 6.0, cell.y * 64.0 - 1.0)
-		Audio.play("pulo", _pitch())
+		Audio.play("ba_salto", 1.0, -4.0)
 		vis.stretch()
 
 func _climb_update(dt: float) -> void:
@@ -566,7 +566,7 @@ func _pitch() -> float:
 	return 0.92 + pid * 0.08
 
 func _jump(ix: float) -> void:
-	Audio.play("pulo", _pitch())
+	Audio.play("ba_salto")
 	velocity.y = -_jump_speed()
 	own_vx += ix * f("jump_h_boost")
 	var_jump = f("var_jump_time")
@@ -576,7 +576,7 @@ func _jump(ix: float) -> void:
 	main.dust(position)
 
 func _wall_jump(wd: int) -> void:
-	Audio.play("pulo", _pitch() * 1.08)
+	Audio.play("ba_salto")
 	velocity.y = -_jump_speed()
 	own_vx = -wd * f("wall_jump_h_speed")
 	facing = -wd
@@ -633,7 +633,9 @@ func launch(tiles: float) -> void:
 ## Eliminado: o robô desmonta em peças (main.break_robot) e some.
 func eliminate() -> void:
 	PlayerInput.vibrate(pid, 0.8, 1.0, 0.45)
-	Audio.play("eliminado", _pitch())
+	if not get_meta("ko_fora", false):   # KO fora da arena já tocou a explosão (main.ko_blast): som único
+		Audio.play("eliminado", _pitch())
+	remove_meta("ko_fora")
 	alive = false
 	active = false
 	collision_mask = 0
@@ -671,10 +673,12 @@ func _start_attack(kind: String) -> void:
 	atk_hit = false
 	atk_landed = false
 	hammer_anim = _atk_total()
+	# só o "vento" do balanço, baixo e subordinado: o som de pancada toca APENAS no impacto confirmado
+	# (modes/demolicao.gd → pancada no robô ou na estrutura); golpe no vazio não faz clang
 	if kind == "rapido":
-		Audio.play("marreta_vento", _pitch() * 1.25, -4.0)
+		Audio.play("marreta_vento", _pitch() * 1.25, -14.0)
 	else:
-		Audio.play("marreta_vento", _pitch() * 0.8, 1.0)
+		Audio.play("marreta_vento", _pitch() * 0.8, -10.0)
 		var_jump = minf(var_jump, 0.04)
 	vis.attack(kind)
 
@@ -757,7 +761,7 @@ func _start_dodge(on_floor: bool) -> void:
 	hammer_anim = 0.0
 	var_jump = 0.0
 	buffer = 0.0
-	Audio.play("soprador", 1.6 + pid * 0.05, -9.0)
+	Audio.play("ba_dash_solo" if on_floor else "ba_dash_aereo")   # dash e esquiva são a MESMA ação: um som só
 	main.dust(position + Vector2(-dodge_dir.x * 14.0, -4.0), 0.6 if on_floor else 0.4)
 	vis.dodge(dodge_dir, on_floor)
 
@@ -795,7 +799,7 @@ func _dodged() -> void:
 func _on_landed() -> void:
 	air_dodge = 1
 	var hard := clampf((land_v - 300.0) / 900.0, 0.0, 1.0)
-	Audio.play("aterrissa", _pitch() * (1.0 - hard * 0.15), -5.0 + hard * 4.0)
+	Audio.play("ba_aterrissa_pesada" if hard > 0.45 else "ba_aterrissa_leve", 1.0, -3.0 + hard * 3.0)
 	vis.land(hard, stun_t > 0.0 or recover_t > 0.0)
 	main.dust(position, 1.0 + hard * 0.8)
 

@@ -236,10 +236,9 @@ func autotest() -> void:
 		if Audio._stream(path) == null:
 			missing.append(k)
 	check(Audio._index.size() >= 30 and missing.is_empty(), "%d sons carregam (faltando: %s)" % [Audio._index.size(), str(missing)])
-	Audio.music("partida")
 	await frames(30)
 	var ms: AudioStream = Audio._music.stream
-	check(ms is AudioStreamWAV and ms.loop_mode == AudioStreamWAV.LOOP_FORWARD, "música da partida em WAV (QOA no jogo) e em loop")
+	check(Audio._music_name == main.TEMA and ms is AudioStreamOggVorbis and ms.loop, "tema aprovado (Rock Cartoon) tocando em loop")
 	Audio.play("bonk")
 	Audio.voice("voz_ai", 2)
 	print("== Teclado (Windows: Shift fantasma nas setas, Ctrl esquerdo x direito)")
@@ -1777,7 +1776,7 @@ func mecanismos_test() -> void:
 	et.t = et.virada_s()
 	et.state = "aviso"
 	et.st_t = 0.01
-	for k in 300:
+	for k in 60 * (int(et.cfg["queda_max_s"]) + 2):   # a queda é lenta (até queda_max_s)
 		await frames(1)
 		if et.etapa == 2 and et.state == "etapa":
 			break
@@ -3160,6 +3159,96 @@ func equipa_frames(dir: String) -> void:
 			await frames(1)
 			await grab(dir, "eq%d_%s_%s" % [pass_i, st[0], st[1]])
 
+## Som aprovado (pack VB): cada ação toca SÓ o seu som, uma vez; golpe no vazio não faz clang; KO fora da arena = UMA
+## explosão (sem o som de peças) e abaixa a música; tema em loop no barramento Music. --so=som
+func som_test() -> void:
+	print("== Som aprovado (pack VB)")
+	var miss := []
+	for k in Audio.APROVADO.keys():
+		for f in Audio.APROVADO[k][0]:
+			if Audio._stream("res://assets/audio/aprovado/%s.wav" % f) == null:
+				miss.append(f)
+	check(miss.is_empty(), "%d sons aprovados carregam (faltando: %s)" % [Audio.APROVADO.size(), str(miss)])
+	await demo_round()
+	main.demo.spells.spawn_t = 999.0
+	var r0 = main.robots[0]
+	var r1 = main.robots[1]
+	var log_of := func() -> Array:
+		return Audio.rec_log.filter(func(e): return e.has("path")).map(func(e): return String(e["path"]).get_file().get_basename())
+	var has := func(names: Array, pre: String) -> int:
+		return names.filter(func(n): return String(n).begins_with(pre)).size()
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(20), 576))
+	r0.facing = 1
+	await frames(20)
+	Audio.rec_log = []
+	await tap("v0", "jump")
+	await frames(6)
+	await tap("v0", "jump")
+	await frames(40)
+	var l: Array = log_of.call()
+	check(has.call(l, "salto_0") == 1 and has.call(l, "salto_duplo") == 1, "pulo e pulo duplo: 1 som cada (%s)" % str(l))
+	check(has.call(l, "aterrissagem") == 1, "pouso: 1 som")
+	await frames(30)
+	Audio.rec_log = []
+	r0.dodge_cd = 0.0
+	await tap("v0", "dodge")
+	await frames(30)
+	l = log_of.call()
+	check(has.call(l, "dash_solo") == 1 and has.call(l, "esquiva") == 0 and not l.has("soprador"), "dash no chão: só o som de dash (%s)" % str(l))
+	# golpe no vazio: nada de pancada
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(20), 576))
+	await frames(10)
+	Audio.rec_log = []
+	await tap("v0", "hammer")
+	await frames(25)
+	l = log_of.call()
+	check(has.call(l, "impacto") == 0 and has.call(l, "marreta_r") + has.call(l, "marreta_p") == 0, "golpe no vazio não faz clang (%s)" % str(l))
+	# golpe rápido e pesado no robô
+	put(r1, Vector2(col_x(11) + 60, 576))
+	await frames(25)
+	Audio.rec_log = []
+	await tap("v0", "hammer")
+	await frames(8)
+	l = log_of.call()
+	check(has.call(l, "impacto_robo_rapido") == 1 and has.call(l, "marreta_r") + has.call(l, "marreta_p") == 0, "golpe rápido no robô: 1 pancada de robô, sem clang de estrutura (%s)" % str(l))
+	await frames(50)
+	put(r0, Vector2(col_x(11), 576))
+	put(r1, Vector2(col_x(11) + 60, 576))
+	await frames(5)
+	Audio.rec_log = []
+	await heavy_hit("v0")
+	l = log_of.call()
+	check(has.call(l, "impacto_robo_pesado") == 1, "pesada no robô: pancada pesada (%s)" % str(l))
+	# pesada na estrutura (caixote do mapa): clang de marreta no metal, uma vez, sem pancada de robô
+	await frames(60)
+	put(r0, Vector2(col_x(12), 576))
+	put(r1, Vector2(col_x(26), 576))
+	r0.facing = 1
+	await frames(20)
+	Audio.rec_log = []
+	await heavy_hit("v0")
+	l = log_of.call()
+	check(has.call(l, "marreta_pesada_metal") == 1 and has.call(l, "impacto") == 0 and not l.has("caixote_pancada_1"), "pesada na estrutura: 1 clang no metal (%s)" % str(l))
+	# KO fora da arena: UMA explosão, sem 'eliminado', música abaixa
+	for i in main.players.size():
+		main.demo.lives[i] = 9
+	await frames(60)
+	Audio.music(main.TEMA)
+	await frames(30)
+	Audio.rec_log = []
+	put(r1, Vector2(-3000, 300))
+	await frames(4)
+	l = log_of.call()
+	check(has.call(l, "explosao_fora_arena") == 1 and not l.has("eliminado") and not l.any(func(n): return String(n).begins_with("explosao_") and not String(n).contains("fora")), "KO fora da arena: 1 explosão aprovada, sem som de peças (%s)" % str(l))
+	check(Audio._duck < 0.9, "a música abaixa na explosão (%.2f)" % Audio._duck)
+	await frames(60)
+	check(Audio._duck == 1.0, "...e volta em ~0,5 s")
+	var ms: AudioStream = Audio._music.stream
+	check(ms is AudioStreamOggVorbis and ms.loop and Audio._music.bus == "Music" and Audio._pool[0].bus == "SFX", "tema Rock Cartoon em loop no barramento Music; efeitos no SFX")
+	Audio.rec_log = null
+
 ## Vitrine dos eventos (--eventos=DIR, --so-eventos=G02+G05): cada evento do aviso ao fim, 1 quadro a cada 3.
 func eventos_frames(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
@@ -3841,6 +3930,9 @@ func video_frames(dir: String) -> void:
 		if a.begins_with("--tour="):
 			tour = Array(a.substr(7).split(","))
 	main.event_level = 3 if tour.size() > 0 else main.event_level
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--arena="):
+			main.arena_choice = a.substr(8)   # vídeo de 30 s numa arena só (ex.: conferir o som)
 	if tour.size() > 0:
 		main.arena_choice = tour[0]
 	main.start_match()
