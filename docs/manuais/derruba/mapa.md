@@ -1,4 +1,9 @@
-# Manual — criar uma FASE (mapa) do modo Derruba · MÉTODO VALIDADO
+# Manual — criar uma FASE (mapa) do modo DERRUBA · MÉTODO VALIDADO (OBRIGATÓRIO)
+
+> **Escopo: modo Derruba.** A **Fase 1 do Derruba (Canteiro de Obras)** foi criada exatamente neste molde, e **todas as
+> próximas fases do Derruba têm de ser criadas neste mesmo molde**: mesma ordem, mesmos pontos de aprovação, mesmos
+> blocos A–F, mesmo checklist (§5) e o registro de erros (§7) consultado antes de começar. Os outros modos (Batata-Dinamite,
+> Rei da Obra, Fuga) ainda não têm método de fase validado: não aplique este sem o usuário pedir.
 
 **Status: validado em 2026-11-25** com a Fase 1 (Canteiro de Obras), que o usuário deu como fechada. O método levou
 1 catálogo + 1 prancha + 6 blocos de código + **3 rodadas de correção depois de o usuário jogar**. As 3 rodadas vieram

@@ -5,6 +5,8 @@ description: "Criar uma FASE nova do modo Derruba (mapa como cena viva em etapas
 
 # Criar fase (Derruba) — siga o manual
 
+**Só para o modo Derruba.** A Fase 1 (Canteiro) foi feita neste molde e toda fase nova do Derruba segue o mesmo molde.
+
 1. Leia **só** `docs/manuais/derruba/mapa.md` (método VALIDADO: ordem com aprovações, blocos, CHECKLIST do §5 e
    registro de erros do §7) e `docs/manuais/derruba/mapa_cartilha.md` (regras de desenho).
    Exemplo pronto: `docs/fases/derruba/f1_canteiro.md` (catálogo) e os geradores `art/src/cenarios/fase1_*.py`.
