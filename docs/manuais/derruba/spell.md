@@ -1,6 +1,9 @@
 # Manual — criar uma SPELL (modo Derruba)
 
 Spell = item da caixa: 1 por robô, botão de ESPECIAL. 26 aprovadas (S01–S34, ver `NOMES` em `game/modes/spells.gd`).
+Princípios gerais: [`../spells.md`](../spells.md). **Classes = do modo** (`modos[derruba].classes_spells`: ataque,
+controle, engenharia, transformação). **Disponibilidade = do mapa**: uma spell só sai nas caixas de um mapa se estiver em
+`spells_permitidas` do manifesto dele (`data/mapas/derruba/<mapa>.json`). Canteiro: as 26. Laboratório (ferramenta): todas.
 **Nunca reintroduzir as reprovadas:** S09, S22, S23, S24, S26, S29, S30, S32.
 
 ## 1. Regras de desenho (o que o usuário aprovou — seguir desde a 1ª versão)
@@ -28,7 +31,8 @@ Spell = item da caixa: 1 por robô, botão de ESPECIAL. 26 aprovadas (S01–S34,
 ## 2. Onde fica cada coisa
 | O quê | Arquivo |
 |---|---|
-| Números (cargas, preparo, alcance, energia…) e sorteio | `data/modos.json` → `demolicao.spells` (`S##`, `pools.derruba`, `familias`, `raridade`, `caixa`) |
+| Números (cargas, preparo, alcance, energia…) e sorteio | `data/modos.json` → `demolicao.spells` (`S##`, `raridade`, `caixa`; `pools.derruba` = só mapas-ferramenta) e `demolicao.modos[derruba].classes_spells` (pesos das classes) |
+| Autorização por mapa | manifesto do mapa → `spells_permitidas` (+ `spells.md` da biblioteca do mapa: origem e estado) |
 | Dano/empurrão do golpe | `data/modos.json` → `demolicao.amassometro.spell_<nome>` (`dano, kx, kx_por, ky, ky_por`) |
 | Lógica | `game/modes/spells.gd`: `NOMES`, `use()` (início), `update()` → `_update_attack2/_etapa3/_etapa4` (quadro a quadro), `_draw()`, `flags()` (o que o visual precisa), `clear()` (limpar tudo), `hud_info()` |
 | Visual no robô | `game/player/robot_visual.gd`: `SPELL_TOOLS` + `WEAPONS` (armas), `BACK_PROPS`, `HAND_PROPS`, `KITS`, `ARMOR_SETS`, `FORM_TOOLS`; pose no bloco de spells de `current_pose()` |
@@ -41,8 +45,9 @@ Spell = item da caixa: 1 por robô, botão de ESPECIAL. 26 aprovadas (S01–S34,
 ## 3. Passo a passo
 1. **Ficha curta para o usuário** (antes do código): família (ataque/controle/engenharia/transformação), o que faz,
    toque × segurar, mira, alcance, como o rival reage, desenho da arma/objeto. Confira que não repete uma reprovada.
-2. **Dados:** `S##` em `demolicao.spells` com `familia`, `raridade`, `cargas` (ou `duracao_s`/`energia_s`) e os números
-   próprios; inclua em `pools.derruba`; se acerta robô, crie `amassometro.spell_<nome>`.
+2. **Dados:** `S##` em `demolicao.spells` com `familia` (uma das classes do modo), `raridade`, `cargas` (ou
+   `duracao_s`/`energia_s`) e os números próprios; inclua em `pools.derruba` (laboratório) e em `spells_permitidas` dos
+   mapas onde o usuário autorizou (o validador acusa classe fora do modo); se acerta robô, crie `amassometro.spell_<nome>`.
 3. **Arte:** função em `spells.py` (papel e giz, peça grande e legível, bico/pegada nos pontos certos) + `PIECES`.
    Gere, abra a imagem e olhe. Arma → `SPELL_TOOLS[id] = [textura, tamanho, pegada, bico]` e `WEAPONS`.
 4. **Lógica em `spells.gd`:** nome em `NOMES`; início em `use()` (`prep`, `fire`, `channel`, `energy`, `charges`); o

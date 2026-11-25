@@ -1,6 +1,6 @@
 # Bota-Abaixo — regras do projeto
 
-Plataforma competitivo, **multiplayer local 2–4**, Godot 4. Party game de robôs de demolição com **modos independentes** (Derruba, Batata-Dinamite, Rei da Obra, Fuga), cada um com suas arenas. (O antigo modo de peças com dono foi removido em 2026-11-20.) **Comece lendo `docs/ESTADO.md`** (estado atual e o que fazer a seguir). **Vai criar robô, spell ou evento? Siga o manual em `docs/manuais/`** (`personagem.md`, `derruba/spell.md`, `derruba/evento.md`, `derruba/mapa.md`) — obrigatório, e atualize o manual quando o usuário aprovar algo novo. Detalhes: `docs/GDD.md`. Visual: topo de `docs/estilo_visual.md` + `docs/referencias/`.
+Plataforma competitivo, **multiplayer local 2–4**, Godot 4. Party game de robôs de demolição com **modos independentes** (Derruba, Batata-Dinamite, Rei da Obra, Fuga), cada um com suas arenas. (O antigo modo de peças com dono foi removido em 2026-11-20.) **Comece lendo `docs/ESTADO.md`** (estado atual e o que fazer a seguir). **Vai criar ou mudar fase, spell, evento, perigo/mecanismo, robô, skin ou som? Comece pelo índice `docs/manuais/README.md`** (pedido → manual → biblioteca do mapa → testes) — obrigatório; atualize manual e biblioteca quando o usuário aprovar algo novo. Princípio: o MAPA define a experiência, o MODO define as regras; conteúdo de cada mapa no manifesto `data/mapas/<modo>/<mapa>.json`. Detalhes: `docs/GDD.md`. Visual: topo de `docs/estilo_visual.md` + `docs/referencias/`.
 
 ## Prioridades (nesta ordem)
 1. **Sempre jogável** — cada etapa termina com o jogo abrindo, testes rodando e commit.
@@ -49,10 +49,10 @@ tools/       sfxforge.py + scripts criados quando necessários
 | Tarefa | Skill | Quem |
 |---|---|---|
 | Regras, modos, rodada, pontuação | `regras-do-jogo` | sessão principal |
-| Nova spell / novo evento (Derruba) | `docs/manuais/derruba/spell.md` / `evento.md` | sessão principal |
+| Nova spell / evento / perigo-mecanismo / skin | `criar-elemento` + `docs/manuais/README.md` | sessão principal |
 | Movimento e sensação do robô | `controle-do-robo` | sessão principal |
 | 2–4 jogadores, controles | `multiplayer-local` | sessão principal |
-| Mapas / fases novas (Derruba) | `criar-fase` + `docs/manuais/derruba/mapa.md` | sessão principal |
+| Mapas / fases novas (Derruba) | `criar-fase` + `docs/manuais/derruba/README.md` → `mapa.md` | sessão principal |
 | Projeto Godot, importar arte, animação cut-out | `godot` | sessão principal |
 | Direção de arte e comparação com referências | `estilo-visual` | artistas e revisor |
 | Robôs (elenco de 5), expressões, golpes próprios | `personagens-e-acessorios` + `docs/manuais/personagem.md` | sessão principal |

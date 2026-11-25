@@ -1,5 +1,10 @@
 # FASE 1 do Derruba — CANTEIRO DE OBRAS · Catálogo (FECHADA em 2026-11-25)
 
+> **HISTÓRICO.** Este é o catálogo de conceito aprovado em 2026-11-24. A **biblioteca vigente** do mapa é
+> [`f1_canteiro/README.md`](f1_canteiro/README.md) e o conteúdo que o jogo usa está no manifesto
+> `data/mapas/derruba/canteiro_obras.json`. Onde este texto fala em virada **cronometrada** e em `por_fase`/`mecanismos.fase1`,
+> vale agora: transição aos **90% de destruição** com diretor adaptativo e autorização por cena no manifesto (2026-11-25).
+
 > **Fase fechada pelo usuário em 2026-11-25** (vale como exemplo do método em `docs/manuais/derruba/mapa.md`). Revisão
 > final: transição com câmera em roteiro e queda lenta, poço aberto na terra, bate-estaca com torre apoiada no piso (M6),
 > água que transborda em cachoeiras e jorra do teto (M7), placas e lâmpadas presas ao cenário, drone G09 fora da fase.

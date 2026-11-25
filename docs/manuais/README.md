@@ -1,32 +1,43 @@
-# Manuais de criação — Bota-Abaixo
+# Manuais de criação — Bota-Abaixo (ÍNDICE: comece aqui)
 
-Passo a passo **obrigatório** para criar coisas novas no jogo. Toda sessão (inclusive outro Claude ou outra conta) que for
-criar um destes itens **lê o manual antes de começar** e segue a ordem dele. Os manuais saíram do que deu certo (e do que
-o usuário reprovou) nas entregas de 2026-11-24.
+**Princípio:** o MAPA define a experiência; o MODO define as regras; o sistema geral define padrões; os MANUAIS ensinam o
+processo; a BIBLIOTECA do mapa registra o conteúdo aprovado; os DADOS (`data/`) fazem o jogo obedecer.
+Antes de criar qualquer coisa, leia [`sistema_criacao.md`](sistema_criacao.md) (hierarquia, estados, aprovações).
 
-| Vai criar… | Manual | Vale para |
+## 1. O usuário pediu… → o que abrir
+| Pedido | Manual (como fazer) | Biblioteca / dados (o que já existe) | Testes |
+|---|---|---|---|
+| **"Crie a fase N do Derruba"** (mapa novo) | [`derruba/README.md`](derruba/README.md) → [`derruba/mapa.md`](derruba/mapa.md) (+ [`mapa_cartilha.md`](derruba/mapa_cartilha.md)) · skill `criar-fase` | copie `docs/fases/derruba/_modelo/` → `fN_<nome>/`; manifesto `data/mapas/derruba/<mapa>.json` | `--so=mapa,etapas,diretor,mecanismos,eventos` |
+| Já deu **parte do conceito** (tema, cenas, eventos, spells, estilo) | o mesmo; registre o que ele DEFINIU como `APROVADO` na biblioteca e só proponha o que falta | idem | idem |
+| **Spell** nova (ou levar uma spell para outro mapa) | [`spells.md`](spells.md) → [`derruba/spell.md`](derruba/spell.md) | `data/modos.json` (definição) + `spells_permitidas` do manifesto do mapa (autorização) | `--so=spells,mapa` |
+| **Evento** novo / corrigir evento | [`eventos.md`](eventos.md) → [`derruba/evento.md`](derruba/evento.md) | biblioteca de eventos (`data/modos.json` → `eventos.lista`) + `cenas[].eventos` do manifesto | `--so=eventos,lab` |
+| **Perigo / mecanismo / armadilha** | [`perigos_mecanismos.md`](perigos_mecanismos.md) → [`derruba/perigos_mecanismos.md`](derruba/perigos_mecanismos.md) | `cenas[].mecanismos` do manifesto | `--so=mecanismos` |
+| **Robô** (personagem) | [`personagem.md`](personagem.md) — global, não pertence a modo nem mapa | `art/src/robos/elenco.py`, `modelos.json` | `--so=robos` + `--equipa=DIR` |
+| **Skin** | [`skins.md`](skins.md) — origem no MAPA; **ainda não implementar** | `docs/fases/<modo>/<mapa>/skins.md` | — |
+| **Som** | [`audio.md`](audio.md) | packs aprovados em `audio/pack_*` | `--so=som` |
+| Mexer numa fase **existente** | a biblioteca do mapa (`docs/fases/<modo>/<mapa>/README.md`) + o manual do tipo de elemento | manifesto do mapa | regressão da fase |
+
+## 2. Mapa dos documentos
+| Nível | Documento | Vale para |
 |---|---|---|
-| Um robô (personagem jogável) | [`personagem.md`](personagem.md) | o jogo todo (todos os modos) |
-| Uma spell (item da caixa) | [`derruba/spell.md`](derruba/spell.md) | modo **Derruba** |
-| Um evento global | [`derruba/evento.md`](derruba/evento.md) | modo **Derruba** |
-| Som (integrar pack aprovado) | [`audio.md`](audio.md) | o jogo todo |
-| Uma fase (mapa) | [`derruba/mapa.md`](derruba/mapa.md) (**método validado** na Fase 1: passo a passo, checklist antes de entregar, registro de erros) + [`derruba/mapa_cartilha.md`](derruba/mapa_cartilha.md) (regras: cena viva em etapas, C0–C4, Z1–Z8). Catálogos: `docs/fases/derruba/`. Skill: `criar-fase` | modo **Derruba** |
+| Jogo | `sistema_criacao.md`, `personagem.md`, `skins.md`, `spells.md`, `eventos.md`, `perigos_mecanismos.md`, `audio.md` | todos os modos |
+| Modo Derruba | `derruba/README.md` (regras do modo) · `derruba/mapa.md` (método VALIDADO de fase) · `derruba/mapa_cartilha.md` · `derruba/spell.md` · `derruba/evento.md` · `derruba/perigos_mecanismos.md` | só o Derruba |
+| Mapa | `docs/fases/derruba/f1_canteiro/` (biblioteca da Fase 1) · `docs/fases/derruba/_modelo/` (modelo vazio) | um mapa |
+| Dados | `data/modos.json` (modo: classes, destruição, bibliotecas de spells/eventos) · `data/mapas/<modo>/<mapa>.json` (manifesto) · `data/mapas/ferramentas.json` · `levels/*.lvl` (geometria) | código lê |
 
-## Regras que valem para os três
-1. **Aprovação antes de código grande.** Arte e comportamento novos começam por uma prancha (imagem) ou descrição curta
-   para o usuário aprovar. Retrabalho custa mais do que uma pergunta.
-2. **Números no `data/*.json`**, nunca fixos no código (CLAUDE.md).
-3. **Arte em papel e giz** gerada por Python/SVG (`art/src/…`), sem IA de imagem. Gere, **abra a imagem e olhe** antes de seguir.
-4. **Teste só a parte mexida** (`--autotest --so=<nome>`) durante o trabalho; bateria completa 1× no fim.
-5. **Entrega:** GIF curto do que mudou + `.exe` (`GODOT=… tools/exportar.sh`, zip em `out/`) + relatório de até 15 linhas.
-6. **Commit e push** no fim de cada etapa que funciona; atualize "Retomar aqui" em `docs/ESTADO.md`.
-7. **Manual é vivo:** se o usuário aprovar um jeito novo ou reprovar algo, **atualize o manual no mesmo commit**
-   (seção "Lições" de cada um).
+## 3. Regras que valem para todos
+1. **Aprovação antes de código grande:** arte e comportamento novos começam por imagem/ficha para o usuário aprovar.
+2. **Números no `data/`**, nunca fixos no código. Conteúdo de mapa no **manifesto** (fonte única).
+3. **Arte em papel e giz** gerada por Python/SVG (`art/src/…`), sem IA de imagem. Gere, **abra a imagem e olhe**.
+4. **Teste só a parte mexida** (`--autotest --so=<nome>`); bateria completa 1× no fim.
+5. **Entrega:** GIF/vídeo curto + `.exe` (`GODOT=… tools/exportar.sh`) + relatório de até 15 linhas.
+6. **Commit e push** por etapa; atualize "Retomar aqui" em `docs/ESTADO.md`.
+7. **Manual é vivo:** aprovou/reprovou algo → atualize o manual certo E a biblioteca do mapa no mesmo commit, com o estado.
 
-## Comandos de referência
+## 4. Comandos
 ```
 G=/caminho/Godot_v4.7.1-stable_linux.x86_64
-$G --headless --path game --import                                   # depois de PNG novo
-$G --headless --path game --fixed-fps 60 -- --autotest --so=robos     # testes de uma parte
-xvfb-run -a -s "-screen 0 1920x1080x24" $G --path game --fixed-fps 60 --resolution 1920x1080 -- --elenco=DIR   # vitrines
+$G --headless --path game --import                                   # depois de PNG ou script novo (class_name)
+$G --headless --path game --fixed-fps 60 -- --autotest --so=mapa      # testes de uma parte
+xvfb-run -a -s "-screen 0 1920x1080x24" $G --path game --fixed-fps 60 --resolution 1920x1080 -- --fase=DIR   # vitrines
 ```

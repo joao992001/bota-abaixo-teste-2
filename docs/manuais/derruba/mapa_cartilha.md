@@ -1,6 +1,6 @@
 # Cartilha do MAPA — modo Derruba (APROVADA; validada na Fase 1 em 2026-11-25)
 
-> Estado: **conceito aprovado pelo usuário (2026-11-24)**: cena viva em 2 etapas, virada "a obra cede" (todos caem numa
+> Estado: **conceito aprovado pelo usuário (2026-11-24)**: cena viva em cenas (≥ 2; transição por 90% de destruição desde 2026-11-25), virada "a obra cede" (todos caem numa
 > animação de queda e a luta continua embaixo), fundo muito mais animado e detalhado, MAIS mecanismos e eventos
 > ESPECÍFICOS de cada fase, tudo catalogado por fase antes de construir. Aplicada ao Canteiro; o passo a passo
 > validado está em `mapa.md`. Esquema visual:
@@ -43,9 +43,10 @@ Todo mapa do Derruba tem estes 8 elementos (a forma muda por tema; a função n�
 Nascimentos: 4 por ato, simétricos ou equivalentes, longe de Z7 e da base que cai.
 
 ## 4. Atos e transição
-- **2 atos** por mapa (o 3º, curto, fica como opção para depois).
-- **Gatilho da virada: cronometrado** (roteiro fixo, sempre igual, ~90 s, número no data). Tudo o resto (demolições,
-  eventos) é **parcialmente aleatório e dependente da batalha**; a virada é o único momento de roteiro.
+- **Pelo menos 2 cenas (atos) por mapa, admitindo N** quando a proposta justificar (regra do modo, `README.md`).
+- **Gatilho da transição: 90% da destruição elegível da cena** (com o diretor adaptativo, que derruba peças sozinho quando
+  os jogadores quebram pouco). Demolições e eventos são **parcialmente aleatórios e dependentes da batalha**.
+  _Histórico (`SUBSTITUÍDO` em 2026-11-25): o gatilho era cronometrado (~90 s, sempre igual)._
   Aviso de 3 s: sirene geral, a câmera recua, faixa "A OBRA VAI CEDER!".
 - **Transição (2–3 s, cinematográfica):** ninguém é eliminado, todos ficam invulneráveis, a câmera fica travada no
   enquadramento da cena, o Amassômetro e as spells continuam. Os robôs chegam juntos ao Ato 2, cada um num nascimento do

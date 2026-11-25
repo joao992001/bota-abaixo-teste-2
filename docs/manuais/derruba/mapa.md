@@ -10,50 +10,52 @@
 de erros que estão no **registro (§7)** e que o **checklist (§5)** agora pega antes da entrega. Meta para a próxima fase:
 no máximo 1 rodada de correção.
 
-Leia também: regras de desenho em [`mapa_cartilha.md`](mapa_cartilha.md) e o exemplo completo em
-[`docs/fases/derruba/f1_canteiro.md`](../../fases/derruba/f1_canteiro.md) (catálogo) +
-`art/src/cenarios/fase1_*.py` (arte). Skill: `criar-fase`.
+Leia também: **regras do modo** em [`README.md`](README.md) (cenas, 90%, diretor, autorização), regras de desenho em
+[`mapa_cartilha.md`](mapa_cartilha.md) e o exemplo completo: biblioteca [`f1_canteiro/`](../../fases/derruba/f1_canteiro/README.md),
+manifesto `data/mapas/derruba/canteiro_obras.json` e arte `art/src/cenarios/fase1_*.py`. Skill: `criar-fase`.
 
 ## 1. Ordem obrigatória e pontos de aprovação (o usuário aprova cada um antes do próximo)
 | # | Entrega | O usuário aprova… | Arquivos |
 |---|---|---|---|
-| 1 | **Catálogo** da fase + esquema em imagem | etapas, virada, estruturas (E), demolições (D), mecanismos (M), eventos (V), fundo vivo (A), regras de acaso × roteiro | `docs/fases/derruba/fN_<nome>.md`, `art/src/cenarios/fN_catalogo.py` |
-| 2 | **Prancha de arte**: cada etapa como tela de jogo, com o elenco | composição e visual (é aqui que "não faz sentido" tem de aparecer) | `art/src/cenarios/fN_prancha.py` |
+| 1 | **Biblioteca do mapa** (copie `docs/fases/derruba/_modelo/` → `fN_<nome>/`) + esquema em imagem: tema, direção artística, **quantas cenas (≥ 2)**, por cena estruturas fixas × destrutíveis, perigos/mecanismos, eventos coerentes com a arquitetura, spells autorizadas | tudo isso; o que o usuário JÁ definiu entra como `APROVADO` e não é reaberto | `docs/fases/derruba/fN_<nome>/`, `art/src/cenarios/fN_catalogo.py` |
+| 2 | **Fotografia conceitual de CADA cena** (tela de jogo com o elenco), já com a posição e o apoio físico dos principais perigos/mecanismos | composição e visual (é aqui que "não faz sentido" tem de aparecer) | `art/src/cenarios/fN_prancha.py` |
 | 3 | **Código em 6 blocos A–F** (§3), cada um testado e com commit | — (só avisar o andamento) | ver §3 |
-| 4 | **Vitrine para jogar**: GIF da virada + 4 quadros de cada etapa + `.exe` | jogo de verdade; voltam correções | §4 |
+| 4 | **Vitrine para jogar**: GIF da transição + 4 quadros de cada cena + `.exe` | jogo de verdade; voltam correções | §4 |
 | 5 | **Correções** do playtest → atualizar §7 deste manual no mesmo commit | fase fechada | — |
 
 Antes dos passos 2 e 4, passe o **checklist do §5** nas imagens. Não mande sem passar.
 
 ## 2. Catálogo e prancha (antes de qualquer código)
-- Copie a estrutura de `f1_canteiro.md`. Para cada etapa, preencha: ficha (composição, paleta, horário, assinatura,
-  câmera, som), **E** estruturas, **D** demolições, **M** mecanismos (3–5 por etapa), **V** eventos (lista da biblioteca
-  + específicos), **A** fundo vivo (camadas C0–C4) e o storyboard da virada.
-- Regras do usuário (valem para toda fase): demolições e eventos **aleatórios + dependentes da batalha**; a virada é o
-  único momento **cronometrado/roteirizado**; eventos são **da fase** (lista por etapa).
+- Copie `docs/fases/derruba/_modelo/` (README, cenas/, eventos, perigos_mecanismos, spells, skins, decisoes_testes). Para cada
+  cena preencha: ficha (composição, paleta, horário, assinatura, câmera, som), **E** estruturas (marque a BASE FIXA), **D** demolições,
+  **M** perigos/mecanismos, **V** eventos (biblioteca + específicos), **A** fundo vivo (C0–C4) e o storyboard da transição. Exemplo: Canteiro.
+- Regras do usuário (valem para toda fase): demolições e eventos **aleatórios + dependentes da batalha**; a transição de cena
+  acontece aos **90% de destruição** (com o diretor adaptativo), não por tempo; eventos são **do mapa e da cena**.
 - Prancha: cada etapa numa tela de 2560×1408 (40×22 tiles), com o elenco de `art/src/robos/elenco.py` em ação. **Para cada
   objeto, responda: onde ele se apoia? para que serve no jogo?** Se a resposta for "em nada" ou "para nada", ele sai.
 
 ## 3. Código: 6 blocos, nesta ordem (commit por bloco)
 | Bloco | O que fazer | Onde |
 |---|---|---|
-| **A Etapas** | `.lvl` cresce para baixo (etapa 2 embaixo da 1, mesmo mundo). Props: `etapa1/etapa2` (col,linha,larg,alt), `etapa2_nome`, `buraco` (cols por onde se cai), `ko1/ko2`, nascimentos `1–4` (etapa 1) e `5–8` (etapa 2). Números da virada em `demolicao.etapas`. | `levels/<fase>.lvl`, `data/modos.json`; motor pronto: `modes/etapas.gd`, `level.area`, câmera em `main._update_camera` |
+| **A Cenas** | `.lvl` cresce para baixo/ao lado (todas as cenas no mesmo mundo). Props: `etapaN` (col,linha,larg,alt), `koN`, `buracoN` (cols por onde se cai da cena N para a N+1), nascimentos `4·(N−1)+1…4·N`. Manifesto `data/mapas/derruba/<mapa>.json` com `cenas[]` (id, ordem, nome, eventos, mecanismos, estruturas, base_fixa, proxima) — valide com `--so=mapa`. | `levels/<mapa>.lvl`, `data/mapas/derruba/<mapa>.json`; motor pronto: `modes/etapas.gd`, `modes/mapa.gd` (MapaReg), `level.area` |
 | **B Cena viva** | Camadas PARADAS saem da prancha (céu, cidade, prédio, fundo e palco da etapa 2) e as peças que MEXEM viram sprites, por um `fN_jogo.py` (copie `fase1_jogo.py`) → `game/assets/<cena>/` → `--import`. Props `cena: <cena>` e `sem_arte_de: <linha>`. Animação em `modes/cena.gd` (generalize as listas da fase1 ao fazer a 2ª fase). | `art/src/cenarios/`, `game/modes/cena.gd` |
-| **C Mecanismos** | Liste em `demolicao.mecanismos.<cena>` (tipo, etapa, posições em px, ciclo, `alvo` = onde a marretada aciona). Tipos prontos: betoneira, elevador, esteira, tubos, serra (bancada), bate_estaca (torre), agua (cachoeiras), vagonete, gerador. Tipo novo = `_<tipo>` + desenho em `modes/mecanismos.gd`. Golpe = `mec_<nome>` no Amassômetro + `last_cause`. | `modes/mecanismos.gd`, `data/modos.json` |
-| **D Demolições** | Peças em `canteiro.gd → LAYOUTS`, cada uma com `etapa`. Tipos: laje (com escora), andaime, viga, terreo, estaca (plataforma + pilar), grelha (abre KO), entulho. HP em `demolicao.canteiro`. A virada derruba só a etapa 1 (`collapse_all`). | `modes/canteiro.gd` |
-| **E Eventos** | `demolicao.eventos.por_fase.<cena>` = lista por etapa (G## da biblioteca + V## da fase). Evento novo: siga `evento.md`. **Cada evento da biblioteca tem de ser provado NA fase** (o drone G09 travava e era inútil no Canteiro e saiu). | `modes/eventos.gd`, `data/modos.json` |
+| **C Perigos/mecanismos** | Instâncias em `cenas[].mecanismos` do manifesto (tipo, posições em px, ciclo, `alvo` = onde a marretada aciona). Tipos prontos: betoneira, elevador, esteira, tubos, serra (bancada), bate_estaca (torre), agua (cachoeiras), vagonete, gerador. Tipo novo: [`perigos_mecanismos.md`](perigos_mecanismos.md). | `modes/mecanismos.gd`, manifesto |
+| **D Demolições** | Estruturas em `cenas[].estruturas` do manifesto: `lajes` (seg_x, núcleo = base fixa, linha), `andaimes`, `vigas`, `pilares`, `terreos` (base fixa), `estacas`, `grelhas`, `piso`, `entulhos` (pedaços que caem da cena anterior). HP em `demolicao.canteiro`. Limitação atual: laje+andaimes+vigas+térreo numa cena só; tipo novo = código em `canteiro.gd`. A transição derruba a cena inteira (`collapse_all(n)`). | manifesto, `modes/canteiro.gd` |
+| **E Eventos** | `eventos_permitidos` do mapa + `cenas[].eventos` (G## da biblioteca + V## do mapa). Evento novo: `evento.md`. **Cada evento da biblioteca tem de ser provado NA cena** (o drone G09 travava e era inútil no Canteiro e saiu). | `modes/eventos.gd`, manifesto |
 | **F Entrega** | Testes, vitrine `--fase=DIR`, GIF, `.exe`, este manual atualizado, "Retomar aqui" em `docs/ESTADO.md`. | `tests/driver.gd` |
 
-**A virada (motor pronto em `etapas.gd`; não reinventar):** aviso com sirene → `_desaba` (estrutura da etapa 1 + mecanismos
-caem; jetpack, armaduras e kits desligam; caixas de spell vão para cima do piso da etapa 2) → queda **sem controle, lenta**
+**A transição (motor pronto em `etapas.gd`; não reinventar):** a destruição elegível da cena chega a 90% (o diretor
+adaptativo ajuda quando os jogadores quebram pouco) → aviso com sirene → `_desaba` (a cena inteira + os mecanismos dela caem;
+jetpack, armaduras e kits desligam; caixas de spell vão para cima do piso da próxima cena) → queda **sem controle, lenta**
 (`gravidade_queda` 0.35, `queda_vmax` 640) em arco até um ponto com piso embaixo; a câmera **desce junto** já no
-enquadramento da etapa 2 (`camera_queda_mola`) → `_chega` (KO e área passam para a etapa 2; quem ficou fora renasce embaixo).
+enquadramento da próxima cena (`camera_queda_mola`) → `_chega` (KO e área passam para ela; quem ficou fora renasce lá).
+Última cena: sem transição. Regras completas em [`README.md`](README.md).
 
 ## 4. Testes, capturas e entrega
-- **Durante o trabalho, só a parte mexida:** `--so=etapas` (aviso, desaba, queda sem KO, chegada, jetpack desliga, caixas
-  dentro da etapa 2), `--so=mecanismos`, `--so=eventos`, `--so=canteiro`, `--so=bots` (rodadas só de bots precisam
-  terminar: é a prova de que há saída para KO), `--so=lab`. Bateria completa **1× no fim**. Nos testes longos a virada fica
-  desligada (`demo_round` zera o cronômetro); só o teste de etapas a dispara.
+- **Durante o trabalho, só a parte mexida:** `--so=mapa` (manifesto válido, spells/eventos/mecanismos por cena), `--so=etapas` (base fixa fora, dano parcial,
+  marretada conta, abaixo/no limiar, 90%, desaba, queda sem KO, chegada, jetpack, caixas, última cena), `--so=diretor`, `--so=mecanismos`, `--so=eventos`, `--so=canteiro`, `--so=bots` (rodadas só de bots precisam
+  terminar: é a prova de que há saída para KO), `--so=lab`. Bateria completa **1× no fim**. Nos testes longos diretor e transição ficam
+  desligados (`demo_round` → `etapas.ativo = false`); `etapas.forcar()` dispara a transição em vitrines (`--virada=N` no vídeo).
 - **Vitrines** (`xvfb-run … -- --fase=DIR`): bots lutando + virada, 1 quadro a cada 4. Monte **uma prancha** com os
   quadros-chave (ex.: 24 quadros da queda em grade 4×6, com PIL) e 4 quadros da etapa 2 em tamanho real — não olhe o vídeo
   todo. Outras vitrines úteis: `--equipa=DIR` (spells nos corpos), `--eventos=DIR`, `--elenco=DIR`.
@@ -84,13 +86,15 @@ enquadramento da etapa 2 (`camera_queda_mola`) → `_chega` (KO e área passam p
 - [ ] Peças, caixas, eventos e inspeções da outra etapa **não entram nos sorteios** (filtro por `etapa`).
 
 **Virada**
+- [ ] Base fixa de cada cena marcada e indestrutível; a transição acontece por destruição (90%), nunca por tempo.
 - [ ] A câmera não afasta para o mapa inteiro nem pula: um movimento só, para baixo, seguindo o grupo.
 - [ ] A queda dá para acompanhar (~2 s), sem controle; ninguém escapa voando (jetpack/armadura) nem fica preso em cima.
 - [ ] Mecanismos da etapa 1 caem junto; as caixas de spell chegam na etapa 2; ninguém é eliminado na queda.
 - [ ] Sem travadas: câmera em mola + zona morta, tremor pequeno (seno, não ruído por quadro), poucas camadas grandes.
 
 ## 6. Economia (o que funcionou)
-- Uma fase nova é sobretudo **DADOS + arte**: `.lvl`, `demolicao.mecanismos/<cena>`, `eventos.por_fase`, `LAYOUTS`.
+- Uma fase nova é sobretudo **DADOS + arte**: `.lvl` (geometria das cenas) + manifesto `data/mapas/derruba/<mapa>.json`
+  (spells, eventos, mecanismos e estruturas por cena) + biblioteca `docs/fases/derruba/fN_<nome>/`.
   Código novo só para tipo novo de mecanismo, peça ou evento.
 - **Não leia arquivos grandes inteiros** (`spells.gd`, `eventos.gd`, `driver.gd`, `robot_visual.gd`, `mecanismos.gd`):
   `grep -n` no ponto de encaixe e edição com âncora única (script Python com `assert old in s`).

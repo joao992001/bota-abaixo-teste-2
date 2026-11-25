@@ -1,22 +1,23 @@
 ---
 name: criar-fase
-description: "Criar uma FASE nova do modo Derruba (mapa como cena viva em etapas): catálogo → prancha de arte → código em 6 blocos (etapas/virada, fundo animado, mecanismos, demolições, eventos da fase, entrega). Use quando o usuário pedir uma fase/mapa/arena nova ou para refazer uma fase."
+description: "Criar uma FASE (mapa) nova do modo Derruba, ou refazer uma: biblioteca do mapa + fotografia conceitual de cada cena (≥ 2 cenas, com perigos/mecanismos) → manifesto data/mapas/derruba/<mapa>.json → código em blocos A–F → transição por 90% de destruição. Use quando o usuário pedir fase/mapa/arena nova do Derruba (mesmo que ele já traga parte do conceito, eventos, spells ou estilo)."
 ---
 
-# Criar fase (Derruba) — siga o manual
+# Criar fase (Derruba) — siga os manuais
 
 **Só para o modo Derruba.** A Fase 1 (Canteiro) foi feita neste molde e toda fase nova do Derruba segue o mesmo molde.
 
-1. Leia **só** `docs/manuais/derruba/mapa.md` (método VALIDADO: ordem com aprovações, blocos, CHECKLIST do §5 e
-   registro de erros do §7) e `docs/manuais/derruba/mapa_cartilha.md` (regras de desenho).
-   Exemplo pronto: `docs/fases/derruba/f1_canteiro.md` (catálogo) e os geradores `art/src/cenarios/fase1_*.py`.
-2. Ordem fixa, cada passo aprovado pelo usuário: **catálogo** (copie f1_canteiro.md) → **prancha de arte** (copie
-   fase1_prancha.py) → **código em blocos A–F**, teste só o bloco (`--so=etapas|mecanismos|eventos|canteiro`) e commit
-   por bloco; bateria completa 1× no fim; GIF da vitrine `--fase=DIR`; `.exe`.
-3. Uma fase nova é sobretudo **dados** (`.lvl` com etapas, `demolicao.mecanismos/<cena>`, `demolicao.eventos.por_fase`,
-   `demolicao.canteiro` LAYOUTS) + **arte** exportada da prancha. Código novo só para tipo novo de mecanismo/peça/evento.
-4. **Antes de mandar qualquer imagem ou build ao usuário, passe o checklist do §5** (cada objeto se apoia em algo e
-   serve para algo; nada em paralaxe que precise casar com o mundo; cair = KO em qualquer ponto; virada com câmera
-   descendo junto). Erro novo reprovado pelo usuário → linha nova no §7 no mesmo commit.
-5. Economia: não leia arquivos grandes inteiros — `grep -n` no ponto de encaixe e substituição exata. Atualize o manual
-   com as lições novas e o "Retomar aqui" de `docs/ESTADO.md`.
+1. Leia, nesta ordem: `docs/manuais/README.md` (índice) → `docs/manuais/derruba/README.md` (regras do modo: cenas ≥ 2,
+   base fixa × destrutível, 90% + diretor adaptativo, autorização por mapa/cena) → `docs/manuais/derruba/mapa.md`
+   (método VALIDADO: ordem com aprovações, blocos A–F, CHECKLIST §5, registro de erros §7) → `mapa_cartilha.md`.
+   Exemplo vivo: `docs/fases/derruba/f1_canteiro/` + `data/mapas/derruba/canteiro_obras.json` + `art/src/cenarios/fase1_*.py`.
+2. **Separe o que o usuário JÁ definiu** (conceito, cenas, eventos, spells, estilo) → registre como `APROVADO` na
+   biblioteca e não reabra; proponha só o que falta, marcado `PROPOSTO`. Nunca invente conteúdo como aprovado.
+3. Ordem fixa: biblioteca (copie `docs/fases/derruba/_modelo/` → `fN_<nome>/`) → **fotografia de cada cena** com perigos e
+   mecanismos posicionados (aprovação) → manifesto + `.lvl` (`--so=mapa` valida) → blocos A–F, teste e commit por bloco →
+   bateria completa 1× → GIF da transição `--fase=DIR` → `.exe`.
+4. Uma fase nova é sobretudo **dados** (manifesto + `.lvl`) + **arte**. Código novo só para tipo novo de mecanismo,
+   estrutura ou evento (manuais `derruba/perigos_mecanismos.md`, `derruba/evento.md`).
+5. **Antes de mandar imagem ou build, passe o checklist do `mapa.md` §5.** Erro novo reprovado → linha no §7 + decisão na
+   biblioteca do mapa, no mesmo commit. Atualize "Retomar aqui" de `docs/ESTADO.md`.
+6. Economia: não leia arquivos grandes inteiros — `grep -n` no ponto de encaixe e substituição exata.

@@ -5,6 +5,11 @@ Repositórios (GitHub privado, ramo `main`): `joao992001/bota-abaixo` = versão 
 **`joao992001/bota-abaixo-teste-2` = cópia para as mudanças estruturais grandes (trabalhe aqui).**
 
 ## ▶ Retomar aqui (sessão nova)
+**REORGANIZAÇÃO MODULAR (2026-11-25, branch `reorg-modular` → `main`):** comece por `docs/manuais/README.md`. Conteúdo de
+cada mapa no manifesto `data/mapas/<modo>/<mapa>.json` (lido por `game/modes/mapa.gd` = MapaReg); classes de spell no
+modo; transição de cena aos 90% de destruição com diretor adaptativo (sem cronômetro); biblioteca da Fase 1 em
+`docs/fases/derruba/f1_canteiro/`, modelo em `_modelo/`. Pendente (usuário segurou): mapa de teste com 3 cenas para provar
+N cenas (o código já lê etapaN/buracoN/koN; só 2 cenas testadas).
 **MANUAIS DE CRIAÇÃO (2026-11-24):** `docs/manuais/` — `personagem.md` (universal), `derruba/spell.md`,
 `derruba/evento.md`. Seguir SEMPRE ao criar robô/spell/evento e atualizar quando algo novo for aprovado. Mapa: ainda sem manual
 (o usuário acha que o mapa do Derruba não está fechado).

@@ -4,6 +4,11 @@ Evento = acontecimento da arena que muda a luta por alguns segundos. 12 aprovado
 G06 Entulho, G11 Interdição, G12 Troca de Andaimes, G13 Cabo Rompido, G02 Ventania, G03 Gravidade, G04 Sobrecarga
 Magnética, G14 Chuva de Rebites, G09 Inspeção, G10 Carga Especial.
 **Nunca reintroduzir os reprovados:** G07, G08, G15, G16, G17, G18.
+Princípios gerais: [`../eventos.md`](../eventos.md). **Autorização:** um evento só acontece num mapa/cena se estiver em
+`eventos_permitidos` e em `cenas[].eventos` do manifesto do mapa (`data/mapas/derruba/<mapa>.json`); mapa sem manifesto
+não tem evento; o Laboratório (ferramenta) tem a biblioteca inteira. Específicos de um mapa = `V#`.
+**G01 no Canteiro:** `SUBSTITUÍDO` (2026-11-25) — o ciclo "sirene + fita → o trecho cede" virou a ferramenta do **diretor
+adaptativo da destruição** (regra do modo, `README.md`); G01 segue na biblioteca para outros mapas.
 
 ## 1. Regras (valem para todo evento)
 1. **Três fases sempre:** AVISO (o LUGAR e o MOMENTO do perigo marcados: faixa zebrada/vermelha, sombra listrada,
@@ -25,6 +30,7 @@ Magnética, G14 Chuva de Rebites, G09 Inspeção, G10 Carga Especial.
 | O quê | Arquivo |
 |---|---|
 | Lista, números, ritmo, intensidade, conflitos | `data/modos.json` → `demolicao.eventos` (`lista`, `primeiro_s`, `intervalo_s`, `intensidade`, `max_simultaneos`, `vento_max`, `conflitos`) |
+| Onde pode acontecer | manifesto do mapa → `eventos_permitidos` + `cenas[].eventos` (filtro em `eligible()` via `MapaReg.eventos`) + pré-requisito físico em `eligible()` |
 | Lógica e desenho | `game/modes/eventos.gd` |
 | Estrutura do Canteiro (vigas, andaimes, laje) | `game/modes/canteiro.gd`: `parts` (`evt` marca a peça ocupada por um evento), `move_part`, `drop_body`, `restore_body`, `damage` |
 | Saídas que outros sistemas leem | `events.wind` e `events.gravity_mult` (robô), `events.inspecao` (máquinas e estrutura), `hard_at` (tiros param), `grab_at` (gancho agarra), `hammer_hit` (marreta quebra) |
@@ -35,7 +41,8 @@ Magnética, G14 Chuva de Rebites, G09 Inspeção, G10 Carga Especial.
 ## 3. Passo a passo
 1. **Ficha curta para o usuário:** disparo e aviso (como o jogador vê ONDE e QUANDO), efeito, reação esperada, animação,
    segurança, se depende do Canteiro ou é universal, com quem conflita.
-2. **Dados:** entrada em `lista` com `id`, `nome`, (`curto`), `dica` (aparece no menu), `aviso_s`, `dur`, `fim_s` e os números
+2. **Autorize** nas cenas certas do manifesto (`cenas[].eventos` e `eventos_permitidos`) — sem isso o evento nunca aparece.
+   **Dados:** entrada em `lista` com `id`, `nome`, (`curto`), `dica` (aparece no menu), `aviso_s`, `dur`, `fim_s` e os números
    próprios (força, raio, quantidade, ondas…). Conflitos novos em `conflitos`.
 3. **Código em `eventos.gd`** — cada fase é um `match` por id:
    - `eligible(e)`: a arena tem o que o evento precisa? (Canteiro, chão livre, viga com chão embaixo…)
