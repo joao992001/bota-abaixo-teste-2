@@ -3188,7 +3188,7 @@ func som_test() -> void:
 	await frames(40)
 	var l: Array = log_of.call()
 	check(has.call(l, "salto_0") == 1 and has.call(l, "salto_duplo") == 1, "pulo e pulo duplo: 1 som cada (%s)" % str(l))
-	check(has.call(l, "aterrissagem") == 1, "pouso: 1 som")
+	check(has.call(l, "aterrissagem") == 0 and has.call(l, "passo") == 0, "pouso comum e passos: mudos (revisão do usuário: barulho demais)")
 	await frames(30)
 	Audio.rec_log = []
 	r0.dodge_cd = 0.0

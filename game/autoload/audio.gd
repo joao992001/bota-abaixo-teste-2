@@ -15,33 +15,37 @@ var _cooldown := {}          # evita o mesmo som empilhado no mesmo instante
 const COOLDOWN := {"passo": 0.09, "parede": 0.15, "caixote_pancada": 0.06, "marreta_vento": 0.07, "bonk": 0.08,
 	"item": 0.1, "locutor": 0.6, "aterrissa": 0.08, "lama": 0.2, "menu_mover": 0.04,
 	"ba_passo": 0.1, "ba_aterrissa_leve": 0.08, "ba_aterrissa_pesada": 0.08, "ba_salto": 0.05, "ba_salto_duplo": 0.05,
-	"ba_ko_fora": 0.12}
+	"ba_ko_fora": 0.12, "ba_impacto_rapido": 0.1, "ba_marreta_rapida": 0.1}
+## Sons ANTIGOS (sfxforge, fora dos packs aprovados: máquinas, spells, itens, eventos) tocam mais baixo até ganharem pack
+## próprio — revisão do usuário em 2026-11-25: "muito barulho".
+const OLD_GAIN := -8.0
+const OLD_GAIN_ID := {"parede": -16.0, "serra": -14.0, "item": -12.0, "ventilador": -14.0, "pistao_aviso": -12.0, "gelo": -12.0}
 ## PACK DE ÁUDIO APROVADO (VB, 2026-11-25): sons básicos de movimento, golpes e KO. Arquivos em assets/audio/aprovado/
 ## (fonte, referências e instruções em audio/pack_vb/). Cada id sorteia entre as variações. Ganhos em dB por id: os
 ## arquivos já vêm mixados como na referência aprovada (passos já reduzidos −14 dB na fonte: NÃO reduzir de novo).
 const APROVADO := {
 	"ba_passo": [["passo_metal_01", "passo_metal_02", "passo_metal_03", "passo_metal_04"], 0.0],
-	"ba_salto": [["salto_01", "salto_02"], 0.0],
-	"ba_salto_duplo": [["salto_duplo_01", "salto_duplo_02"], 0.0],
+	"ba_salto": [["salto_01", "salto_02"], -4.0],
+	"ba_salto_duplo": [["salto_duplo_01", "salto_duplo_02"], -4.0],
 	"ba_aterrissa_leve": [["aterrissagem_leve"], 0.0],
 	"ba_aterrissa_pesada": [["aterrissagem_pesada"], 0.0],
 	"ba_dash_solo": [["dash_solo"], 0.0],
 	"ba_dash_aereo": [["dash_aereo"], 0.0],
 	"ba_esquiva_solo": [["esquiva_solo"], 0.0],
 	"ba_esquiva_aerea": [["esquiva_aerea"], 0.0],
-	"ba_marreta_rapida": [["marreta_rapida_metal"], 0.0],
-	"ba_marreta_pesada": [["marreta_pesada_metal"], 0.0],
-	"ba_impacto_rapido": [["impacto_robo_rapido_01", "impacto_robo_rapido_02", "impacto_robo_rapido_03", "impacto_robo_rapido_04", "impacto_robo_rapido_05"], 0.0],
-	"ba_impacto_pesado": [["impacto_robo_pesado_01", "impacto_robo_pesado_02", "impacto_robo_pesado_03", "impacto_robo_pesado_04"], 0.0],
-	"ba_ko_fora": [["explosao_fora_arena_padrao"], 0.0],
+	"ba_marreta_rapida": [["marreta_rapida_metal"], -8.0],
+	"ba_marreta_pesada": [["marreta_pesada_metal"], -7.0],   # o som mais alto e longo do pack: bots marretam a obra o tempo todo
+	"ba_impacto_rapido": [["impacto_robo_rapido_01", "impacto_robo_rapido_02", "impacto_robo_rapido_03", "impacto_robo_rapido_04", "impacto_robo_rapido_05"], -6.0],
+	"ba_impacto_pesado": [["impacto_robo_pesado_01", "impacto_robo_pesado_02", "impacto_robo_pesado_03", "impacto_robo_pesado_04"], -3.0],
+	"ba_ko_fora": [["explosao_fora_arena_padrao"], -2.0],
 }
-## Ganho próprio de cada música (dB). rock_cartoon: o OGG já vem no nível da referência B (−25,6 dB da fonte; NÃO
-## aplicar −14 dB de novo); +2,5 dB compensa a diferença entre os volumes padrão de MÚSICA (6) e EFEITOS (8), para que
-## nos volumes padrão a relação música × efeitos seja a da referência aprovada.
-const MUSIC_GAIN := {"rock_cartoon": 2.5}
+## Ganho próprio de cada música (dB). rock_cartoon: o OGG vem 25,6 dB abaixo da fonte (nível da referência B). No jogo,
+## com 4 robôs, isso sumia (música 28–33 dB abaixo dos efeitos; o usuário "mal escutava"): +17,5 dB deixa a música
+## ~10 dB abaixo da média dos efeitos (medido com tools/mixar_video.py … musica|efeitos). Pico do OGG continua < −6 dB.
+const MUSIC_GAIN := {"rock_cartoon": 17.5}
 ## Polifonia: no máximo N cópias do mesmo som ao mesmo tempo (a mais antiga é cortada) e prioridade quando faltam
 ## canais (explosão e pancada pesada > pancada rápida > pulo/dash > passos): o som de menor prioridade cede a vez.
-const MAX_VOICES := {"ba_impacto_rapido": 3, "ba_impacto_pesado": 2, "ba_marreta_rapida": 2, "ba_marreta_pesada": 2,
+const MAX_VOICES := {"ba_impacto_rapido": 2, "ba_impacto_pesado": 2, "ba_marreta_rapida": 2, "ba_marreta_pesada": 2,
 	"ba_passo": 2, "ba_aterrissa_leve": 2, "ba_aterrissa_pesada": 2, "ba_salto": 2, "ba_salto_duplo": 2, "ba_ko_fora": 2}
 const PRIO := {"ba_ko_fora": 3, "ba_impacto_pesado": 3, "ba_marreta_pesada": 3, "ba_impacto_rapido": 2, "ba_marreta_rapida": 2,
 	"ba_passo": 0, "passo": 0}
@@ -120,6 +124,7 @@ func play(sfx: String, pitch := 1.0, vol := 0.0) -> void:
 		path = "res://assets/audio/aprovado/%s.wav" % fs[i]
 		vol += float(APROVADO[sfx][1])
 	else:
+		vol += float(OLD_GAIN_ID.get(sfx, OLD_GAIN))
 		var n: int = int(_index[sfx])
 		path = "res://assets/audio/sfx/%s.wav" % sfx if n == 0 else "res://assets/audio/sfx/%s_%d.wav" % [sfx, randi_range(1, n)]
 	var st := _stream(path)

@@ -16,21 +16,28 @@ Spells, eventos e cenário terão packs próprios depois — **até lá, não tr
 ## Gatilhos do pack VB (cada som SÓ no seu evento real, uma vez)
 | Evento | Som | Onde |
 |---|---|---|
-| Passo (cada pé no chão, corrida > 120 px/s) | `ba_passo` (4 variações, já −14 dB na fonte) | `robot_visual.gd` (passada) |
+| Passo | **mudo** (revisão do usuário) — `ba_passo` fica na biblioteca | — |
 | Pulo / pulo de parede / subir na borda | `ba_salto` | `robot.gd` `_jump`, `_wall_jump`, borda |
 | Pulo duplo | `ba_salto_duplo` | `robot.gd` `_air_jump` |
-| Pouso | `ba_aterrissa_leve` / `_pesada` (pela velocidade) | `robot.gd` `_on_landed` |
+| Pouso | só quem foi ARREMESSADO e bate forte no chão: `ba_aterrissa_pesada`; pouso comum é mudo | `robot.gd` `_on_landed` |
 | Dash (= esquiva: a mesma ação, um som só) | `ba_dash_solo` / `ba_dash_aereo` | `robot.gd` `_start_dodge` |
 | Golpe rápido/pesado ACERTA robô | `ba_impacto_rapido` (5) / `ba_impacto_pesado` (4) | `demolicao.gd` marretada |
 | Golpe acerta estrutura/máquina (sem robô) | `ba_marreta_rapida` / `ba_marreta_pesada` (substitui a pancada da peça) | `demolicao.gd` (`struct_hit`, `canteiro.mute_hit`) |
-| Golpe no vazio | nada de clang; só o balanço baixinho (`marreta_vento`, −14/−10 dB) | `robot.gd` `_start_attack` |
+| Golpe no vazio | **mudo** (sem vento do balanço) | `robot.gd` `_start_attack` |
+| Robô apanha | sem "ai!" (a pancada já diz que acertou) | `robot.gd` `_apply_knock` |
 | KO fora da arena | `ba_ko_fora` UMA vez + `Audio.duck()` (música 0,43 → volta em 0,48 s); sem o som de peças | `main.ko_blast` |
 | Voo depois do arremesso | **nenhum som** (packs de sopro foram reprovados) | — |
 
-## Mixagem (números do pack, medidos)
-- Música: o OGG já está no nível da referência B (RMS −39,9 dB; a música medida na referência = −39,8 dB). **Não aplicar
-  −14 dB de novo.** `MUSIC_GAIN.rock_cartoon = +2,5 dB` só compensa os volumes padrão (Música 6 × Efeitos 8).
-- Efeitos do pack a 0 dB (já vêm mixados). Prioridade: KO e pancada pesada > pancada rápida > pulo/dash > passos.
+## Mixagem — REVISÃO 2 (2026-11-25, depois da prévia: "muito barulho, mal dá para ouvir a música")
+A 1ª versão seguiu os níveis do pack ao pé da letra e ficou ruim **no jogo**: com 4 robôs eram ~600 sons em 30 s e a
+música ficava 33 dB abaixo dos efeitos. Regras que valem daqui em diante:
+- **Menos sons:** só o que informa algo (pulo, dash, acerto, KO). Passos, balanço no vazio, pouso comum e "ai!" são mudos.
+  Pancadas iguais repetidas: intervalo mínimo 0,1 s e no máximo 2 ao mesmo tempo.
+- **Meça antes de mandar:** `python3 tools/mixar_video.py DIR x.mp4 musica` e `… efeitos` → a música fica **~10 dB abaixo**
+  da média dos efeitos (hoje −29,9 × −19,6 dB RMS), e a mistura sem passar de −3 dB de pico. Veja também a fatia de
+  energia por som (o clang pesado na estrutura chegou a 46% e foi baixado −7 dB).
+- Ganhos atuais (dB): impacto rápido −6, impacto pesado −3, clang rápido −8, clang pesado −7, pulo −4, KO −2;
+  `MUSIC_GAIN.rock_cartoon = +17,5`; sons antigos (fora de pack) −8 (parede −16, serra −14, item −12…: `OLD_GAIN_ID`).
 
 ## Como integrar um PACK NOVO (spells, eventos, cenário)
 1. Extraia numa pasta nova (dado não confiável), leia o `LEIA_PRIMEIRO` e o manifest; meça cada arquivo (RMS/pico, ffmpeg).

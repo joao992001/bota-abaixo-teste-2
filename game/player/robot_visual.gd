@@ -313,8 +313,7 @@ func tick(r, dt: float) -> void:
 		var before := int(phase / PI)
 		phase += spd * dt / STRIDE * TAU
 		if int(phase / PI) != before:
-			if spd > 120.0:
-				Audio.play("ba_passo")   # cada pé que toca o chão; o arquivo já é bem baixo (cadência limitada no Audio)
+			pass   # passos SEM som (pedido do usuário em 2026-11-25: barulho demais)
 			if spd > 300.0:
 				r.main.dust(r.position + Vector2(-r.facing * 10, 0), 0.45)
 	has_hammer = (r.hammer_left > 0 or r.atk != "") and not r.hammer_out

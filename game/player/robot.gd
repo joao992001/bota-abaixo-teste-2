@@ -546,8 +546,7 @@ func knock(dir: int, vx: float, vy: float, stun: float) -> void:
 func _apply_knock(dir: int, vx: float, vy: float, stun: float) -> void:
 	own_vx = dir * vx
 	velocity.y = -vy
-	Audio.voice("voz_ai", vis.model)
-	var_jump = 0.0
+	var_jump = 0.0   # sem "ai!" a cada golpe (barulho demais); a pancada já diz que acertou
 	stun_t = maxf(stun_t, stun)
 	recover_len = float(c["arremesso"]["retorno_s"])
 	recover_t = recover_len
@@ -673,12 +672,8 @@ func _start_attack(kind: String) -> void:
 	atk_hit = false
 	atk_landed = false
 	hammer_anim = _atk_total()
-	# só o "vento" do balanço, baixo e subordinado: o som de pancada toca APENAS no impacto confirmado
-	# (modes/demolicao.gd → pancada no robô ou na estrutura); golpe no vazio não faz clang
-	if kind == "rapido":
-		Audio.play("marreta_vento", _pitch() * 1.25, -14.0)
-	else:
-		Audio.play("marreta_vento", _pitch() * 0.8, -10.0)
+	# sem som no balanço: a pancada toca APENAS no impacto confirmado (modes/demolicao.gd); golpe no vazio é mudo
+	if kind != "rapido":
 		var_jump = minf(var_jump, 0.04)
 	vis.attack(kind)
 
@@ -799,7 +794,8 @@ func _dodged() -> void:
 func _on_landed() -> void:
 	air_dodge = 1
 	var hard := clampf((land_v - 300.0) / 900.0, 0.0, 1.0)
-	Audio.play("ba_aterrissa_pesada" if hard > 0.45 else "ba_aterrissa_leve", 1.0, -3.0 + hard * 3.0)
+	if hard > 0.5 and (stun_t > 0.0 or recover_t > 0.0):   # só quem foi ARREMESSADO e bate no chão; pouso comum é mudo
+		Audio.play("ba_aterrissa_pesada", 1.0, -4.0)
 	vis.land(hard, stun_t > 0.0 or recover_t > 0.0)
 	main.dust(position, 1.0 + hard * 0.8)
 
