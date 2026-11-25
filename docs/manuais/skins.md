@@ -8,8 +8,15 @@ autorização do usuário. O elenco implementado tem **5 robôs** ("15 robôs" �
    Ex.: uma skin temática de um mapa "Hollywood" seria concebida na biblioteca desse mapa, sem criar personagem novo.
 2. Skin **não altera** hitbox, dano, mobilidade nem equilíbrio. Zero efeito de jogo.
 3. Preserva a **identidade e a silhueta** do robô e a **legibilidade da cor do jogador** (P1–P4).
+   **Skin = fantasia completa (aprovado 2026-11-25, Canteiro v2):** o uniforme pode cobrir o tronco inteiro, a ferramenta
+   ganha acabamento temático e acessórios grandes (capacete, lanterna, máscara, santo-antônio); a **cor do jogador vai para
+   o capacete/cabine grande** e continua nos braços e pernas. Mudança sutil (adesivos, faixinhas) foi REPROVADA.
 4. Compatível com ataques, ferramenta, armas, spells, armaduras/transformações, expressões e dano visual.
 5. Duas aprovações: **arte** (prancha estática) e **aplicação em movimento** (GIF com as 13 poses e spells).
+
+## Exemplo aprovado
+Canteiro de Obras (K1–K5): `art/src/robos/skins_canteiro.py` → `art/out/prancha_skins_canteiro.png` (recorta o uniforme no
+contorno do tronco, troca capacete e ferramenta por cima do desenho do robô).
 
 ## Quando for autorizado: onde registrar
 - Biblioteca do mapa de origem: `docs/fases/<modo>/<mapa>/skins.md` (id, robô, conceito, estado, compatibilidade).

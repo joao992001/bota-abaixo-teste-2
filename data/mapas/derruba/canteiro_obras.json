@@ -50,7 +50,38 @@
   "V2",
   "V3"
  ],
- "skins_originadas": [],
+ "skins_originadas": [
+  {
+   "id": "K1",
+   "robo": "marretao",
+   "nome": "Mestre de Obras",
+   "estado": "APROVADO_ARTE"
+  },
+  {
+   "id": "K2",
+   "robo": "picareta",
+   "nome": "Topógrafo",
+   "estado": "APROVADO_ARTE"
+  },
+  {
+   "id": "K3",
+   "robo": "chave",
+   "nome": "Soldador",
+   "estado": "APROVADO_ARTE"
+  },
+  {
+   "id": "K4",
+   "robo": "britadeira",
+   "nome": "Concreteiro",
+   "estado": "APROVADO_ARTE"
+  },
+  {
+   "id": "K5",
+   "robo": "pa",
+   "nome": "Operador de Escavadeira",
+   "estado": "APROVADO_ARTE"
+  }
+ ],
  "cenas": [
   {
    "id": "terreo",
