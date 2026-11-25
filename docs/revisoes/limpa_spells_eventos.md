@@ -23,7 +23,14 @@
 | 19 | S28 Escudo de Solda | **TIRAR** | "o que eu mais odeio" |
 | 17 | S25 Ponte Dobrável | **TIRAR / rever** | "não tá legal" |
 | 18 | S27 Controle Remoto | MANTER + **ampliar** | gosta, mas deve abranger mais coisas (mais alvos/usos que só a viga pendurada) |
-| — | demais spells | sem comentário ainda | o usuário vai continuar a lista |
+| 22 | S15 Bola de Demolição | MANTER + **melhorar controle** | hoje só vai para a frente e é difícil de controlar: melhorar o controle e **permitir pular** (a bola pula) |
+| 21 | S14 Mecha Empilhadeira | MANTER + **rever uso** | "legalzinha", mas difícil de acertar o alvo: propor mudança que facilite (alcance/área/assistência de mira) |
+| 20 | S13 Armadura Fornalha | MANTER | "muito boa" |
+| 24 | S31 Modo Broca | MANTER | "muito bom" |
+| 25 | S33 Modo Soldador | MANTER + **diferenciar** | parece uma Fornalha com eletricidade; precisa de jogabilidade própria (variar mais) |
+| 26 | S34 Minirrobô Veloz | MANTER (ideia) | talvez virar "altera a estatura" — para menos OU para mais (gigante); está bom como está |
+| 23 | S16 Propulsor Gambiarra | MANTER + **corrigir animação** | gosta; a animação está um pouco bugada |
+| — | demais (#1–6, #9, #10, #13) | sem comentário = MANTER como estão | lista de spells encerrada pelo usuário em 2026-11-25 |
 
 ## 2. Eventos
 Sem comentários ainda (o usuário vai continuar).
