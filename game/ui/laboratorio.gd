@@ -290,6 +290,8 @@ func _measure_flight(r) -> void:
 func spells() -> Array:   # todas as spells liberadas (data/modos.json → demolicao.spells.pools)
 	var out := []
 	for pool in main.demo.cfg["spells"]["pools"].values():
+		if not pool is Array:
+			continue   # "nota"
 		for k in pool:
 			if k not in out:
 				out.append(k)

@@ -416,7 +416,7 @@ func _update_camera(dt: float) -> void:
 	if queda:
 		# virada: a câmera DESCE junto com os robôs num movimento só (sem afastar para o mapa inteiro nem pular),
 		# já no enquadramento da etapa 2; quando todos pousam ela já está no lugar
-		var a2: Rect2 = level.etapa_rect(2)
+		var a2: Rect2 = level.etapa_rect(demo.etapas.etapa + 1)
 		tz = minf(1.0, minf(1920.0 / a2.size.x, 1024.0 / a2.size.y))
 		var my := 0.0
 		var n := 0

@@ -94,22 +94,30 @@ void fragment() {
 func sc(id: String) -> Dictionary:
 	return cfg[id]
 
+## Spells que podem sair nas caixas: as AUTORIZADAS pelo mapa (manifesto). Mapa-ferramenta (laboratório/testes): o pool
+## do modo, explícito. Outro mapa/modo sem manifesto: nenhuma (sem herdar as do Derruba).
 func pool() -> Array:
-	return cfg["pools"].get(main.game_mode, cfg["pools"]["derruba"])
+	return MapaReg.spells(main.game_mode, main.level.id, cfg["pools"].get(main.game_mode, []))
+
+## Classes de spell (com peso do sorteio) definidas pelo MODO.
+func classes() -> Dictionary:
+	return MapaReg.modo_cfg(main.game_mode).get("classes_spells", {})
 
 # ---------------------------------------------------------------- sorteio e caixas
 ## Sorteio em 2 etapas: família (peso) → spell da família (raridade, menos chance de repetir as últimas). Neutro para todos.
 func pick() -> Dictionary:
+	if pool().is_empty():
+		return {}
 	var fams := {}
 	for id in pool():
 		fams[sc(id)["familia"]] = true
 	var tot := 0.0
 	for f in fams:
-		tot += float(cfg["familias"][f]["peso"])
+		tot += float(classes()[f]["peso"])
 	var r: float = main.rng.randf() * tot
 	var fam: String = fams.keys()[0]
 	for f in fams:
-		r -= float(cfg["familias"][f]["peso"])
+		r -= float(classes()[f]["peso"])
 		if r <= 0.0:
 			fam = f
 			break
@@ -170,6 +178,8 @@ func spawn_box(at = null, special := false) -> void:
 		var src: Array = fixed if (not fixed.is_empty() and main.rng.randf() < 0.5) else pts
 		p = src[main.rng.randi() % src.size()]["pos"]
 	var k := pick()
+	if k.is_empty():
+		return   # mapa sem spells autorizadas
 	boxes.append({"fam": k["fam"], "id": k["id"], "charges": -1, "pos": Vector2(p.x, sky_y(p)),
 		"vy": 0.0, "t": 0.0, "land_t": 9.0, "block": {}, "special": special})
 	Audio.play("item", 0.8, -6.0)

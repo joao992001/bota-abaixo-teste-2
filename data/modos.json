@@ -533,7 +533,37 @@
         "ok": true,
         "arenas": [
           "canteiro_obras"
-        ]
+        ],
+        "classes_spells": {
+          "ataque": {
+            "peso": 40
+          },
+          "controle": {
+            "peso": 20
+          },
+          "engenharia": {
+            "peso": 20
+          },
+          "transformacao": {
+            "peso": 20
+          }
+        },
+        "nota_classes": "Classes de spell pertencem ao MODO (o mapa só autoriza spells; não cria classes).",
+        "destruicao": {
+          "nota": "Transição de cena por DESTRUIÇÃO (não por tempo): ao chegar a limiar da destruição ELEGÍVEL da cena (base fixa, pedaços gerados e peças de outras cenas fora da conta) e havendo próxima cena, começa o aviso + desabamento. Progresso = soma(peso x HP perdido)/soma(peso), peça caída = 100%, peso = largura em tiles (laje x2). DIRETOR ADAPTATIVO (proposta do usuário, 2026-11-25): mede o ritmo; se os jogadores quebram pouco, derruba peças sozinho (sirene + fita + cai) para chegar ao limiar perto de alvo_s; se quebram muito, quase não age. alvo_s é sorteado por cena (nem toda rodada chega).",
+          "limiar": 0.9,
+          "alvo_s": [
+            75,
+            120
+          ],
+          "intervalo_s": [
+            6,
+            40
+          ],
+          "chance_calma": 0.25,
+          "aviso_s": 2.5,
+          "deficit_max": 0.2
+        }
       },
       {
         "id": "batata",
@@ -646,26 +676,13 @@
         "troca_s": 0.3,
         "anti_recaptura_s": 1.2
       },
-      "familias": {
-        "ataque": {
-          "peso": 40
-        },
-        "controle": {
-          "peso": 20
-        },
-        "engenharia": {
-          "peso": 20
-        },
-        "transformacao": {
-          "peso": 20
-        }
-      },
       "raridade": {
         "comum": 1.0,
         "incomum": 0.6,
         "rara": 0.3
       },
       "pools": {
+        "nota": "Pool por modo só para mapas-FERRAMENTA (data/mapas/ferramentas.json). Fases usam spells_permitidas do manifesto do mapa.",
         "derruba": [
           "S01",
           "S02",
@@ -1157,36 +1174,10 @@
           "G06"
         ]
       ],
-      "conflitos_nota": "Pares que nunca rodam juntos (Relatório 04 §6.5 + segurança de geometria). Até max_simultaneos[intensidade] eventos compatíveis ao mesmo tempo.",
-      "por_fase": {
-        "nota": "Eventos são DA FASE: por cena (prop 'cena' do .lvl) e por etapa, quais eventos da biblioteca valem; V# = específicos.",
-        "fase1": {
-          "1": [
-            "G01",
-            "G05",
-            "G06",
-            "G10",
-            "G12",
-            "G13",
-            "G02",
-            "V1"
-          ],
-          "2": [
-            "G14",
-            "G04",
-            "G06",
-            "G10",
-            "G03",
-            "G11",
-            "V2",
-            "V3"
-          ]
-        }
-      }
+      "conflitos_nota": "Pares que nunca rodam juntos (Relatório 04 §6.5 + segurança de geometria). Até max_simultaneos[intensidade] eventos compatíveis ao mesmo tempo."
     },
     "etapas": {
-      "nota": "Fase em etapas (cartilha do mapa): virada cronometrada (roteiro fixo). virada_s = tempo de rodada até a obra ceder; aviso_s = sirene antes; na queda a gravidade fica mais leve, a velocidade de queda é limitada (queda_vmax) e a câmera desce junto (mola camera_queda_mola) até a etapa 2, sem afastar.",
-      "virada_s": 90,
+      "nota": "Cinematografia da transição entre cenas (aviso, desabamento, queda lenta, câmera que desce junto). O GATILHO agora é a destruição (modos[derruba].destruicao), não o tempo.",
       "aviso_s": 3.0,
       "queda_max_s": 5.0,
       "gravidade_queda": 0.35,
@@ -1194,154 +1185,6 @@
       "camera_queda_mola": 5.0,
       "funil_vel": 900,
       "invuln_chegada_s": 1.2
-    },
-    "mecanismos": {
-      "nota": "Mecanismos de cada fase (modes/mecanismos.gd), por cena; px do mundo. alvo = retângulo que a marretada aciona.",
-      "fase1": [
-        {
-          "id": "M1",
-          "tipo": "betoneira",
-          "etapa": 1,
-          "pos": [
-            70,
-            1088
-          ],
-          "faixa": [
-            180,
-            310
-          ],
-          "chao": 1088,
-          "ciclo_s": 14,
-          "aviso_s": 1.2,
-          "fresco_s": 6,
-          "lentidao": 0.45,
-          "alvo": [
-            70,
-            1030,
-            60,
-            60
-          ],
-          "fase_s": 4
-        },
-        {
-          "id": "M2",
-          "tipo": "elevador",
-          "etapa": 1,
-          "base": [
-            2380,
-            1088
-          ],
-          "topo": 640,
-          "mastro": 2525,
-          "largura": 130,
-          "espera_s": 2.0,
-          "move_s": 2.5
-        },
-        {
-          "id": "M4",
-          "tipo": "tubos",
-          "etapa": 1,
-          "pos": [
-            2150,
-            1088
-          ],
-          "chao": 1088,
-          "recarga_s": 20,
-          "alvo": [
-            2100,
-            940,
-            250,
-            150
-          ]
-        },
-        {
-          "id": "M5",
-          "tipo": "serra",
-          "etapa": 1,
-          "pos": [
-            400,
-            1088
-          ],
-          "ligada_s": 2,
-          "desligada_s": 4,
-          "bancada": true
-        },
-        {
-          "id": "M6",
-          "tipo": "bate_estaca",
-          "etapa": 2,
-          "x": 1440,
-          "topo": 1944,
-          "chao": 2624,
-          "ciclo_s": 5,
-          "aviso_s": 1.0,
-          "alvo": [
-            1392,
-            1924,
-            96,
-            140
-          ]
-        },
-        {
-          "id": "M7",
-          "tipo": "agua",
-          "etapa": 2,
-          "x": [
-            192,
-            2368
-          ],
-          "chao": 2624,
-          "altura": 70,
-          "ciclo_s": 18,
-          "sobe_s": 3,
-          "fica_s": 6,
-          "lentidao": 0.6,
-          "dreno_s": 6,
-          "alvo": [
-            2048,
-            2444,
-            64,
-            64
-          ],
-          "fase_s": 2
-        },
-        {
-          "id": "M8",
-          "tipo": "vagonete",
-          "etapa": 2,
-          "x": [
-            470,
-            800
-          ],
-          "chao": 2624,
-          "vel": 300,
-          "ciclo_s": 8,
-          "aviso_s": 1.2,
-          "fase_s": 3
-        },
-        {
-          "id": "M9",
-          "tipo": "gerador",
-          "etapa": 2,
-          "pos": [
-            310,
-            2496
-          ],
-          "cabo": [
-            700,
-            2620
-          ],
-          "ciclo_s": 6,
-          "faisca_s": 1.5,
-          "desliga_s": 8,
-          "alvo": [
-            225,
-            2366,
-            170,
-            130
-          ]
-        }
-      ]
     }
   },
   "bots": {

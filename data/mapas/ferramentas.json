@@ -1,0 +1,8 @@
+{
+ "nota": "Mapas-FERRAMENTA (não são fases): recebem TODAS as spells e eventos do modo, de forma explícita. Qualquer outro mapa sem manifesto não recebe spells nem eventos (sem herança silenciosa entre modos).",
+ "mapas": {
+  "laboratorio": "Laboratório (fase destrutível de teste, menu LABORATÓRIO)",
+  "demolicao": "arena padrão das telas de menu e de vários testes",
+  "canteiro": "mapa plano de referência dos testes (pulo, corrida)"
+ }
+}

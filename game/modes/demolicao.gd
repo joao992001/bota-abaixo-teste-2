@@ -26,7 +26,7 @@ const Kit := preload("res://ui/kit.gd")
 var fx: Node2D = null        # mecânicas da arena (plataformas, lama, bola, esteiras)
 var spells: Node2D = null     # caixas de spell, slots e efeitos (modes/spells.gd)
 var canteiro: Node2D = null  # estrutura destrutível do Canteiro de Obras (Derruba), quando a arena tem "canteiro: 1"
-var etapas: Node2D = null   # fase em etapas (modes/etapas.gd): virada cronometrada e queda para a etapa 2
+var etapas: Node2D = null   # cenas do mapa (modes/etapas.gd): transição por destruição (90%) e queda para a próxima cena
 var cena: Node2D = null     # cena viva da fase (modes/cena.gd): fundo em camadas animado
 var mecs: Node2D = null     # mecanismos da fase (modes/mecanismos.gd)
 var arena := {}              # {id, nome, dica} da rodada atual
@@ -152,7 +152,7 @@ func start_round() -> void:
 	if mecs != null and is_instance_valid(mecs):
 		mecs.queue_free()
 	mecs = null
-	if cfg.get("mecanismos", {}).has(String(main.level.prop("cena", ""))):
+	if not MapaReg.mecanismos(main.game_mode, main.level.id).is_empty():
 		mecs = Mecanismos.new()
 		main.world.add_child(mecs)
 		main.world.move_child(mecs, 3)   # no palco, atrás dos robôs

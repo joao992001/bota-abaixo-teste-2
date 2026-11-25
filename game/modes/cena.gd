@@ -112,7 +112,7 @@ func _draw() -> void:
 ## Terra entre as etapas com o POÇO aberto no buraco (por onde todos caem): dos lados terra, no meio a luz do dia
 ## descendo até o teto quebrado da Fundação. Mundo fixo (sem paralaxe), para casar com o buraco do teto.
 func _between() -> void:
-	var hb := String(main.level.prop("buraco", "10,30")).split(",")
+	var hb := String(main.level.prop("buraco1", "10,30")).split(",")
 	var h0 := float(hb[0]) * 64.0
 	var h1 := float(hb[1]) * 64.0
 	var y0 := a1.end.y - 40.0
@@ -201,7 +201,7 @@ func _draw_e2() -> void:
 		draw_texture_rect(tx, Rect2(Vector2(-sz.x * 0.2, -sz.y), sz), false)
 		draw_set_transform(Vector2.ZERO)
 	# feixes de luz pelo buraco (tremulam) com poeira
-	var hx0 := float(main.level.prop("buraco", "10,30").split(",")[0]) * 64.0
+	var hx0 := float(main.level.prop("buraco1", "10,30").split(",")[0]) * 64.0
 	for k in 5:
 		var x := hx0 + 80.0 + k * 150.0
 		var a := 0.07 + 0.03 * sin(t * 1.7 + k)

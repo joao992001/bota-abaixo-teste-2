@@ -8,14 +8,10 @@ extends Node2D
 ##   zebrada marcando o trecho → ele cede). Números: data/modos.json → demolicao.canteiro.
 
 const T := 64
-## Layouts: "1" = Canteiro de Obras; "lab" = fase do Laboratório (menor). O .lvl escolhe com "canteiro: <layout>".
+## Estruturas das fases vêm do MANIFESTO do mapa (data/mapas/<modo>/<mapa>.json → cenas[].estruturas: lajes, andaimes,
+## vigas, pilares, terreos [base fixa], estacas, grelhas, piso, entulhos). Aqui só o layout da fase do Laboratório
+## (ferramenta), escolhido no .lvl com "canteiro: lab".
 const LAYOUTS := {
-	"1": {"seg_x": [8, 12, 16, 20, 24, 28], "nucleo": [2, 3], "laje_y": 13, "andaimes": [[3, 10, 5], [32, 10, 5]],
-		"vigas": [[16, 8, 8], [10, 11, 4], [26, 11, 4], [9, 5, 4], [27, 5, 4]], "pilares": [17, 22],
-		"terreos": [[0, 17, 8, 5], [32, 17, 8, 5]],
-		# etapa 2 (Fundação, embaixo): plataformas sobre estaca [col, linha, largura], grelha do poço [col, linha, largura],
-		# pedaços da laje que caem na virada [col, largura] (sobre o piso da linha "piso")
-		"fundacao": {"estacas": [[8, 35, 5], [27, 35, 5], [18, 32, 4]], "grelhas": [], "piso": 41, "entulhos": [[7, 3], [30, 3]]}},
 	"lab": {"seg_x": [3, 7, 11, 15, 19, 23], "nucleo": [2, 3], "laje_y": 12, "andaimes": [[5, 9, 4], [20, 9, 4]],
 		"vigas": [[11, 6, 6], [24, 4, 4]], "pilares": [12, 17]},
 }
@@ -27,6 +23,7 @@ var ANDAIMES: Array = []
 ## passar por baixo) e 2 no alto (alcançáveis com pulo duplo a partir dos andaimes). Todas caem de vez.
 var VIGAS: Array = []
 var PILARES: Array = []
+var ETAPA_LAJE := 1            # cena (ordem) que tem a laje com andaimes, vigas e térreo
 
 var main: Node
 var cfg: Dictionary
@@ -39,7 +36,7 @@ var t := 0.0
 var cycle_state := "calma"
 var target = null
 var tex := {}
-var fund := {}                 # layout da Fundação (etapa 2)
+var extras: Array = []        # cenas seguintes do manifesto (estacas, grelhas, piso, entulhos)
 var quiet := false             # virada da fase: desaba tudo sem um texto por peça
 var pillars_down := false
 var mute_hit := false          # marretada do robô: o som é o clang aprovado (demolicao.gd), não a pancada da peça      # virada: os pilares do núcleo também caem
@@ -51,32 +48,38 @@ func setup(m: Node, lv) -> void:
 		tex[k] = Data.tex("canteiro/" + k)
 	for k in ["plataforma", "estaca", "grelha"]:
 		tex[k] = Data.tex("fase1/" + k)
-	var lay: Dictionary = LAYOUTS.get(String(lv.prop("canteiro", "1")), LAYOUTS["1"])
+	var lay: Dictionary = LAYOUTS.get(String(lv.prop("canteiro", "lab")), LAYOUTS["lab"])
+	var cs: Array = MapaReg.cenas(m.game_mode, lv.id)
+	if not cs.is_empty():
+		lay = _layout_do_mapa(cs)
 	SEG_X = lay["seg_x"]
 	NUCLEO = lay["nucleo"]
 	LAJE_Y = int(lay["laje_y"])
 	ANDAIMES = lay["andaimes"]
 	VIGAS = lay["vigas"]
 	PILARES = lay["pilares"]
+	ETAPA_LAJE = int(lay.get("etapa_laje", 1))
 	for i in SEG_X.size():
-		_add("laje", Rect2(SEG_X[i] * T, LAJE_Y * T, 4 * T, 2 * T), int(cfg["laje_hp"]), i in NUCLEO, false, i)
+		_add("laje", Rect2(SEG_X[i] * T, LAJE_Y * T, 4 * T, 2 * T), int(cfg["laje_hp"]), i in NUCLEO, false, i, ETAPA_LAJE)
 	for i in ANDAIMES.size():
 		var a: Array = ANDAIMES[i]
-		_add("andaime", Rect2(a[0] * T - 6, a[1] * T, a[2] * T + 12, 20), int(cfg["andaime_hp"]), false, true, i)
+		_add("andaime", Rect2(a[0] * T - 6, a[1] * T, a[2] * T + 12, 20), int(cfg["andaime_hp"]), false, true, i, ETAPA_LAJE)
 	for i in VIGAS.size():
 		var v: Array = VIGAS[i]
-		_add("viga", Rect2(v[0] * T, v[1] * T, v[2] * T, 26), int(cfg["viga_hp"]), false, true, i)
+		_add("viga", Rect2(v[0] * T, v[1] * T, v[2] * T, 26), int(cfg["viga_hp"]), false, true, i, ETAPA_LAJE)
 	var ters: Array = lay.get("terreos", [])
 	for i in ters.size():   # chão do térreo (dos lados): firme; só some na virada da fase (collapse_all)
 		var g: Array = ters[i]
-		_add("terreo", Rect2(g[0] * T, g[1] * T, g[2] * T, g[3] * T), 999, true, false, i)
-	fund = lay.get("fundacao", {})
-	for i in fund.get("estacas", []).size():
-		var e: Array = fund["estacas"][i]
-		_add("estaca", Rect2(e[0] * T, e[1] * T, e[2] * T, 22), int(cfg["estaca_hp"]), false, true, i, 2)
-	for i in fund.get("grelhas", []).size():   # poços de drenagem (abrem KO); o do meio fica sob o bate-estaca
-		var gr: Array = fund["grelhas"][i]
-		_add("grelha", Rect2(gr[0] * T, gr[1] * T, gr[2] * T, 40), int(cfg["grelha_hp"]), false, false, i, 2)
+		_add("terreo", Rect2(g[0] * T, g[1] * T, g[2] * T, g[3] * T), 999, true, false, i, ETAPA_LAJE)
+	extras = lay.get("cenas_extra", [])
+	for c in extras:   # cenas seguintes: plataformas sobre estaca e grelhas de poço
+		var n: int = c["ordem"]
+		for i in c.get("estacas", []).size():
+			var e: Array = c["estacas"][i]
+			_add("estaca", Rect2(e[0] * T, e[1] * T, e[2] * T, 22), int(cfg["estaca_hp"]), false, true, i, n)
+		for i in c.get("grelhas", []).size():   # poços de drenagem (abrem KO)
+			var gr: Array = c["grelhas"][i]
+			_add("grelha", Rect2(gr[0] * T, gr[1] * T, gr[2] * T, 40), int(cfg["grelha_hp"]), false, false, i, n)
 	lv.extra_solid = func(c: Vector2i) -> bool: return owner_of.has(c)
 	lv.grab_solid = func(c: Vector2i) -> bool: return owner_of.has(c) and owner_of[c]["kind"] == "laje"
 
@@ -184,6 +187,26 @@ func damage(p: Dictionary, amount: int, at: Vector2) -> void:
 		p["crit_t"] = float(cfg["aviso_queda_s"])   # aviso final: range, treme forte, pedrinhas caindo
 		Audio.play("terremoto", 1.5, -4.0)
 
+## Layout a partir das cenas do manifesto. Limitação atual (documentada no manual): laje + andaimes + vigas + térreo numa
+## cena só; estacas/grelhas/entulhos em qualquer cena. Tipo novo de estrutura = código novo aqui.
+func _layout_do_mapa(cs: Array) -> Dictionary:
+	var lay := {"seg_x": [], "nucleo": [], "laje_y": 13, "andaimes": [], "vigas": [], "pilares": [], "terreos": [], "cenas_extra": []}
+	for c in cs:
+		var es: Dictionary = c.get("estruturas", {})
+		if es.has("lajes"):
+			lay["seg_x"] = es["lajes"]["seg_x"].map(func(v): return int(v))
+			lay["nucleo"] = es["lajes"].get("nucleo", []).map(func(v): return int(v))   # JSON dá 2.0: "2 in [2.0]" é falso
+			lay["laje_y"] = int(es["lajes"]["linha"])
+			lay["etapa_laje"] = int(c["ordem"])
+			for k in ["andaimes", "vigas", "terreos"]:
+				lay[k] = es.get(k, []).map(func(a): return a.map(func(v): return int(v)))
+			lay["pilares"] = es.get("pilares", []).map(func(v): return int(v))
+		if es.has("estacas") or es.has("grelhas") or es.has("entulhos"):
+			var ex: Dictionary = es.duplicate()
+			ex["ordem"] = int(c["ordem"])
+			lay["cenas_extra"].append(ex)
+	return lay
+
 ## Etapa em que o jogo está (fase em etapas); peças da outra etapa ficam fora de eventos, caixas e ciclo.
 func etapa_now() -> int:
 	var et = main.demo.etapas
@@ -193,7 +216,7 @@ func etapa_now() -> int:
 func hit_rect(p: Dictionary) -> Rect2:
 	var r: Rect2 = p["rect"]
 	if p["kind"] == "estaca":
-		return r.merge(Rect2(r.get_center().x - 22.0, r.end.y, 44.0, float(fund.get("piso", 41)) * T - r.end.y))
+		return r.merge(Rect2(r.get_center().x - 22.0, r.end.y, 44.0, _piso(int(p["etapa"])) - r.end.y))
 	return r
 
 ## Marretada pesada: acerta o trecho à frente (no chão onde a marreta bate) ou, com ▼, o trecho embaixo dos pés.
@@ -403,7 +426,7 @@ func _draw() -> void:
 		var o := _shake_off(p)
 		match p["kind"]:
 			"estaca":
-				var floor_y := float(fund.get("piso", 41)) * T
+				var floor_y := _piso(int(p["etapa"]))
 				draw_texture_rect(tex["estaca"], Rect2(Vector2(r.get_center().x - 22.0, r.end.y) + o * 0.5, Vector2(44, floor_y - r.end.y)), false)
 				var tilt := 0.0
 				if p["crit_t"] > 0.0:
@@ -484,22 +507,25 @@ func _draw_sirens() -> void:
 			draw_colored_polygon(PackedVector2Array([sp, sp + Vector2.from_angle(ang - 0.25) * 120.0, sp + Vector2.from_angle(ang + 0.25) * 120.0]), Color(1.0, 0.75, 0.3, 0.18))
 
 ## VIRADA da fase (modes/etapas.gd): TUDO desaba de uma vez (inclusive núcleo e térreo), em pedaços com física.
-func collapse_all() -> void:
+func collapse_all(n := 1) -> void:
 	quiet = true
 	for p in parts:
-		if int(p["etapa"]) != 1:
+		if int(p["etapa"]) != n:
 			continue
 		p["warn_t"] = 0.0
 		p["evt"] = ""
 		if not p["fallen"]:
 			_collapse(p)
 	quiet = false
-	# D12: pedaços da laje caem pelo buraco e viram obstáculos quebráveis no piso da Fundação
-	var piso := float(fund.get("piso", 41)) * T
-	for i in fund.get("entulhos", []).size():
-		var e: Array = fund["entulhos"][i]
-		_add("entulho", Rect2(e[0] * T, piso - 44.0, e[1] * T, 44.0), int(cfg["entulho_hp"]), false, false, i, 2)
-	pillars_down = true
+	# D12: pedaços da cena que caiu viram obstáculos quebráveis no piso da cena seguinte (entulhos da cena n+1)
+	for c in extras:
+		if int(c["ordem"]) != n + 1:
+			continue
+		var piso := float(c.get("piso", 41)) * T
+		for i in c.get("entulhos", []).size():
+			var e: Array = c["entulhos"][i]
+			_add("entulho", Rect2(e[0] * T, piso - 44.0, e[1] * T, 44.0), int(cfg["entulho_hp"]), false, false, i, n + 1)
+	pillars_down = n == ETAPA_LAJE
 	for col in PILARES:   # os pilares tombam em pedaços
 		var x: float = col * T + 64.0
 		for k in 4:
@@ -509,10 +535,36 @@ func collapse_all() -> void:
 	target = null
 
 ## Aviso da virada: todas as peças tremem com a fita zebrada.
-func warn_all(s: float) -> void:
+func warn_all(s: float, n := 1) -> void:
 	for p in parts:
-		if not p["fallen"] and p["kind"] != "terreo" and int(p["etapa"]) == 1:
+		if not p["fallen"] and p["kind"] != "terreo" and int(p["etapa"]) == n:
 			p["warn_t"] = s
+
+## Linha do piso (px) da cena n (estacas descem até ele).
+func _piso(n: int) -> float:
+	for c in extras:
+		if int(c["ordem"]) == n:
+			return float(c.get("piso", 41)) * T
+	return 41.0 * T
+
+## DESTRUIÇÃO ELEGÍVEL da cena n (0..1) — gatilho da transição (modos[derruba].destruicao.limiar). Conta só peças
+## destrutíveis da cena: fora a base fixa (núcleo, térreo), os pedaços gerados na queda (entulho) e as outras cenas.
+## Calculado do ESTADO das peças (não somando golpes): nenhuma origem de dano fica de fora e nada conta duas vezes.
+## Peso = largura em tiles (laje x2, tem 2 tiles de altura); fração = HP perdido (laje inclui as escoras); caída = 1.
+func progresso(n: int) -> float:
+	var tot := 0.0
+	var feito := 0.0
+	for p in parts:
+		if int(p["etapa"]) != n or p["nucleo"] or p["kind"] in ["terreo", "entulho"]:
+			continue
+		var w: float = maxf(1.0, round(p["rect"].size.x / T)) * (2.0 if p["kind"] == "laje" else 1.0)
+		var f := 1.0
+		if not p["fallen"]:
+			var mx := float(p["max"]) + (float(cfg["escora_hp"]) if p["kind"] == "laje" else 0.0)
+			f = clampf(1.0 - (float(p["hp"]) + float(p.get("escora_hp", 0))) / maxf(mx, 1.0), 0.0, 1.0)
+		tot += w
+		feito += w * f
+	return feito / tot if tot > 0.0 else 1.0
 
 ## Quantos trechos/peças ainda de pé (testes e bots).
 func standing(kind := "") -> int:

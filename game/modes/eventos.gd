@@ -19,6 +19,7 @@ var enabled := {}            # id -> bool
 var timer := 0.0
 var active: Array = []       # {e, id, phase, t, len, age, d}
 var manual := false          # Laboratório: só dispara pelo painel
+var libera_tudo := false     # testes da biblioteca: ignora a lista do mapa/cena
 var menu_sel := 0
 var fired: Array = []        # ids disparados (testes)
 var t := 0.0
@@ -156,13 +157,15 @@ func conflict(x: String, y: String) -> bool:
 func eligible(e: Dictionary) -> bool:
 	if not enabled.get(e["id"], true) or main.demo == null:
 		return false
-	# eventos são DA FASE: a fase lista quais valem em cada etapa (demolicao.eventos.por_fase.<cena>)
-	var por: Dictionary = cfg.get("por_fase", {}).get(String(main.level.prop("cena", "")), {})
-	if por.is_empty():
-		if String(e["id"]).begins_with("V"):
-			return false   # V# = eventos específicos de fase
-	elif not (e["id"] in por.get(str(_etapa()), [])):
-		return false
+	# eventos são DO MAPA E DA CENA: o manifesto lista quais valem em cada cena; mapa-ferramenta = biblioteca inteira
+	# (exceto V#, específicos de mapa); mapa sem manifesto = nenhum. libera_tudo: testes da biblioteca.
+	if not libera_tudo:
+		var lst = MapaReg.eventos(main.game_mode, main.level.id, _etapa())
+		if lst == null:
+			if String(e["id"]).begins_with("V"):
+				return false
+		elif not (e["id"] in lst):
+			return false
 	var ct = _canteiro()
 	match e["id"]:
 		"V1":

@@ -1,0 +1,338 @@
+{
+ "schema_version": 1,
+ "mode_id": "derruba",
+ "map_id": "canteiro_obras",
+ "nome": "Canteiro de Obras",
+ "estado": "APROVADO",
+ "nota": "Biblioteca do mapa LEGÍVEL POR CÓDIGO (fonte única do conteúdo autorizado). Geometria das cenas: levels/canteiro_obras.lvl (etapaN, koN, buracoN, nascimentos). Arte: game/assets/fase1 + modes/cena.gd. Biblioteca humana: docs/fases/derruba/f1_canteiro/README.md",
+ "lvl": "canteiro_obras",
+ "arte": "fase1",
+ "spells_permitidas": [
+  "S01",
+  "S02",
+  "S03",
+  "S04",
+  "S05",
+  "S06",
+  "S10",
+  "S11",
+  "S13",
+  "S17",
+  "S18",
+  "S19",
+  "S20",
+  "S07",
+  "S08",
+  "S21",
+  "S12",
+  "S25",
+  "S27",
+  "S28",
+  "S14",
+  "S15",
+  "S16",
+  "S31",
+  "S33",
+  "S34"
+ ],
+ "eventos_permitidos": [
+  "G02",
+  "G03",
+  "G04",
+  "G05",
+  "G06",
+  "G10",
+  "G11",
+  "G12",
+  "G13",
+  "G14",
+  "V1",
+  "V2",
+  "V3"
+ ],
+ "skins_originadas": [],
+ "cenas": [
+  {
+   "id": "terreo",
+   "ordem": 1,
+   "nome": "Térreo",
+   "eventos": [
+    "G05",
+    "G06",
+    "G10",
+    "G12",
+    "G13",
+    "G02",
+    "V1"
+   ],
+   "mecanismos": [
+    {
+     "id": "M1",
+     "tipo": "betoneira",
+     "pos": [
+      70,
+      1088
+     ],
+     "faixa": [
+      180,
+      310
+     ],
+     "chao": 1088,
+     "ciclo_s": 14,
+     "aviso_s": 1.2,
+     "fresco_s": 6,
+     "lentidao": 0.45,
+     "alvo": [
+      70,
+      1030,
+      60,
+      60
+     ],
+     "fase_s": 4
+    },
+    {
+     "id": "M2",
+     "tipo": "elevador",
+     "base": [
+      2380,
+      1088
+     ],
+     "topo": 640,
+     "mastro": 2525,
+     "largura": 130,
+     "espera_s": 2.0,
+     "move_s": 2.5
+    },
+    {
+     "id": "M4",
+     "tipo": "tubos",
+     "pos": [
+      2150,
+      1088
+     ],
+     "chao": 1088,
+     "recarga_s": 20,
+     "alvo": [
+      2100,
+      940,
+      250,
+      150
+     ]
+    },
+    {
+     "id": "M5",
+     "tipo": "serra",
+     "pos": [
+      400,
+      1088
+     ],
+     "ligada_s": 2,
+     "desligada_s": 4,
+     "bancada": true
+    }
+   ],
+   "estruturas": {
+    "lajes": {
+     "seg_x": [
+      8,
+      12,
+      16,
+      20,
+      24,
+      28
+     ],
+     "nucleo": [
+      2,
+      3
+     ],
+     "linha": 13
+    },
+    "andaimes": [
+     [
+      3,
+      10,
+      5
+     ],
+     [
+      32,
+      10,
+      5
+     ]
+    ],
+    "vigas": [
+     [
+      16,
+      8,
+      8
+     ],
+     [
+      10,
+      11,
+      4
+     ],
+     [
+      26,
+      11,
+      4
+     ],
+     [
+      9,
+      5,
+      4
+     ],
+     [
+      27,
+      5,
+      4
+     ]
+    ],
+    "pilares": [
+     17,
+     22
+    ],
+    "terreos": [
+     [
+      0,
+      17,
+      8,
+      5
+     ],
+     [
+      32,
+      17,
+      8,
+      5
+     ]
+    ]
+   },
+   "base_fixa": [
+    "laje do núcleo (lajes.nucleo)",
+    "terreos"
+   ],
+   "proxima": "fundacao"
+  },
+  {
+   "id": "fundacao",
+   "ordem": 2,
+   "nome": "Fundação",
+   "eventos": [
+    "G14",
+    "G04",
+    "G06",
+    "G10",
+    "G03",
+    "G11",
+    "V2",
+    "V3"
+   ],
+   "mecanismos": [
+    {
+     "id": "M6",
+     "tipo": "bate_estaca",
+     "x": 1440,
+     "topo": 1944,
+     "chao": 2624,
+     "ciclo_s": 5,
+     "aviso_s": 1.0,
+     "alvo": [
+      1392,
+      1924,
+      96,
+      140
+     ]
+    },
+    {
+     "id": "M7",
+     "tipo": "agua",
+     "x": [
+      192,
+      2368
+     ],
+     "chao": 2624,
+     "altura": 70,
+     "ciclo_s": 18,
+     "sobe_s": 3,
+     "fica_s": 6,
+     "lentidao": 0.6,
+     "dreno_s": 6,
+     "alvo": [
+      2048,
+      2444,
+      64,
+      64
+     ],
+     "fase_s": 2
+    },
+    {
+     "id": "M8",
+     "tipo": "vagonete",
+     "x": [
+      470,
+      800
+     ],
+     "chao": 2624,
+     "vel": 300,
+     "ciclo_s": 8,
+     "aviso_s": 1.2,
+     "fase_s": 3
+    },
+    {
+     "id": "M9",
+     "tipo": "gerador",
+     "pos": [
+      310,
+      2496
+     ],
+     "cabo": [
+      700,
+      2620
+     ],
+     "ciclo_s": 6,
+     "faisca_s": 1.5,
+     "desliga_s": 8,
+     "alvo": [
+      225,
+      2366,
+      170,
+      130
+     ]
+    }
+   ],
+   "estruturas": {
+    "estacas": [
+     [
+      8,
+      35,
+      5
+     ],
+     [
+      27,
+      35,
+      5
+     ],
+     [
+      18,
+      32,
+      4
+     ]
+    ],
+    "grelhas": [],
+    "piso": 41,
+    "entulhos": [
+     [
+      7,
+      3
+     ],
+     [
+      30,
+      3
+     ]
+    ]
+   },
+   "base_fixa": [
+    "lajes do piso (tiles do .lvl)"
+   ],
+   "proxima": null
+  }
+ ]
+}

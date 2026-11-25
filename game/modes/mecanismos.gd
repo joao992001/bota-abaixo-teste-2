@@ -16,9 +16,8 @@ var t := 0.0
 
 func setup(m: Node) -> void:
 	main = m
-	var key := String(m.level.prop("cena", ""))
-	var all: Dictionary = m.demo.cfg.get("mecanismos", {})
-	for d in all.get(key, []):
+	var key := String(m.level.prop("cena", ""))   # pasta da arte da cena (game/assets/<cena>)
+	for d in MapaReg.mecanismos(m.game_mode, m.level.id):   # instâncias por cena, do manifesto do mapa
 		var inst := {"tipo": d["tipo"], "etapa": int(d.get("etapa", 1)), "d": d, "s": {}}
 		list.append(inst)
 		_prepara(inst)
@@ -606,8 +605,8 @@ func _draw_agua(d: Dictionary, s: Dictionary) -> void:
 	var wcol := Color(0.33, 0.58, 0.72, 0.55)
 	var foam := Color(0.85, 0.95, 0.98, 0.85)
 	if s.get("pour", false):   # despejando das bordas quebradas do teto; cai na primeira coisa embaixo (plataforma ou piso)
-		var hb := String(main.level.prop("buraco", "10,30")).split(",")
-		var top: float = main.level.etapa_rect(2).position.y + 128.0
+		var hb := String(main.level.prop("buraco1", "10,30")).split(",")
+		var top: float = main.level.etapa_rect(int(d.get("etapa", 2))).position.y + 128.0
 		var ct = main.demo.canteiro
 		for xe in [float(hb[0]) * T + 16.0, float(hb[1]) * T - 16.0]:
 			var bot := ch - h

@@ -1,50 +1,76 @@
 extends Node2D
-## FASE EM ETAPAS (cartilha do mapa, docs/manuais/derruba/mapa_cartilha.md): a virada é o ÚNICO momento de roteiro,
-## cronometrada e sempre igual. Etapa 1 → AVISO ("A OBRA VAI CEDER!", tudo treme com fita) → DESABA (a estrutura toda
-## cai em pedaços) → QUEDA (ninguém é eliminado; um funil leva todos para o buraco do teto da etapa 2; gravidade mais leve)
-## → ETAPA 2 (câmera, KO e área de jogo passam para a etapa 2; nascimentos 5–8).
-## Números: data/modos.json → demolicao.etapas. Área de cada etapa no .lvl: "etapa1:" / "etapa2:" (col,linha,larg,alt)
-## e o buraco por onde se cai: "buraco: col0,col1".
+## CENAS DO MAPA (modo Derruba; manual docs/manuais/derruba/README.md). Um mapa tem 2..N cenas (etapaN no .lvl; conteúdo
+## em data/mapas/<modo>/<mapa>.json). A TRANSIÇÃO não é por tempo: quando a DESTRUIÇÃO ELEGÍVEL da cena atual chega ao
+## limiar (modos[derruba].destruicao.limiar = 90%) e existe próxima cena → AVISO ("A OBRA VAI CEDER!", tudo treme) →
+## DESABA (a cena inteira cai em pedaços) → QUEDA (sem KO, sem controle, lenta; câmera desce junto) → CENA SEGUINTE
+## (câmera, KO, área e nascimentos passam para ela). Dispara UMA vez por cena (trava no estado).
+## DIRETOR ADAPTATIVO (proposta do usuário, 2026-11-25): compara o progresso com uma curva até alvo_s (sorteado por cena);
+## se os jogadores quebram pouco, derruba peças sozinho (sirene + fita + cai) com mais frequência; se quebram muito, quase
+## não age. Na última cena só a deterioração calma. Números: modos[derruba].destruicao; cinemática: demolicao.etapas.
 
 var main: Node
-var cfg: Dictionary
-var etapa := 1
-var state := "etapa"          # etapa · aviso · queda
-var t := 0.0                  # tempo de rodada contado para a virada
+var cfg: Dictionary            # cinemática da transição (demolicao.etapas)
+var dcfg: Dictionary           # regra do modo (destruicao)
+var etapa := 1                 # cena atual (ordem)
+var n_cenas := 1
+var state := "etapa"           # etapa · aviso · queda
 var st_t := 0.0
-var hole := Vector2.ZERO      # faixa x (px) do buraco do teto da etapa 2
+var hole := Vector2.ZERO       # faixa x (px) do buraco por onde se cai da cena atual para a próxima
+var ativo := true              # testes longos desligam diretor e transição
+var t_cena := 0.0              # tempo na cena atual
+var alvo := 90.0               # o diretor mira chegar ao limiar perto deste tempo (sorteado por cena)
+var dir_t := 0.0               # tempo até a próxima decisão do diretor
+var acoes := 0                 # peças derrubadas pelo diretor nesta cena (testes/medição)
+var progresso := 0.0           # destruição elegível da cena atual (0..1)
 
 func setup(m: Node) -> void:
 	main = m
 	cfg = m.demo.cfg["etapas"]
-	var h := String(m.level.prop("buraco", "")).split(",")
+	dcfg = MapaReg.modo_cfg(m.game_mode).get("destruicao", {"limiar": 0.9, "alvo_s": [90, 90], "intervalo_s": [8, 40],
+		"chance_calma": 0.25, "aviso_s": 2.5, "deficit_max": 0.3})
+	n_cenas = 1
+	while String(m.level.prop("etapa%d" % (n_cenas + 1), "")) != "":
+		n_cenas += 1
+	_nova_cena()
+
+func _nova_cena() -> void:
+	t_cena = 0.0
+	acoes = 0
+	var a: Array = dcfg["alvo_s"]
+	alvo = main.rng.randf_range(float(a[0]), float(a[1]))
+	dir_t = float(dcfg["intervalo_s"][1]) * 0.5
+	var h := String(main.level.prop("buraco%d" % etapa, "")).split(",")
 	if h.size() >= 2:
 		hole = Vector2(float(h[0]) * 64.0, float(h[1]) * 64.0)
-	else:
-		var a2: Rect2 = m.level.etapa_rect(2)
-		hole = Vector2(a2.position.x, a2.end.x)
+	elif tem_proxima():
+		var an: Rect2 = main.level.etapa_rect(etapa + 1)
+		hole = Vector2(an.position.x, an.end.x)
 
-func virada_s() -> float:
-	return float(cfg["virada_s"])
+func limiar() -> float:
+	return float(dcfg["limiar"])
+
+func tem_proxima() -> bool:
+	return etapa < n_cenas
+
+func _ct():
+	var ct = main.demo.canteiro
+	return ct if ct != null and is_instance_valid(ct) else null
 
 func update(dt: float) -> void:
 	if main.state != main.S.RUN or main.countdown > 0.0:
 		return
 	var lv = main.level
-	var ct = main.demo.canteiro
+	var ct = _ct()
 	match state:
 		"etapa":
-			if etapa != 1:
+			if not ativo:
 				return
-			t += dt
-			if t >= virada_s() - float(cfg["aviso_s"]):
-				state = "aviso"
-				st_t = float(cfg["aviso_s"])
-				main.demo.banner = "A OBRA VAI CEDER!"
-				main.demo.banner_t = st_t
-				Audio.play("alarme", 0.8, 0.0)
-				if ct != null and is_instance_valid(ct):
-					ct.warn_all(st_t)
+			t_cena += dt
+			progresso = ct.progresso(etapa) if ct != null else 0.0
+			if tem_proxima() and progresso >= limiar():
+				_aviso()
+				return
+			_diretor(dt, ct)
 		"aviso":
 			st_t -= dt
 			main.shake(1.5 + 4.0 * (1.0 - st_t / float(cfg["aviso_s"])))
@@ -55,7 +81,7 @@ func update(dt: float) -> void:
 		"queda":
 			st_t += dt
 			main.events.gravity_mult *= float(cfg["gravidade_queda"])
-			var a2: Rect2 = lv.etapa_rect(2)
+			var a2: Rect2 = lv.etapa_rect(etapa + 1)
 			var landed := true
 			for r in main.robots:
 				if not r.alive:
@@ -74,21 +100,59 @@ func update(dt: float) -> void:
 			if (landed and st_t > 0.5) or st_t >= float(cfg["queda_max_s"]):
 				_chega()
 
-## A estrutura inteira desaba: começa a queda.
+## Diretor adaptativo: mais peças caindo sozinhas quando os jogadores quebram pouco; quase nada quando quebram muito.
+func _diretor(dt: float, ct) -> void:
+	if ct == null:
+		return
+	dir_t -= dt
+	if dir_t > 0.0:
+		return
+	var iv: Array = dcfg["intervalo_s"]
+	var deficit := limiar() * clampf(t_cena / maxf(alvo, 1.0), 0.0, 1.2) - progresso
+	var age := false
+	if tem_proxima() and deficit > 0.0:
+		var k := clampf(deficit / float(dcfg["deficit_max"]), 0.0, 1.0)
+		if t_cena > alvo:
+			k = 1.0   # passou do alvo e ainda falta: urgência máxima (no fim falta pouca peça e cada uma pesa muito)
+		dir_t = lerpf(float(iv[1]), float(iv[0]), k) * main.rng.randf_range(0.75, 1.25)
+		age = true
+	else:
+		dir_t = float(iv[1]) * main.rng.randf_range(0.8, 1.2)
+		age = main.rng.randf() < float(dcfg["chance_calma"])
+	if age and ct.can_alert():
+		ct.start_alert(float(dcfg["aviso_s"]))   # sirene + fita zebrada no trecho → ele cede
+		acoes += 1
+
+## Vitrines/vídeos: começa a transição já (se houver próxima cena).
+func forcar() -> void:
+	if state == "etapa" and tem_proxima():
+		_aviso()
+
+func _aviso() -> void:
+	state = "aviso"
+	st_t = float(cfg["aviso_s"])
+	main.demo.banner = "A OBRA VAI CEDER!"
+	main.demo.banner_t = st_t
+	Audio.play("alarme", 0.8, 0.0)
+	var ct = _ct()
+	if ct != null:
+		ct.warn_all(st_t, etapa)
+
+## A cena inteira desaba: começa a queda para a próxima.
 func _desaba() -> void:
 	var lv = main.level
 	state = "queda"
 	st_t = 0.0
-	var ct = main.demo.canteiro
-	if ct != null and is_instance_valid(ct):
-		ct.collapse_all()
+	var ct = _ct()
+	if ct != null:
+		ct.collapse_all(etapa)
 	main.events.stop_all()
 	lv.ko_off = true
-	lv.area = lv.etapa_rect(1).merge(lv.etapa_rect(2))
+	lv.area = lv.etapa_rect(etapa).merge(lv.etapa_rect(etapa + 1))
 	main.shake(18.0)
 	Audio.play("terremoto", 1.0, 2.0)
 	Audio.play("explosao", 0.6, -2.0)
-	var a2: Rect2 = lv.etapa_rect(2)
+	var a2: Rect2 = lv.etapa_rect(etapa + 1)
 	var g: float = float(Data.ctrl["gravity"]) * float(cfg["gravidade_queda"])
 	var vivos: Array = main.robots.filter(func(r): return r.alive)
 	for i in vivos.size():
@@ -109,18 +173,18 @@ func _desaba() -> void:
 		r.velocity.y = minf(r.velocity.y, -180.0)   # pulinho de susto antes de cair
 	var mc = main.demo.mecs
 	if mc != null and is_instance_valid(mc):
-		mc.desaba(1)
+		mc.desaba(etapa)
 	var sp = main.demo.spells
 	if sp != null and is_instance_valid(sp):
 		for r in vivos:   # voo (jetpack) e transformações acabam: ninguém escapa da queda
 			var sid: String = sp.flags(r).get("spell", "")
 			if sid in ["S16", "S13", "S14", "S15", "S31", "S33", "S34"]:
 				sp.clear(r)
-		for b in sp.boxes:   # caixas do Térreo caem pelo buraco (nunca em cima do teto da Fundação)
+		for b in sp.boxes:   # caixas da cena que caiu vão pelo buraco (nunca ficam em cima do teto da próxima)
 			b["pos"].x = _over_floor(clampf(b["pos"].x, hole.x + 80.0, hole.y - 80.0), a2)
 			b["vy"] = 0.0
 
-## x mais perto de tx que tem piso embaixo na etapa 2 (os vãos entre as lajes são KO).
+## x mais perto de tx que tem piso embaixo na cena a2 (os vãos entre as lajes são KO).
 func _over_floor(tx: float, a2: Rect2) -> float:
 	var lv = main.level
 	for k in 24:
@@ -132,18 +196,20 @@ func _over_floor(tx: float, a2: Rect2) -> float:
 					return x
 	return tx
 
-## Todos pousaram na etapa 2: câmera, KO e área de jogo passam para ela.
+## Todos pousaram na cena seguinte: câmera, KO e área de jogo passam para ela.
 func _chega() -> void:
 	var lv = main.level
 	state = "etapa"
-	etapa = 2
-	lv.etapa_n = 2
-	lv.area = lv.etapa_rect(2)
+	etapa += 1
+	lv.etapa_n = etapa
+	lv.area = lv.etapa_rect(etapa)
 	lv.ko_off = false
-	main.demo.banner = String(lv.prop("etapa2_nome", "ETAPA 2")).to_upper() + "!"
+	var cn := MapaReg.cena(main.game_mode, lv.id, etapa)
+	main.demo.banner = String(cn.get("nome", "CENA %d" % etapa)).to_upper() + "!"
 	main.demo.banner_t = 2.0
 	main.shake(10.0)
 	Audio.play("caixote_quebra", 0.6, 0.0)
+	_nova_cena()
 	for r in main.robots:
 		r.spell_lock = false
 		if r.has_meta("queda_vx"):
@@ -154,6 +220,6 @@ func _chega() -> void:
 			if not lv.area.grow(64).has_point(r.position) or r.position.y < lv.area.position.y + 140.0:   # ficou fora ou em cima do teto: nasce embaixo
 				main.demo.respawn(r)
 
-## Nascimento na etapa atual (spawns 1–4 na etapa 1, 5–8 na etapa 2).
+## Nascimento na cena atual (nascimentos 1–4 na cena 1, 5–8 na cena 2, 9–12 na 3…).
 func spawn_index(i: int) -> int:
-	return i + (4 if etapa == 2 else 0)
+	return i + 4 * (etapa - 1)
