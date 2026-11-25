@@ -83,6 +83,7 @@ var hang_from := Vector2.ZERO   # posição de onde o robô veio ao agarrar (des
 var climb_t := -1.0             # subindo na borda (0..1); -1 = não está subindo
 var climb_from := Vector2.ZERO
 var climb_to := Vector2.ZERO
+var climb_len := 0.16          # duração da subida (a do gancho C03 é mais longa: passa por cima da plataforma)
 const GRAB_CHARS := ["d", "T", "#", "o", "<", ">", "F", "f", "B", "P"]   # bordas que dá para agarrar (fixas no mapa)
 var last_cause := ""          # o que atingiu este robô por último (marretada, pisão, explosão, bola, chão quebrado...)
 var last_attacker := -1       # quem causou (jogador), -1 = cenário      # depois de levar pisão, um tempo sem poder levar outro         # segundos desde o último golpe (para saber se caiu sozinho)
@@ -351,17 +352,36 @@ func _jump_speed() -> float:
 	var js := float(c["jump_speed"])
 	return js * (0.55 + 0.45 * env_slow)
 
-## T03 Bola de Demolição: rola com inércia (acelera devagar, freia longe), pulinho, quica na parede.
+## T03 Bola de Demolição (revista 2026-11-25: "só vai para a frente, difícil de controlar, não pula"): ainda rola com
+## peso, mas acelera e freia firme, vira rápido (contra-esterço forte), PULA de verdade (~2 tiles, com tolerância de
+## borda e de aperto) e tem um quique no ar (pulo duplo).
 func _ball_update(dt: float, ix: float, on_floor: bool) -> void:
 	var bc: Dictionary = main.demo.cfg["spells"]["T03"]
 	if ix != 0.0:
 		var same := signf(ix) == signf(own_vx) or absf(own_vx) < 10.0
-		own_vx = move_toward(own_vx, ix * float(bc["vel_max"]), float(bc["acel"]) * (1.0 if same else 0.7) * dt)
+		own_vx = move_toward(own_vx, ix * float(bc["vel_max"]), float(bc["acel"]) * (1.0 if same else float(bc["contra_mult"])) * dt)
 		facing = int(signf(ix))
 	else:
 		own_vx = move_toward(own_vx, 0.0, float(bc["freio"]) * dt)
-	if on_floor and _pressed("jump"):
+	coyote = float(bc["tolerancia_s"]) if on_floor else maxf(coyote - dt, 0.0)
+	if _pressed("jump"):
+		buffer = float(bc["tolerancia_s"])
+	else:
+		buffer = maxf(buffer - dt, 0.0)
+	if on_floor:
+		air_jumps = 1
+	if buffer > 0.0 and (on_floor or coyote > 0.0):
 		velocity.y = -float(bc["pulo"])
+		buffer = 0.0
+		coyote = 0.0
+		vis.stretch()
+		Audio.play("ba_salto")
+	elif buffer > 0.0 and air_jumps > 0 and not on_floor:
+		velocity.y = -float(bc["pulo"]) * float(bc["pulo_ar_mult"])
+		air_jumps -= 1
+		buffer = 0.0
+		main.ring_fx(position, 0.8)
+		Audio.play("ba_salto_duplo")
 	velocity.y = minf(velocity.y + f("gravity") * dt, f("max_fall"))
 	velocity.x = own_vx + push_vx
 	push_vx = 0.0
@@ -466,8 +486,20 @@ func _hang_update(dt: float) -> void:
 		Audio.play("ba_salto", 1.0, -4.0)
 		vis.stretch()
 
+## Sobe por cima de uma plataforma/borda até `to` (gancho C03): mesma animação da escalada, mais longa.
+func climb_onto(to: Vector2, dir: int) -> void:
+	hanging = false
+	hang_dir = dir
+	facing = dir
+	climb_from = position
+	climb_to = to
+	climb_len = clampf(position.distance_to(to) / 900.0, 0.16, 0.32)
+	climb_t = 0.0
+	air_jumps = 1
+	vis.stretch()
+
 func _climb_update(dt: float) -> void:
-	climb_t = minf(climb_t + dt / 0.16, 1.0)
+	climb_t = minf(climb_t + dt / climb_len, 1.0)
 	var k := climb_t
 	# primeiro sobe (corpo passa da quina), depois avança por cima
 	var up := clampf(k / 0.6, 0.0, 1.0)
@@ -478,6 +510,7 @@ func _climb_update(dt: float) -> void:
 	velocity = Vector2.ZERO
 	if climb_t >= 1.0:
 		climb_t = -1.0
+		climb_len = 0.16
 		position = climb_to
 		velocity = Vector2(0, -120)
 		own_vx = hang_dir * 160.0

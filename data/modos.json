@@ -867,21 +867,27 @@
         "duracao_s": 6.5,
         "vel_mult": 0.65,
         "empurrao_mult": 0.5,
-        "garfo_alcance": 96,
+        "garfo_alcance": 170,
         "segura_max_s": 0.6,
         "intervalo_s": 0.8,
-        "joga_vel": 950
+        "joga_vel": 950,
+        "garfo_altura": 130,
+        "investida_s": 0.35,
+        "investida_vel": 760
       },
       "T03": {
         "familia": "transformacao",
         "raridade": "rara",
         "cargas": 1,
         "duracao_s": 5.0,
-        "acel": 1300,
-        "vel_max": 980,
-        "freio": 700,
-        "pulo": 650,
-        "dano_min_vel": 320
+        "acel": 2600,
+        "vel_max": 900,
+        "freio": 2200,
+        "pulo": 1250,
+        "dano_min_vel": 320,
+        "contra_mult": 1.6,
+        "pulo_ar_mult": 0.85,
+        "tolerancia_s": 0.12
       },
       "T04": {
         "familia": "transformacao",

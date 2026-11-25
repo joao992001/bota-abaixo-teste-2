@@ -516,6 +516,7 @@ func demolicao_test() -> void:
 	await skins_test()
 	await etapas_test()
 	await diretor_test()
+	await limpa_test()
 	await mecanismos_test()
 	await imagens_test()
 
@@ -1766,6 +1767,96 @@ func skins_test() -> void:
 	await demo_round()
 	check(main.robots[0].vis.skin == sk and sk == "k2" and main.robots[1].vis.skin == "", "na partida o robô entra vestido (%s); quem não escolheu fica padrão" % sk)
 
+## Limpa de spells (2026-11-25): gancho sobe por cima e se salva sozinho caindo; carga gruda no rival; bola pula;
+## empilhadeira pega mais longe (e avança); controle remoto aciona máquinas. --so=limpa
+func limpa_test() -> void:
+	print("== Limpa de spells (gancho, carga, bola, empilhadeira, controle remoto)")
+	main.mode = "demolicao"
+	main.go_join()
+	await frames(2)
+	await tap("v0", "jump")
+	await tap("v1", "jump")
+	main.game_mode = "derruba"
+	main.demo.lives_setting = 5
+	main.event_level = 0
+	main.arena_choice = "canteiro_obras"
+	main.start_match()
+	await demo_round()
+	var sp = main.demo.spells
+	sp.spawn_t = 999.0
+	var r0 = main.robots[0]
+	var r1 = main.robots[1]
+	for i in main.players.size():
+		main.demo.lives[i] = 9
+	var ny := 13 * 64.0   # topo do núcleo da laje
+	# C03: chega na garra embaixo da viga grande → passa POR CIMA dela
+	put(r1, Vector2(1800.0, 17 * 64.0))
+	put(r0, Vector2(1280.0, 8 * 64.0 + 26.0 + 80.0))   # onde o puxão termina: logo abaixo da viga grande
+	sp._hook_finish(r0, Vector2(1280.0, 8 * 64.0 + 8.0))
+	await frames(40)
+	check(r0.position.y <= 8 * 64.0 + 2.0 and r0.position.y > 8 * 64.0 - 40.0, "C03: puxado por baixo da plataforma, passa e fica EM CIMA dela (y %.0f)" % r0.position.y)
+	# C03: caindo sem mirar → acha sozinho onde agarrar (para cima/lado, nunca para baixo)
+	put(r0, Vector2(1300.0, ny - 200.0))
+	r0.velocity = Vector2(0, 400)
+	var dv: Vector2 = sp._hook_auto(r0, float(sp.sc("C03")["alcance_tiles"]) * 64.0)
+	check(dv != Vector2.ZERO and dv.y <= 0.3, "C03: salvamento automático mira a estrutura mais perto (%s)" % str(dv))
+	# E02: arremessada, gruda no rival
+	put(r0, Vector2(1100.0, ny))
+	put(r1, Vector2(1260.0, ny))
+	r0.facing = 1
+	sp.clear(r0)
+	sp.equip(r0, "E02")
+	await frames(3)
+	await tap("v0", "item")
+	var stuck := false
+	for k in 60:
+		await frames(1)
+		if sp.charges_placed.any(func(c): return int(c.get("on", -1)) == r1.pid):
+			stuck = true
+			break
+	check(stuck, "E02: a carga arremessada GRUDA no rival")
+	sp.clear(r0)
+	sp.charges_placed.clear()
+	# T03: a bola pula de verdade
+	put(r1, Vector2(1800.0, 17 * 64.0))
+	put(r0, Vector2(1200.0, ny))
+	sp.equip(r0, "T03")
+	await frames(3)
+	await tap("v0", "item")
+	await frames(45)
+	var y0: float = r0.position.y
+	await tap("v0", "jump")
+	var top := y0
+	for k in 30:
+		await frames(1)
+		top = minf(top, r0.position.y)
+	check(r0.spell_form == "bola" and y0 - top > 90.0, "T03: a bola pula (%.0f px)" % (y0 - top))
+	sp.clear(r0)
+	await frames(20)
+	# T02: rival a 2,3 tiles na frente → o garfo pega
+	put(r0, Vector2(1100.0, ny))
+	put(r1, Vector2(1100.0 + 150.0, ny))
+	r0.facing = 1
+	r1.invuln = 0.0
+	r1.guard_t = 0.0
+	sp.equip(r0, "T02")
+	await frames(3)
+	await tap("v0", "item")
+	await frames(50)
+	await tap("v0", "item")
+	await frames(6)
+	var lifted = sp.slot[0]["data"].get("lift") if sp.slot.has(0) else null
+	check(lifted == r1, "T02: o garfo pega o rival a 150 px (área maior)")
+	sp.clear(r0)
+	# E03: a máquina da cena entra na lista de alvos
+	main.demo.etapas.ativo = false
+	put(r0, Vector2(300.0, 17 * 64.0))
+	sp.equip(r0, "E03")
+	await frames(3)
+	var tg = sp.remote_target(r0)
+	check(tg != null, "E03: há alvo ao alcance perto da betoneira/serra (%s)" % ("máquina" if tg != null and tg.has("mec") else "estrutura" if tg != null else "nenhum"))
+	sp.clear(r0)
+
 ## Diretor adaptativo da destruição: jogadores parados → ele derruba peças até perto do limiar; jogadores destruindo
 ## muito → quase não age. --so=diretor
 func diretor_test() -> void:
@@ -2382,7 +2473,7 @@ func spells_test() -> void:
 		var tg = sp.remote_target(r0)
 		await tap("v0", "item")
 		await frames(60)
-		check(tg != null and tg["fallen"], "E03: o cabo estala e a viga despenca")
+		check(tg != null and ((tg.has("part") and tg["part"]["fallen"]) or tg.has("mec")), "E03: o alvo mais perto (viga/andaime/máquina) é acionado")
 	sp.clear(r0)
 	# ===== Mira em 8 direções e regra das plataformas
 	# beirada de laje que ainda existe (os testes anteriores derrubam trechos)

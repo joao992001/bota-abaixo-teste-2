@@ -526,7 +526,7 @@ func use(r) -> void:
 		"E03":
 			var tg = remote_target(r)
 			if tg == null:
-				_fail(r, "SEM MÁQUINA")
+				_fail(r, "NADA AO ALCANCE")
 				return
 			_remote_drop(r, tg)
 			s["fire"] = 0.0
@@ -2209,11 +2209,65 @@ func _fire_hook(r, s: Dictionary) -> void:
 			return
 	var c: Dictionary = sc("C03")
 	var dirv := aim_dir(r)
+	if not r.is_on_floor() and r.velocity.y > 120.0 and not _aim_held(r):
+		var auto := _hook_auto(r, float(c["alcance_tiles"]) * T)   # caindo sem mirar: salvamento automático
+		if auto != Vector2.ZERO:
+			dirv = auto
 	hooks.append({"owner": r.pid, "pos": muzzle(r, "C03"), "vel": dirv * float(c["vel"]), "phase": "ida", "t": 0.0, "anchor": Vector2.ZERO, "dir": dirv})
 	s["fire"] = 0.0
 	Audio.play("gancho", 1.0, 0.0)
 	r.own_vx -= dirv.x * 80.0
 	_spend(r, s)
+
+## O jogador está mirando (◄►/▲/▼)? Bots: nunca (usam a mira própria).
+func _aim_held(r) -> bool:
+	if _is_bot(r.pid):
+		return true
+	return absf(PlayerInput.axis_x(r.pid)) >= 0.4 or PlayerInput.held(r.pid, "up") or PlayerInput.held(r.pid, "down")
+
+## C03 automático (caindo sem mirar): a direção da borda/parede/plataforma agarrável mais perto (nunca para baixo;
+## prefere para cima). ZERO = nada ao alcance.
+func _hook_auto(r, alcance: float) -> Vector2:
+	var o := muzzle(r, "C03")
+	var best := Vector2.ZERO
+	var bd := 1e9
+	for k in 24:
+		var dv := Vector2.from_angle(-PI + k * TAU / 24.0)
+		if dv.y > 0.3:
+			continue
+		var d := 24.0
+		while d < alcance:
+			if _grab_at(o + dv * d):
+				var score := d + (0.0 if dv.y < -0.25 else 90.0)
+				if score < bd:
+					bd = score
+					best = dv
+				break
+			d += 16.0
+	return best
+
+## C03 chegou na garra: passa POR CIMA da plataforma/borda agarrada (topo livre na coluna da garra ou na beirada mais
+## perto, até 2,5 tiles para o lado). Sem topo livre: só o pulinho de antes.
+func _hook_finish(owner, an: Vector2) -> void:
+	owner.spell_lock = false
+	for dx in [0.0, 32.0, -32.0, 64.0, -64.0, 96.0, -96.0, 128.0, -128.0, 160.0, -160.0]:
+		var x: float = an.x + dx
+		var y: float = an.y
+		var k := 0
+		while k < 14 and _grab_at(Vector2(x, y - 2.0)):
+			y -= 8.0
+			k += 1
+		if k == 0 or k >= 14:
+			continue   # coluna sem estrutura ou alta demais
+		y = floor(y / 8.0) * 8.0 + 8.0
+		while _grab_at(Vector2(x, y - 1.0)):
+			y -= 1.0
+		if not _grab_at(Vector2(x, y - 40.0)) and not _grab_at(Vector2(x, y - 70.0)) and y > owner.position.y - 300.0:
+			owner.climb_onto(Vector2(x, y - 1.0), 1 if x >= owner.position.x else -1)
+			Audio.play("parede", 1.1, -4.0)
+			return
+	owner.velocity = Vector2(owner.velocity.x * 0.3, -420.0)
+	owner.own_vx = owner.velocity.x
 
 func _fire_lasso(r, s: Dictionary) -> void:
 	var c: Dictionary = sc("C05")
@@ -2233,18 +2287,15 @@ func _use_charge(r, s: Dictionary) -> void:
 			else:
 				_fail(r, "ARMANDO…")
 			return
+	# SEMPRE arremessa (2026-11-25): acertou um rival → GRUDA nele; senão gruda na primeira superfície (chão, parede,
+	# teto, plataforma). ▲/▼ mudam o arco.
 	var av := aim_vec(r)
-	if absf(av.y) > 0.3:   # com ▲/▼: arremessa e gruda na primeira superfície (parede, teto, plataforma)
-		charges_placed.append({"owner": r.pid, "pos": hand(r), "t": 0.0, "armed": false, "drop": 1.0, "flying": true,
-			"vel": av * 760.0 + Vector2(r.facing * 120.0, -120.0), "rot": 0.0})
-		Audio.play("arremesso", 1.2, -2.0)
-		s["fire"] = 0.0
-		return
-	var fy := _floor_below(r.position.x, r.position.y - 20.0, 3)
-	var pos := Vector2(r.position.x, fy if fy >= 0.0 else r.position.y)
-	charges_placed.append({"owner": r.pid, "pos": pos, "t": 0.0, "armed": false, "drop": 0.0})
+	var vel := Vector2(r.facing * 640.0, -360.0)
+	if absf(av.y) > 0.3:
+		vel = av * 760.0 + Vector2(r.facing * 120.0, -120.0)
+	charges_placed.append({"owner": r.pid, "pos": hand(r), "t": 0.0, "armed": false, "drop": 1.0, "flying": true, "vel": vel, "rot": 0.0})
+	Audio.play("arremesso", 1.2, -2.0)
 	s["fire"] = 0.0
-	Audio.play("alavanca", 1.3, -2.0)
 
 func _detonate(ch: Dictionary) -> void:
 	var c: Dictionary = sc("E02")
@@ -2266,19 +2317,31 @@ func _detonate(ch: Dictionary) -> void:
 			if not pt["fallen"] and pt["rect"].grow(rad * 0.5).has_point(p):
 				ct.damage(pt, int(c["dano_estrutura"]), p)
 
-## E03: viga pendurada mais perto, à frente, ao alcance (a do guindaste do Canteiro). null = nenhuma.
+## E03 CONTROLE REMOTO (ampliado 2026-11-25): alvos ao alcance = vigas penduradas (cabo estala e cai), andaimes e
+## plataformas sobre estaca (derruba) e as MÁQUINAS da cena (aciona como se marretasse o painel: betoneira despeja,
+## bate-estaca bate, gerador desliga, água drena…). Cada alvo: {rect, part} ou {rect, mec}. null = nenhum.
+const REMOTE_KINDS := ["viga", "andaime", "estaca"]
 func remote_target(r):
-	var ct = demo.canteiro
-	if ct == null or not is_instance_valid(ct):
-		return null
 	var cands := []
 	var maxd := float(sc("E03")["alcance_tiles"]) * T
-	for p in ct.parts:
-		if p["kind"] != "viga" or p["fallen"] or p["crit_t"] > 0.0 or p["evt"] != "":
-			continue
-		var d: float = p["rect"].get_center().distance_to(r.position)
-		if d < maxd:
-			cands.append([d, p])
+	var ct = demo.canteiro
+	if ct != null and is_instance_valid(ct):
+		for p in ct.parts:
+			if not (p["kind"] in REMOTE_KINDS) or p["fallen"] or p["crit_t"] > 0.0 or p["evt"] != "" or int(p["etapa"]) != ct.etapa_now():
+				continue
+			var d: float = p["rect"].get_center().distance_to(r.position)
+			if d < maxd:
+				cands.append([d, {"rect": p["rect"], "part": p}])
+	var mc = demo.mecs
+	if mc != null and is_instance_valid(mc):
+		for inst in mc.list:
+			if not mc._on(inst) or not inst["d"].has("alvo"):
+				continue
+			var a: Array = inst["d"]["alvo"]
+			var ar := Rect2(float(a[0]), float(a[1]), float(a[2]), float(a[3]))
+			var d2: float = ar.get_center().distance_to(r.position)
+			if d2 < maxd:
+				cands.append([d2, {"rect": ar, "mec": inst}])
 	if cands.is_empty():
 		return null
 	cands.sort_custom(func(a, b): return a[0] < b[0])
@@ -2287,7 +2350,18 @@ func remote_target(r):
 		i = int(slot[r.pid]["data"].get("tgt_i", 0))
 	return cands[posmod(i, cands.size())][1]
 
-func _remote_drop(r, p: Dictionary) -> void:
+func _remote_drop(r, tg: Dictionary) -> void:
+	if tg.has("mec"):   # máquina: aciona de longe (o mesmo efeito da marretada no painel, crédito do dono)
+		demo.mecs.hammer_hit(tg["rect"], true, r.pid)
+		main.spark(tg["rect"].get_center(), 8)
+		Audio.play("alarme", 1.4, -4.0)
+		return
+	var p: Dictionary = tg["part"]
+	if p["kind"] != "viga":   # andaime / plataforma: as travas soltam e ela despenca
+		demo.canteiro.damage(p, 99, p["rect"].get_center())
+		drops.append({"part": p, "owner": r.pid, "t": 0.0, "hit": []})
+		Audio.play("alarme", 1.2, -2.0)
+		return
 	p["hp"] = 0
 	p["state"] = 2
 	p["crit_t"] = 0.35   # o cabo estala e a viga despenca
@@ -2361,9 +2435,10 @@ func _update_etapa3(dt: float) -> void:
 				owner.own_vx = owner.velocity.x
 				owner.hanging = false
 				if to.length() < 48.0 or h["t"] > float(c8["puxa_max_s"]) or not owner.alive:
-					owner.spell_lock = false
-					owner.velocity = Vector2(owner.velocity.x * 0.3, -420.0)   # chega com um pulinho para subir
-					owner.own_vx = owner.velocity.x
+					if owner.alive:
+						_hook_finish(owner, h["anchor"])   # passa por cima da plataforma/borda
+					else:
+						owner.spell_lock = false
 					h["dead"] = true
 			"reboque":   # o rival vem arrastado até o dono (sem controle) e solta na frente dele
 				var o = h["what"]
@@ -2445,7 +2520,21 @@ func _update_etapa3(dt: float) -> void:
 			ch["vel"].y += 1400.0 * dt
 			ch["rot"] += dt * 12.0
 			var np: Vector2 = ch["pos"] + ch["vel"] * dt
-			if _grab_at(np):
+			var hit_r = null
+			for o in main.robots:
+				if o.alive and o.pid != ch["owner"] and o.rect().grow(8).has_point(np):
+					hit_r = o
+					break
+			if hit_r != null:   # grudou no rival: vai junto com ele até explodir
+				ch["flying"] = false
+				ch["on"] = hit_r.pid
+				ch["off"] = np - hit_r.position
+				ch["t"] = 0.0
+				ch["rot"] = 0.0
+				main.float_text(hit_r.position + Vector2(0, -120), "GRUDOU!", Color("#ff8a6a"))
+				Audio.play("cola", 1.2, 0.0)
+				main.spark(np, 4)
+			elif _grab_at(np):
 				ch["flying"] = false
 				ch["t"] = 0.0
 				ch["rot"] = 0.0
@@ -2456,6 +2545,14 @@ func _update_etapa3(dt: float) -> void:
 				if ch["pos"].y > main.level.rows * T + 300.0:
 					ch["flying"] = false   # caiu no abismo: explode lá embaixo quando der o tempo
 			continue
+		if ch.has("on"):   # presa num robô: acompanha; se ele cair/eliminar, a carga despenca no lugar
+			var o2 = main.robots[int(ch["on"])]
+			if o2.alive:
+				ch["pos"] = o2.position + Vector2(o2.facing * absf(ch["off"].x) * 0.6, ch["off"].y)
+			else:
+				ch.erase("on")
+				ch["flying"] = true
+				ch["vel"] = Vector2.ZERO
 		ch["t"] += dt
 		ch["drop"] = minf(ch["drop"] + dt / 0.2, 1.0)
 		if not ch["armed"] and ch["t"] >= float(c12["arma_s"]):
@@ -2659,7 +2756,7 @@ func _draw_etapa3() -> void:
 			var ct2 = demo.canteiro
 			if ct2 != null and is_instance_valid(ct2):
 				for pv in ct2.parts:
-					if pv["kind"] == "viga" and not pv["fallen"] and pv["crit_t"] <= 0.0 and pv["evt"] == "":
+					if pv["kind"] in REMOTE_KINDS and not pv["fallen"] and pv["crit_t"] <= 0.0 and pv["evt"] == "" and int(pv["etapa"]) == ct2.etapa_now():
 						var top: Vector2 = Vector2(pv["rect"].get_center().x, pv["rect"].position.y - 30.0)
 						draw_rect(Rect2(top - Vector2(10, 8), Vector2(20, 16)), INK)
 						draw_rect(Rect2(top - Vector2(8, 6), Vector2(16, 12)), Color("#f2c84b"))
@@ -2668,7 +2765,7 @@ func _draw_etapa3() -> void:
 			var tg = remote_target(r)
 			if tg != null:
 				var c: Vector2 = tg["rect"].get_center()
-				Kit.text(self, c + Vector2(-90, -62), "ESPECIAL: soltar  ·  ▲: outra", 18, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 180, 5, INK)
+				Kit.text(self, c + Vector2(-90, -62), "ESPECIAL: acionar  ·  ▲: outro", 18, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 180, 5, INK)
 				var rad := 40.0 + 6.0 * sin(t * 8.0)
 				draw_arc(c, rad, 0, TAU, 24, Color("#d94a3a"), 3.0, true)
 				for k in 4:
@@ -2772,19 +2869,31 @@ func _fork_action(r, s: Dictionary) -> void:
 	if s["cd"] > 0.0:
 		return
 	d["lift_t"] = 0.0
-	d["lift"] = null
-	var front := Rect2(r.position.x + (20.0 if r.facing > 0 else -20.0 - float(c["garfo_alcance"])), r.position.y - 70.0, float(c["garfo_alcance"]), 74.0)
+	d["lift"] = _fork_grab(r, c)
+	if d["lift"] == null:   # ninguém na ponta: a empilhadeira AVANÇA com o garfo baixo e pega quem encostar (2026-11-25:
+		d["seek_t"] = float(c["investida_s"])   # "difícil de acertar o alvo")
+		r.own_vx = r.facing * float(c["investida_vel"])
+	Audio.play("elevador", 1.6, -2.0)
+
+## T02: rival (ou caixa) na área do garfo — larga e alta (a mais perto ganha).
+func _fork_grab(r, c: Dictionary):
+	var L := float(c["garfo_alcance"])
+	var front := Rect2(r.position.x + (10.0 if r.facing > 0 else -10.0 - L), r.position.y - float(c["garfo_altura"]), L, float(c["garfo_altura"]) + 20.0)
+	var best = null
+	var bd := 1e9
 	for o in main.robots:
 		if o != r and o.alive and o.guard_t <= 0.0 and o.invuln <= 0.0 and front.intersects(o.rect()):
-			d["lift"] = o
-			main.float_text(o.position + Vector2(0, -120), "ERGUIDO!", Color("#f2c84b"))
-			break
-	if d["lift"] == null:
-		for b in boxes:
-			if front.has_point(b["pos"] + Vector2(0, 20)):
-				d["lift"] = b
-				break
-	Audio.play("elevador", 1.6, -2.0)
+			var dd: float = absf(o.position.x - r.position.x)
+			if dd < bd:
+				bd = dd
+				best = o
+	if best != null:
+		main.float_text(best.position + Vector2(0, -120), "ERGUIDO!", Color("#f2c84b"))
+		return best
+	for b in boxes:
+		if front.has_point(b["pos"] + Vector2(0, 20)):
+			return b
+	return null
 
 func _fork_toss(r, s: Dictionary) -> void:
 	var c: Dictionary = sc("T02")
@@ -2863,6 +2972,11 @@ func _update_form(r, s: Dictionary, dt: float) -> void:
 		"T02":   # garfo erguendo: segura o rival na ponta por pouco tempo e joga
 			if d.get("lift_t", -1.0) >= 0.0:
 				d["lift_t"] += dt
+				if d.get("lift") == null and float(d.get("seek_t", 0.0)) > 0.0:   # investida: pega quem encostar
+					d["seek_t"] = float(d["seek_t"]) - dt
+					r.own_vx = r.facing * float(c["investida_vel"])
+					d["lift"] = _fork_grab(r, c)
+					d["lift_t"] = 0.0 if d["lift"] != null else minf(d["lift_t"], 0.1)
 				var k := minf(d["lift_t"] / 0.25, 1.0)
 				var tg = d.get("lift")
 				if tg is Object and is_instance_valid(tg) and tg.alive:
