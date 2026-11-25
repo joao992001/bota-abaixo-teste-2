@@ -6,14 +6,11 @@ Manifesto: `skins_originadas` continua vazio até o usuário aprovar. Recurso no
 
 | Id | Robô | Skin | O que muda | Estado |
 |---|---|---|---|---|
-| K1A | Marretão | Mestre de Obras | capacete branco de chefe, colete refletivo laranja | AGUARDANDO_APROVAÇÃO (2026-11-25) |
-| K1B | Marretão | Demolidor Veterano | fita zebrada no peito, adesivos e rebites | AGUARDANDO_APROVAÇÃO |
-| K2A | Picareta | Topógrafo | capacete azul, colete limão, lente de teodolito | AGUARDANDO_APROVAÇÃO |
-| K2B | Picareta | Escavador de Túnel | capacete com lanterna, terra no corpo | AGUARDANDO_APROVAÇÃO |
-| K3A | Chave | Eletricista | capacete laranja, fio no peito, selo de raio | AGUARDANDO_APROVAÇÃO |
-| K3B | Chave | Soldador | máscara de solda levantada, avental de couro | AGUARDANDO_APROVAÇÃO |
-| K4A | Britadeira | Concreteiro | respingos de cimento, máscara de pó | AGUARDANDO_APROVAÇÃO |
-| K4B | Britadeira | Sinaleiro | capacete laranja, abafador, faixas refletivas | AGUARDANDO_APROVAÇÃO |
-| K5A | Pá | Operador de Escavadeira | teto zebrado, giroflex grande | AGUARDANDO_APROVAÇÃO |
-| K5B | Pá | Turno da Noite | faróis na cabine, fita de LED | AGUARDANDO_APROVAÇÃO |
-Próximo gate depois da arte: aplicação em movimento (13 poses + spells/armaduras) para aprovação.
+| v1 (10 skins: adesivos, faixas, coletes laterais) | todos | — | camadas pequenas por cima | REPROVADO (2026-11-25): "mudanças muito sutis" |
+| K1 | Marretão | Mestre de Obras | uniforme laranja refletivo no tronco, capacete grande na cor do jogador com lanterna, marreta zebrada | AGUARDANDO_APROVAÇÃO (v2) |
+| K2 | Picareta | Topógrafo | colete limão, luneta de teodolito no olho, picareta-baliza vermelho/branco | AGUARDANDO_APROVAÇÃO (v2) |
+| K3 | Chave | Soldador | avental de couro com tachas, máscara de solda grande na cor do jogador, chave de cobre | AGUARDANDO_APROVAÇÃO (v2) |
+| K4 | Britadeira | Concreteiro | corpo coberto de cimento, capacete respingado, máscara de pó, britadeira suja | AGUARDANDO_APROVAÇÃO (v2) |
+| K5 | Pá | Operador de Escavadeira | corpo de máquina nº 01 com zebra, cabine com santo-antônio e giroflex, pá-caçamba com dentes | AGUARDANDO_APROVAÇÃO (v2) |
+Regra nova da v2 (aguarda aprovação): o uniforme pode cobrir o tronco inteiro; a COR DO JOGADOR passa para o capacete/cabine
+grande (e segue nos braços e pernas). Próximo gate: aplicação em movimento (13 poses + spells/armaduras).

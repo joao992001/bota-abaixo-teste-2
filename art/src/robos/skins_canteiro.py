@@ -44,171 +44,180 @@ def splats(pts, col, r=1.0, edge=None):
     return out
 
 
-# ---------------------------------------------------------------- MARRETÃO
-def mar_a_t(c):   # Mestre de obras: colete refletivo laranja (só nas laterais) com faixas prateadas
-    out = S("M-25,-42 L-12,-42 L-14,-2 L-17,-2 C-22,-14 -27,-30 -25,-42 Z", ORANGE, (-28, -44, -10, 0), k=0.5, dark=ORANGE_D)
-    out += S("M27,-42 L14,-42 L16,-2 L19,-2 C24,-14 29,-30 27,-42 Z", ORANGE, (12, -44, 30, 0), k=0.5, dark=ORANGE_D)
-    for y in (-36, -16):
-        out += f'<rect x="-25" y="{y}" width="12" height="3" fill="{REFL}"/><rect x="14" y="{y}" width="12" height="3" fill="{REFL}"/>'
+# ---------------------------------------------------------------- VERSÃO 2 (2026-11-25): "fantasia completa"
+# A v1 (só adesivos/faixas) foi reprovada: "mudanças muito sutis". Agora o TRONCO veste o uniforme inteiro, a COR DO
+# JOGADOR vai para o capacete grande (e continua nos braços e pernas), a ferramenta ganha acabamento temático.
+TORSO = {   # contorno do tronco de cada robô (para recortar o uniforme exatamente no corpo)
+    "marretao": "M-15,0 L15,0 C20,-10 30,-30 27,-42 C25,-48 -22,-48 -25,-42 C-28,-30 -20,-10 -15,0 Z",
+    "picareta": "M-9,-2 C-12,-12 -10,-30 0,-32 C10,-32 12,-14 8,-2 C4,2 -6,2 -9,-2 Z",
+    "chave": rect_d(-15, -30, 30, 30, 5),
+    "britadeira": ellipse_d(0, -14, 17, 15),
+    "pa": "M-12,-2 C-15,-14 -15,-30 -11,-36 L11,-36 C15,-30 15,-14 12,-2 C6,1 -6,1 -12,-2 Z",
+}
+_cl = [0]
+
+
+def vest(cid, body):
+    """Desenha `body` recortado no contorno do tronco do robô."""
+    _cl[0] += 1
+    k = f"sk{_cl[0]}"
+    return f'<defs><clipPath id="{k}"><path d="{TORSO[cid]}"/></clipPath></defs><g clip-path="url(#{k})">{body}</g>'
+
+
+def stripes(y, h, col=REFL, x0=-40, x1=40):
+    return f'<rect x="{x0}" y="{y}" width="{x1 - x0}" height="{h}" fill="{col}"/>'
+
+
+# 1 MARRETÃO — MESTRE DE OBRAS: uniforme laranja refletivo, capacete GRANDE na cor do jogador com lanterna, marreta zebrada
+def mar_t(c):
+    body = f'<rect x="-40" y="-60" width="80" height="70" fill="{ORANGE}"/>' + stripes(-34, 5) + stripes(-16, 5)
+    body += f'<rect x="-3" y="-50" width="6" height="52" fill="{ORANGE_D}"/>'
+    body += f'<rect x="7" y="-30" width="10" height="9" rx="1.5" fill="{ORANGE_D}"/><rect x="9" y="-33" width="2" height="6" fill="{INK}"/>'
+    return vest("marretao", body)
+
+
+def mar_h(c):
+    out = S("M-15,1 C-16,-18 -7,-27 1,-27 C12,-27 17,-18 16,1 Z", c, (-17, -29, 18, 2), k=0.6, dark=shade(c, -0.3))
+    out += S("M-19,-1 L22,-1 L21,3 L-18,3 Z", shade(c, -0.35), (-20, -2, 23, 4), k=0.4)
+    out += f'<path d="M1,-27 V-2" stroke="{shade(c, -0.25)}" stroke-width="3"/>'
+    out += f'<rect x="-13" y="-10" width="27" height="3" fill="{REFL}"/>'
+    out += f'<rect x="11" y="-19" width="7" height="7" rx="2" fill="{INK}"/><circle cx="16" cy="-15.5" r="2.6" fill="#fff1b8"/>'
     return out
 
 
-def mar_a_h(c):   # capacete BRANCO de chefe com faixa
-    out = S("M-11,0 C-12,-14 -6,-20 1,-20 C9,-20 13,-14 12,0 Z", WHITE, (-13, -22, 14, 2), k=0.6, dark=WHITE_D)
-    out += S("M-13,-1 L17,-1 L17,2 L-13,2 Z", WHITE_D, (-14, -2, 18, 3), k=0.4)
-    out += f'<rect x="-10" y="-9" width="21" height="2.4" fill="{ORANGE}"/>'
+def mar_tool():
+    out = S(rect_d(-16, -2.6, 52, 5.2, 2.6), "#2a2a2a", (-17, -3, 37, 3), k=0.5)
+    for x in range(-12, 32, 7):
+        out += f'<rect x="{x}" y="-2.6" width="3.5" height="5.2" fill="{YEL}"/>'
+    out += S(rect_d(33, -13, 18, 26, 3), YEL, (32, -14, 52, 14), k=0.6, dark=YEL_D)
+    for i in range(4):
+        out += f'<path d="M{33 + i * 5},13 l5,-26 l2.5,0 l-5,26 Z" fill="{INK}"/>'
     return out
 
 
-def mar_b_t(c):   # Demolidor veterano: fita zebrada atravessada + amassados e rebites
-    out = zebra(-24, -44, 22, -4, 6, 7)
-    out += f'<path d="M-6,-12 q3,-3 6,0" stroke="{shade(c, -0.4)}" stroke-width="1.6" fill="none"/>'
-    out += f'<path d="M10,-38 q3,-2 5,1" stroke="{shade(c, -0.4)}" stroke-width="1.6" fill="none"/>'
-    for (x, y) in ((-20, -40), (20, -40), (-16, -6), (16, -6)):
-        out += f'<circle cx="{x}" cy="{y}" r="1.6" fill="{STEEL_L}"/>'
+# 2 PICARETA — TOPÓGRAFO: colete limão inteiro com faixas, capacete na cor do jogador, luneta de teodolito no olho,
+# picareta listrada vermelho/branco como baliza de topografia
+def pic_t(c):
+    body = f'<rect x="-20" y="-40" width="40" height="50" fill="#d7e84a"/>' + stripes(-24, 3.5) + stripes(-12, 3.5)
+    body += f'<rect x="2" y="-20" width="7" height="7" fill="#b8c83a"/><rect x="4" y="-25" width="2" height="9" fill="{ORANGE}"/>'
+    return vest("picareta", body)
+
+
+def pic_h(c):
+    out = S("M-10,-21 C-9,-35 9,-37 14,-27 L16,-21 Z", c, (-11, -38, 17, -20), k=0.5, dark=shade(c, -0.3))
+    out += f'<rect x="-12" y="-22" width="30" height="3" rx="1.5" fill="{shade(c, -0.35)}"/>'
+    out += S(rect_d(9, -24, 14, 9, 2), INK, (8, -25, 24, -14), k=0.3)
+    out += f'<circle cx="23" cy="-19.5" r="3.4" fill="{YEL}"/><circle cx="23" cy="-19.5" r="2" fill="#cdeff7"/>'
     return out
 
 
-def mar_b_h(c):   # capacete com adesivos e arranhões
-    out = f'<rect x="-6" y="-16" width="6" height="5" rx="1" fill="#d14d35" transform="rotate(-12 -3 -13)"/>'
-    out += f'<circle cx="5" cy="-14" r="2.6" fill="#5cc45c"/><path d="M4,-14 l1,1 l2,-2.4" stroke="{WHITE}" stroke-width="0.9" fill="none"/>'
-    out += f'<path d="M-9,-7 l5,-2 M6,-6 l5,-1" stroke="{YEL_D}" stroke-width="1"/>'
+def pic_tool():
+    out = S(rect_d(-16, -1.8, 50, 3.6, 1.8), ORANGE, (-17, -3, 35, 3), k=0.5, dark=ORANGE_D)
+    head = "M33,-3 C40,-6 48,-13 52,-22 C50,-12 44,-4 37,1 L37,4 C44,8 50,16 52,26 C46,17 40,10 33,6 Z"
+    out += f'<path d="{head}" fill="none" stroke="{INK}" stroke-width="3" stroke-linejoin="round"/>'
+    out += S(head, "#d14d35", (32, -23, 53, 27), k=0.6, dark="#9a2f20")
+    out += f'<path d="M41,-6 L46,-12 M47,-14 L50,-19 M41,10 L46,15 M47,18 L50,22" stroke="{WHITE}" stroke-width="3.2" stroke-linecap="round"/>'
     return out
 
 
-# ---------------------------------------------------------------- PICARETA
-def pic_a_t(c):   # Topógrafo: colete amarelo-limão em faixa + bolso com régua
-    out = S("M-10,-26 C-6,-29 6,-29 10,-26 L9,-10 C4,-8 -4,-8 -9,-10 Z", "#d7e84a", (-11, -30, 11, -7), k=0.5, dark="#a8b82e")
-    out += f'<rect x="-10" y="-19" width="20" height="2.4" fill="{REFL}"/>'
-    out += f'<rect x="2" y="-16" width="5" height="5" fill="#b8c83a"/><rect x="3.5" y="-20" width="1.6" height="6" fill="{ORANGE}"/>'
+# 3 CHAVE — SOLDADOR: avental de couro inteiro com tachas, máscara de solda GRANDE na cor do jogador (levantada),
+# chave de cobre
+def cha_t(c):
+    body = f'<rect x="-20" y="-36" width="40" height="40" fill="{LEATHER}"/>'
+    body += f'<path d="M-15,-22 H15 M-15,-8 H15" stroke="{LEATHER_D}" stroke-width="2"/>'
+    for x in (-11, -4, 3, 10):
+        body += f'<circle cx="{x}" cy="-22" r="1.3" fill="{STEEL_L}"/>'
+    body += f'<circle cx="-6" cy="-14" r="1.4" fill="#ffd36b"/><circle cx="6" cy="-4" r="1.1" fill="#ffd36b"/><circle cx="9" cy="-13" r="0.9" fill="#ff8a3a"/>'
+    return vest("chave", body)
+
+
+def cha_h(c):
+    out = S("M-15,-16 C-15,-33 13,-35 14,-18 L13,-15 L-15,-15 Z", c, (-16, -36, 15, -14), k=0.5, dark=shade(c, -0.3))
+    out += S(rect_d(-6, -30, 15, 6, 2), INK, (-7, -31, 10, -23), k=0.3)
+    out += f'<rect x="-4" y="-29" width="11" height="4" rx="1" fill="#2f7a3a"/><path d="M-3,-28 l4,0" stroke="#bff0c8" stroke-width="0.8"/>'
+    out += f'<circle cx="-14" cy="-17" r="2.4" fill="{STEEL_D}"/>'
     return out
 
 
-def pic_a_h(c):   # capacete azul de engenheiro + lente de teodolito (mira vermelha)
-    out = S("M-8,-24 C-6,-31 6,-33 11,-27 L13,-24 L-10,-23 Z", "#4f9ad9", (-11, -34, 14, -22), k=0.5, dark="#2f6aa8")
-    out += f'<circle cx="7" cy="-19.5" r="5.6" fill="none" stroke="{YEL}" stroke-width="1.4"/>'
-    out += f'<path d="M7,-23.5 v8 M3,-19.5 h8" stroke="#d14d35" stroke-width="0.8"/>'
+def cha_tool():
+    cu, cu_d, cu_l = "#c8743a", "#8a4a22", "#e8a46a"
+    out = S(rect_d(-14, -3, 46, 6, 3), cu, (-15, -4, 33, 4), k=0.5, dark=cu_d, light=cu_l)
+    out += S("M30,-8 C36,-14 46,-13 49,-6 L42,-4 L42,4 L49,6 C46,13 36,14 30,8 Z", cu, (29, -15, 50, 15), k=0.6, dark=cu_d, light=cu_l)
+    out += f'<rect x="-14" y="-4" width="9" height="8" rx="2" fill="{LEATHER_D}"/>'
     return out
 
 
-def pic_b_t(c):   # Escavador de túnel: terra nas pernas/corpo
-    return splats([(-6, -6, 1.6), (5, -3, 1.3), (-2, -14, 1.1), (7, -20, 1.0), (-7, -24, 0.9)], DIRT, 1.1, "#5a3e28")
+# 4 BRITADEIRA — CONCRETEIRO: corpo coberto de cimento, capacete na cor do jogador respingado, máscara de pó grande,
+# britadeira suja de concreto
+def bri_t(c):
+    body = f'<rect x="-20" y="-32" width="40" height="36" fill="{CEMENT}"/>'
+    body += f'<path d="M-20,-24 C-10,-28 -2,-20 6,-26 C12,-30 18,-24 20,-26 V-32 H-20 Z" fill="{shade(c, -0.1)}"/>'
+    body += splats([(-8, -12, 1.8), (8, -6, 1.6), (-12, -2, 1.2)], CEMENT_D, 1.2)
+    body += f'<rect x="-20" y="-9" width="40" height="3" fill="{REFL}"/>'
+    return vest("britadeira", body)
 
 
-def pic_b_h(c):   # capacete com lanterna de túnel
-    out = S("M-8,-24 C-6,-31 6,-33 11,-27 L13,-24 L-10,-23 Z", YEL, (-11, -34, 14, -22), k=0.5, dark=YEL_D)
-    out += f'<rect x="9" y="-31" width="6" height="5" rx="1.5" fill="{STEEL_D}"/><circle cx="15" cy="-28.5" r="2.4" fill="#fff1b8"/>'
-    out += f'<path d="M17,-28.5 L30,-33 L30,-24 Z" fill="#fff1b8" opacity="0.35"/>'
+def bri_h(c):
+    out = S("M-15,-14 C-15,-33 19,-33 19,-14 Z", c, (-16, -34, 20, -13), k=0.5, dark=shade(c, -0.3))
+    out += f'<rect x="-18" y="-16" width="40" height="3.4" rx="1.7" fill="{shade(c, -0.35)}"/>'
+    out += splats([(-6, -26, 1.4), (9, -28, 1.1), (14, -20, 0.9)], CEMENT, 1.2, CEMENT_D)
+    out += S("M4,-6 C4,1 19,1 19,-6 L16,-8 L7,-8 Z", WHITE, (3, -9, 20, 2), k=0.3, dark=WHITE_D)
+    out += f'<circle cx="11.5" cy="-3" r="1.8" fill="{WHITE_D}"/>'
     return out
 
 
-# ---------------------------------------------------------------- CHAVE
-def cha_a_t(c):   # Eletricista: rolo de fio atravessado no peito + selo de raio + fita isolante
-    out = f'<path d="M-14,-28 C-6,-22 4,-30 14,-20" stroke="#2a2a2a" stroke-width="2.6" fill="none"/>'
-    out += f'<path d="M-14,-26 C-6,-20 4,-28 14,-18" stroke="#d14d35" stroke-width="1.4" fill="none"/>'
-    out += f'<circle cx="-8" cy="-17" r="4.2" fill="{YEL}"/><path d="M-8,-21 l-2,4 h3 l-2,4" stroke="{INK}" stroke-width="1.2" fill="none"/>'
-    out += f'<rect x="8" y="-8" width="6" height="3" fill="{INK}"/>'
+def bri_tool():
+    out = E.tool_brit()
+    out += splats([(10, -2, 1.6), (20, 3, 1.3), (30, -1, 1.0)], CEMENT, 1.1, CEMENT_D)
     return out
 
 
-def cha_a_h(c):   # capacete laranja no lugar do boné (mesmo volume)
-    out = S("M-11,-20 C-9,-28 5,-29 9,-21 L-13,-19 Z", ORANGE, (-14, -30, 10, -18), k=0.4, dark=ORANGE_D)
-    out += S("M-11,-21 L-17,-19 L-12,-18 Z", ORANGE_D, (-18, -22, -10, -17), k=0.3)
-    out += f'<rect x="-6" y="-26" width="8" height="2" fill="{REFL}"/>'
+# 5 PÁ — OPERADOR DE ESCAVADEIRA: tronco pintado de máquina (amarelo com zebra e número), cabine na cor do jogador com
+# santo-antônio e giroflex grande, pá vira caçamba com dentes
+def pa_t(c):
+    body = f'<rect x="-20" y="-40" width="40" height="44" fill="{YEL}"/>' + zebra(-20, -10.5, 20, -10.5, 6, 6)
+    body += f'<rect x="-9" y="-31" width="13" height="11" rx="2" fill="{INK}"/>'
+    body += f'<text x="-2.5" y="-22.5" font-family="Fredoka, Arial" font-weight="700" font-size="9" fill="{YEL}" text-anchor="middle">01</text>'
+    return vest("pa", body)
+
+
+def pa_h(c):
+    out = f'<path d="M-12,-1 V-25 H14 V-1" stroke="{INK}" stroke-width="2.6" fill="none"/>'
+    out += f'<path d="M-12,-25 L14,-25" stroke="{STEEL_D}" stroke-width="1.4"/>'
+    out += S(rect_d(-4, -35, 12, 9, 4), "#ffb03a", (-5, -36, 9, -25), k=0.4, dark=ORANGE_D)
+    out += f'<path d="M2,-38 v-3 M-6,-35 l-3,-2 M10,-35 l3,-2" stroke="#ffd36b" stroke-width="1.4"/>'
     return out
 
 
-def cha_b_t(c):   # Soldador: avental de couro sobre o macacão
-    out = S("M-11,-26 L11,-26 L12,-1 C4,1 -4,1 -12,-1 Z", LEATHER, (-13, -27, 13, 2), k=0.5, dark=LEATHER_D)
-    out += f'<path d="M-11,-26 L-14,-30 M11,-26 L14,-30" stroke="{LEATHER_D}" stroke-width="1.6"/>'
-    out += f'<circle cx="-5" cy="-12" r="1.2" fill="#ffd36b"/><circle cx="4" cy="-6" r="0.9" fill="#ffd36b"/>'
-    return out
-
-
-def cha_b_h(c):   # máscara de solda levantada no alto da cabeça
-    out = S("M-12,-20 C-10,-29 6,-30 10,-22 L8,-17 L-12,-17 Z", "#3e4752", (-13, -31, 11, -16), k=0.5, dark="#252b33")
-    out += f'<rect x="-4" y="-25" width="9" height="3" rx="1" fill="#1d3a22"/>'
-    return out
-
-
-# ---------------------------------------------------------------- BRITADEIRA
-def bri_a_t(c):   # Concreteiro: respingos de cimento no barril
-    return splats([(-10, -20, 1.6), (6, -8, 1.5), (12, -22, 1.1), (-4, -4, 1.2), (0, -26, 1.0)], CEMENT, 1.2, CEMENT_D)
-
-
-def bri_a_h(c):   # cimento no capacete + máscara de pó
-    out = splats([(-6, -24, 1.2), (8, -26, 1.0)], CEMENT, 1.2, CEMENT_D)
-    out += S("M6,-5 C6,-1 16,-1 16,-5 L14,-7 L8,-7 Z", WHITE, (5, -8, 17, 0), k=0.3, dark=WHITE_D)
-    out += f'<path d="M6,-6 L-6,-11 M16,-6 L20,-11" stroke="{WHITE_D}" stroke-width="0.9"/>'
-    return out
-
-
-def bri_b_t(c):   # Sinaleiro: faixas refletivas no barril
-    return (f'<path d="M-16,-10 C-6,-6 6,-6 16,-10" stroke="{REFL}" stroke-width="2.6" fill="none"/>'
-            f'<path d="M-16,-19 C-6,-15 6,-15 16,-19" stroke="{ORANGE}" stroke-width="2.6" fill="none"/>')
-
-
-def bri_b_h(c):   # capacete laranja + abafador de ouvido
-    out = S("M-14,-15 C-14,-30 18,-30 18,-15 Z", ORANGE, (-15, -30, 19, -14), k=0.5, dark=ORANGE_D)
-    out += f'<rect x="-16" y="-16.5" width="36" height="3" rx="1.5" fill="{ORANGE_D}"/>'
-    out += f'<path d="M-9,-24 C-10,-12 -10,-12 -9,-8" stroke="{INK}" stroke-width="1.6" fill="none"/>'
-    out += S(ellipse_d(-9, -7, 3.6, 4.4), YEL, (-13, -12, -5, -2), k=0.3, dark=YEL_D)
-    return out
-
-
-# ---------------------------------------------------------------- PÁ
-def pa_a_t(c):   # Operador de escavadeira: tronco com faixa refletiva extra e placa "ON"
-    out = f'<rect x="-14" y="-30" width="28" height="3" fill="{REFL}"/>'
-    out += f'<rect x="-10" y="-24" width="8" height="5" rx="1" fill="{INK}"/><path d="M-8.5,-21.5 h5" stroke="#5cc45c" stroke-width="1.4"/>'
-    return out
-
-
-def pa_a_h(c):   # cabine com teto zebrado e giroflex grande
-    out = zebra(-10, -21.5, 12, -21.5, 3.2, 5)
-    out += f'<rect x="-3" y="-30" width="9" height="7" rx="3" fill="{ORANGE}"/><rect x="-4" y="-24" width="11" height="2" fill="{STEEL_D}"/>'
-    out += f'<path d="M1.5,-29 v-2 M-2,-28 l-2,-2 M5,-28 l2,-2" stroke="#ffd36b" stroke-width="1"/>'
-    return out
-
-
-def pa_b_t(c):   # Turno da noite: fita de LED amarela no peito + faixas refletivas
-    out = f'<rect x="-14" y="-23" width="28" height="4" fill="{INK}"/>'
-    for x in range(-12, 13, 4):
-        out += f'<circle cx="{x}" cy="-21" r="1.4" fill="#fff1b8"/>'
-    out += f'<rect x="-14" y="-31" width="28" height="2.4" fill="{REFL}"/>'
-    return out
-
-
-def pa_b_h(c):   # faróis na cabine
-    out = ""
-    for y in (-19, -11):
-        out += f'<rect x="10.5" y="{y}" width="4" height="5" rx="1.2" fill="{INK}"/><rect x="11.5" y="{y + 1}" width="3" height="3" rx="1" fill="#fff1b8"/>'
-    out += f'<path d="M14.5,-18 L30,-24 L30,-4 L14.5,-10 Z" fill="#fff1b8" opacity="0.4"/>'
+def pa_tool():
+    out = f'<path d="M-16,-6 C-23,-6 -23,6 -16,6" stroke="{INK}" stroke-width="2.6" fill="none"/><path d="M-21,-5 L-21,5" stroke="{INK}" stroke-width="2.6"/>'
+    out += S(rect_d(-17, -2.4, 49, 4.8, 2), YEL, (-18, -3, 33, 3), k=0.5, dark=YEL_D)
+    out += S("M33,-12 L52,-12 C58,-8 58,8 52,12 L33,12 Z", YEL, (32, -13, 59, 13), k=0.6, dark=YEL_D)
+    for y in (-9, -3, 3, 9):
+        out += f'<path d="M56,{y - 2.4} L62,{y} L56,{y + 2.4} Z" fill="{STEEL_L}"/>'
+    out += f'<rect x="33" y="-12" width="4" height="24" fill="{INK}"/>'
     return out
 
 
 SKINS = {
-    "marretao": [("MESTRE DE OBRAS", "capacete branco de chefe, colete refletivo", mar_a_t, mar_a_h),
-                 ("DEMOLIDOR VETERANO", "fita zebrada no peito, adesivos e rebites", mar_b_t, mar_b_h)],
-    "picareta": [("TOPÓGRAFO", "capacete azul, colete limão, lente de teodolito", pic_a_t, pic_a_h),
-                 ("ESCAVADOR DE TÚNEL", "capacete com lanterna, terra no corpo", pic_b_t, pic_b_h)],
-    "chave": [("ELETRICISTA", "capacete laranja, fio no peito, selo de raio", cha_a_t, cha_a_h),
-              ("SOLDADOR", "máscara de solda levantada, avental de couro", cha_b_t, cha_b_h)],
-    "britadeira": [("CONCRETEIRO", "respingos de cimento, máscara de pó", bri_a_t, bri_a_h),
-                   ("SINALEIRO", "capacete laranja, abafador, faixas refletivas", bri_b_t, bri_b_h)],
-    "pa": [("OPERADOR DE ESCAVADEIRA", "teto zebrado, giroflex grande", pa_a_t, pa_a_h),
-           ("TURNO DA NOITE", "faróis na cabine, fita de LED", pa_b_t, pa_b_h)],
+    "marretao": [("MESTRE DE OBRAS", "uniforme laranja refletivo, capacete grande com lanterna, marreta zebrada", mar_t, mar_h, mar_tool)],
+    "picareta": [("TOPÓGRAFO", "colete limão, luneta de teodolito no olho, picareta-baliza", pic_t, pic_h, pic_tool)],
+    "chave": [("SOLDADOR", "avental de couro, máscara de solda grande, chave de cobre", cha_t, cha_h, cha_tool)],
+    "britadeira": [("CONCRETEIRO", "coberto de cimento, máscara de pó, britadeira suja", bri_t, bri_h, bri_tool)],
+    "pa": [("OPERADOR DE ESCAVADEIRA", "corpo de máquina nº 01, santo-antônio e giroflex, pá-caçamba", pa_t, pa_h, pa_tool)],
 }
 
-_ORIG = {cid: (E.CHARS[cid]["torso"], E.CHARS[cid]["head"]) for cid in E.CHARS}
+_ORIG = {cid: (E.CHARS[cid]["torso"], E.CHARS[cid]["head"], E.CHARS[cid]["tool"]) for cid in E.CHARS}
 
 
 def vestir(cid, k):
     """Aplica a skin k (-1 = padrão) por cima do desenho original do robô."""
-    t0, h0 = _ORIG[cid]
+    t0, h0, tl0 = _ORIG[cid]
     if k < 0:
-        E.CHARS[cid]["torso"], E.CHARS[cid]["head"] = t0, h0
+        E.CHARS[cid]["torso"], E.CHARS[cid]["head"], E.CHARS[cid]["tool"] = t0, h0, tl0
         return
-    _, _, ft, fh = SKINS[cid][k]
+    _, _, ft, fh, ftl = SKINS[cid][k]
+    E.CHARS[cid]["tool"] = ftl
     E.CHARS[cid]["torso"] = lambda c, e, t0=t0, ft=ft: t0(c, e) + ft(c)
     E.CHARS[cid]["head"] = lambda c, e, L="all", h0=h0, fh=fh: h0(c, e, L) + (fh(c) if L in ("all", "base") else "")
 
@@ -218,10 +227,10 @@ def prancha():
     H = 170 + row * len(E.CHARS) + 30
     L = E.label
     b = [f'<rect width="{W}" height="{H}" fill="#cdeef0"/>',
-         L(W / 2, 62, "SKINS DO CANTEIRO DE OBRAS (Derruba · mapa 1) — PROPOSTAS PARA APROVAR", 40),
-         L(W / 2, 104, "só camadas por cima do robô: mesma silhueta e hitbox, cor do jogador dominante, sem efeito de jogo", 22, "#2a4a58", weight=500)]
-    cols = [(-1, "PADRÃO"), (0, "SKIN A"), (1, "SKIN B")]
-    x0, cw = 250, 556
+         L(W / 2, 62, "SKINS DO CANTEIRO DE OBRAS (Derruba · mapa 1) — PROPOSTA v2 (fantasia completa)", 40),
+         L(W / 2, 104, "tronco veste o uniforme; a cor do jogador vai para o capacete, braços e pernas; mesma hitbox, sem efeito de jogo", 22, "#2a4a58", weight=500)]
+    cols = [(-1, "PADRÃO"), (0, "SKIN DO CANTEIRO (v2)")]
+    x0, cw = 260, 820
     for j, (_, nm) in enumerate(cols):
         b.append(L(x0 + cw * j + cw / 2, 150, nm, 28, "#2a4a58"))
     for i, cid in enumerate(E.CHARS):
@@ -233,14 +242,14 @@ def prancha():
             cx = x0 + cw * j
             gy = y + 318
             b.append(f'<path d="M{cx + 20},{gy} H{cx + cw - 20}" stroke="#9cc7cf" stroke-width="5" stroke-linecap="round"/>')
-            b.append(f'<g transform="translate({cx + 120},{gy}) scale(2.3)">{E.draw(cid, E.POSES[cid]["parado"], E.COLORS[i])}</g>')
-            b.append(f'<g transform="translate({cx + 330},{gy}) scale(2.3)">{E.draw(cid, E.POSES[cid]["pesado_golpe"], E.COLORS[i])}</g>')
+            b.append(f'<g transform="translate({cx + 200},{gy}) scale(2.6)">{E.draw(cid, E.POSES[cid]["parado"], E.COLORS[i])}</g>')
+            b.append(f'<g transform="translate({cx + 520},{gy}) scale(2.6)">{E.draw(cid, E.POSES[cid]["pesado_golpe"], E.COLORS[i])}</g>')
             gy2 = y + 418
             b.append(f'<rect x="{cx + 40}" y="{gy2}" width="{cw - 80}" height="10" fill="#d8cdb8"/>')
             for ci in range(4):   # tamanho de jogo, nas 4 cores de jogador
-                b.append(f'<g transform="translate({cx + 110 + ci * 105},{gy2}) scale(1.15)">{E.draw(cid, E.POSES[cid]["parado"], E.COLORS[ci])}</g>')
+                b.append(f'<g transform="translate({cx + 200 + ci * 130},{gy2}) scale(1.2)">{E.draw(cid, E.POSES[cid]["parado"], E.COLORS[ci])}</g>')
             if k >= 0:
-                nome, desc, _, _ = SKINS[cid][k]
+                nome, desc = SKINS[cid][k][0], SKINS[cid][k][1]
                 b.append(L(cx + cw / 2, y + 44, nome, 24, ORANGE_D))
                 b.append(L(cx + cw / 2, y + 70, desc, 17, "#2a4a58", weight=500))
         vestir(cid, -1)
