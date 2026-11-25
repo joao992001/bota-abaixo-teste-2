@@ -16,4 +16,4 @@ Regra nova da v2 (APROVADA em 2026-11-25): o uniforme pode cobrir o tronco intei
 grande (e segue nos braços e pernas). Aplicação em movimento (2026-11-25): no jogo as skins só trocam texturas (`corpo_<robô>_<k#>_p<cor>.png`,
 `ferramenta_<robô>_<k#>.png`, geradas por `python3 art/src/robos/skins_canteiro.py --jogo`); `robot_visual.skin = "k1"`.
 Vitrines: `--elenco=DIR --skins` (13 poses) e `--equipa=DIR --skins` (armas, kits, armaduras) → AGUARDANDO_APROVAÇÃO.
-Ainda sem menu: jogadores não escolhem skin (precisa de autorização).
+Escolha no jogo APROVADA (2026-11-25): na entrada dos personagens, X/□ alterna padrão ↔ skin do Canteiro.

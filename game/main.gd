@@ -171,6 +171,7 @@ func _sandbox_join() -> void:
 func _spawn_robot_for(i: int) -> void:
 	var r: CharacterBody2D = Robot.new()
 	r.setup(i, players[i]["color"], self, players[i]["model"])
+	r.vis.skin = String(players[i].get("skin", ""))
 	r.position = level.spawns.get(1, Vector2(960, 300))
 	robots_root.add_child(r)
 	robots.append(r)
@@ -515,6 +516,8 @@ func _join_update() -> void:
 			cycle_robot(i, -1)
 		if PlayerInput.pressed(i, "down"):
 			cycle_robot(i, 1)
+		if PlayerInput.pressed(i, "hammer"):
+			cycle_skin(i)
 		if PlayerInput.pressed(i, "heavy") and not PlayerInput.held(i, "back") and not players[i].get("bot", false):
 			# Y/△ (marretada pesada): adiciona bot; com a mesa cheia, tira os bots
 			if players.size() < 4:
@@ -529,12 +532,43 @@ func _join_update() -> void:
 				start_match()
 				return
 
+## SKINS: escolhidas na entrada (depois de modo e mapa). Só as que nasceram NO MAPA escolhido (manifesto →
+## skins_originadas) para aquele robô; "" = padrão. Só troca o desenho (robot_visual.skin), nunca o jogo.
+func _mapa_da_entrada() -> String:
+	if arena_choice != "sorteio":
+		return arena_choice
+	var ars: Array = demo.mode_arenas(game_mode)   # sorteio num modo de mapa único: é esse mapa
+	return String(ars[0]["id"]) if ars.size() == 1 else ""
+
+func skins_do_robo(model: int) -> Array:
+	var out := [""]
+	var nome: String = Data.MODELS[posmod(model, Data.MODELS.size())]
+	for k in MapaReg.manifesto(game_mode, _mapa_da_entrada()).get("skins_originadas", []):
+		if k is Dictionary and String(k.get("robo", "")) == nome:
+			out.append(String(k["id"]).to_lower())
+	return out
+
+func skin_nome(model: int, skin: String) -> String:
+	for k in MapaReg.manifesto(game_mode, _mapa_da_entrada()).get("skins_originadas", []):
+		if k is Dictionary and String(k["id"]).to_lower() == skin:
+			return String(k.get("nome", skin)).to_upper()
+	return ""
+
+## X/□ (golpe rápido) na entrada: passa pelas skins do mapa para o robô escolhido.
+func cycle_skin(i: int) -> void:
+	var ops := skins_do_robo(int(players[i]["model"]))
+	if ops.size() <= 1:
+		Audio.play("menu_negado")
+		return
+	players[i]["skin"] = ops[posmod(ops.find(String(players[i].get("skin", ""))) + 1, ops.size())]
+	Audio.play("menu_mover")
+
 func add_player(dev: String) -> void:
 	var used := players.map(func(p): return p["color"])
 	var col := 0
 	while col in used:
 		col += 1
-	players.append({"dev": dev, "color": col, "model": players.size() % Data.MODELS.size(), "score": 0,
+	players.append({"dev": dev, "color": col, "model": players.size() % Data.MODELS.size(), "skin": "", "score": 0,
 		"stats": {"derrubadas": 0, "caixotes": 0, "quedas": 0}})
 	Audio.voice("voz_oi", players[-1]["model"])
 	PlayerInput.slots.append(dev)
@@ -542,6 +576,7 @@ func add_player(dev: String) -> void:
 ## ▲▼ na entrada: passa pelos 8 modelos de robô (sempre na cor do jogador).
 func cycle_robot(i: int, d: int) -> void:
 	players[i]["model"] = posmod(int(players[i]["model"]) + d, Data.MODELS.size())
+	players[i]["skin"] = ""   # a skin é de um robô: trocou de robô, volta ao padrão
 	Audio.voice("voz_oi", players[i]["model"])
 
 func _cycle_color(i: int, d: int) -> void:
@@ -628,6 +663,7 @@ func start_run_at(spots: Array) -> void:
 	for i in players.size():
 		var r: CharacterBody2D = Robot.new()
 		r.setup(i, players[i]["color"], self, players[i]["model"])
+		r.vis.skin = String(players[i].get("skin", ""))
 		r.position = level.spawns.get(int(spots[i]) if i < spots.size() else i + 1, level.spawns[1])
 		robots_root.add_child(r)
 		robots.append(r)

@@ -513,6 +513,7 @@ func demolicao_test() -> void:
 	await spells_test()
 	await eventos_test()
 	await mapa_test()
+	await skins_test()
 	await etapas_test()
 	await diretor_test()
 	await mecanismos_test()
@@ -1751,6 +1752,37 @@ func mapa_test() -> void:
 		{"id": "a", "ordem": 1, "eventos": ["G02"], "mecanismos": [{"id": "X"}], "proxima": "a"}]}
 	var errs := MapaReg.validar(bad)
 	check(errs.size() >= 5, "validação pega spell inexistente, 1 cena só, evento fora da lista, mecanismo sem posição e ciclo (%d erros)" % errs.size())
+
+## Skins do mapa na entrada (modo → mapa → personagens): X/□ alterna padrão ↔ skins do mapa escolhido para o robô;
+## trocar de robô volta ao padrão; a partida veste o robô. --so=skins
+func skins_test() -> void:
+	print("== Skins do mapa na entrada")
+	main.go_menu()
+	PlayerInput.virtual = {"v0": {}, "v1": {}}
+	main.mode = "demolicao"
+	main.game_mode = "derruba"
+	main.arena_choice = "canteiro_obras"
+	main.go_join()
+	await frames(2)
+	await tap("v0", "jump")
+	await tap("v1", "jump")
+	main.players[0]["model"] = 0
+	check(main.skins_do_robo(0) == ["", "k1"] and main.skins_do_robo(4) == ["", "k5"], "Canteiro oferece 1 skin por robô (%s)" % str(main.skins_do_robo(0)))
+	await tap("v0", "hammer")
+	check(main.players[0]["skin"] == "k1" and main.skin_nome(0, "k1") == "MESTRE DE OBRAS", "X/□ veste a skin do mapa (Mestre de Obras)")
+	await tap("v0", "hammer")
+	check(main.players[0]["skin"] == "", "...e volta ao padrão")
+	await tap("v0", "hammer")
+	await tap("v0", "down")
+	check(main.players[0]["skin"] == "", "trocar de robô volta ao visual padrão")
+	await tap("v0", "hammer")
+	var sk: String = main.players[0]["skin"]
+	main.arena_choice = "demolicao"
+	check(main.skins_do_robo(int(main.players[0]["model"])) == [""], "mapa sem skins não oferece nenhuma")
+	main.arena_choice = "canteiro_obras"
+	main.start_match()
+	await demo_round()
+	check(main.robots[0].vis.skin == sk and sk == "k2" and main.robots[1].vis.skin == "", "na partida o robô entra vestido (%s); quem não escolheu fica padrão" % sk)
 
 ## Diretor adaptativo da destruição: jogadores parados → ele derruba peças até perto do limiar; jogadores destruindo
 ## muito → quase não age. --so=diretor
@@ -3930,6 +3962,10 @@ func menus_frames(dir: String) -> void:
 	await tap("v1", "down")
 	for k in 6:
 		await tap("v0", "down")   # P1 com outro modelo de robô
+	main.game_mode = "derruba"
+	main.arena_choice = "canteiro_obras"
+	await tap("v0", "hammer")   # skins do mapa escolhido (P1 e P2 vestem; o bot fica padrão)
+	await tap("v1", "hammer")
 	main.add_bot()
 	await frames(20)
 	await snap(dir, "m5_entrada")

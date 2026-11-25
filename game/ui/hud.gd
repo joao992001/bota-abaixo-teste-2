@@ -42,7 +42,7 @@ func panel(r: Rect2, tint := Color.WHITE) -> void:
 	Kit.paper(self, r, tint)
 
 func _look(p: Dictionary) -> Dictionary:
-	return {"color": p["color"], "model": p["model"]}
+	return {"color": p["color"], "model": p["model"], "skin": String(p.get("skin", ""))}
 
 ## Nome do jogador: "P1".."P4" (o modelo do robô aparece na entrada e na vitória).
 func pname(i: int) -> String:
@@ -319,6 +319,9 @@ func _draw_join() -> void:
 			fit_text(Vector2(lr.position.x + 20, lr.position.y + 120), lab, 22, Kit.SOFT, W - 40, 0, HORIZONTAL_ALIGNMENT_CENTER)
 			var nm: String = Data.MODEL_NAMES[p["model"]]
 			Kit.text(self, Vector2(lr.position.x, lr.end.y - 104), nm, 42, DARK, HORIZONTAL_ALIGNMENT_CENTER, W)
+			var skn: String = main.skin_nome(int(p["model"]), String(p.get("skin", "")))
+			if main.skins_do_robo(int(p["model"])).size() > 1:   # há skin deste mapa para este robô
+				Kit.text(self, Vector2(lr.position.x, lr.position.y + 166), ("✦ " + skn) if skn != "" else "visual padrão", 24, Color("#b85a1e") if skn != "" else Kit.SOFT, HORIZONTAL_ALIGNMENT_CENTER, W)
 			var pr := Rect2(lr.position.x + 30, lr.end.y - 82, W - 60, 58)
 			Kit.chunk(self, pr, col, 20, 5, 0.0)
 			Kit.text(self, Vector2(pr.position.x, pr.get_center().y + 10), "◄ cor ►   ▲▼ robô", 27, DARK, HORIZONTAL_ALIGNMENT_CENTER, pr.size.x)
@@ -335,7 +338,7 @@ func _draw_join() -> void:
 	draw_set_transform(Vector2.ZERO)
 	if Input.get_connected_joypads().is_empty():
 		Kit.sticker(self, Vector2(0, 950), "nenhum controle detectado  ·  OPÇÕES ▸ TESTAR CONTROLES", 26, Color("#ff8a8a"), HORIZONTAL_ALIGNMENT_CENTER, 1920)
-	Kit.pad_hint(self, 960, 1030, [["baixo"], " entrar   ", "◄► cor   ▲▼ robô   ", ["cima"], " + bot   ", ["direita"], " sair   ", ["start"], " começar"], 30, Color.WHITE, st, 7)
+	Kit.pad_hint(self, 960, 1030, [["baixo"], " entrar   ", "◄► cor   ▲▼ robô   ", ["esquerda"], " skin   ", ["cima"], " + bot   ", ["direita"], " sair   ", ["start"], " começar"], 30, Color.WHITE, st, 7)
 
 # ---------------------------------------------------------------- corrida / rodada
 func _draw_run() -> void:
