@@ -1,9 +1,9 @@
-# Cartilha do MAPA — modo Derruba (PROPOSTA, aguardando aprovação)
+# Cartilha do MAPA — modo Derruba (APROVADA; validada na Fase 1 em 2026-11-25)
 
 > Estado: **conceito aprovado pelo usuário (2026-11-24)**: cena viva em 2 etapas, virada "a obra cede" (todos caem numa
 > animação de queda e a luta continua embaixo), fundo muito mais animado e detalhado, MAIS mecanismos e eventos
-> ESPECÍFICOS de cada fase, tudo catalogado por fase antes de construir. Números ainda em aprovação. Quando aprovado e
-> aplicado ao Canteiro, vira o manual `mapa.md` (mesmo formato dos outros manuais). Esquema visual:
+> ESPECÍFICOS de cada fase, tudo catalogado por fase antes de construir. Aplicada ao Canteiro; o passo a passo
+> validado está em `mapa.md`. Esquema visual:
 > `art/out/cartilha_mapa_derruba.png` (gerado por `art/src/cenarios/cartilha_mapa.py`).
 
 ## 1. Ideia central: a fase é uma CENA VIVA em ATOS
@@ -114,8 +114,6 @@ cremalheira (sobe e desce no ritmo; dá carona ou esmaga contra a viga se você 
 - **B) "Subiu a laje" → Ato 2 COBERTURA (composição Ilhas):** a grua iça o núcleo com todo mundo em cima até o topo do
   prédio: céu de fim de tarde, vento, vigas soltas, outdoor. Mecanismo novo: **contrapeso da grua** que passa varrendo.
 
-## 10. Próximos passos (depois da aprovação)
-1. Você aprova/ajusta esta cartilha (números, 2 atos, gatilho) e escolhe A ou B para o Canteiro.
-2. Prancha visual do Canteiro nos 2 atos (camadas C0–C4, Z1–Z8, mecanismos) para aprovar antes do código.
-3. Código: sistema de atos e transição (genérico, serve para todo mapa), camadas de fundo vivo, mecanismos do Canteiro.
-4. Com o Canteiro aprovado jogando, esta cartilha vira o manual `mapa.md`.
+## 10. Como usar
+Aprovada e aplicada na Fase 1 (Canteiro). O passo a passo, o checklist antes de entregar e o registro de erros estão no
+manual [`mapa.md`](mapa.md) — esta cartilha fica com as regras de desenho (atos, camadas, palco, composições).

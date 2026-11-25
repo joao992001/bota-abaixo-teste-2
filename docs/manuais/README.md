@@ -9,7 +9,7 @@ o usuário reprovou) nas entregas de 2026-11-24.
 | Um robô (personagem jogável) | [`personagem.md`](personagem.md) | o jogo todo (todos os modos) |
 | Uma spell (item da caixa) | [`derruba/spell.md`](derruba/spell.md) | modo **Derruba** |
 | Um evento global | [`derruba/evento.md`](derruba/evento.md) | modo **Derruba** |
-| Uma fase (mapa) | [`derruba/mapa.md`](derruba/mapa.md) (passo a passo) + [`derruba/mapa_cartilha.md`](derruba/mapa_cartilha.md) (regras: cena viva em etapas, C0–C4, Z1–Z8). Catálogos: `docs/fases/derruba/`. Skill: `criar-fase` | modo **Derruba** |
+| Uma fase (mapa) | [`derruba/mapa.md`](derruba/mapa.md) (**método validado** na Fase 1: passo a passo, checklist antes de entregar, registro de erros) + [`derruba/mapa_cartilha.md`](derruba/mapa_cartilha.md) (regras: cena viva em etapas, C0–C4, Z1–Z8). Catálogos: `docs/fases/derruba/`. Skill: `criar-fase` | modo **Derruba** |
 
 ## Regras que valem para os três
 1. **Aprovação antes de código grande.** Arte e comportamento novos começam por uma prancha (imagem) ou descrição curta

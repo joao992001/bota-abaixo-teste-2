@@ -1,4 +1,8 @@
-# FASE 1 do Derruba — CANTEIRO DE OBRAS · Catálogo (IMPLEMENTADO em 2026-11-24)
+# FASE 1 do Derruba — CANTEIRO DE OBRAS · Catálogo (FECHADA em 2026-11-25)
+
+> **Fase fechada pelo usuário em 2026-11-25** (vale como exemplo do método em `docs/manuais/derruba/mapa.md`). Revisão
+> final: transição com câmera em roteiro e queda lenta, poço aberto na terra, bate-estaca com torre apoiada no piso (M6),
+> água que transborda em cachoeiras e jorra do teto (M7), placas e lâmpadas presas ao cenário, drone G09 fora da fase.
 
 > Implementado como descrito, com 3 ajustes feitos na construção: o poço (E12/D8) foi para as colunas 13–16 (não fica sob
 > o pilar central), os pedaços da laje (E16) ficam nas colunas 8 e 27, e a estaca central fica sobre piso firme.
