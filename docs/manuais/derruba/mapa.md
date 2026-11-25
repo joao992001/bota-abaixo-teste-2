@@ -150,4 +150,4 @@ enquadramento da próxima cena (`camera_queda_mola`) → `_chega` (KO e área pa
 | Teste longo disparava a virada | `demo_round` zera o cronômetro da virada |
 | Lambdas de teste capturando objetos já liberados | não reiniciar a rodada no meio de um teste com lambdas vivas |
 | `remove_meta(...) if … else null` (void em ternário) | usar `if` normal |
-| Spell que nasce no ombro (S20) passou a errar com corpos novos | projéteis "de chão" saem na altura da cintura; conferir `--equipa` ao mudar o elenco |
+| Spell que nasce no ombro (A08) passou a errar com corpos novos | projéteis "de chão" saem na altura da cintura; conferir `--equipa` ao mudar o elenco |

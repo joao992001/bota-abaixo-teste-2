@@ -2,7 +2,7 @@ extends Node2D
 ## MECANISMOS DA FASE (cartilha do mapa, Z7): armadilhas/máquinas próprias de cada fase, com aviso visível, ciclo legível
 ## e interação do jogador (marretar alavanca/botão/registro/trava). Cada TIPO é uma receita reaproveitável; a fase só lista
 ## quais usa, onde e em que etapa: data/modos.json → demolicao.mecanismos.<cena> (ex.: "fase1").
-## A Inspeção (G09) pausa todos. Golpe da máquina = do ambiente (by -1), a não ser que um jogador a acione.
+## Golpe da máquina = do ambiente (by -1), a não ser que um jogador a acione.
 ## Tipos: betoneira (concreto fresco), elevador (plataforma de cremalheira), esteira (leva para fora; botão inverte),
 ## tubos (marretar solta tubos rolando), serra (sobe da bancada em ciclo), bate_estaca (martela uma faixa),
 ## agua (alagamento; registro drena), vagonete (passa varrendo o piso), gerador (faísca; com água dá choque).
@@ -96,7 +96,7 @@ func update(dt: float) -> void:
 	if main.state != main.S.RUN or main.countdown > 0.0:
 		queue_redraw()
 		return
-	var paused: bool = main.events != null and main.events.inspecao
+	var paused := false
 	for inst in list:
 		if not _on(inst):
 			continue

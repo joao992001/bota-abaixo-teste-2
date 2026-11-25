@@ -869,13 +869,13 @@ func _draw_scene(ci: CanvasItem, enter: Array) -> void:
 						pose["hf_off"] = Vector2(4, -20) * sin(u * PI)
 						pose["lean"] = -0.35 * sin(u * PI)
 				2:   # armadura fornalha: quica blindado
-					look["fx"] = {"spell": "S13", "armor": true, "assemble": 1.0}
+					look["fx"] = {"spell": "T01", "armor": true, "assemble": 1.0}
 					var b := absf(sin(now * 3.2))
 					off.y = -110.0 * b
 					pose["spring_k"] = 0.7 + 0.8 * b
 					pose["expr"] = "vitoria" if b > 0.5 else "normal"
 				3:   # TNT aceso na mão: corre no lugar, desesperado
-					look["fx"] = {"spell": "S03"}
+					look["fx"] = {"spell": "A03"}
 					var ph := now * 18.0
 					pose["feet"] = [Vector2(cos(ph) * 8.0, -maxf(sin(ph), 0.0) * 9.0), Vector2(cos(ph + PI) * 8.0, -maxf(sin(ph + PI), 0.0) * 9.0)]
 					pose["expr"] = "susto"

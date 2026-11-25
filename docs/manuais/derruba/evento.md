@@ -2,8 +2,8 @@
 
 Evento = acontecimento da arena que muda a luta por alguns segundos. 12 aprovados: G01 Sirene, G05 Guindaste,
 G06 Entulho, G11 Interdição, G12 Troca de Andaimes, G13 Cabo Rompido, G02 Ventania, G03 Gravidade, G04 Sobrecarga
-Magnética, G14 Chuva de Rebites, G09 Inspeção, G10 Carga Especial.
-**Nunca reintroduzir os reprovados:** G07, G08, G15, G16, G17, G18.
+Magnética, G14 Chuva de Rebites, G10 Carga Especial (= chuva de 1–3 ARMADURAS).
+**Nunca reintroduzir os reprovados:** G07, G08, G15, G16, G17, G18 e **G09 Inspeção (drone)** (2026-11-25, código removido).
 Princípios gerais: [`../eventos.md`](../eventos.md). **Autorização:** um evento só acontece num mapa/cena se estiver em
 `eventos_permitidos` e em `cenas[].eventos` do manifesto do mapa (`data/mapas/derruba/<mapa>.json`); mapa sem manifesto
 não tem evento; o Laboratório (ferramenta) tem a biblioteca inteira. Específicos de um mapa = `V#`.

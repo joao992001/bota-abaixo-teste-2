@@ -7,7 +7,7 @@
 | G04 | Sobrecarga Magnética | Fundação | APROVADO | do gerador |
 | G05 | Operação Guindaste | Térreo | APROVADO | carga traz caixa especial; marretar o gancho solta |
 | G06 | Entrega de Entulho | Térreo, Fundação | APROVADO | |
-| G10 | Carga Especial | Térreo, Fundação | APROVADO | |
+| G10 | Carga Especial | Térreo, Fundação | APROVADO (mudado 2026-11-25) | chuva de 1–3 ARMADURAS |
 | G11 | Interdição | Fundação | APROVADO | |
 | G12 | Troca de Andaimes | Térreo | APROVADO | |
 | G13 | Cabo Rompido | Térreo | APROVADO | |
@@ -16,4 +16,4 @@
 | V2 | Desmoronamento | Fundação | APROVADO | específico; pedaços pelo poço |
 | V3 | Enchente | Fundação | APROVADO | específico; usa a água (M7) |
 | G01 | Sirene de Demolição | — | SUBSTITUÍDO (2026-11-25) | virou o diretor de destruição do modo |
-| G09 | Inspeção (drone) | — | REPROVADO no mapa (2026-11-25) | travava e era inútil; só volta redesenhado |
+| G09 | Inspeção (drone) | — | REPROVADO no jogo (2026-11-25) | código removido |

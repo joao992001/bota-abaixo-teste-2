@@ -136,9 +136,9 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 	var cmd := {"dir": 0}
 	var sp = demo.spells
 	var mine: String = sp.slot[r.pid]["id"] if sp != null and sp.slot.has(r.pid) else ""
-	if mine in ["S10", "S11"] and not r.is_on_floor() and r.velocity.y > 250.0 and pos.y > 64.0 * (L.rows - 5):
+	if mine in ["E01", "C04"] and not r.is_on_floor() and r.velocity.y > 250.0 and pos.y > 64.0 * (L.rows - 5):
 		cmd["item"] = true   # caindo no buraco: andaime embaixo dos pés / teleporte para cima
-		cmd["up"] = mine == "S11"
+		cmd["up"] = mine == "C04"
 		return cmd
 	# 1b) máquinas da arena (chama, pistão, serra, barril): sair de perto ou pular por cima
 	var fx0 = demo.fx
@@ -285,31 +285,29 @@ func _decide(r, lv: Dictionary, st: Dictionary) -> Dictionary:
 	# 4) spells: cada uma tem sua hora
 	var it_ok := false
 	match mine:
-		"S01": it_ok = absf(dy) < 50.0 and absf(dx) > 70.0 and absf(dx) < 240.0
-		"S03": it_ok = absf(dy) < 40.0 and absf(dx) > 90.0 and absf(dx) < 900.0
-		"S06": it_ok = absf(dy) < 90.0 and absf(dx) > 120.0 and absf(dx) < 300.0
-		"S13": it_ok = absf(dy) < 60.0 and absf(dx) < 150.0
-		"S02": it_ok = absf(dy) < 30.0 and absf(dx) > 120.0 and absf(dx) < 800.0
-		"S04": it_ok = r.is_on_floor() and target.is_on_floor() and absf(dy) < 8.0 and absf(dx) < 280.0
-		"S05": it_ok = absf(dy) < 40.0 and absf(dx) > 80.0 and absf(dx) < 600.0
-		"S17": it_ok = absf(absf(dx) - 166.0) < 40.0 and absf(dy) < 90.0
-		"S18": it_ok = absf(dy) < 30.0 and target.is_on_floor() and absf(dx) > 90.0 and absf(dx) < 420.0
-		"S19": it_ok = absf(dy) < 70.0 and absf(dx) > 90.0 and absf(dx) < 300.0
-		"S20": it_ok = absf(dy) < 60.0 and absf(dx) > 100.0 and absf(dx) < 420.0
-		"S07": it_ok = absf(dy) < 60.0 and absf(dx) < 320.0
-		"S14": it_ok = absf(dy) < 40.0 and absf(dx) < 140.0
-		"S15": it_ok = sp.slot[r.pid]["t"] < 0.0 and absf(dx) < 500.0
-		"S16": it_ok = not r.is_on_floor() and r.velocity.y > 200.0
-		"S31": it_ok = sp.slot[r.pid]["t"] < 0.0 and absf(dy) < 40.0 and absf(dx) < 220.0
-		"S33": it_ok = absf(dy) < 40.0 and absf(dx) < 120.0
-		"S34": it_ok = sp.slot[r.pid]["t"] < 0.0 and absf(dx) < 320.0
-		"S08": it_ok = absf(dy) < 40.0 and absf(dx) > 120.0 and absf(dx) < 480.0
-		"S21": it_ok = absf(dy) < 50.0 and absf(dx) > 100.0 and absf(dx) < 400.0
-		"S28": it_ok = absf(dy) < 40.0 and absf(dx) > 200.0 and absf(dx) < 700.0 and main.rng.randf() < 0.05
-		"S27":
+		"A01": it_ok = absf(dy) < 50.0 and absf(dx) > 70.0 and absf(dx) < 240.0
+		"A03": it_ok = absf(dy) < 40.0 and absf(dx) > 90.0 and absf(dx) < 900.0
+		"C01": it_ok = absf(dy) < 90.0 and absf(dx) > 120.0 and absf(dx) < 300.0
+		"T01": it_ok = absf(dy) < 60.0 and absf(dx) < 150.0
+		"A02": it_ok = absf(dy) < 30.0 and absf(dx) > 120.0 and absf(dx) < 800.0
+		"A04": it_ok = r.is_on_floor() and target.is_on_floor() and absf(dy) < 8.0 and absf(dx) < 280.0
+		"A05": it_ok = absf(dy) < 40.0 and absf(dx) > 80.0 and absf(dx) < 600.0
+		"A06": it_ok = absf(absf(dx) - 166.0) < 40.0 and absf(dy) < 90.0
+		"A07": it_ok = absf(dy) < 70.0 and absf(dx) > 90.0 and absf(dx) < 300.0
+		"A08": it_ok = absf(dy) < 60.0 and absf(dx) > 100.0 and absf(dx) < 420.0
+		"C02": it_ok = absf(dy) < 60.0 and absf(dx) < 320.0
+		"T02": it_ok = absf(dy) < 40.0 and absf(dx) < 140.0
+		"T03": it_ok = sp.slot[r.pid]["t"] < 0.0 and absf(dx) < 500.0
+		"T04": it_ok = not r.is_on_floor() and r.velocity.y > 200.0
+		"T05": it_ok = sp.slot[r.pid]["t"] < 0.0 and absf(dy) < 40.0 and absf(dx) < 220.0
+		"T06": it_ok = absf(dy) < 40.0 and absf(dx) < 120.0
+		"T07": it_ok = sp.slot[r.pid]["t"] < 0.0 and absf(dx) < 320.0
+		"C03": it_ok = absf(dy) < 40.0 and absf(dx) > 120.0 and absf(dx) < 480.0
+		"C05": it_ok = absf(dy) < 50.0 and absf(dx) > 100.0 and absf(dx) < 400.0
+		"E03":
 			var tg = sp.remote_target(r)
 			it_ok = tg != null and target.position.x > tg["rect"].position.x and target.position.x < tg["rect"].end.x and target.position.y > tg["rect"].position.y
-		"S12":
+		"E02":
 			var mine_c = null
 			for ch in sp.charges_placed:
 				if ch["owner"] == r.pid:

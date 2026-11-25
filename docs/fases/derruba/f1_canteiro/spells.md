@@ -1,6 +1,6 @@
 # Spells — Canteiro de Obras (autorização: manifesto → `spells_permitidas`)
 
-Classes do modo: Ataque, Controle, Engenharia, Transformação. **Autorizadas aqui: as 26 aprovadas** (S01–S08, S10–S21,
-S25, S27, S28, S31, S33, S34 — lista exata no manifesto). Todas nasceram com a estética de obra deste mapa (origem: Canteiro).
-Estado: `APROVADO`. Nenhuma variação visual específica do mapa. Reprovadas (nunca voltam): S09, S22, S23, S24, S26, S29,
-S30, S32. Pendente com o usuário: S12 Carga Remota "acerta em tudo" (crítica ou elogio?).
+Classes do modo: Ataque (A##), Controle (C##), Engenharia (E##), Transformação (T##). **Autorizadas aqui: as 23 aprovadas**
+(A01–A08, C01–C05, E01–E03, T01–T07 — lista exata no manifesto). Todas nasceram com a estética de obra deste mapa.
+Estado: `APROVADO`. Saíram em 2026-11-25: Disco de Corte, Ponte Dobrável, Escudo de Solda (REPROVADAS). Armaduras raras nas
+caixas normais; a Carga Especial (G10) derruba 1–3 armaduras. Equivalência de códigos: `docs/manuais/derruba/spell.md`.

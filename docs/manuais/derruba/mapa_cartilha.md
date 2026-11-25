@@ -69,7 +69,7 @@ Ordem de trabalho: catálogo aprovado → prancha de arte aprovada → código.
 ## 5. Mecanismos e armadilhas (Z7)
 - São **da fase** (diferentes dos eventos globais, que valem para todas): cada mapa tem os seus.
 - Sempre **avisam** (luz, som, peça se mexendo) antes de machucar; têm **ritmo legível** (ciclo fixo ou gatilho claro).
-- **Interagem**: o jogador pode acionar, travar ou aproveitar (marretada, Controle Remoto S27, arremessar alguém contra).
+- **Interagem**: o jogador pode acionar, travar ou aproveitar (marretada, Controle Remoto E03, arremessar alguém contra).
 - Golpe do mecanismo é do ambiente (`by = -1`), a não ser que um jogador o acione (aí o crédito é de quem acionou).
 - Nunca decidem um KO sozinhos sem chance de reação; a Inspeção (G09) os pausa.
 

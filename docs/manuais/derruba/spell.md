@@ -1,10 +1,17 @@
 # Manual — criar uma SPELL (modo Derruba)
 
-Spell = item da caixa: 1 por robô, botão de ESPECIAL. 26 aprovadas (S01–S34, ver `NOMES` em `game/modes/spells.gd`).
+Spell = item da caixa: 1 por robô, botão de ESPECIAL. 26 aprovadas (A01–T07, ver `NOMES` em `game/modes/spells.gd`).
 Princípios gerais: [`../spells.md`](../spells.md). **Classes = do modo** (`modos[derruba].classes_spells`: ataque,
 controle, engenharia, transformação). **Disponibilidade = do mapa**: uma spell só sai nas caixas de um mapa se estiver em
 `spells_permitidas` do manifesto dele (`data/mapas/derruba/<mapa>.json`). Canteiro: as 26. Laboratório (ferramenta): todas.
-**Nunca reintroduzir as reprovadas:** S09, S22, S23, S24, S26, S29, S30, S32.
+
+## Códigos (renumerados por classe em 2026-11-25; antigo → novo)
+| Ataque | Controle | Engenharia | Transformação |
+|---|---|---|---|
+| S01→A01 Punho Pneumático · S02→A02 Laser de Corte · S03→A03 Canhão Criogênico · S04→A04 Marreta Sísmica · S05→A05 Rebiteira Ricochete · S17→A06 Bate-Estaca · S19→A07 Marreta-Bumerangue · S20→A08 Canhão de Molas | S06→C01 Superímã · S07→C02 Turboventilador · S08→C03 Gancho de Arrasto · S11→C04 Teleporte · S21→C05 Laço de Energia | S10→E01 Andaime Relâmpago · S12→E02 Carga Remota · S27→E03 Controle Remoto | S13→T01 Armadura Fornalha · S14→T02 Mecha Empilhadeira · S15→T03 Bola de Demolição · S16→T04 Propulsor Gambiarra · S31→T05 Modo Broca · S33→T06 Modo Soldador · S34→T07 Minirrobô Veloz |
+As texturas de arte mantêm os nomes antigos em minúsculas (`spells/s13_frente.png` etc.): o código só mudou nos dados e no jogo.
+**REPROVADAS (nunca voltam):** S09, S22, S23, S24, S26, S29, S30, S32 e, em 2026-11-25, **S18 Disco de Corte, S25 Ponte Dobrável, S28 Escudo de Solda** (código removido).
+Armaduras (Transformação) são **raras** nas caixas normais (peso 7) — o momento delas é a **Carga Especial (G10)**.
 
 ## 1. Regras de desenho (o que o usuário aprovou — seguir desde a 1ª versão)
 1. **Arma tem arte própria** e é carregada com as **duas mãos**; a ferramenta do robô vai para as costas. Ao dar golpe
@@ -39,7 +46,7 @@ controle, engenharia, transformação). **Disponibilidade = do mapa**: uma spell
 | Golpe no robô | `game/player/robot.gd`: `ROBOT_HITS` (golpes de robô que a esquiva protege) e `last_cause` (nome no placar) |
 | Bots | `game/modes/bots.gd`: condição `it_ok` por spell (+ `bot_hold` se segura) |
 | Arte | `art/src/efeitos/spells.py` → `PIECES` (`python3 art/src/efeitos/spells.py` e `cp art/out/game/spells/*.png game/assets/spells/`) |
-| Testes / vitrine | `game/tests/driver.gd`: `spells_test` (`--so=spells`) e `spells_frames` (`--spells=DIR --so-spells=S01+S03`) |
+| Testes / vitrine | `game/tests/driver.gd`: `spells_test` (`--so=spells`) e `spells_frames` (`--spells=DIR --so-spells=A01+A03`) |
 | Laboratório | automático: a linha SPELL lista o que está em `pools` |
 
 ## 3. Passo a passo

@@ -58,14 +58,14 @@ var forced_t := 0.0           # movimento forçado (investida da furadeira, carg
 var forced_vel := Vector2.ZERO
 var grip := 1.0               # aderência na parede/borda (1 = cheia); gasta segurando, recarrega no chão
 var wall_side := 0            # lado da parede em que está escorregando (desenho)
-var frozen_t := 0.0           # congelado (S03 Canhão Criogênico): preso no gelo; agitar o direcional quebra mais rápido
-var size_k := 1.0             # S34 Minirobô: tamanho (a hitbox acompanha o desenho)
+var frozen_t := 0.0           # congelado (A03 Canhão Criogênico): preso no gelo; agitar o direcional quebra mais rápido
+var size_k := 1.0             # T07 Minirobô: tamanho (a hitbox acompanha o desenho)
 var spell_hit := 1.0          # força dos golpes DESTE robô nos outros (minirobô empurra menos)
-var spell_fly := false        # S16 jetpack ligado: sem gravidade (o jetpack controla a subida)
-var spell_form := ""          # transformação que muda o movimento ("bola" = S15 rola com inércia)
+var spell_fly := false        # T04 jetpack ligado: sem gravidade (o jetpack controla a subida)
+var spell_form := ""          # transformação que muda o movimento ("bola" = T03 rola com inércia)
 var body_cs: CollisionShape2D
-var hammer_out := false       # S19: a marreta está voando (sem marretada pesada até voltar)
-var spell_lock := false       # mirando/viajando (S11 Teleporte): ignora movimento, pulo e golpes
+var hammer_out := false       # A07: a marreta está voando (sem marretada pesada até voltar)
+var spell_lock := false       # mirando/viajando (C04 Teleporte): ignora movimento, pulo e golpes
 var god := false              # Laboratório: invencível (não leva golpe)
 var push_vx := 0.0            # empurrão externo deste quadro (ímã); zera a cada quadro
 var fall_reason := ""
@@ -119,7 +119,7 @@ func rect() -> Rect2:
 	var hb: Array = c["hitbox"]
 	return Rect2(position.x - hb[0] * size_k / 2.0, position.y - hb[1] * size_k, hb[0] * size_k, hb[1] * size_k)
 
-## S34: muda o tamanho do robô (colisão e hitbox juntas; os pés ficam no lugar).
+## T07: muda o tamanho do robô (colisão e hitbox juntas; os pés ficam no lugar).
 func set_size(k: float) -> void:
 	size_k = k
 	if body_cs != null:
@@ -351,9 +351,9 @@ func _jump_speed() -> float:
 	var js := float(c["jump_speed"])
 	return js * (0.55 + 0.45 * env_slow)
 
-## S15 Bola de Demolição: rola com inércia (acelera devagar, freia longe), pulinho, quica na parede.
+## T03 Bola de Demolição: rola com inércia (acelera devagar, freia longe), pulinho, quica na parede.
 func _ball_update(dt: float, ix: float, on_floor: bool) -> void:
-	var bc: Dictionary = main.demo.cfg["spells"]["S15"]
+	var bc: Dictionary = main.demo.cfg["spells"]["T03"]
 	if ix != 0.0:
 		var same := signf(ix) == signf(own_vx) or absf(own_vx) < 10.0
 		own_vx = move_toward(own_vx, ix * float(bc["vel_max"]), float(bc["acel"]) * (1.0 if same else 0.7) * dt)
@@ -487,7 +487,7 @@ func _climb_update(dt: float) -> void:
 ## Retorna false se não pegou (invulnerável ou capacete).
 const ROBOT_HITS := ["rapido", "pesado", "martelao", "marretada", "combo", "combo_final", "cima", "baixo", "corrida",
 	"spell_punho", "spell_gelo", "spell_fogo", "spell_explosao",
-	"spell_laser", "spell_sismo", "spell_rebite", "spell_estaca", "spell_disco", "spell_bumerangue", "spell_mola",
+	"spell_laser", "spell_sismo", "spell_rebite", "spell_estaca", "spell_bumerangue", "spell_mola",
 	"spell_gancho", "spell_carga", "spell_viga",
 	"spell_bola", "spell_empilhadeira", "spell_broca", "spell_solda"]
 
@@ -501,7 +501,7 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 	last_cause = {"marretada": "marretada", "martelao": "marretada", "explosao": "explosão", "bola": "bola",
 		"spell_punho": "punho pneumático", "spell_gelo": "canhão criogênico", "spell_fogo": "armadura fornalha",
 		"spell_explosao": "fornalha explodiu", "spell_laser": "laser de corte", "spell_sismo": "marreta sísmica",
-		"spell_rebite": "rebite", "spell_estaca": "bate-estaca", "spell_disco": "disco de corte", "spell_bumerangue": "marreta-bumerangue",
+		"spell_rebite": "rebite", "spell_estaca": "bate-estaca", "spell_bumerangue": "marreta-bumerangue",
 		"spell_mola": "canhão de molas", "spell_gancho": "gancho", "spell_carga": "carga de demolição", "spell_viga": "viga do guindaste",
 		"spell_bola": "bola de demolição", "spell_empilhadeira": "empilhadeira", "spell_broca": "broca", "spell_solda": "solda",
 		"evento_entulho": "entulho", "evento_rebite": "chuva de rebites", "evento_viga": "viga do cabo rompido", "evento_carga": "carga do guindaste",
@@ -520,7 +520,7 @@ func take_hit(dir: int, kind: String, by := -1) -> bool:
 		ky *= main.robots[by].spell_hit
 	if frozen_t > 0.0 and main.demo.spells != null:
 		# pancada em quem está congelado: o gelo estilhaça e o empurrão é maior
-		var mult := float(main.demo.cfg["spells"]["S03"]["quebra_mult"])
+		var mult := float(main.demo.cfg["spells"]["A03"]["quebra_mult"])
 		kx = minf(kx * mult, float(am["max_kx"]) * 1.2)
 		ky *= mult
 		main.demo.spells.shatter(self)

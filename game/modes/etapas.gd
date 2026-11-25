@@ -178,7 +178,7 @@ func _desaba() -> void:
 	if sp != null and is_instance_valid(sp):
 		for r in vivos:   # voo (jetpack) e transformações acabam: ninguém escapa da queda
 			var sid: String = sp.flags(r).get("spell", "")
-			if sid in ["S16", "S13", "S14", "S15", "S31", "S33", "S34"]:
+			if sid in ["T04", "T01", "T02", "T03", "T05", "T06", "T07"]:
 				sp.clear(r)
 		for b in sp.boxes:   # caixas da cena que caiu vão pelo buraco (nunca ficam em cima do teto da próxima)
 			b["pos"].x = _over_floor(clampf(b["pos"].x, hole.x + 80.0, hole.y - 80.0), a2)

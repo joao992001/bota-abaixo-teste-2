@@ -3,20 +3,20 @@ extends Node2D
 ## (segurar o botão de especial ~0,3 s sobre a caixa: o item antigo cai no chão para outro pegar), limpeza na eliminação,
 ## sorteio em 2 etapas (família → spell) com raridade e sem ajuda a quem perde. Números: data/modos.json → demolicao.spells.
 ## PADRÃO (lições aprovadas pelo usuário): ver docs/ESTADO.md → "PADRÃO DAS SPELLS".
-## Etapa 1: S01 Punho Pneumático, S03 Canhão Criogênico, S06 Superímã, S10 Andaime Relâmpago, S11 Teleporte, S13 Armadura Fornalha.
+## Etapa 1: A01 Punho Pneumático, A03 Canhão Criogênico, C01 Superímã, E01 Andaime Relâmpago, C04 Teleporte, T01 Armadura Fornalha.
 
 const T := 64.0
 const Kit := preload("res://ui/kit.gd")
 const RobotVis := preload("res://player/robot_visual.gd")
 const FAM_COR := {"ataque": Color("#f08a3d"), "controle": Color("#8a63d2"), "engenharia": Color("#f2c84b"), "transformacao": Color("#3fc1c9")}
-const NOMES := {"S01": "PUNHO PNEUMÁTICO", "S03": "CANHÃO CRIOGÊNICO", "S06": "SUPERÍMÃ", "S10": "ANDAIME RELÂMPAGO",
-	"S11": "TELEPORTE", "S13": "ARMADURA FORNALHA", "S02": "LASER DE CORTE", "S04": "MARRETA SÍSMICA", "S05": "REBITEIRA RICOCHETE",
-	"S17": "BATE-ESTACA", "S18": "DISCO DE CORTE", "S19": "MARRETA-BUMERANGUE", "S20": "CANHÃO DE MOLAS",
-	"S07": "TURBOVENTILADOR", "S08": "GANCHO DE ARRASTO", "S21": "LAÇO DE ENERGIA", "S12": "CARGA REMOTA",
-	"S25": "PONTE DOBRÁVEL", "S27": "CONTROLE REMOTO", "S28": "ESCUDO DE SOLDA",
-	"S14": "MECHA EMPILHADEIRA", "S15": "BOLA DE DEMOLIÇÃO", "S16": "PROPULSOR GAMBIARRA", "S31": "MODO BROCA",
-	"S33": "MODO SOLDADOR", "S34": "MINIRROBÔ VELOZ"}
-const FORMS := ["S14", "S15", "S31", "S33", "S34"]   # transformações com duração (S13 tem código próprio)
+const NOMES := {"A01": "PUNHO PNEUMÁTICO", "A03": "CANHÃO CRIOGÊNICO", "C01": "SUPERÍMÃ", "E01": "ANDAIME RELÂMPAGO",
+	"C04": "TELEPORTE", "T01": "ARMADURA FORNALHA", "A02": "LASER DE CORTE", "A04": "MARRETA SÍSMICA", "A05": "REBITEIRA RICOCHETE",
+	"A06": "BATE-ESTACA", "A07": "MARRETA-BUMERANGUE", "A08": "CANHÃO DE MOLAS",
+	"C02": "TURBOVENTILADOR", "C03": "GANCHO DE ARRASTO", "C05": "LAÇO DE ENERGIA", "E02": "CARGA REMOTA",
+	"E03": "CONTROLE REMOTO",
+	"T02": "MECHA EMPILHADEIRA", "T03": "BOLA DE DEMOLIÇÃO", "T04": "PROPULSOR GAMBIARRA", "T05": "MODO BROCA",
+	"T06": "MODO SOLDADOR", "T07": "MINIRROBÔ VELOZ"}
+const FORMS := ["T02", "T03", "T05", "T06", "T07"]   # transformações com duração (T01 tem código próprio)
 
 var main: Node
 var demo: Node
@@ -24,36 +24,33 @@ var cfg: Dictionary
 var boxes: Array = []        # {fam, id, charges, pos, vy, t, land_t, block: {pid: s}, special}
 var slot := {}               # pid -> {id, fam, charges, cd, prep, prep_len, fire, t, data}
 var holds := {}              # pid -> {box, t}
-var shots: Array = []        # S03 {pos, vel, owner, t}
-var frozen := {}             # S03: pid -> {len, age, shake, last_ax}
-var shards: Array = []       # S03: lascas de gelo voando {pos, vel, rot, spin, t, size}
-var platforms: Array = []    # S10 {rect, body, t, len, owner, k, from, leg}
-var fists: Array = []        # S01 {owner, t, reach, dir, hit, wall}
-var aims := {}               # S11: pid -> {pos, t, ok}
-var teles: Array = []        # S11 {pid, a, b, t, moved}
-var flames := {}             # S13: pid -> {k, hitcd: {oid: s}}
+var shots: Array = []        # A03 {pos, vel, owner, t}
+var frozen := {}             # A03: pid -> {len, age, shake, last_ax}
+var shards: Array = []       # A03: lascas de gelo voando {pos, vel, rot, spin, t, size}
+var platforms: Array = []    # E01 {rect, body, t, len, owner, k, from, leg}
+var fists: Array = []        # A01 {owner, t, reach, dir, hit, wall}
+var aims := {}               # C04: pid -> {pos, t, ok}
+var teles: Array = []        # C04 {pid, a, b, t, moved}
+var flames := {}             # T01: pid -> {k, hitcd: {oid: s}}
 var bot_hold := {}           # bots "seguram" o botão por um tempo
-var lasers: Array = []       # S02 {owner, t, a, b}
-var scorch: Array = []       # S02 marcas de solda {pos, t}
-var waves: Array = []        # S04 {owner, x0, y, l_end, r_end, t, hit}
-var rivets: Array = []       # S05 {owner, pos, vel, bounces, t, hit, trail}
-var piles: Array = []        # S17 {owner, x, floor_y, t, hit, done}
-var discs: Array = []        # S18 {owner, pos, vel, phase, t, hit, rot, x0}
-var hammers: Array = []      # S19 {owner, pos, vel, phase, t, hit, rot}
-var springs: Array = []      # S20 {owner, pos, vel, t, sq}
-var rocks: Array = []        # S04 pedrinhas voando {pos, vel, t, rot, size}
-var tings: Array = []        # S05 brilho de ricochete / boca da rebiteira {pos, t, big}
-var pile_aims := {}          # S17: pid -> {x, t} (segura para mirar onde a estaca cai)
-var hooks: Array = []        # S08 {owner, pos, vel, phase, t, anchor, dir}
-var lassos: Array = []       # S21 tiro {owner, pos, vel, t}
-var tethers: Array = []      # S21 {a, b, t}
-var snaps: Array = []        # S21 elástico estalando ao soltar {a, b, t}
-var charges_placed: Array = []   # S12 {owner, pos, t, armed}
-var bridges: Array = []      # S25 {rect, body, t, len, k, owner, dir, x0, y}
-var drops: Array = []        # S27 {part, owner, t, hit}
-var shields: Array = []      # S28 {rect, t, hp, k, owner, flash}
-var smokes: Array = []      # S16 fumaça cômica {pos, vel, t, size}
-var jets: Array = []         # S16 jato de um pulso {pid, dir, t, fail}
+var lasers: Array = []       # A02 {owner, t, a, b}
+var scorch: Array = []       # A02 marcas de solda {pos, t}
+var waves: Array = []        # A04 {owner, x0, y, l_end, r_end, t, hit}
+var rivets: Array = []       # A05 {owner, pos, vel, bounces, t, hit, trail}
+var piles: Array = []        # A06 {owner, x, floor_y, t, hit, done}
+var hammers: Array = []      # A07 {owner, pos, vel, phase, t, hit, rot}
+var springs: Array = []      # A08 {owner, pos, vel, t, sq}
+var rocks: Array = []        # A04 pedrinhas voando {pos, vel, t, rot, size}
+var tings: Array = []        # A05 brilho de ricochete / boca da rebiteira {pos, t, big}
+var pile_aims := {}          # A06: pid -> {x, t} (segura para mirar onde a estaca cai)
+var hooks: Array = []        # C03 {owner, pos, vel, phase, t, anchor, dir}
+var lassos: Array = []       # C05 tiro {owner, pos, vel, t}
+var tethers: Array = []      # C05 {a, b, t}
+var snaps: Array = []        # C05 elástico estalando ao soltar {a, b, t}
+var charges_placed: Array = []   # E02 {owner, pos, t, armed}
+var drops: Array = []        # E03 {part, owner, t, hit}
+var smokes: Array = []      # T04 fumaça cômica {pos, vel, t, size}
+var jets: Array = []         # T04 jato de um pulso {pid, dir, t, fail}
 var ext_v := {}              # empurrão externo suave por robô (vento, elástico): pid -> Vector2, aplicado via push_vx
 var feedback: Array = []     # {pos, text, t}
 var spawn_t := 0.0
@@ -61,7 +58,7 @@ var recent: Array = []
 var draw_log: Array = []     # sorteios (testes): {fam, id}
 var t := 0.0
 var ghost: Node2D = null
-var trail_node: Node2D = null   # S34: vultos de velocidade     # S11: silhueta holográfica no destino (desenhada com transparência)
+var trail_node: Node2D = null   # T07: vultos de velocidade     # C04: silhueta holográfica no destino (desenhada com transparência)
 
 func setup(m: Node, d: Node) -> void:
 	main = m
@@ -105,12 +102,15 @@ func classes() -> Dictionary:
 
 # ---------------------------------------------------------------- sorteio e caixas
 ## Sorteio em 2 etapas: família (peso) → spell da família (raridade, menos chance de repetir as últimas). Neutro para todos.
-func pick() -> Dictionary:
+func pick(classe := "") -> Dictionary:
 	if pool().is_empty():
 		return {}
 	var fams := {}
 	for id in pool():
-		fams[sc(id)["familia"]] = true
+		if classe == "" or sc(id)["familia"] == classe:
+			fams[sc(id)["familia"]] = true
+	if fams.is_empty():
+		return {}
 	var tot := 0.0
 	for f in fams:
 		tot += float(classes()[f]["peso"])
@@ -166,7 +166,7 @@ func spawn_points() -> Array:
 					out.append({"pos": p, "fixo": false})
 	return out
 
-func spawn_box(at = null, special := false) -> void:
+func spawn_box(at = null, special := false, classe := "") -> void:
 	var pts := spawn_points()
 	if pts.is_empty() and at == null:
 		return
@@ -177,9 +177,9 @@ func spawn_box(at = null, special := false) -> void:
 		var fixed := pts.filter(func(q): return q["fixo"])
 		var src: Array = fixed if (not fixed.is_empty() and main.rng.randf() < 0.5) else pts
 		p = src[main.rng.randi() % src.size()]["pos"]
-	var k := pick()
+	var k := pick(classe)
 	if k.is_empty():
-		return   # mapa sem spells autorizadas
+		return   # mapa sem spells autorizadas (ou sem nenhuma da classe pedida)
 	boxes.append({"fam": k["fam"], "id": k["id"], "charges": -1, "pos": Vector2(p.x, sky_y(p)),
 		"vy": 0.0, "t": 0.0, "land_t": 9.0, "block": {}, "special": special})
 	Audio.play("item", 0.8, -6.0)
@@ -269,10 +269,9 @@ func clear(r) -> void:
 		if h["owner"] == r.pid:
 			hammers.erase(h)
 			r.hammer_out = false
-	discs = discs.filter(func(d): return d["owner"] != r.pid)
 	hooks = hooks.filter(func(h): return h["owner"] != r.pid)
 	charges_placed = charges_placed.filter(func(c): return c["owner"] != r.pid)
-	if slot.has(r.pid) and slot[r.pid]["id"] == "S13" and slot[r.pid]["t"] > 0.0:
+	if slot.has(r.pid) and slot[r.pid]["id"] == "T01" and slot[r.pid]["t"] > 0.0:
 		_end_armor(r, false)
 	if slot.has(r.pid) and slot[r.pid]["id"] in FORMS and slot[r.pid]["t"] > 0.0:
 		_end_form(r, false)
@@ -332,7 +331,7 @@ func _update_holds(dt: float) -> void:
 
 func _swap(r, b: Dictionary) -> void:
 	var old: Dictionary = slot[r.pid]
-	if old["id"] == "S13" and old["t"] > 0.0:
+	if old["id"] == "T01" and old["t"] > 0.0:
 		_end_armor(r, false)   # troca encerra a transformação
 	if old["id"] in FORMS and old["t"] > 0.0:
 		_end_form(r, false)
@@ -451,9 +450,6 @@ func _grab_at(p: Vector2) -> bool:
 	for pl in platforms:
 		if pl["rect"].grow(4).has_point(p):
 			return true
-	for br in bridges:
-		if br["rect"].grow(4).has_point(p):
-			return true
 	return false
 
 ## Segmento a→b encosta no retângulo (com folga rad)?
@@ -476,20 +472,20 @@ func use(r) -> void:
 	var c: Dictionary = sc(s["id"])
 	_set_aim(r, s, aim_vec(r))
 	match s["id"]:
-		"S01", "S03", "S02", "S20":
+		"A01", "A03", "A02", "A08":
 			s["prep"] = 0.0
 			s["prep_len"] = float(c["preparo"])
-			Audio.play({"S01": "pistao_aviso", "S03": "gelo", "S02": "laser_carga", "S20": "pulo_mola"}[s["id"]], 1.3 if s["id"] != "S20" else 0.6, -4.0)
-		"S04":   # só apoiado no chão (no ar avisa e não gasta)
+			Audio.play({"A01": "pistao_aviso", "A03": "gelo", "A02": "laser_carga", "A08": "pulo_mola"}[s["id"]], 1.3 if s["id"] != "A08" else 0.6, -4.0)
+		"A04":   # só apoiado no chão (no ar avisa e não gasta)
 			if not r.is_on_floor():
 				_fail(r, "SÓ NO CHÃO")
 				return
 			s["prep"] = 0.0
 			s["prep_len"] = float(c["preparo"])
 			Audio.play("marreta_vento", 0.7, -2.0)
-		"S05":
+		"A05":
 			_fire_rivet(r, s)
-		"S17":
+		"A06":
 			if _is_bot(r.pid):
 				_drop_pile(r, s, r.position.x + r.facing * float(c["distancia_tiles"]) * T)
 			else:   # segura: marca no chão anda com o direcional; solta: a estaca desce lá
@@ -497,50 +493,37 @@ func use(r) -> void:
 				pile_aims[r.pid] = {"x": r.position.x + r.facing * float(c["distancia_tiles"]) * T, "t": 0.0}
 				r.spell_lock = true
 				Audio.play("alarme", 1.8, -12.0)
-		"S18":
-			for d in discs:
-				if d["owner"] == r.pid:
-					return   # um disco por vez
-			_throw_disc(r, s)
-		"S19":
+		"A07":
 			if r.hammer_out:
 				return
 			_throw_hammer(r, s)
-		"S14", "S15", "S31", "S33", "S34":
+		"T02", "T03", "T05", "T06", "T07":
 			if s["t"] < 0.0:
 				_start_form(r, s)
-			elif s["id"] == "S14":
+			elif s["id"] == "T02":
 				_fork_action(r, s)
-			elif s["id"] == "S33":
+			elif s["id"] == "T06":
 				s["channel"] = true   # segura: arco de solda
 				if _is_bot(r.pid):
 					bot_hold[r.pid] = 0.8
-		"S16":
+		"T04":
 			if s["t"] < 0.0:
 				s["t"] = float(c["duracao_s"])
 				Audio.play("foguete", 0.7, -2.0)
 			if _is_bot(r.pid):
 				bot_hold[r.pid] = 0.8
-		"S07":   # segura: sopra enquanto a barra dura
+		"C02":   # segura: sopra enquanto a barra dura
 			s["channel"] = true
 			if _is_bot(r.pid):
 				bot_hold[r.pid] = 1.2
 			Audio.play("ventilador", 1.0, -2.0)
-		"S08":
+		"C03":
 			_fire_hook(r, s)
-		"S21":
+		"C05":
 			_fire_lasso(r, s)
-		"S12":
+		"E02":
 			_use_charge(r, s)
-		"S25":
-			var br := bridge_rect(r)
-			if not bridge_ok(r, br):
-				_fail(r, "SEM VÃO" if r.is_on_floor() else "SÓ NO CHÃO")
-				return
-			_build_bridge(r, br)
-			s["fire"] = 0.0
-			_spend(r, s)
-		"S27":
+		"E03":
 			var tg = remote_target(r)
 			if tg == null:
 				_fail(r, "SEM MÁQUINA")
@@ -548,22 +531,12 @@ func use(r) -> void:
 			_remote_drop(r, tg)
 			s["fire"] = 0.0
 			_spend(r, s)
-		"S28":
-			var roof: bool = aim_vec(r).y < -0.5
-			var sr := shield_rect(r) if not roof else Rect2(r.position.x - 72.0, r.position.y - 158.0, 144.0, 28.0)
-			if sr.size.x <= 0.0:
-				_fail(r, "SÓ NO CHÃO")
-				return
-			shields.append({"rect": sr, "t": 0.0, "hp": int(c["resistencia"]), "k": 0.0, "owner": r.pid, "flash": 0.0, "roof": roof})
-			s["fire"] = 0.0
-			Audio.play("laser_carga", 1.6, -4.0)
-			_spend(r, s)
-		"S06":   # segura: o ímã liga e vai gastando a barra
+		"C01":   # segura: o ímã liga e vai gastando a barra
 			s["channel"] = true
 			if _is_bot(r.pid):
 				bot_hold[r.pid] = s["energy"]
 			Audio.play("ima", 0.8, 0.0)
-		"S10":
+		"E01":
 			var pr := scaffold_rect(r)
 			if not scaffold_ok(r, pr):
 				_fail(r, "SEM ESPAÇO")
@@ -571,7 +544,7 @@ func use(r) -> void:
 			_build_scaffold(r, pr)
 			s["fire"] = 0.0
 			_spend(r, s)
-		"S11":
+		"C04":
 			if _is_bot(r.pid):   # bot: vai direto para a frente (ou para cima, caindo)
 				var dest = teleport_dest(r)
 				if dest == null:
@@ -584,7 +557,7 @@ func use(r) -> void:
 			aims[r.pid] = {"pos": start, "t": 0.0, "ok": _free_at(start)}
 			r.spell_lock = true
 			Audio.play("teleporte", 0.7, -8.0)
-		"S13":
+		"T01":
 			if s["t"] < 0.0:
 				_start_armor(r, s)
 			else:
@@ -598,27 +571,27 @@ func _stop_channel(r) -> void:
 		return
 	var s: Dictionary = slot[r.pid]
 	s["channel"] = false
-	if s["id"] == "S06":
+	if s["id"] == "C01":
 		r.spell_speed = 1.0
-	elif s["id"] == "S13" and s["t"] > 0.0:
-		r.spell_speed = float(sc("S13")["vel_mult"])
+	elif s["id"] == "T01" and s["t"] > 0.0:
+		r.spell_speed = float(sc("T01")["vel_mult"])
 
 func _fire(r, s: Dictionary) -> void:
 	var c: Dictionary = sc(s["id"])
 	s["fire"] = 0.0
 	s["cd"] = float(c.get("intervalo_s", 0.3))
-	if s["id"] in ["S02", "S04", "S20"]:
+	if s["id"] in ["A02", "A04", "A08"]:
 		_fire2(r, s)
 		return
-	if s["id"] == "S01":
+	if s["id"] == "A01":
 		# braço de tesoura estica numa linha reta até bater em parede; acerta todos os alinhados (1 vez cada)
-		var h := muzzle(r, "S01")
+		var h := muzzle(r, "A01")
 		var dv := aim_dir(r)
 		var maxd := float(c["alcance_tiles"]) * T
 		var d := 0.0
 		while d < maxd:
 			var nx: Vector2 = h + dv * (d + 12.0)
-			if _hard_at(nx) or shield_block(nx, r.pid, false):
+			if _hard_at(nx):
 				break
 			d += 12.0
 		fists.append({"owner": r.pid, "t": 0.0, "reach": maxf(d, 40.0), "dir": r.facing, "dirv": dv, "hit": [], "wall": d < maxd - 12.0, "impact": -1.0})
@@ -629,19 +602,19 @@ func _fire(r, s: Dictionary) -> void:
 			r.velocity.y = minf(r.velocity.y, -180.0)   # socão para baixo no ar dá um pulinho
 		main.shake(4.0)
 		_spend(r, s)
-	elif s["id"] == "S03":
+	elif s["id"] == "A03":
 		var dv3 := aim_dir(r)
-		shots.append({"pos": muzzle(r, "S03"), "vel": dv3 * float(c["vel"]), "owner": r.pid, "t": 0.0})
+		shots.append({"pos": muzzle(r, "A03"), "vel": dv3 * float(c["vel"]), "owner": r.pid, "t": 0.0})
 		Audio.play("gelo", 1.6, -2.0)
 		r.own_vx -= dv3.x * 140.0   # coice
 		for k in 6:
-			main.spark(muzzle(r, "S03"), 1)
+			main.spark(muzzle(r, "A03"), 1)
 		_spend(r, s)
 
-## S10: onde o andaime vai aparecer. No chão: 2 tiles à frente, 2 tiles acima dos pés (degrau);
+## E01: onde o andaime vai aparecer. No chão: 2 tiles à frente, 2 tiles acima dos pés (degrau);
 ## no ar: logo embaixo dos pés (salvamento).
 func scaffold_rect(r) -> Rect2:
-	var w := float(sc("S10")["largura_tiles"]) * T
+	var w := float(sc("E01")["largura_tiles"]) * T
 	if r.is_on_floor():
 		var cx: float = r.position.x + r.facing * 2.4 * T
 		return Rect2(cx - w / 2.0, r.position.y - 2.0 * T, w, 20)
@@ -673,7 +646,7 @@ func _leg_len(pr: Rect2) -> float:
 	return 34.0
 
 func _build_scaffold(r, pr: Rect2) -> void:
-	var c: Dictionary = sc("S10")
+	var c: Dictionary = sc("E01")
 	for p in platforms.duplicate():
 		if p["owner"] == r.pid:
 			_remove_platform(p)   # 1 por jogador: o antigo dobra
@@ -698,9 +671,9 @@ func _remove_platform(p: Dictionary) -> void:
 	platforms.erase(p)
 	main.dust(p["rect"].get_center(), 0.7)
 
-## S11 (bot / teste): destino à frente (ou ▲ para cima); tenta mais perto se o ponto estiver ocupado. null = nada livre.
+## C04 (bot / teste): destino à frente (ou ▲ para cima); tenta mais perto se o ponto estiver ocupado. null = nada livre.
 func teleport_dest(r):
-	var c: Dictionary = sc("S11")
+	var c: Dictionary = sc("C04")
 	var up: bool = PlayerInput.held(r.pid, "up") or (not r.is_on_floor() and r.velocity.y > 200.0)
 	for k in [0.7, 0.55, 0.4]:
 		var d: float = float(c["alcance_tiles"]) * T * k
@@ -728,7 +701,7 @@ func _teleport(r, dest: Vector2) -> void:
 	Audio.play("teleporte", 1.2, -1.0)
 
 func _update_aims(dt: float) -> void:
-	var c: Dictionary = sc("S11")
+	var c: Dictionary = sc("C04")
 	for pid in aims.keys():
 		var r = main.robots[pid]
 		var a: Dictionary = aims[pid]
@@ -780,12 +753,12 @@ func _update_teles(dt: float) -> void:
 			main.dust(e["b"], 0.6)
 		if e["t"] >= 0.26:
 			r.spell_lock = false
-			r.atk_cd = maxf(r.atk_cd, float(sc("S11")["recupera_s"]))
+			r.atk_cd = maxf(r.atk_cd, float(sc("C04")["recupera_s"]))
 	teles = teles.filter(func(e): return e["t"] < 0.26)
 
-# ---------------------------------------------------------------- S03: congelado
+# ---------------------------------------------------------------- A03: congelado
 func freeze(o, by: int) -> void:
-	var c: Dictionary = sc("S03")
+	var c: Dictionary = sc("A03")
 	o.frozen_t = float(c["congela_s"])
 	o.hanging = false
 	o.own_vx *= 0.25
@@ -808,7 +781,7 @@ func shatter(o) -> void:
 	o.frozen_t = 0.0
 
 func _update_frozen(dt: float) -> void:
-	var c: Dictionary = sc("S03")
+	var c: Dictionary = sc("A03")
 	for o in main.robots:
 		if o.frozen_t <= 0.0:
 			if frozen.has(o.pid):
@@ -845,9 +818,9 @@ func _update_frozen(dt: float) -> void:
 		sh["rot"] += sh["spin"] * dt
 	shards = shards.filter(func(sh): return sh["t"] < 0.9)
 
-# ---------------------------------------------------------------- S06 Superímã (segurar)
+# ---------------------------------------------------------------- C01 Superímã (segurar)
 func _update_magnet(r, s: Dictionary, dt: float) -> void:
-	var c: Dictionary = sc("S06")
+	var c: Dictionary = sc("C01")
 	if not held(r) or s["energy"] <= 0.0:
 		_stop_channel(r)
 		if s["energy"] <= 0.0:
@@ -856,7 +829,7 @@ func _update_magnet(r, s: Dictionary, dt: float) -> void:
 		return
 	s["energy"] -= dt
 	r.spell_speed = float(c["dono_vel_mult"])
-	var orig := muzzle(r, "S06")
+	var orig := muzzle(r, "C01")
 	var rng := float(c["alcance_tiles"]) * T
 	for o in main.robots:
 		if o == r or not o.alive or o.invuln > 0.0 or o.guard_t > 0.0 or o.god:
@@ -882,9 +855,9 @@ func _update_magnet(r, s: Dictionary, dt: float) -> void:
 		o.last_attacker = r.pid
 		o.last_cause = "superímã"
 
-# ---------------------------------------------------------------- S13 Armadura Fornalha
+# ---------------------------------------------------------------- T01 Armadura Fornalha
 func _start_armor(r, s: Dictionary) -> void:
-	var c: Dictionary = sc("S13")
+	var c: Dictionary = sc("T01")
 	s["t"] = float(c["duracao_s"])
 	s["data"]["assemble"] = 0.0
 	r.spell_speed = float(c["vel_mult"])
@@ -894,7 +867,7 @@ func _start_armor(r, s: Dictionary) -> void:
 	main.float_text(r.position + Vector2(0, -150), "BLINDADO!", FAM_COR["transformacao"])
 
 func _update_flame(r, s: Dictionary, dt: float) -> void:
-	var c: Dictionary = sc("S13")
+	var c: Dictionary = sc("T01")
 	var fl: Dictionary = flames.get(r.pid, {"k": 0.0, "hitcd": {}})
 	flames[r.pid] = fl
 	var on: bool = s["channel"] and held(r) and s["energy"] > 0.0
@@ -923,7 +896,7 @@ func _update_flame(r, s: Dictionary, dt: float) -> void:
 
 ## Acabou o carvão (ou o tempo): a fornalha explode, empurra quem está perto e as placas voam.
 func _explode_armor(r) -> void:
-	var c: Dictionary = sc("S13")
+	var c: Dictionary = sc("T01")
 	var ctr: Vector2 = r.rect().get_center()
 	demo.booms.append({"pos": ctr, "t": 0.0})
 	main.impact_fx(ctr, 0, 1.4)
@@ -963,8 +936,8 @@ func update(dt: float, alive: Array) -> void:
 	_update_holds(dt)
 	_update_aims(dt)
 	_update_pile_aims(dt)
-	for r in main.robots:   # S27: ▲ troca qual viga fica na mira
-		if r.alive and slot.has(r.pid) and slot[r.pid]["id"] == "S27" and PlayerInput.pressed(r.pid, "up"):
+	for r in main.robots:   # E03: ▲ troca qual viga fica na mira
+		if r.alive and slot.has(r.pid) and slot[r.pid]["id"] == "E03" and PlayerInput.pressed(r.pid, "up"):
 			slot[r.pid]["data"]["tgt_i"] = int(slot[r.pid]["data"].get("tgt_i", 0)) + 1
 			Audio.play("menu_mover", 1.4, -6.0)
 	_update_teles(dt)
@@ -992,21 +965,21 @@ func update(dt: float, alive: Array) -> void:
 			elif s["prep"] >= s["prep_len"]:
 				s["prep"] = -1.0
 				_fire(r, s)
-		if s["channel"] and s["id"] in ["S06", "S07"] or (s["id"] == "S13" and flames.has(r.pid) and s["channel"]):
+		if s["channel"] and s["id"] in ["C01", "C02"] or (s["id"] == "T01" and flames.has(r.pid) and s["channel"]):
 			_set_aim(r, s, aim_vec(r), 7.0, dt)
-		if s["id"] == "S06" and s["channel"]:
+		if s["id"] == "C01" and s["channel"]:
 			_update_magnet(r, s, dt)
-		if s["id"] == "S07" and s["channel"]:
+		if s["id"] == "C02" and s["channel"]:
 			_update_fan(r, s, dt)
 		if s["id"] in FORMS and s["t"] > 0.0:
 			_update_form(r, s, dt)
 			if not slot.has(r.pid):
 				continue
-		if s["id"] == "S16" and s["t"] > 0.0:
+		if s["id"] == "T04" and s["t"] > 0.0:
 			_update_jet(r, s, dt)
 			if not slot.has(r.pid):
 				continue
-		if s["id"] == "S13" and s["t"] > 0.0:
+		if s["id"] == "T01" and s["t"] > 0.0:
 			s["data"]["assemble"] = minf(float(s["data"].get("assemble", 0.0)) + dt / 0.35, 1.0)
 			_update_flame(r, s, dt)
 			if slot.has(r.pid) and s["t"] > 0.0:
@@ -1054,7 +1027,7 @@ func _update_fists(dt: float) -> void:
 	for f in fists:
 		f["t"] += dt
 		var r = main.robots[f["owner"]]
-		var from := muzzle(r, "S01")
+		var from := muzzle(r, "A01")
 		var ext := minf(fist_ext(f), 1.0)
 		var tip: Vector2 = from + f["dirv"] * f["reach"] * ext
 		if f["t"] <= FIST_OUT + FIST_HOLD:
@@ -1083,7 +1056,7 @@ func _update_fists(dt: float) -> void:
 	fists = fists.filter(func(f): return f["t"] < FIST_OUT + FIST_HOLD + FIST_BACK)
 
 func _update_shots(dt: float) -> void:
-	var c: Dictionary = sc("S03")
+	var c: Dictionary = sc("A03")
 	for s in shots:
 		s["t"] += dt
 		s["pos"] += s["vel"] * dt
@@ -1092,7 +1065,7 @@ func _update_shots(dt: float) -> void:
 			if o.pid != s["owner"] and o.alive and o.invuln <= 0.0 and not o.god and o.rect().grow(6).has_point(s["pos"]):
 				hit = o
 				break
-		var wall: bool = _hard_at(s["pos"]) or shield_block(s["pos"], s["owner"])
+		var wall: bool = _hard_at(s["pos"])
 		if hit != null:
 			var was_frozen: bool = hit.frozen_t > 0.0
 			var gx := int(signf(s["vel"].x)) if absf(s["vel"].x) > 1.0 else 1
@@ -1115,7 +1088,7 @@ func flags(r) -> Dictionary:
 	var s: Dictionary = slot[r.pid]
 	var out := {"spell": s["id"], "fire": s["fire"], "prep": (s["prep"] / maxf(s["prep_len"], 0.01)) if s["prep"] >= 0.0 else -1.0,
 		"channel": s["channel"], "aim_a": aim_local(r)}
-	if s["id"] == "S13":
+	if s["id"] == "T01":
 		out["armor"] = s["t"] > 0.0
 		out["assemble"] = float(s["data"].get("assemble", 0.0))
 		var low: float = minf(s["t"], s["energy"] * 2.0)
@@ -1126,19 +1099,19 @@ func flags(r) -> Dictionary:
 			out["fist"] = minf(fist_ext(f), 1.0)
 	if s.has("empty_t"):
 		out["fading"] = true
-	if s["id"] == "S12":
+	if s["id"] == "E02":
 		out["placed"] = charges_placed.any(func(c): return c["owner"] == r.pid)
 	if s["id"] in FORMS and s["t"] > 0.0:
 		out["form"] = s["id"]
 		out["fk"] = float(s["data"].get("assemble", 1.0))
-		if s["id"] in ["S14", "S31", "S33"]:   # armaduras: o robô veste a máquina (desenhado por robot_visual)
+		if s["id"] in ["T02", "T05", "T06"]:   # armaduras: o robô veste a máquina (desenhado por robot_visual)
 			out["armor"] = true
 			out["armor_set"] = s["id"]
 			out["assemble"] = out["fk"]
 			out["armor_end"] = clampf(1.0 - s["t"] / 1.2, 0.0, 1.0)
 			out["arc"] = s["data"].get("arc", false)
-			out["busy"] = s["data"].get("arc", false) or s["id"] == "S31"
-	if s["id"] == "S16" and s["t"] > 0.0:
+			out["busy"] = s["data"].get("arc", false) or s["id"] == "T05"
+	if s["id"] == "T04" and s["t"] > 0.0:
 		out["flying_on"] = s["data"].get("thrust", false) or (not r.is_on_floor() and r.velocity.y < 300.0)
 		out["fly_vx"] = r.velocity.x
 	return out
@@ -1149,15 +1122,15 @@ func hud_info(pid: int) -> Dictionary:
 		return {}
 	var s: Dictionary = slot[pid]
 	var frac := 1.0
-	if s["id"] in ["S06", "S07"]:
+	if s["id"] in ["C01", "C02"]:
 		frac = s["energy"] / float(sc(s["id"])["energia_s"])
-	elif s["id"] == "S13" and s["t"] > 0.0:
-		frac = s["energy"] / float(sc("S13")["combustivel_s"])
+	elif s["id"] == "T01" and s["t"] > 0.0:
+		frac = s["energy"] / float(sc("T01")["combustivel_s"])
 	elif s["id"] in FORMS and s["t"] > 0.0:
 		frac = s["t"] / float(sc(s["id"])["duracao_s"])
-	elif s["id"] == "S16":
-		frac = s["energy"] / float(sc("S16")["combustivel_s"])
-	return {"id": s["id"], "fam": s["fam"], "charges": s["charges"] if not s["id"] in ["S06", "S07"] else 0, "frac": clampf(frac, 0.0, 1.0),
+	elif s["id"] == "T04":
+		frac = s["energy"] / float(sc("T04")["combustivel_s"])
+	return {"id": s["id"], "fam": s["fam"], "charges": s["charges"] if not s["id"] in ["C01", "C02"] else 0, "frac": clampf(frac, 0.0, 1.0),
 		"nome": NOMES.get(s["id"], s["id"])}
 
 # ---------------------------------------------------------------- desenho (mundo)
@@ -1171,7 +1144,7 @@ func _draw() -> void:
 	_draw_boxes()
 	# prévia do andaime (holograma) para quem tem a spell
 	for r in main.robots:
-		if r.alive and slot.has(r.pid) and slot[r.pid]["id"] == "S10" and not slot[r.pid].has("empty_t"):
+		if r.alive and slot.has(r.pid) and slot[r.pid]["id"] == "E01" and not slot[r.pid].has("empty_t"):
 			var pr := scaffold_rect(r)
 			var ok := scaffold_ok(r, pr)
 			_draw_scaffold_shape(pr, 1.0, _leg_len(pr), Color(0.45, 0.92, 1.0, 0.38 + 0.1 * sin(t * 6.0)) if ok else Color(1, 0.35, 0.35, 0.4), true)
@@ -1242,8 +1215,8 @@ func _draw_bars() -> void:
 		if not r.alive or not slot.has(r.pid):
 			continue
 		var s: Dictionary = slot[r.pid]
-		var show: bool = s["channel"] or (s["id"] in ["S13", "S16"] and s["t"] > 0.0)
-		if not show or s["id"] in ["S11", "S17"]:
+		var show: bool = s["channel"] or (s["id"] in ["T01", "T04"] and s["t"] > 0.0)
+		if not show or s["id"] in ["C04", "A06"]:
 			continue
 		var full := float(sc(s["id"]).get("energia_s", sc(s["id"]).get("combustivel_s", 1.0)))
 		var k := clampf(s["energy"] / full, 0.0, 1.0)
@@ -1254,13 +1227,13 @@ func _draw_bars() -> void:
 		draw_rect(Rect2(bx.position, Vector2(bx.size.x * k, bx.size.y)), col)
 		draw_rect(Rect2(bx.position, Vector2(bx.size.x * k, 4)), Color(1, 1, 1, 0.45))
 
-# ---------------------------------------------------------------- S01 braço de tesoura + luva
+# ---------------------------------------------------------------- A01 braço de tesoura + luva
 func _draw_fists() -> void:
 	for f in fists:
 		# tudo desenhado no "quadro do braço": x = direção da mira (8 direções); para a esquerda espelha em y
 		var r = main.robots[f["owner"]]
 		var dv: Vector2 = f["dirv"]
-		var base := Transform2D(dv.angle(), Vector2(1.0, -1.0 if dv.x < -0.1 else 1.0), 0.0, muzzle(r, "S01"))
+		var base := Transform2D(dv.angle(), Vector2(1.0, -1.0 if dv.x < -0.1 else 1.0), 0.0, muzzle(r, "A01"))
 		var ext := fist_ext(f)
 		var L: float = maxf(f["reach"] * ext, 6.0)
 		var n := 9
@@ -1308,11 +1281,11 @@ func _draw_fists() -> void:
 		draw_set_transform(Vector2.ZERO)
 	# preparo: luva espiando no cano tremendo + vapor
 	for r in main.robots:
-		if not slot.has(r.pid) or slot[r.pid]["id"] != "S01" or slot[r.pid]["prep"] < 0.0:
+		if not slot.has(r.pid) or slot[r.pid]["id"] != "A01" or slot[r.pid]["prep"] < 0.0:
 			continue
 		var k: float = slot[r.pid]["prep"] / maxf(slot[r.pid]["prep_len"], 0.01)
 		var dvp := aim_dir(r)
-		var h := muzzle(r, "S01") + dvp * (6.0 - 8.0 * k) + Vector2(randf_range(-1, 1), randf_range(-1, 1)) * 2.0 * k
+		var h := muzzle(r, "A01") + dvp * (6.0 - 8.0 * k) + Vector2(randf_range(-1, 1), randf_range(-1, 1)) * 2.0 * k
 		draw_set_transform(h, dvp.angle(), Vector2(0.75, -0.75 if dvp.x < -0.1 else 0.75))
 		draw_texture_rect(Data.tex("spells/s01_luva"), Rect2(-8, -26, 62, 50), false)
 		draw_set_transform(Vector2.ZERO)
@@ -1320,12 +1293,12 @@ func _draw_fists() -> void:
 			var u := fposmod(t * 3.0 + j * 0.33, 1.0)
 			draw_circle(h + Vector2(-r.facing * (10.0 + 6.0 * j), -12.0 - u * 26.0), 4.0 + u * 7.0, Color(1, 1, 1, 0.55 * (1.0 - u) * k))
 
-# ---------------------------------------------------------------- S03 tiro e bloco de gelo
+# ---------------------------------------------------------------- A03 tiro e bloco de gelo
 func _draw_shots() -> void:
 	for r in main.robots:   # carga: flocos convergindo para o bico
-		if slot.has(r.pid) and slot[r.pid]["id"] == "S03" and slot[r.pid]["prep"] >= 0.0:
+		if slot.has(r.pid) and slot[r.pid]["id"] == "A03" and slot[r.pid]["prep"] >= 0.0:
 			var k: float = slot[r.pid]["prep"] / maxf(slot[r.pid]["prep_len"], 0.01)
-			var m := muzzle(r, "S03")
+			var m := muzzle(r, "A03")
 			for j in 8:
 				var a := j * TAU / 8.0 + t * 3.0
 				var rad := 40.0 * (1.0 - k)
@@ -1402,17 +1375,17 @@ func _draw_ice(r, f: Dictionary) -> void:
 		var wob := sin(t * 18.0) * 8.0
 		Kit.text(self, c + Vector2(-60 + wob, 0), "◄ ►", 26, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, 120, 6, Color(0.16, 0.1, 0.18, a))
 
-# ---------------------------------------------------------------- S06 campo do ímã (buraco negro)
+# ---------------------------------------------------------------- C01 campo do ímã (buraco negro)
 func _draw_magnets() -> void:
 	for r in main.robots:
-		if not r.alive or not slot.has(r.pid) or slot[r.pid]["id"] != "S06" or not slot[r.pid]["channel"]:
+		if not r.alive or not slot.has(r.pid) or slot[r.pid]["id"] != "C01" or not slot[r.pid]["channel"]:
 			continue
-		var ow := muzzle(r, "S06")
+		var ow := muzzle(r, "C01")
 		var adw := aim_dir(r)
 		var base := Transform2D(adw.angle(), Vector2(1.0, -1.0 if adw.x < -0.1 else 1.0), 0.0, ow)
 		var d := 1.0
 		var o := Vector2.ZERO
-		var rng := float(sc("S06")["alcance_tiles"]) * T
+		var rng := float(sc("C01")["alcance_tiles"]) * T
 		# redemoinho: anéis achatados girando e encolhendo para dentro do polo (no quadro da mira)
 		for i in 4:
 			var u := fposmod(t * 1.8 + i * 0.25, 1.0)
@@ -1446,7 +1419,7 @@ func _draw_magnets() -> void:
 					var a0 := t * 12.0 + k * PI
 					draw_arc(c, 34.0, a0, a0 + 1.0, 6, Color(1, 0.9, 0.5, 0.9), 2.5, true)
 
-# ---------------------------------------------------------------- S13 jato da fornalha
+# ---------------------------------------------------------------- T01 jato da fornalha
 func _draw_flames() -> void:
 	for pid in flames:
 		var fl: Dictionary = flames[pid]
@@ -1454,7 +1427,7 @@ func _draw_flames() -> void:
 		var k: float = fl["k"]
 		if k <= 0.01 or not r.alive:
 			continue
-		var reach := float(sc("S13")["fogo_alcance_tiles"]) * T * k
+		var reach := float(sc("T01")["fogo_alcance_tiles"]) * T * k
 		var ow: Vector2 = r.position + Vector2(r.facing * 26.0, -46.0)
 		var adw := aim_dir(r)
 		draw_set_transform(ow, adw.angle(), Vector2(1.0, -1.0 if adw.x < -0.1 else 1.0))   # quadro do jato
@@ -1490,7 +1463,7 @@ func _draw_flames() -> void:
 		draw_circle(o, 9.0, Color(1.0, 0.9, 0.5, 0.9 * k))
 		draw_set_transform(Vector2.ZERO)
 
-# ---------------------------------------------------------------- S10 andaime relâmpago
+# ---------------------------------------------------------------- E01 andaime relâmpago
 func _ease_back(u: float) -> float:
 	return 1.0 + 2.70158 * pow(u - 1.0, 3) + 1.70158 * pow(u - 1.0, 2)
 
@@ -1557,7 +1530,7 @@ func _draw_scaffold_shape(pr: Rect2, open: float, leg: float, mod: Color, holo: 
 	draw_texture_rect_region(tex, Rect2(cx + side / 2.0 + slide - side, y, side, th), src_r, mod)
 	draw_texture_rect_region(tex, Rect2(cx - side / 2.0, y, side, th), src_mid, mod)
 
-# ---------------------------------------------------------------- S11 mira e teletransporte
+# ---------------------------------------------------------------- C04 mira e teletransporte
 func _draw_teleports() -> void:
 	var col := Color("#b59cff")
 	for pid in aims:
@@ -1645,19 +1618,18 @@ func _floor_below(x: float, y: float, n := 8) -> float:
 			return (cy + k) * T
 	return -1.0
 
-## Disparos com preparo: laser (S02), marreta sísmica (S04), canhão de molas (S20).
+## Disparos com preparo: laser (A02), marreta sísmica (A04), canhão de molas (A08).
 func _fire2(r, s: Dictionary) -> void:
 	var c: Dictionary = sc(s["id"])
 	match s["id"]:
-		"S02":   # feixe instantâneo até a parede, atravessa robôs (1 acerto cada)
-			var a := muzzle(r, "S02")
+		"A02":   # feixe instantâneo até a parede, atravessa robôs (1 acerto cada)
+			var a := muzzle(r, "A02")
 			var dv := aim_dir(r)
 			var maxd := float(c["alcance_tiles"]) * T
 			var d := 0.0
-			while d < maxd and not _hard_at(a + dv * (d + 8.0)) and not shield_block(a + dv * (d + 8.0), r.pid, false):
+			while d < maxd and not _hard_at(a + dv * (d + 8.0)):
 				d += 8.0
 			var b := a + dv * d
-			shield_block(b + dv * 8.0, r.pid)
 			lasers.append({"owner": r.pid, "t": 0.0, "a": a, "b": b})
 			for o in main.robots:
 				if o.pid != r.pid and _seg_rect(a, b, o.rect(), 10.0):
@@ -1668,7 +1640,7 @@ func _fire2(r, s: Dictionary) -> void:
 			main.shake(3.0)
 			r.own_vx -= dv.x * 90.0
 			_spend(r, s)
-		"S04":   # onda pela superfície contínua, para em buracos e paredes
+		"A04":   # onda pela superfície contínua, para em buracos e paredes
 			if not r.is_on_floor():
 				_fail(r, "SÓ NO CHÃO")
 				s["cd"] = 0.0
@@ -1691,7 +1663,7 @@ func _fire2(r, s: Dictionary) -> void:
 			Audio.play("martelao", 0.8, 0.0)
 			main.dust(r.position + Vector2(r.facing * 40.0, 0), 1.4)
 			_spend(r, s)
-		"S20":   # mola saltitante: primeiro robô leva o BOING
+		"A08":   # mola saltitante: primeiro robô leva o BOING
 			# 3 ângulos: reto (quica no chão), ▲ arco alto (pega quem está em cima), ▼ no ar (desce na diagonal)
 			var av := aim_dir(r)
 			var v20 := Vector2(r.facing * float(c["vel"]), -float(c["subida"]))
@@ -1699,7 +1671,7 @@ func _fire2(r, s: Dictionary) -> void:
 				v20 = Vector2(r.facing * float(c["vel"]) * 0.55, -float(c["subida"]) * 2.6)
 			elif av.y > 0.3:
 				v20 = Vector2(r.facing * float(c["vel"]) * 0.6, 420.0)
-			var m20 := muzzle(r, "S20")
+			var m20 := muzzle(r, "A08")
 			m20.y = maxf(m20.y, r.position.y - 42.0)   # sai na altura da cintura (ombro alto de alguns robôs = mola passava por cima)
 			springs.append({"owner": r.pid, "pos": m20, "vel": v20, "t": 0.0, "sq": 0.0})
 			Audio.play("pulo_mola", 1.3, 2.0)
@@ -1707,28 +1679,28 @@ func _fire2(r, s: Dictionary) -> void:
 			main.shake(4.0)
 			_spend(r, s)
 
-## S05: rebite em linha (▲/▼ inclinam 45°), ricocheteia até 2 vezes perdendo força.
+## A05: rebite em linha (▲/▼ inclinam 45°), ricocheteia até 2 vezes perdendo força.
 func _fire_rivet(r, s: Dictionary) -> void:
-	var c: Dictionary = sc("S05")
+	var c: Dictionary = sc("A05")
 	if s["cd"] > 0.0:
 		return
 	var dirv := aim_dir(r)
-	rivets.append({"owner": r.pid, "pos": muzzle(r, "S05"), "vel": dirv * float(c["vel"]), "bounces": 0, "t": 0.0, "hit": [], "trail": []})
+	rivets.append({"owner": r.pid, "pos": muzzle(r, "A05"), "vel": dirv * float(c["vel"]), "bounces": 0, "t": 0.0, "hit": [], "trail": []})
 	s["cd"] = float(c["intervalo_s"])
 	s["fire"] = 0.0
 	Audio.play("chave", 1.6, -2.0)
 	Audio.play("pistao", 1.9, -10.0)
-	tings.append({"pos": muzzle(r, "S05"), "t": 0.0, "big": true})
+	tings.append({"pos": muzzle(r, "A05"), "t": 0.0, "big": true})
 	r.own_vx -= r.facing * 50.0
 	_spend(r, s)
 
-## S17: marca uma faixa à frente (no chão) e a estaca desce lá depois do aviso.
+## A06: marca uma faixa à frente (no chão) e a estaca desce lá depois do aviso.
 func _pile_floor(r, x: float) -> float:
 	var fy := _floor_below(x, r.position.y - 2.0 * T, 9)
 	return fy if fy >= 0.0 else r.position.y + 2.0 * T
 
 func _update_pile_aims(dt: float) -> void:
-	var c: Dictionary = sc("S17")
+	var c: Dictionary = sc("A06")
 	for pid in pile_aims.keys():
 		var r = main.robots[pid]
 		var a: Dictionary = pile_aims[pid]
@@ -1748,7 +1720,7 @@ func _update_pile_aims(dt: float) -> void:
 			_drop_pile(r, s, a["x"])
 
 func _drop_pile(r, s: Dictionary, x: float) -> void:
-	var c: Dictionary = sc("S17")
+	var c: Dictionary = sc("A06")
 	var fy := _floor_below(x, r.position.y - 2.0 * T, 9)
 	if fy < 0.0:
 		fy = r.position.y + 2.0 * T
@@ -1757,16 +1729,8 @@ func _drop_pile(r, s: Dictionary, x: float) -> void:
 	Audio.play("alarme", 1.4, -6.0)
 	_spend(r, s)
 
-func _throw_disc(r, s: Dictionary) -> void:
-	var c: Dictionary = sc("S18")
-	discs.append({"owner": r.pid, "pos": hand(r) + Vector2(r.facing * 30.0, 0), "vel": Vector2(r.facing * float(c["vel"]), 0), "phase": "ida",
-		"t": 0.0, "hit": [], "rot": 0.0, "x0": r.position.x})
-	s["fire"] = 0.0
-	Audio.play("serra", 1.2, -2.0)
-	_spend(r, s)
-
 func _throw_hammer(r, s: Dictionary) -> void:
-	var c: Dictionary = sc("S19")
+	var c: Dictionary = sc("A07")
 	var dh := aim_vec(r)
 	var vh: Vector2 = dh * float(c["vel"]) + (Vector2(0, -180.0) if absf(dh.y) < 0.1 else Vector2.ZERO)
 	hammers.append({"owner": r.pid, "pos": hand(r) + Vector2(0, -10), "vel": vh, "phase": "ida",
@@ -1777,15 +1741,15 @@ func _throw_hammer(r, s: Dictionary) -> void:
 	_spend(r, s)
 
 func _update_attack2(dt: float) -> void:
-	# S02 feixe e marcas de solda
+	# A02 feixe e marcas de solda
 	for e in lasers:
 		e["t"] += dt
 	lasers = lasers.filter(func(e): return e["t"] < 0.34)
 	for e in scorch:
 		e["t"] += dt
 	scorch = scorch.filter(func(e): return e["t"] < 2.5)
-	# S04 onda: a frente anda nas duas direções e acerta quem está apoiado no mesmo trecho
-	var c4: Dictionary = sc("S04")
+	# A04 onda: a frente anda nas duas direções e acerta quem está apoiado no mesmo trecho
+	var c4: Dictionary = sc("A04")
 	for w in waves:
 		w["t"] += dt
 		var front: float = w["t"] * float(c4["vel"])
@@ -1815,16 +1779,14 @@ func _update_attack2(dt: float) -> void:
 		rk["pos"] += rk["vel"] * dt
 		rk["rot"] += dt * 10.0
 	rocks = rocks.filter(func(rk): return rk["t"] < 0.8)
-	# S05 rebites
-	var c5: Dictionary = sc("S05")
+	# A05 rebites
+	var c5: Dictionary = sc("A05")
 	for rv in rivets:
 		rv["t"] += dt
 		rv["trail"].push_front(rv["pos"])
 		if rv["trail"].size() > 6:
 			rv["trail"].pop_back()
 		var np: Vector2 = rv["pos"] + rv["vel"] * dt
-		if shield_block(np, rv["owner"]):
-			rv["dead"] = true
 		if _hard_at(np):
 			if rv["bounces"] >= int(c5["ricochetes"]):
 				rv["dead"] = true
@@ -1855,8 +1817,8 @@ func _update_attack2(dt: float) -> void:
 	for e in tings:
 		e["t"] += dt
 	tings = tings.filter(func(e): return e["t"] < 0.18)
-	# S17 estaca: aviso → desce rápido → lança para cima → sobe
-	var c17: Dictionary = sc("S17")
+	# A06 estaca: aviso → desce rápido → lança para cima → sobe
+	var c17: Dictionary = sc("A06")
 	var mark: float = float(c17["marca_s"])
 	for p in piles:
 		p["t"] += dt
@@ -1877,40 +1839,8 @@ func _update_attack2(dt: float) -> void:
 					if not pt["fallen"] and pt["rect"].has_point(Vector2(p["x"], p["floor_y"] + 8.0)):
 						ct.damage(pt, 1, Vector2(p["x"], p["floor_y"]))   # deforma peça vulnerável
 	piles = piles.filter(func(p): return p["t"] < mark + 0.9)
-	# S18 disco: rola pelo chão, bate e volta voando para a mão
-	var c18: Dictionary = sc("S18")
-	for d in discs:
-		d["t"] += dt
-		var owner = main.robots[d["owner"]]
-		d["rot"] += dt * 30.0 * signf(d["vel"].x if d["vel"].x != 0.0 else 1.0)
-		if d["phase"] == "ida":
-			d["vel"].y = minf(d["vel"].y + 1800.0 * dt, 900.0)
-			var np: Vector2 = d["pos"] + d["vel"] * dt
-			if _solid_at(np + Vector2(0, 22)):   # rolando no chão
-				np.y = floor((np.y + 22.0) / T) * T - 22.0
-				d["vel"].y = 0.0
-				if fmod(d["t"], 0.04) < dt:
-					main.spark(np + Vector2(-signf(d["vel"].x) * 10.0, 20.0), 1)
-			if _solid_at(np + Vector2(signf(d["vel"].x) * 24.0, 0)) or shield_block(np, d["owner"]) or absf(np.x - d["x0"]) > float(c18["alcance_tiles"]) * T or d["t"] > float(c18["max_s"]) * 0.6:
-				d["phase"] = "volta"
-				d["hit"].clear()
-				main.spark(np, 4)
-				Audio.play("serra", 1.5, -4.0)
-			else:
-				d["pos"] = np
-		else:
-			var to: Vector2 = hand(owner) - d["pos"]
-			d["pos"] += to.normalized() * minf(float(c18["volta_vel"]) * dt, to.length())
-			if to.length() < 30.0 or d["t"] > float(c18["max_s"]) or not owner.alive:
-				d["dead"] = true
-				Audio.play("chave", 1.0, -4.0)
-		for o in main.robots:
-			if o.pid != d["owner"] and o.alive and not (o.pid in d["hit"]) and o.rect().grow(6).has_point(d["pos"]):
-				d["hit"].append(o.pid)
-				_hit(o, d["owner"], int(signf(o.position.x - d["pos"].x)) if o.position.x != d["pos"].x else 1, "spell_disco")
-	discs = discs.filter(func(d): return not d.get("dead", false))
-	# S19 marreta-bumerangue: freia na ida, volta acelerando para o dono (atravessa tudo: retorno garantido)
-	var c19: Dictionary = sc("S19")
+	# A07 marreta-bumerangue: freia na ida, volta acelerando para o dono (atravessa tudo: retorno garantido)
+	var c19: Dictionary = sc("A07")
 	for h in hammers:
 		h["t"] += dt
 		var owner = main.robots[h["owner"]]
@@ -1938,8 +1868,8 @@ func _update_attack2(dt: float) -> void:
 				h["hit"].append(o.pid)
 				_hit(o, h["owner"], int(signf(o.position.x - owner.position.x)) if o.position.x != owner.position.x else 1, "spell_bumerangue")
 	hammers = hammers.filter(func(h): return not h.get("dead", false))
-	# S20 mola saltitante
-	var c20: Dictionary = sc("S20")
+	# A08 mola saltitante
+	var c20: Dictionary = sc("A08")
 	for m in springs:
 		m["t"] += dt
 		m["sq"] = maxf(m["sq"] - dt * 5.0, 0.0)
@@ -1950,7 +1880,7 @@ func _update_attack2(dt: float) -> void:
 			m["sq"] = 1.0
 			Audio.play("pulo_mola", 1.6, -8.0)
 			np = m["pos"]
-		if _hard_at(np + Vector2(signf(m["vel"].x) * 16.0, 0)) or shield_block(np, m["owner"]):
+		if _hard_at(np + Vector2(signf(m["vel"].x) * 16.0, 0)):
 			m["dead"] = true   # obstáculo consome o tiro
 			main.dust(np, 0.6)
 		m["pos"] = np
@@ -1969,7 +1899,7 @@ func _update_attack2(dt: float) -> void:
 
 # ---------------------------------------------------------------- desenho da Etapa 2
 func _draw_attack2() -> void:
-	# S02: linha de mira fina tracejada durante o preparo; lente esquentando
+	# A02: linha de mira fina tracejada durante o preparo; lente esquentando
 	for r in main.robots:
 		if not r.alive or not slot.has(r.pid):
 			continue
@@ -1978,10 +1908,10 @@ func _draw_attack2() -> void:
 			continue
 		var k: float = s["prep"] / maxf(s["prep_len"], 0.01)
 		match s["id"]:
-			"S02":
-				var a := muzzle(r, "S02")
+			"A02":
+				var a := muzzle(r, "A02")
 				var dv := aim_dir(r)
-				var maxd := float(sc("S02")["alcance_tiles"]) * T
+				var maxd := float(sc("A02")["alcance_tiles"]) * T
 				var d := 0.0
 				while d < maxd and not _hard_at(a + dv * (d + 8.0)):
 					d += 8.0
@@ -1991,16 +1921,16 @@ func _draw_attack2() -> void:
 					draw_line(q0, q0 + dv * 11.0, Color(1, 0.25, 0.2, 0.35 + 0.5 * k), 2.0, true)
 				draw_circle(a, 5.0 + 9.0 * k, Color(1, 0.4, 0.25, 0.4 + 0.4 * k))
 				draw_circle(a, 3.0 + 4.0 * k, Color(1, 0.95, 0.8, 0.9))
-			"S04":
+			"A04":
 				pass
-			"S20":   # mola comprimindo: anéis apertando na boca
-				var m := muzzle(r, "S20")
+			"A08":   # mola comprimindo: anéis apertando na boca
+				var m := muzzle(r, "A08")
 				var a0 := -PI / 2.0 if r.facing > 0 else PI / 2.0
 				for j in 3:
 					draw_arc(m, 14.0 + j * 6.0 - 6.0 * k, a0, a0 + PI, 10, Color(1, 1, 1, 0.5 * k), 2.0, true)
-	# S04 marreta gigante dourada: ergue por cima da cabeça (para trás) e crava à frente
+	# A04 marreta gigante dourada: ergue por cima da cabeça (para trás) e crava à frente
 	for r in main.robots:
-		if not r.alive or not slot.has(r.pid) or slot[r.pid]["id"] != "S04":
+		if not r.alive or not slot.has(r.pid) or slot[r.pid]["id"] != "A04":
 			continue
 		var s4: Dictionary = slot[r.pid]
 		var ang := 0.0
@@ -2020,7 +1950,7 @@ func _draw_attack2() -> void:
 		draw_set_transform(Vector2.ZERO)
 		var head := grip + Vector2(0, -90.0).rotated(ang * r.facing)
 		draw_circle(head, 18.0 + 14.0 * glow, Color(1, 0.85, 0.4, 0.35 * glow))
-	# S02 feixe: dispara da lente até a parede em 0,04 s; tubo de luz com borda tremendo, anéis correndo, clarão na
+	# A02 feixe: dispara da lente até a parede em 0,04 s; tubo de luz com borda tremendo, anéis correndo, clarão na
 	# boca e na parede; depois afina de cima para baixo e deixa calor
 	for e in lasers:
 		var tt: float = e["t"]
@@ -2077,9 +2007,9 @@ func _draw_attack2() -> void:
 		draw_circle(e["pos"], 9.0, Color(col, 1.0 - u))
 		if u < 0.4 and fmod(t, 0.08) < 0.04:
 			main.spark(e["pos"], 1)
-	# S04 tremor: anel de choque no impacto, placas do piso levantando em sequência atrás da frente da onda,
+	# A04 tremor: anel de choque no impacto, placas do piso levantando em sequência atrás da frente da onda,
 	# rachadura incandescente que esfria, pedrinhas voando
-	var c4: Dictionary = sc("S04")
+	var c4: Dictionary = sc("A04")
 	for w in waves:
 		var front: float = w["t"] * float(c4["vel"])
 		var fade := clampf(1.0 - (w["t"] - 0.6) / 0.5, 0.0, 1.0)
@@ -2129,7 +2059,7 @@ func _draw_attack2() -> void:
 		var z: float = rk["size"]
 		draw_colored_polygon(PackedVector2Array([Vector2(-z, -z * 0.6), Vector2(z * 0.8, -z), Vector2(z, z * 0.5), Vector2(-z * 0.4, z)]), Color(0.55, 0.48, 0.42, a))
 		draw_set_transform(Vector2.ZERO)
-	# S05 rebites: rastro claro, rebite grande (cabeça abaulada dourada + haste de aço) apontando para onde vai
+	# A05 rebites: rastro claro, rebite grande (cabeça abaulada dourada + haste de aço) apontando para onde vai
 	for rv in rivets:
 		var tr: Array = rv["trail"]
 		if tr.size() > 1:
@@ -2153,8 +2083,8 @@ func _draw_attack2() -> void:
 		draw_colored_polygon(star, Color(1, 0.95, 0.7, 1.0 - u))
 		if e["big"]:
 			draw_arc(e["pos"], rad * 1.2, 0, TAU, 14, Color(1, 1, 1, 0.6 * (1.0 - u)), 2.0, true)
-	# S17 mira: marca andando no chão + coluna tracejada
-	var c17a: Dictionary = sc("S17")
+	# A06 mira: marca andando no chão + coluna tracejada
+	var c17a: Dictionary = sc("A06")
 	for pid in pile_aims:
 		var a17: Dictionary = pile_aims[pid]
 		var r17 = main.robots[pid]
@@ -2167,8 +2097,8 @@ func _draw_attack2() -> void:
 		var ay := fy17 - 5.5 * T + 20.0 + absf(sin(t * 6.0)) * 12.0
 		draw_colored_polygon(PackedVector2Array([Vector2(a17["x"] - 18, ay), Vector2(a17["x"] + 18, ay), Vector2(a17["x"], ay + 22)]), Color("#f2c84b"))
 		draw_polyline(PackedVector2Array([Vector2(a17["x"] - 18, ay), Vector2(a17["x"] + 18, ay), Vector2(a17["x"], ay + 22), Vector2(a17["x"] - 18, ay)]), INK, 3.0, true)
-	# S17 bate-estaca: sombra listrada no chão, pistão no alto, queda com achatamento, sobe
-	var c17: Dictionary = sc("S17")
+	# A06 bate-estaca: sombra listrada no chão, pistão no alto, queda com achatamento, sobe
+	var c17: Dictionary = sc("A06")
 	var mark := float(c17["marca_s"])
 	var tex17 := Data.tex("spells/s17_estaca")
 	for p in piles:
@@ -2208,16 +2138,7 @@ func _draw_attack2() -> void:
 		draw_texture_rect_region(tex17, Rect2(x - 32, top_y - 50, 64, 50), Rect2(0, 0, 128, 96), mod)
 		draw_texture_rect_region(tex17, Rect2(x - 16 * sq, top_y, 32 * sq, pile_len - 26), Rect2(32, 92, 64, 236), mod)
 		draw_texture_rect_region(tex17, Rect2(x - 22 * sq, top_y + pile_len - 26, 44 * sq, 26), Rect2(20, 324, 88, 60), mod)
-	# S18 disco girando com faíscas e rastro de serra
-	var dtex := Data.tex("spells/s18_disco")
-	for d in discs:
-		for i in 3:
-			var q: Vector2 = d["pos"] - d["vel"].normalized() * (12.0 + i * 12.0) if d["phase"] == "ida" else d["pos"]
-			draw_arc(q, 20.0, d["rot"] + i, d["rot"] + i + 1.4, 8, Color(1, 1, 1, 0.4 - i * 0.12), 3.0, true)
-		draw_set_transform(d["pos"], d["rot"])
-		draw_texture_rect(dtex, Rect2(-22, -22, 44, 44), false)
-		draw_set_transform(Vector2.ZERO)
-	# S19 marreta girando com arco de rastro
+	# A07 marreta girando com arco de rastro
 	var htex := Data.tex("robo/marreta")
 	for h in hammers:
 		for i in 4:
@@ -2228,7 +2149,7 @@ func _draw_attack2() -> void:
 		draw_texture(htex, -Vector2(128, 128))
 		draw_set_transform(Vector2.ZERO)
 		draw_arc(h["pos"], 46.0, h["rot"], h["rot"] + 1.6 * h["dir"], 12, Color(1, 1, 1, 0.5), 4.0, true)
-	# S20 mola saltitante: espiral + para-choque vermelho, achata no quique
+	# A08 mola saltitante: espiral + para-choque vermelho, achata no quique
 	for m in springs:
 		var d := signf(m["vel"].x)
 		var sq: float = m["sq"]
@@ -2244,28 +2165,9 @@ func _draw_attack2() -> void:
 		draw_set_transform(Vector2.ZERO)
 
 # ================================================================ ETAPA 3: controle e engenharia
-## S28: algum escudo de solda (de outro jogador ou o próprio) está em p? Se `dmg`, ele leva o golpe (pisca, racha).
-func shield_block(p: Vector2, owner: int, dmg := true) -> bool:
-	for sh in shields:
-		if sh["k"] >= 0.6 and sh["rect"].grow(2).has_point(p):
-			if dmg:
-				sh["hp"] -= 1
-				sh["flash"] = 1.0
-				main.spark(p, 5)
-				Audio.play("chave", 0.7, -2.0)
-			return true
-	return false
-
-func shield_rect(r) -> Rect2:
-	var x: float = r.position.x + r.facing * 62.0
-	var fy := _floor_below(x, r.position.y - 40.0, 3)
-	if fy < 0.0 or not r.is_on_floor():
-		return Rect2()
-	return Rect2(x - 22.0, fy - 132.0, 44.0, 132.0)   # 3 painéis de 40 + topo zebrado
-
-## S07: cone de vento à frente; empurra (sem tirar o controle); o dono anda devagar e sente o recuo.
+## C02: cone de vento à frente; empurra (sem tirar o controle); o dono anda devagar e sente o recuo.
 func _update_fan(r, s: Dictionary, dt: float) -> void:
-	var c: Dictionary = sc("S07")
+	var c: Dictionary = sc("C02")
 	if not held(r) or s["energy"] <= 0.0:
 		s["channel"] = false
 		r.spell_speed = 1.0
@@ -2276,7 +2178,7 @@ func _update_fan(r, s: Dictionary, dt: float) -> void:
 	s["energy"] -= dt
 	r.spell_speed = float(c["dono_vel_mult"])
 	r.own_vx -= aim_dir(r).x * float(c["recuo"]) * dt * 3.0
-	var o0 := muzzle(r, "S07")
+	var o0 := muzzle(r, "C02")
 	var ad := aim_dir(r)
 	var rng := float(c["alcance_tiles"]) * T
 	for o in main.robots:
@@ -2300,28 +2202,28 @@ func _update_fan(r, s: Dictionary, dt: float) -> void:
 	if fmod(t, 0.25) < dt:
 		Audio.play("ventilador", 1.1, -8.0)
 
-## S08: garra com corrente (▲ inclina 45°). Parede/plataforma: puxa o dono até lá. Rival: tranco curto para perto.
+## C03: garra com corrente (▲ inclina 45°). Parede/plataforma: puxa o dono até lá. Rival: tranco curto para perto.
 func _fire_hook(r, s: Dictionary) -> void:
 	for h in hooks:
 		if h["owner"] == r.pid:
 			return
-	var c: Dictionary = sc("S08")
+	var c: Dictionary = sc("C03")
 	var dirv := aim_dir(r)
-	hooks.append({"owner": r.pid, "pos": muzzle(r, "S08"), "vel": dirv * float(c["vel"]), "phase": "ida", "t": 0.0, "anchor": Vector2.ZERO, "dir": dirv})
+	hooks.append({"owner": r.pid, "pos": muzzle(r, "C03"), "vel": dirv * float(c["vel"]), "phase": "ida", "t": 0.0, "anchor": Vector2.ZERO, "dir": dirv})
 	s["fire"] = 0.0
 	Audio.play("gancho", 1.0, 0.0)
 	r.own_vx -= dirv.x * 80.0
 	_spend(r, s)
 
 func _fire_lasso(r, s: Dictionary) -> void:
-	var c: Dictionary = sc("S21")
+	var c: Dictionary = sc("C05")
 	var dl := aim_dir(r)
-	lassos.append({"owner": r.pid, "pos": muzzle(r, "S21"), "vel": dl * float(c["vel"]), "t": 0.0})
+	lassos.append({"owner": r.pid, "pos": muzzle(r, "C05"), "vel": dl * float(c["vel"]), "t": 0.0})
 	s["fire"] = 0.0
 	Audio.play("arremesso", 1.4, -2.0)
 	_spend(r, s)
 
-## S12: 1º toque instala a carga nos pés (pisca na cor do dono); depois de armada, o próximo toque detona.
+## E02: 1º toque instala a carga nos pés (pisca na cor do dono); depois de armada, o próximo toque detona.
 func _use_charge(r, s: Dictionary) -> void:
 	for ch in charges_placed:
 		if ch["owner"] == r.pid:
@@ -2345,7 +2247,7 @@ func _use_charge(r, s: Dictionary) -> void:
 	Audio.play("alavanca", 1.3, -2.0)
 
 func _detonate(ch: Dictionary) -> void:
-	var c: Dictionary = sc("S12")
+	var c: Dictionary = sc("E02")
 	var p: Vector2 = ch["pos"] + Vector2(0, -16)
 	charges_placed.erase(ch)
 	demo.booms.append({"pos": p, "t": 0.0})
@@ -2364,75 +2266,13 @@ func _detonate(ch: Dictionary) -> void:
 			if not pt["fallen"] and pt["rect"].grow(rad * 0.5).has_point(p):
 				ct.damage(pt, int(c["dano_estrutura"]), p)
 
-## S25: ponte no nível dos pés, saindo da frente do robô por cima do vão.
-## Altura exata do chão sob o robô (a ponte encosta nela sem degrau, mesmo logo depois de pousar).
-func _floor_y(r) -> float:
-	var fy := _floor_below(r.position.x, r.position.y - 8.0, 2)
-	return fy if fy >= 0.0 and absf(fy - r.position.y) < 12.0 else r.position.y
-
-func bridge_rect(r) -> Rect2:
-	var L := float(sc("S25")["comprimento_tiles"]) * T
-	var x0: float = r.position.x
-	return Rect2(x0 if r.facing > 0 else x0 - L, _floor_y(r), L, 24.0)
-
-## Com ▲ a ponte vira RAMPA (sobe 28°) para alcançar a plataforma de cima.
-const RAMP := 0.49
-func ramp_mode(r) -> bool:
-	return not _is_bot(r.pid) and aim_vec(r).y < -0.5
-
-func bridge_ok(r, br: Rect2) -> bool:
-	if not r.is_on_floor():
-		return false
-	if ramp_mode(r):
-		var L := float(sc("S25")["comprimento_tiles"]) * T
-		var dv := Vector2(r.facing * cos(RAMP), -sin(RAMP))
-		var st := Vector2(r.position.x + r.facing * 20.0, r.position.y)
-		for i in range(1, int(L / 16.0) + 1):
-			var q := st + dv * i * 16.0
-			if _hard_at(q + Vector2(0, -6)) or _hard_at(q + Vector2(0, -60)):
-				return false
-		return true
-	var air := 0
-	var n := int(br.size.x / 16.0)
-	for i in n:
-		var p := Vector2(br.position.x + 8.0 + i * 16.0, br.position.y + 6.0)
-		if _solid_at(p + Vector2(0, -12)):
-			return false   # parede no caminho
-		if not _solid_at(p):
-			air += 1
-	return air >= 2   # precisa ter algum vão à frente
-
-func _build_bridge(r, br: Rect2) -> void:
-	var c: Dictionary = sc("S25")
-	var sl := RAMP if ramp_mode(r) else 0.0
-	var body := StaticBody2D.new()
-	body.collision_layer = 2
-	body.collision_mask = 0
-	var cs := CollisionShape2D.new()
-	var shp := RectangleShape2D.new()
-	shp.size = br.size
-	cs.shape = shp
-	cs.position = br.get_center()
-	if sl > 0.0:
-		var L := br.size.x
-		var st := Vector2(r.position.x + r.facing * 20.0, _floor_y(r))
-		var rot: float = -sl * r.facing
-		cs.rotation = rot
-		cs.position = st + Vector2(r.facing * cos(sl), -sin(sl)) * L / 2.0 + Vector2(0, 8).rotated(rot)
-	cs.one_way_collision = true
-	body.add_child(cs)
-	add_child(body)
-	bridges.append({"rect": br, "body": body, "t": float(c["duracao_s"]), "len": float(c["duracao_s"]), "k": 0.0, "owner": r.pid,
-		"dir": r.facing, "x0": r.position.x + (r.facing * 20.0 if sl > 0.0 else 0.0), "y": _floor_y(r), "slope": sl})
-	Audio.play("alavanca", 1.0, 0.0)
-
-## S27: viga pendurada mais perto, à frente, ao alcance (a do guindaste do Canteiro). null = nenhuma.
+## E03: viga pendurada mais perto, à frente, ao alcance (a do guindaste do Canteiro). null = nenhuma.
 func remote_target(r):
 	var ct = demo.canteiro
 	if ct == null or not is_instance_valid(ct):
 		return null
 	var cands := []
-	var maxd := float(sc("S27")["alcance_tiles"]) * T
+	var maxd := float(sc("E03")["alcance_tiles"]) * T
 	for p in ct.parts:
 		if p["kind"] != "viga" or p["fallen"] or p["crit_t"] > 0.0 or p["evt"] != "":
 			continue
@@ -2466,12 +2306,12 @@ func _update_etapa3(dt: float) -> void:
 			ext_v.erase(pid)
 		else:
 			ext_v[pid] = ev
-	var c8: Dictionary = sc("S08")
+	var c8: Dictionary = sc("C03")
 	for h in hooks:
 		h["t"] += dt
 		h["snap"] = maxf(float(h.get("snap", 0.0)) - dt * 5.0, 0.0)
 		var owner = main.robots[h["owner"]]
-		var mz := muzzle(owner, "S08") if slot.has(h["owner"]) and slot[h["owner"]]["id"] == "S08" else hand(owner)
+		var mz := muzzle(owner, "C03") if slot.has(h["owner"]) and slot[h["owner"]]["id"] == "C03" else hand(owner)
 		match h["phase"]:
 			"ida":
 				var np: Vector2 = h["pos"] + h["vel"] * dt
@@ -2503,7 +2343,7 @@ func _update_etapa3(dt: float) -> void:
 					h["t"] = 0.0
 					Audio.play("chave", 0.8, 0.0)
 					main.spark(np, 4)
-				elif _grab_at(np) or shield_block(np, h["owner"], false):
+				elif _grab_at(np):
 					h["phase"] = "puxa"
 					h["anchor"] = h["pos"]
 					h["t"] = 0.0
@@ -2555,8 +2395,8 @@ func _update_etapa3(dt: float) -> void:
 				if to4.length() < 20.0:
 					h["dead"] = true
 	hooks = hooks.filter(func(h): return not h.get("dead", false))
-	# S21 laço: tiro → elástico entre os dois
-	var c21: Dictionary = sc("S21")
+	# C05 laço: tiro → elástico entre os dois
+	var c21: Dictionary = sc("C05")
 	for l in lassos:
 		l["t"] += dt
 		l["pos"] += l["vel"] * dt   # esfera de energia: voa reto
@@ -2570,7 +2410,7 @@ func _update_etapa3(dt: float) -> void:
 				main.float_text(o.position + Vector2(0, -120), "PRESO!", Color("#3fc1c9"))
 				Audio.play("pulo_mola", 1.4, -2.0)
 				break
-		if _hard_at(l["pos"]) or shield_block(l["pos"], l["owner"]) or l["t"] > float(c21["alcance_tiles"]) * T / float(c21["vel"]):
+		if _hard_at(l["pos"]) or l["t"] > float(c21["alcance_tiles"]) * T / float(c21["vel"]):
 			l["dead"] = true
 	lassos = lassos.filter(func(l): return not l.get("dead", false))
 	for e in tethers:
@@ -2598,8 +2438,8 @@ func _update_etapa3(dt: float) -> void:
 	for e in snaps:
 		e["t"] += dt
 	snaps = snaps.filter(func(e): return e["t"] < 0.18)
-	# S12 cargas
-	var c12: Dictionary = sc("S12")
+	# E02 cargas
+	var c12: Dictionary = sc("E02")
 	for ch in charges_placed.duplicate():
 		if ch.get("flying", false):
 			ch["vel"].y += 1400.0 * dt
@@ -2627,18 +2467,9 @@ func _update_etapa3(dt: float) -> void:
 		if ch["t"] >= float(c12["auto_s"]):
 			var ow: int = ch["owner"]
 			_detonate(ch)
-			if slot.has(ow) and slot[ow]["id"] == "S12":
+			if slot.has(ow) and slot[ow]["id"] == "E02":
 				_spend(main.robots[ow], slot[ow])
-	# S25 pontes
-	for br in bridges.duplicate():
-		br["t"] -= dt
-		br["k"] = minf(br["k"] + dt / 0.36, 1.0)
-		if br["t"] <= 0.0:
-			if is_instance_valid(br["body"]):
-				br["body"].queue_free()
-			bridges.erase(br)
-			Audio.play("alavanca", 0.8, -4.0)
-	# S27 viga despencando: acerta quem estiver embaixo
+	# E03 viga despencando: acerta quem estiver embaixo
 	for e in drops:
 		e["t"] += dt
 		var p: Dictionary = e["part"]
@@ -2650,39 +2481,15 @@ func _update_etapa3(dt: float) -> void:
 					var dx := 1 if o.position.x >= p["rect"].get_center().x else -1
 					o.take_hit(dx, "spell_viga", e["owner"]) if o.pid != e["owner"] else null
 	drops = drops.filter(func(e): return e["t"] < 1.6)
-	# S28 escudos
-	var c28: Dictionary = sc("S28")
-	for sh in shields.duplicate():
-		sh["t"] += dt
-		var k_before: float = sh["k"]
-		sh["k"] = minf(sh["k"] + dt / 0.5, 1.0)
-		for i in 3:   # cada painel que encaixa faz "clanc" e solta faísca de solda
-			if k_before < (i + 0.7) / 3.0 and sh["k"] >= (i + 0.7) / 3.0:
-				Audio.play("caixote_pancada", 1.5 + i * 0.1, -6.0)
-				main.spark(_panel_rect(sh, i).get_center(), 6)
-		sh["flash"] = maxf(sh["flash"] - dt * 5.0, 0.0)
-		if sh["k"] < 1.0 and fmod(sh["t"], 0.04) < dt:
-			var ow2 = main.robots[sh["owner"]]
-			main.spark(hand(ow2) + Vector2(ow2.facing * 10.0, 0), 1)
-		if sh["hp"] <= 0 or sh["t"] >= float(c28["duracao_s"]):
-			shields.erase(sh)
-			for i in 3:   # os painéis caem soltos
-				var pr2 := _panel_rect(sh, i)
-				var parts := [{"tex": [Data.tex("spells/s28_painel")], "rect": Rect2(-pr2.size / 2.0, pr2.size), "mod": Color.WHITE}]
-				var dbr: Node2D = main.Debris.new()
-				dbr.setup(parts, pr2.get_center(), 1 if i % 2 == 0 else -1, Vector2((i - 1) * 120.0, -220.0 - i * 60.0))
-				main.world.add_child(dbr)
-			Audio.play("caixote_quebra", 1.4, -2.0)
-
 # ---------------------------------------------------------------- desenho da Etapa 3
 func _draw_etapa3() -> void:
-	# S07 vento: riscos correndo no cone, poeira e hélice borrada
+	# C02 vento: riscos correndo no cone, poeira e hélice borrada
 	for r in main.robots:
-		if not r.alive or not slot.has(r.pid) or slot[r.pid]["id"] != "S07" or not slot[r.pid]["channel"]:
+		if not r.alive or not slot.has(r.pid) or slot[r.pid]["id"] != "C02" or not slot[r.pid]["channel"]:
 			continue
-		var ow := muzzle(r, "S07")
+		var ow := muzzle(r, "C02")
 		var adw := aim_dir(r)
-		var rng := float(sc("S07")["alcance_tiles"]) * T
+		var rng := float(sc("C02")["alcance_tiles"]) * T
 		if fmod(t, 0.06) < 0.02:
 			var gp := ow + adw * randf_range(60, rng)
 			main.dust(Vector2(gp.x, r.position.y) if absf(adw.y) < 0.3 else gp, 0.4)
@@ -2739,10 +2546,10 @@ func _draw_etapa3() -> void:
 			if v != r and v.alive and v.last_cause == "turboventilador" and v.last_hit < 0.05:
 				v.vis.s_sqx[0] = 1.0 + randf_range(-0.06, 0.06)
 				v.vis.s_sqy[0] = 1.0 + randf_range(-0.05, 0.05)
-	# S08 corrente de elos (ovais alternados, com barriga enquanto sai) + garra de 3 dentes que abre em voo e fecha ao pegar
+	# C03 corrente de elos (ovais alternados, com barriga enquanto sai) + garra de 3 dentes que abre em voo e fecha ao pegar
 	for h in hooks:
 		var owner = main.robots[h["owner"]]
-		var a := muzzle(owner, "S08") if slot.has(h["owner"]) and slot[h["owner"]]["id"] == "S08" else hand(owner)
+		var a := muzzle(owner, "C03") if slot.has(h["owner"]) and slot[h["owner"]]["id"] == "C03" else hand(owner)
 		var b: Vector2 = h["pos"]
 		var L := a.distance_to(b)
 		var dirv := (b - a).normalized() if L > 1.0 else Vector2(owner.facing, 0)
@@ -2782,9 +2589,9 @@ func _draw_etapa3() -> void:
 		if h.get("snap", 0.0) > 0.0:   # estalo ao fechar
 			var u: float = 1.0 - h["snap"]
 			draw_arc(b, 14.0 + 22.0 * u, 0, TAU, 16, Color(1, 1, 1, 1.0 - u), 3.0, true)
-	# S21 laço de energia: esfera elétrica com rastro; acertou → algema de energia em cada robô e um raio entre eles
+	# C05 laço de energia: esfera elétrica com rastro; acertou → algema de energia em cada robô e um raio entre eles
 	# (frouxo: ondula; esticado: mais grosso, mais claro e estalando); soltou → descarga nas duas pontas
-	var c21: Dictionary = sc("S21")
+	var c21: Dictionary = sc("C05")
 	for l in lassos:
 		var p: Vector2 = l["pos"]
 		var dv: Vector2 = l["vel"].normalized()
@@ -2825,8 +2632,8 @@ func _draw_etapa3() -> void:
 			for k in 5:
 				var a2 := k * TAU / 5.0 + u
 				_draw_bolt(q, q + Vector2.from_angle(a2) * (16.0 + 26.0 * u), 0.0, 4.0, t + k, 1.0 - u)
-	# S12 cargas: cai e gruda, luz pisca na cor do dono (mais rápido perto de explodir), círculo de alcance quando armada
-	var c12: Dictionary = sc("S12")
+	# E02 cargas: cai e gruda, luz pisca na cor do dono (mais rápido perto de explodir), círculo de alcance quando armada
+	var c12: Dictionary = sc("E02")
 	var ctex := Data.tex("spells/s12_carga")
 	for ch in charges_placed:
 		var p: Vector2 = ch["pos"]
@@ -2845,18 +2652,9 @@ func _draw_etapa3() -> void:
 			draw_set_transform(p, 0.0, Vector2(1.0, 0.3))
 			draw_arc(Vector2.ZERO, float(c12["raio_tiles"]) * T, 0, TAU, 40, Color(pc, 0.35 + (0.3 if on else 0.0)), 4.0, true)
 			draw_set_transform(Vector2.ZERO)
-	# S25 pontes: painéis desdobrando um a um a partir da beirada; piscam e dobram de volta
-	var ptex := Data.tex("spells/s25_tabua")
-	for br in bridges:
-		_draw_bridge(br["x0"], br["y"], br["dir"], br["k"], br["t"], Color.WHITE, br.get("slope", 0.0))
-	for r in main.robots:   # prévia para quem tem a spell
-		if r.alive and slot.has(r.pid) and slot[r.pid]["id"] == "S25" and not slot[r.pid].has("empty_t"):
-			var br2 := bridge_rect(r)
-			var ok := bridge_ok(r, br2)
-			_draw_bridge(r.position.x + (r.facing * 20.0 if ramp_mode(r) else 0.0), _floor_y(r), r.facing, 1.0, 9.0, Color(0.45, 0.92, 1.0, 0.4) if ok else Color(1, 0.35, 0.35, 0.35), RAMP if ramp_mode(r) else 0.0)
-	# S27 mira na viga mais perto (retícula) para quem tem o controle
+	# E03 mira na viga mais perto (retícula) para quem tem o controle
 	for r in main.robots:
-		if r.alive and slot.has(r.pid) and slot[r.pid]["id"] == "S27" and not slot[r.pid].has("empty_t"):
+		if r.alive and slot.has(r.pid) and slot[r.pid]["id"] == "E03" and not slot[r.pid].has("empty_t"):
 			# todas as vigas que dá para soltar ganham um receptor piscando no cabo (fica claro onde a spell funciona)
 			var ct2 = demo.canteiro
 			if ct2 != null and is_instance_valid(ct2):
@@ -2883,58 +2681,6 @@ func _draw_etapa3() -> void:
 			draw_line(top, top + Vector2(0, -60), Color(1, 0.85, 0.4), 3.0, true)
 			for k in 3:
 				main.spark(top + Vector2(0, -20 - k * 12), 1)
-	# S28 muro de solda: 3 painéis encaixam um por um (de baixo para cima; no teto, do meio para os lados) com
-	# cordão de solda incandescente que esfria; maçarico do dono soltando faíscas; amassa e racha ao levar tiro
-	var wtex := Data.tex("spells/s28_painel")
-	var ttex := Data.tex("spells/s28_topo")
-	for sh in shields:
-		var k: float = sh["k"]
-		var left: float = float(sc("S28")["duracao_s"]) - sh["t"]
-		var mod := Color(1, 1, 1).lerp(Color(1.8, 1.6, 1.4), sh["flash"])
-		if left < 1.0 and fmod(t, 0.2) < 0.1:
-			mod.a = 0.55
-		var shake: Vector2 = Vector2(sin(t * 90.0), 0) * 3.0 * sh["flash"]
-		var dmg := int(sc("S28")["resistencia"]) - int(sh["hp"])
-		for i in 3:
-			var u := clampf(k * 3.0 - i, 0.0, 1.0)   # 0 → 1 enquanto este painel desce/encaixa
-			if u <= 0.0:
-				continue
-			var pr := _panel_rect(sh, i)
-			var drop := (1.0 - _ease_back(u)) * (-34.0 if not sh.get("roof", false) else 0.0)
-			var wscale := 1.0 if not sh.get("roof", false) else _ease_back(u)
-			var rr := Rect2(pr.position + Vector2(pr.size.x * (1.0 - wscale) / 2.0, drop) + shake, Vector2(pr.size.x * wscale, pr.size.y))
-			draw_texture_rect(wtex, rr, false, mod)
-			if dmg > i:   # rachado
-				draw_polyline(PackedVector2Array([rr.position + Vector2(6, rr.size.y * 0.3), rr.get_center() + Vector2(-2, 4), rr.end - Vector2(8, rr.size.y * 0.25)]), INK, 2.5, true)
-			# cordão de solda até o painel de baixo: branco → laranja → cinza
-			var heat := clampf(1.0 - (sh["t"] - (i + 0.7) / 3.0 * 0.5) / 1.2, 0.0, 1.0) if u >= 0.7 else 0.0
-			var seam_a := Vector2(rr.position.x + 3, rr.end.y) if not sh.get("roof", false) else Vector2(rr.position.x, rr.position.y + 3)
-			var seam_b := Vector2(rr.end.x - 3, rr.end.y) if not sh.get("roof", false) else Vector2(rr.position.x, rr.end.y - 3)
-			var sc_col := Color(0.42, 0.45, 0.5).lerp(Color(1, 0.55, 0.2), heat).lerp(Color(1, 0.97, 0.85), maxf(heat - 0.6, 0.0) * 2.5)
-			draw_line(seam_a, seam_b, sc_col, 4.0, true)
-		if not sh.get("roof", false) and k >= 1.0:
-			var top: Rect2 = sh["rect"]
-			draw_texture_rect(ttex, Rect2(top.position + shake + Vector2(-2, 0), Vector2(top.size.x + 4, 14)), false, mod)
-		if k < 1.0:   # maçarico do dono: chama azul e jorro de faíscas até o painel que está encaixando
-			var ow = main.robots[sh["owner"]]
-			var tip: Vector2 = hand(ow) + Vector2(ow.facing * 14.0, 0)
-			var tgt := _panel_rect(sh, mini(int(k * 3.0), 2)).get_center()
-			draw_circle(tip, 6.0, Color(0.55, 0.85, 1.0, 0.9))
-			draw_circle(tip, 3.0, Color.WHITE)
-			for j in 6:
-				var v := fposmod(t * 6.0 + j * 0.17, 1.0)
-				var q := tip.lerp(tgt, v) + Vector2(sin(j * 3.1 + t * 20.0), cos(j * 2.3 + t * 17.0)) * 10.0 * v
-				draw_circle(q, 2.2, Color(1, 0.85, 0.4, 1.0 - v))
-
-## Painel i (0 = base) do muro de solda (ou do teto: 0 = meio, 1 e 2 = lados).
-func _panel_rect(sh: Dictionary, i: int) -> Rect2:
-	var r: Rect2 = sh["rect"]
-	if sh.get("roof", false):
-		var w := r.size.x / 3.0
-		var order := [1, 0, 2]
-		return Rect2(r.position.x + order[i] * w, r.position.y, w, r.size.y)
-	return Rect2(r.position.x, r.end.y - (i + 1) * 40.0, r.size.x, 40.0)
-
 ## Raio de energia de a até b: zigue-zague que muda a cada 1/20 s, com brilho largo ciano e miolo branco.
 ## stretch 0..1 (esticado: mais grosso/claro, puxa para o magenta), slack = barriga para baixo, alpha = piscar.
 func _draw_bolt(a: Vector2, b: Vector2, stretch: float, slack: float, seed_t: float, alpha := 1.0) -> void:
@@ -2952,45 +2698,22 @@ func _draw_bolt(a: Vector2, b: Vector2, stretch: float, slack: float, seed_t: fl
 	draw_polyline(pts, Color(glow, 0.9 * alpha), 5.0 + 2.0 * stretch, true)
 	draw_polyline(pts, Color(1, 1, 1, alpha), 2.0, true)
 
-## Ponte: N painéis presos em dobradiça; cada um gira de "em pé" para deitado em sequência (k 0→1); dobra no fim.
-func _draw_bridge(x0: float, y: float, dir: float, k: float, left: float, mod: Color, slope := 0.0) -> void:
-	var tex := Data.tex("spells/s25_tabua")
-	var n := int(float(sc("S25")["comprimento_tiles"]))
-	var open := k
-	if left < 0.4:
-		open = clampf(left / 0.4, 0.0, 1.0)
-	var m := mod
-	if left < 1.4 and left >= 0.4 and fmod(t, 0.2) < 0.1:
-		m = Color(mod.r, mod.g * 0.7, mod.b * 0.6, mod.a)
-	var hinge := Vector2(x0, y)
-	for i in n:
-		var u := clampf(open * n - i, 0.0, 1.0)
-		if u <= 0.0:
-			break
-		var a := lerpf(PI / 2.0, slope, u)   # em pé (dobrado para cima) → deitado (ou na inclinação da rampa)
-		var xa := Vector2(dir * cos(a), -sin(a))
-		var ya := Vector2(-xa.y, xa.x) * dir
-		draw_set_transform_matrix(Transform2D(xa, ya, hinge))
-		draw_texture_rect(tex, Rect2(0, -2, 64, 20), false, m)
-		draw_set_transform(Vector2.ZERO)
-		hinge += xa * 64.0
-
 # ================================================================ ETAPA 4: transformações
 func _start_form(r, s: Dictionary) -> void:
 	var c: Dictionary = sc(s["id"])
 	s["t"] = float(c["duracao_s"])
 	s["data"]["assemble"] = 0.0
 	match s["id"]:
-		"S14":
+		"T02":
 			r.spell_speed = float(c["vel_mult"])
 			r.spell_push = float(c["empurrao_mult"])
-		"S15":
+		"T03":
 			r.spell_form = "bola"
 			r.own_vx = r.facing * 300.0
-		"S31":
+		"T05":
 			r.spell_speed = float(c["vel_mult"])
 			r.spell_push = float(c["empurrao_mult"])
-		"S34":
+		"T07":
 			r.spell_speed = float(c["vel_mult"])
 			r.spell_push = float(c["empurrao_mult"])
 			r.spell_hit = float(c["golpe_mult"])
@@ -3019,10 +2742,10 @@ func _end_form(r, natural: bool) -> void:
 		slot[r.pid]["t"] = -1.0
 		slot[r.pid]["channel"] = false
 	# peças voando na desmontagem
-	var texs := {"S14": [["a14_frente", Rect2(-36, -31, 72, 62)], ["a14_costas", Rect2(-36, -31, 72, 62)], ["a14_mastro", Rect2(-10, -30, 20, 60)]],
-		"S15": [["s15_bola", Rect2(-30, -30, 60, 60)]],
-		"S31": [["a31_frente", Rect2(-36, -31, 72, 62)], ["a31_costas", Rect2(-36, -31, 72, 62)], ["a31_braco", Rect2(-30, -15, 60, 30)]],
-		"S33": [["a33_frente", Rect2(-36, -31, 72, 62)], ["a33_costas", Rect2(-36, -31, 72, 62)], ["a33_tocha", Rect2(-24, -10, 48, 20)]]}
+	var texs := {"T02": [["a14_frente", Rect2(-36, -31, 72, 62)], ["a14_costas", Rect2(-36, -31, 72, 62)], ["a14_mastro", Rect2(-10, -30, 20, 60)]],
+		"T03": [["s15_bola", Rect2(-30, -30, 60, 60)]],
+		"T05": [["a31_frente", Rect2(-36, -31, 72, 62)], ["a31_costas", Rect2(-36, -31, 72, 62)], ["a31_braco", Rect2(-30, -15, 60, 30)]],
+		"T06": [["a33_frente", Rect2(-36, -31, 72, 62)], ["a33_costas", Rect2(-36, -31, 72, 62)], ["a33_tocha", Rect2(-24, -10, 48, 20)]]}
 	if texs.has(id):
 		var parts := []
 		for tp in texs[id]:
@@ -3039,9 +2762,9 @@ func _end_form(r, natural: bool) -> void:
 func _fork_tip(r, lift: float) -> Vector2:
 	return r.position + Vector2(r.facing * 58.0, -12.0 - lift * 58.0)
 
-## S14: garfo sobe; se tem rival (ou caixa) na frente, ergue; 2º toque (ou tempo) joga para a frente (▲ mais alto).
+## T02: garfo sobe; se tem rival (ou caixa) na frente, ergue; 2º toque (ou tempo) joga para a frente (▲ mais alto).
 func _fork_action(r, s: Dictionary) -> void:
-	var c: Dictionary = sc("S14")
+	var c: Dictionary = sc("T02")
 	var d: Dictionary = s["data"]
 	if d.get("lift_t", -1.0) >= 0.0:
 		_fork_toss(r, s)
@@ -3064,7 +2787,7 @@ func _fork_action(r, s: Dictionary) -> void:
 	Audio.play("elevador", 1.6, -2.0)
 
 func _fork_toss(r, s: Dictionary) -> void:
-	var c: Dictionary = sc("S14")
+	var c: Dictionary = sc("T02")
 	var d: Dictionary = s["data"]
 	var tg = d.get("lift")
 	var up := aim_vec(r).y < -0.5
@@ -3085,9 +2808,9 @@ func _fork_toss(r, s: Dictionary) -> void:
 	s["fire"] = 0.0
 	main.shake(4.0)
 
-## S16 Jetpack: segurar = voar (sobe; ◄► pilota de lado; ▲ sobe mais rápido, ▼ desce devagar) gastando combustível.
+## T04 Jetpack: segurar = voar (sobe; ◄► pilota de lado; ▲ sobe mais rápido, ▼ desce devagar) gastando combustível.
 func _update_jet(r, s: Dictionary, dt: float) -> void:
-	var c: Dictionary = sc("S16")
+	var c: Dictionary = sc("T04")
 	var d: Dictionary = s["data"]
 	var thrust: bool = held(r) and s["energy"] > 0.0 and r.alive
 	d["thrust"] = thrust
@@ -3125,7 +2848,7 @@ func _update_form(r, s: Dictionary, dt: float) -> void:
 	var c: Dictionary = sc(s["id"])
 	var d: Dictionary = s["data"]
 	var a_before: float = float(d.get("assemble", 0.0))
-	d["assemble"] = minf(a_before + dt / (0.55 if s["id"] == "S34" else 0.38), 1.0)
+	d["assemble"] = minf(a_before + dt / (0.55 if s["id"] == "T07" else 0.38), 1.0)
 	if a_before < 1.0 and d["assemble"] >= 1.0:   # travou: clarão, faíscas, robô dá uma achatada
 		for k in 10:
 			main.spark(r.rect().get_center() + Vector2(randf_range(-26, 26), randf_range(-36, 26)), 1)
@@ -3137,7 +2860,7 @@ func _update_form(r, s: Dictionary, dt: float) -> void:
 	d["flash"] = maxf(float(d.get("flash", 0.0)) - dt * 4.0, 0.0)
 	s["t"] -= dt
 	match s["id"]:
-		"S14":   # garfo erguendo: segura o rival na ponta por pouco tempo e joga
+		"T02":   # garfo erguendo: segura o rival na ponta por pouco tempo e joga
 			if d.get("lift_t", -1.0) >= 0.0:
 				d["lift_t"] += dt
 				var k := minf(d["lift_t"] / 0.25, 1.0)
@@ -3155,7 +2878,7 @@ func _update_form(r, s: Dictionary, dt: float) -> void:
 					_fork_toss(r, s)
 			elif d.has("drop_t"):
 				d["drop_t"] += dt
-		"S15":   # bola: quem é atropelado leva o golpe (uma vez a cada meio segundo)
+		"T03":   # bola: quem é atropelado leva o golpe (uma vez a cada meio segundo)
 			r.vis.visible = float(d["assemble"]) < 0.75   # as placas fecham e o robô some dentro
 			d["roll"] = float(d.get("roll", 0.0)) + r.velocity.x * dt / 36.0
 			var hc: Dictionary = d.get("hitcd", {})
@@ -3172,7 +2895,7 @@ func _update_form(r, s: Dictionary, dt: float) -> void:
 				if fmod(t, 0.05) < dt and r.is_on_floor():
 					main.dust(r.position + Vector2(-signf(r.own_vx) * 20.0, 0), 0.5)
 			d["squash"] = maxf(float(d.get("squash", 0.0)) - dt * 5.0, 0.0)
-		"S31":   # broca-braço: mira em 8 direções (▼ no chão fura para baixo); fura rival e trecho do Canteiro
+		"T05":   # broca-braço: mira em 8 direções (▼ no chão fura para baixo); fura rival e trecho do Canteiro
 			var hc2: Dictionary = d.get("hitcd", {})
 			for oid in hc2.keys():
 				hc2[oid] -= dt
@@ -3204,7 +2927,7 @@ func _update_form(r, s: Dictionary, dt: float) -> void:
 					Audio.play("furadeira", 1.0, -6.0)
 			if fmod(t, 0.04) < dt:
 				main.spark(tip, 1)
-		"S33":   # soldador: segurar = arco curto à frente; parado com ▼ conserta 1 ponto de um trecho danificado
+		"T06":   # soldador: segurar = arco curto à frente; parado com ▼ conserta 1 ponto de um trecho danificado
 			var on: bool = s["channel"] and held(r) and s["energy"] > 0.0
 			if s["channel"] and not on:
 				s["channel"] = false
@@ -3244,7 +2967,7 @@ func _update_form(r, s: Dictionary, dt: float) -> void:
 					Audio.play("item", 1.4)
 			else:
 				d["rep_t"] = 0.0
-		"S34":
+		"T07":
 			var target: float = lerpf(1.0, float(c["tamanho"]), float(d["assemble"]))
 			if s["t"] < 0.4:
 				target = lerpf(float(c["tamanho"]), 1.0, 1.0 - s["t"] / 0.4)
@@ -3290,12 +3013,12 @@ func _draw_etapa4() -> void:
 		var end_blink: bool = s["t"] < 1.0 and fmod(t, 0.16) < 0.08
 		var mod := Color(1.5, 1.4, 1.3) if end_blink else Color.WHITE
 		match s["id"]:
-			"S14": _draw_forklift(r, d, fk, mod)
-			"S15": _draw_ball(r, d, fk, mod)
-			"S33": _draw_welder(r, d, fk, mod)
-	# S16 jetpack: dois jatos saindo dos bicos (grandes acelerando, chama-piloto no resto), inclinados com o corpo
+			"T02": _draw_forklift(r, d, fk, mod)
+			"T03": _draw_ball(r, d, fk, mod)
+			"T06": _draw_welder(r, d, fk, mod)
+	# T04 jetpack: dois jatos saindo dos bicos (grandes acelerando, chama-piloto no resto), inclinados com o corpo
 	for r in main.robots:
-		if not r.alive or not slot.has(r.pid) or slot[r.pid]["id"] != "S16" or slot[r.pid]["t"] <= 0.0:
+		if not r.alive or not slot.has(r.pid) or slot[r.pid]["id"] != "T04" or slot[r.pid]["t"] <= 0.0:
 			continue
 		var pw: float = float(slot[r.pid]["data"].get("power", 0.0))
 		var tilt := clampf(r.velocity.x / 600.0, -1.0, 1.0) * 0.38
@@ -3313,9 +3036,9 @@ func _draw_etapa4() -> void:
 		var u: float = m["t"] / 0.9
 		draw_circle(m["pos"], m["size"] * (0.6 + u), Color(0.42, 0.4, 0.44, 0.5 * (1.0 - u)))
 		draw_circle(m["pos"] + Vector2(-3, -3), m["size"] * 0.4 * (0.6 + u), Color(0.7, 0.7, 0.72, 0.4 * (1.0 - u)))
-	# S34: raio encolhedor (escaneamento) e rastro de vultos correndo
+	# T07: raio encolhedor (escaneamento) e rastro de vultos correndo
 	for r in main.robots:
-		if not r.alive or not slot.has(r.pid) or slot[r.pid]["id"] != "S34" or slot[r.pid]["t"] <= 0.0:
+		if not r.alive or not slot.has(r.pid) or slot[r.pid]["id"] != "T07" or slot[r.pid]["t"] <= 0.0:
 			continue
 		var s34: Dictionary = slot[r.pid]
 		var fk: float = float(s34["data"].get("assemble", 1.0))
@@ -3341,7 +3064,7 @@ func _ptag(r, at: Vector2) -> void:   # marcador "P1" quando o robô está escon
 	draw_colored_polygon(PackedVector2Array([at + Vector2(-7, -12), at + Vector2(7, -12), at + Vector2(0, -3)]), pc)
 	Kit.text(self, at + Vector2(-30, -20), "P%d" % (r.pid + 1), 22, pc, HORIZONTAL_ALIGNMENT_CENTER, 60, 5, INK)
 
-## S14: mastro preso na frente da armadura-cabine, garfo subindo nele (o robô veste a cabine — robot_visual).
+## T02: mastro preso na frente da armadura-cabine, garfo subindo nele (o robô veste a cabine — robot_visual).
 func _draw_forklift(r, d: Dictionary, fk: float, mod: Color) -> void:
 	var f := float(r.facing)
 	var lift := 0.0
@@ -3362,7 +3085,7 @@ func _draw_forklift(r, d: Dictionary, fk: float, mod: Color) -> void:
 		draw_rect(Rect2(41, yy - 1, 32, 3), Color("#c9d1d8"))
 	draw_set_transform(Vector2.ZERO)
 
-## S15: bola — enquanto monta, duas cascas fecham sobre o robô; depois esfera rolando com olhos espiando.
+## T03: bola — enquanto monta, duas cascas fecham sobre o robô; depois esfera rolando com olhos espiando.
 func _draw_ball(r, d: Dictionary, fk: float, mod: Color) -> void:
 	var c: Vector2 = r.position + Vector2(0, -36)
 	var tex := Data.tex("spells/s15_bola")
@@ -3390,11 +3113,11 @@ func _draw_ball(r, d: Dictionary, fk: float, mod: Color) -> void:
 		draw_circle(c, 44.0, Color(1, 1, 1, 0.5 * d["flash"]))
 	_ptag(r, c + Vector2(0, -50))
 
-## S33: arco de solda saindo do maçarico-braço (o robô veste a armadura de soldador — robot_visual).
+## T06: arco de solda saindo do maçarico-braço (o robô veste a armadura de soldador — robot_visual).
 func _draw_welder(r, d: Dictionary, fk: float, mod: Color) -> void:
 	if d.get("arc", false):
 		var a := muzzle(r, "F33")
-		var b := a + aim_dir(r) * float(sc("S33")["arco_alcance"])
+		var b := a + aim_dir(r) * float(sc("T06")["arco_alcance"])
 		_draw_bolt(a, b, 0.7, 0.0, t)
 		draw_circle(a, 9.0, Color(0.75, 0.9, 1.0, 0.9))
 		draw_circle(a, 4.0, Color.WHITE)
@@ -3406,12 +3129,12 @@ func _draw_welder(r, d: Dictionary, fk: float, mod: Color) -> void:
 			smokes.append({"pos": b, "vel": Vector2(randf_range(-20, 20), -70), "t": 0.0, "size": 6.0})
 	var rep: float = float(d.get("rep_t", 0.0))
 	if rep > 0.0:   # anel de progresso do conserto
-		var k := clampf(rep / float(sc("S33")["reparo_s"]), 0.0, 1.0)
+		var k := clampf(rep / float(sc("T06")["reparo_s"]), 0.0, 1.0)
 		var c: Vector2 = r.position + Vector2(0, -140)
 		draw_arc(c, 18.0, 0, TAU, 24, Color(0.85, 0.87, 0.9, 0.9), 6.0, true)
 		draw_arc(c, 18.0, -PI / 2.0, -PI / 2.0 + TAU * k, 24, Color("#5cc45c"), 6.0, true)
 
-## S34 correndo rápido: vultos do robô ficando para trás (nó "trail" com transparência própria).
+## T07 correndo rápido: vultos do robô ficando para trás (nó "trail" com transparência própria).
 var trail_pts := {}
 func _draw_trails() -> void:
 	if trail_node == null:
@@ -3420,7 +3143,7 @@ func _draw_trails() -> void:
 
 func _draw_trail_node() -> void:
 	for r in main.robots:
-		if not r.alive or not slot.has(r.pid) or slot[r.pid]["id"] != "S34" or slot[r.pid]["t"] <= 0.0:
+		if not r.alive or not slot.has(r.pid) or slot[r.pid]["id"] != "T07" or slot[r.pid]["t"] <= 0.0:
 			trail_pts.erase(r.pid)
 			continue
 		var arr: Array = trail_pts.get(r.pid, [])

@@ -7,14 +7,14 @@
 | **Modo** | objetivo, vitória, regras, **classes de spell**, regras de destruição/transição, bibliotecas de comportamentos reutilizáveis | Derruba: Ataque, Controle, Engenharia, Transformação; cenas por 90% de destruição | `data/modos.json` → `demolicao.modos[<modo>]` + `demolicao.spells`/`eventos` (bibliotecas) |
 | **Mapa** | conceito, direção visual, cenas, **spells autorizadas**, eventos autorizados, perigos/mecanismos, skins originadas | Canteiro de Obras (Térreo → Fundação) | `data/mapas/<modo>/<mapa>.json` + `docs/fases/<modo>/<mapa>/` + `levels/<mapa>.lvl` |
 | **Cena** | região jogável: arquitetura (base fixa × destrutível), eventos da cena, instâncias de perigos/mecanismos, próxima cena | Térreo, Fundação | `cenas[]` do manifesto + `etapaN`/`koN`/`buracoN` no `.lvl` |
-| **Elemento** | spell, evento, perigo/mecanismo, skin: especificação, arte, animação, testes e aprovação individuais | S13 Armadura Fornalha, V3 Enchente, M6 Bate-estaca | manual do tipo + biblioteca do mapa |
+| **Elemento** | spell, evento, perigo/mecanismo, skin: especificação, arte, animação, testes e aprovação individuais | T01 Armadura Fornalha, V3 Enchente, M6 Bate-estaca | manual do tipo + biblioteca do mapa |
 
 Personagens **não pertencem** a modos nem a mapas. Classes de spell são do **modo** (o mapa nunca cria classe). Skins têm
 **origem no mapa** (nunca no modo).
 
 ## 2. Quatro conceitos que não se misturam
 - **Definição técnica** — o comportamento reutilizável (código + números). Ex.: tipo `bate_estaca` em `mecanismos.gd`.
-- **Origem artística** — o mapa que inspirou o elemento. Ex.: S13 nasceu no Canteiro.
+- **Origem artística** — o mapa que inspirou o elemento. Ex.: T01 nasceu no Canteiro.
 - **Autorização** — a lista explícita de mapas (e cenas) onde pode aparecer. Ex.: `spells_permitidas`, `cenas[].eventos`.
 - **Instância** — posição, parâmetros e estado naquela cena. Ex.: `cenas[1].mecanismos[M6] = {x: 1440, …}`.
 Um elemento **não aparece** num mapa só porque existe na biblioteca: precisa estar autorizado no manifesto. Mapa sem

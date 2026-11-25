@@ -1190,9 +1190,9 @@ func lab_test() -> void:
 	await tap("v0", "start")
 	check(lab.open and main.paused and lab.rows().size() <= 10, "START abre o menu curto (%d linhas)" % lab.rows().size())
 	lab.sel = lab.rows().find("spell")
-	lab.spell_i = lab.spells().find("S03")
+	lab.spell_i = lab.spells().find("A03")
 	await tap("v0", "jump")
-	check(main.demo.spells.hud_info(0).get("id", "") == "S03" and not lab.open, "menu: SPELL entrega a escolhida ao P1")
+	check(main.demo.spells.hud_info(0).get("id", "") == "A03" and not lab.open, "menu: SPELL entrega a escolhida ao P1")
 	await tap("v0", "start")
 	lab.sel = lab.rows().find("evento")
 	lab.event_i = 0
@@ -1307,7 +1307,7 @@ func canteiro_test() -> void:
 	var seg2 = ct.parts[1]
 	var sp = main.demo.spells
 	sp.boxes.clear()
-	sp.drop_box("S01", Vector2(seg2["rect"].get_center().x, 0))
+	sp.drop_box("A01", Vector2(seg2["rect"].get_center().x, 0))
 	await frames(150)
 	var it: Dictionary = sp.boxes[0] if sp.boxes.size() > 0 else {}
 	check(not it.is_empty() and absf(it["pos"].y + 30.0 - seg2["rect"].position.y) < 8.0, "caixa pousa em cima da laje (y %.0f, laje %.0f)" % [it.get("pos", Vector2.ZERO).y + 30.0, seg2["rect"].position.y])
@@ -1575,24 +1575,6 @@ func eventos_test() -> void:
 		check(inband and ev.rivets.size() > 0, "G14: rebites só caem nas faixas marcadas")
 		await wait_end.call(a)
 		check(ev.rivets.size() < 60, "G14: densidade limitada")
-	# G09 Inspeção: conserta rachadura e recolhe entulho
-	reset.call()
-	var lj0: Dictionary = ct.parts.filter(func(p): return p["kind"] == "laje" and not p["nucleo"] and not p["fallen"] and p["crit_t"] <= 0.0)[0]
-	lj0["hp"] = int(lj0["max"] * 0.5)
-	lj0["state"] = 1
-	ev._drop_crate(Vector2(fx + 200.0, fy))
-	await frames(80)
-	a = await go.call("G09")
-	await wait_phase.call(a, "ativo")
-	await frames(2)
-	var lj: Dictionary = ct.parts.filter(func(p): return p["kind"] == "laje" and not p["nucleo"] and not p["fallen"])[0]
-	var hp0: int = lj["hp"]
-	ct.damage(lj, 3, lj["rect"].get_center())
-	check(ev.inspecao and lj["hp"] == hp0, "G09: estrutura reforçada durante a inspeção")
-	await wait_end.call(a)
-	check(not ev.inspecao, "G09: liberado no fim")
-	check(int(lj0["state"]) == 0 and not lj0["fallen"], "G09: o drone conserta um estágio de rachadura")
-	check(ev.crates.is_empty(), "G09: o drone recolhe o entulho do chão")
 	# conflitos e simultâneos
 	await go.call("G02")
 	await go.call("G03")
@@ -1655,7 +1637,7 @@ func etapas_test() -> void:
 	var sp = main.demo.spells
 	sp.spawn_t = 999.0
 	sp.boxes.clear()
-	sp.drop_box("S02", Vector2(6 * 64.0, 17 * 64.0), false)   # caixa no térreo: tem de cair junto para a Fundação
+	sp.drop_box("A02", Vector2(6 * 64.0, 17 * 64.0), false)   # caixa no térreo: tem de cair junto para a Fundação
 	# --- gatilho por DESTRUIÇÃO (90%), não por tempo
 	var ct = main.demo.canteiro
 	et.dcfg["intervalo_s"] = [999, 999]   # diretor parado: aqui só o dano dos testes conta
@@ -1699,7 +1681,7 @@ func etapas_test() -> void:
 		await frames(1)
 		w += 1
 	check(et.state == "aviso" and main.demo.banner.begins_with("A OBRA") and ct.progresso(1) >= 0.9, "90%% de destruição → \"A OBRA VAI CEDER!\" (%.0f%%, %.1f s)" % [ct.progresso(1) * 100.0, w / 60.0])
-	sp.equip(r1, "S16")   # jetpack ligado bem na virada (bug: voava para fora da queda)
+	sp.equip(r1, "T04")   # jetpack ligado bem na virada (bug: voava para fora da queda)
 	sp.use(r1)
 	await frames(int(float(et.cfg["aviso_s"]) * 60.0) + 4)
 	check(et.state == "queda" and main.demo.canteiro.parts.all(func(p): return p["fallen"] or int(p["etapa"]) == 2), "a estrutura TODA da etapa 1 desaba (inclusive núcleo e térreo)")
@@ -1719,7 +1701,7 @@ func etapas_test() -> void:
 			ct.damage(p, 99, p["rect"].get_center())
 	await frames(120)
 	check(et.etapa == 2 and et.state == "etapa" and not et.tem_proxima(), "última cena: destruída (%.0f%%) e sem transição inexistente" % (ct.progresso(2) * 100.0))
-	check(String(sp.flags(r1).get("spell", "")) != "S16", "o jetpack desliga na virada (ninguém foge da queda voando)")
+	check(String(sp.flags(r1).get("spell", "")) != "T04", "o jetpack desliga na virada (ninguém foge da queda voando)")
 	sp.spawn_box()
 	await frames(150)
 	var bx_ok: bool = sp.boxes.size() >= 1 and sp.boxes.all(func(b): return a2.has_point(b["pos"]) and b["pos"].y > a2.position.y + 140.0)
@@ -1735,9 +1717,9 @@ func mapa_test() -> void:
 	var classes: Dictionary = MapaReg.modo_cfg("derruba")["classes_spells"]
 	check(classes.keys() == ["ataque", "controle", "engenharia", "transformacao"], "classes de spell pertencem ao MODO Derruba (%s)" % str(classes.keys()))
 	var sp: Array = MapaReg.spells("derruba", "canteiro_obras", [])
-	check(sp.size() == 26, "Canteiro autoriza as 26 spells aprovadas (%d)" % sp.size())
-	check(MapaReg.spells("batata", "obra_concreto", ["S01"]).is_empty() and MapaReg.spells("derruba", "mapa_sem_manifesto", ["S01"]).is_empty(), "sem manifesto: nenhuma spell (outro modo não herda as do Derruba)")
-	check(MapaReg.spells("derruba", "demolicao", ["S01", "S02"]).size() == 2, "mapa-ferramenta (laboratório/testes) recebe o pool do modo, explícito")
+	check(sp.size() == 23, "Canteiro autoriza as 23 spells aprovadas (%d)" % sp.size())
+	check(MapaReg.spells("batata", "obra_concreto", ["A01"]).is_empty() and MapaReg.spells("derruba", "mapa_sem_manifesto", ["A01"]).is_empty(), "sem manifesto: nenhuma spell (outro modo não herda as do Derruba)")
+	check(MapaReg.spells("derruba", "demolicao", ["A01", "A02"]).size() == 2, "mapa-ferramenta (laboratório/testes) recebe o pool do modo, explícito")
 	var e1: Array = MapaReg.eventos("derruba", "canteiro_obras", 1)
 	var e2: Array = MapaReg.eventos("derruba", "canteiro_obras", 2)
 	check("V1" in e1 and not "V1" in e2 and "V3" in e2 and not "V3" in e1 and not "G01" in e1, "eventos por cena: V1 só no Térreo, V3 só na Fundação, G01 (ciclo) fora da lista")
@@ -2066,15 +2048,15 @@ func spells_test() -> void:
 	check(sp.spawn_points().size() >= 6 and sp.spawn_points().any(func(q): return q["fixo"]), "pontos de caixa fixos e variáveis no Canteiro (%d)" % sp.spawn_points().size())
 	# coleta por contato com slot vazio
 	place.call(6.0)
-	sp.drop_box("S03", Vector2(x0, floor_y - 120.0), false)
+	sp.drop_box("A03", Vector2(x0, floor_y - 120.0), false)
 	await frames(40)
-	check(sp.boxes.is_empty() and sp.hud_info(0).get("id", "") == "S03" and sp.hud_info(0)["charges"] == 3, "encostar na caixa pega a spell (S03, 3 cargas)")
-	# S03 canhão criogênico: congela quem acerta
+	check(sp.boxes.is_empty() and sp.hud_info(0).get("id", "") == "A03" and sp.hud_info(0)["charges"] == 3, "encostar na caixa pega a spell (A03, 3 cargas)")
+	# A03 canhão criogênico: congela quem acerta
 	place.call(6.0)
 	await frames(2)
 	await tap("v0", "item")
 	await frames(40)
-	check(r1.frozen_t > 0.0 and sp.frozen.has(1) and sp.hud_info(0)["charges"] == 2, "S03: tiro acerta e congela (%.1f s)" % r1.frozen_t)
+	check(r1.frozen_t > 0.0 and sp.frozen.has(1) and sp.hud_info(0)["charges"] == 2, "A03: tiro acerta e congela (%.1f s)" % r1.frozen_t)
 	var px: float = r1.position.x
 	vset("v1", "right", true)
 	await frames(20)
@@ -2110,30 +2092,30 @@ func spells_test() -> void:
 	check(kx_frozen > absf(r1.own_vx) * 1.2 and r1.frozen_t <= 0.0, "golpe no congelado estilhaça e empurra mais (%.0f × %.0f)" % [kx_frozen, absf(r1.own_vx)])
 	# troca: segurar o especial ~0,3 s sobre outra caixa; a antiga cai com as cargas e o dono não pega de volta na hora
 	place.call(8.0)
-	sp.drop_box("S01", Vector2(x0, floor_y - 120.0), false)
+	sp.drop_box("A01", Vector2(x0, floor_y - 120.0), false)
 	await frames(40)
-	check(sp.boxes.size() == 1 and sp.hud_info(0)["id"] == "S03", "com o slot ocupado, encostar não pega")
+	check(sp.boxes.size() == 1 and sp.hud_info(0)["id"] == "A03", "com o slot ocupado, encostar não pega")
 	vset("v0", "item", true)
 	await frames(int(float(sp.cfg["caixa"]["troca_s"]) * 60.0) + 4)
 	vset("v0", "item", false)
 	await frames(3)
 	var dropped: Dictionary = sp.boxes[0] if sp.boxes.size() == 1 else {}
-	check(sp.hud_info(0).get("id", "") == "S01" and dropped.get("id", "") == "S03" and dropped.get("charges", 0) == 1 and dropped["block"].has(0), "segurar troca: pega S01, o S03 cai com 1 carga e bloqueado para o dono")
+	check(sp.hud_info(0).get("id", "") == "A01" and dropped.get("id", "") == "A03" and dropped.get("charges", 0) == 1 and dropped["block"].has(0), "segurar troca: pega A01, o A03 cai com 1 carga e bloqueado para o dono")
 	await frames(20)
-	check(sp.hud_info(0)["id"] == "S01" and sp.boxes.size() == 1, "anti-recaptura: o dono não pega de volta na hora")
+	check(sp.hud_info(0)["id"] == "A01" and sp.boxes.size() == 1, "anti-recaptura: o dono não pega de volta na hora")
 	# toque rápido em cima de caixa usa a spell (não troca)
 	place.call(8.0)
 	put(r0, Vector2(dropped["pos"].x, floor_y))
 	await frames(2)
 	await tap("v0", "item")
 	await frames(4)
-	check(sp.hud_info(0)["id"] == "S01" and sp.flags(r0)["prep"] >= 0.0, "toque rápido sobre a caixa usa a spell atual")
+	check(sp.hud_info(0)["id"] == "A01" and sp.flags(r0)["prep"] >= 0.0, "toque rápido sobre a caixa usa a spell atual")
 	await frames(40)
-	# S06 superímã: segurar puxa todo mundo à frente enquanto a barra dura; soltar pausa
+	# C01 superímã: segurar puxa todo mundo à frente enquanto a barra dura; soltar pausa
 	sp.boxes.clear()
 	place.call(5.0)
 	sp.clear(r0)
-	sp.equip(r0, "S06")
+	sp.equip(r0, "C01")
 	await frames(2)
 	var d0: float = r1.position.x - r0.position.x
 	vset("v0", "item", true)
@@ -2141,25 +2123,25 @@ func spells_test() -> void:
 	vset("v0", "item", false)
 	await frames(2)
 	var e_left: float = sp.slot[0]["energy"]
-	check(r1.position.x - r0.position.x < d0 - 80.0 and e_left < float(sp.sc("S06")["energia_s"]) - 0.3 and not sp.slot[0]["channel"], "S06: segurando puxa o rival (%.0f → %.0f px) e gasta a barra" % [d0, r1.position.x - r0.position.x])
+	check(r1.position.x - r0.position.x < d0 - 80.0 and e_left < float(sp.sc("C01")["energia_s"]) - 0.3 and not sp.slot[0]["channel"], "C01: segurando puxa o rival (%.0f → %.0f px) e gasta a barra" % [d0, r1.position.x - r0.position.x])
 	vset("v0", "item", true)
 	await frames(int(e_left * 60.0) + 30)
 	vset("v0", "item", false)
-	check(sp.hud_info(0).is_empty(), "S06: barra acabou, o ímã some")
+	check(sp.hud_info(0).is_empty(), "C01: barra acabou, o ímã some")
 		# eliminação limpa o slot
 	sp.boxes.clear()
 	main.kill(r0, -1, null)
 	await frames(2)
 	check(sp.hud_info(0).is_empty(), "eliminado perde a spell (nada passa para o respawn)")
 	await frames(90)
-	# S01 punho pneumático: preparo, soco em linha
+	# A01 punho pneumático: preparo, soco em linha
 	place.call(3.0)
-	sp.equip(r0, "S01")
+	sp.equip(r0, "A01")
 	await frames(2)
 	await tap("v0", "item")
-	check(sp.flags(r0)["prep"] >= 0.0, "S01: começa a preparação (puxa o braço)")
-	await frames(int(float(sp.sc("S01")["preparo"]) * 60.0) + 12)
-	check(r1.dmg > 0.0 and r1.own_vx > 200.0 and sp.hud_info(0)["charges"] == 1, "S01: punho estica e arremessa o rival (dano %d%%, vx %.0f)" % [int(r1.dmg), r1.own_vx])
+	check(sp.flags(r0)["prep"] >= 0.0, "A01: começa a preparação (puxa o braço)")
+	await frames(int(float(sp.sc("A01")["preparo"]) * 60.0) + 12)
+	check(r1.dmg > 0.0 and r1.own_vx > 200.0 and sp.hud_info(0)["charges"] == 1, "A01: punho estica e arremessa o rival (dano %d%%, vx %.0f)" % [int(r1.dmg), r1.own_vx])
 	# golpe na preparação cancela sem gastar carga
 	place.call(3.0)
 	sp.slot[0]["cd"] = 0.0
@@ -2168,128 +2150,128 @@ func spells_test() -> void:
 	await frames(6)
 	r0.take_hit(-1, "rapido", 1)
 	await frames(30)
-	check(sp.hud_info(0).get("charges", 0) == 1 and r1.dmg == 0.0, "S01: levar golpe na preparação cancela (sem gastar carga)")
-	# S10 andaime relâmpago: plataforma 2 tiles acima, à frente; robô fica de pé nela
+	check(sp.hud_info(0).get("charges", 0) == 1 and r1.dmg == 0.0, "A01: levar golpe na preparação cancela (sem gastar carga)")
+	# E01 andaime relâmpago: plataforma 2 tiles acima, à frente; robô fica de pé nela
 	place.call(10.0)
 	sp.clear(r0)
-	sp.equip(r0, "S10")
+	sp.equip(r0, "E01")
 	await frames(2)
 	var pr: Rect2 = sp.scaffold_rect(r0)
 	await tap("v0", "item")
-	check(sp.platforms.size() == 1 and sp.hud_info(0)["charges"] == 1, "S10: andaime abre (1 carga restante)")
+	check(sp.platforms.size() == 1 and sp.hud_info(0)["charges"] == 1, "E01: andaime abre (1 carga restante)")
 	put(r1, Vector2(pr.get_center().x, pr.position.y - 80.0))
 	await frames(40)
-	check(absf(r1.position.y - pr.position.y) < 6.0 and r1.is_on_floor(), "S10: dá para ficar de pé no andaime (y %.0f, topo %.0f)" % [r1.position.y, pr.position.y])
+	check(absf(r1.position.y - pr.position.y) < 6.0 and r1.is_on_floor(), "E01: dá para ficar de pé no andaime (y %.0f, topo %.0f)" % [r1.position.y, pr.position.y])
 	put(r1, Vector2(sp.scaffold_rect(r0).get_center().x, sp.scaffold_rect(r0).position.y + 10.0))
 	await frames(1)
 	await tap("v0", "item")
-	check(sp.hud_info(0).get("charges", 0) == 1, "S10: lugar ocupado não gasta carga")
-	await frames(int(float(sp.sc("S10")["duracao_s"]) * 60.0))
-	check(sp.platforms.is_empty(), "S10: andaime dobra sozinho")
-	# S11 teleporte: segura para mirar (o robô para), move a mira com o direcional, solta para ir
+	check(sp.hud_info(0).get("charges", 0) == 1, "E01: lugar ocupado não gasta carga")
+	await frames(int(float(sp.sc("E01")["duracao_s"]) * 60.0))
+	check(sp.platforms.is_empty(), "E01: andaime dobra sozinho")
+	# C04 teleporte: segura para mirar (o robô para), move a mira com o direcional, solta para ir
 	place.call(10.0)
 	sp.clear(r0)
-	sp.equip(r0, "S11")
+	sp.equip(r0, "C04")
 	await frames(2)
 	var x_before: float = r0.position.x
 	vset("v0", "item", true)
 	await frames(3)
-	check(sp.aims.has(0) and r0.spell_lock, "S11: segurar abre a mira")
+	check(sp.aims.has(0) and r0.spell_lock, "C04: segurar abre a mira")
 	vset("v0", "right", true)
 	await frames(10)
 	vset("v0", "right", false)
 	vset("v0", "item", false)
 	await frames(30)
-	check(r0.position.x - x_before > 180.0 and sp.hud_info(0)["charges"] == 1 and not r0.spell_lock and r0.vis.visible, "S11: solta e teleporta %.1f tiles" % ((r0.position.x - x_before) / 64.0))
+	check(r0.position.x - x_before > 180.0 and sp.hud_info(0)["charges"] == 1 and not r0.spell_lock and r0.vis.visible, "C04: solta e teleporta %.1f tiles" % ((r0.position.x - x_before) / 64.0))
 	r0.facing = -1
 	put(r0, Vector2(main.level.ko_rect().position.x + 140.0, floor_y - 600.0))
 	await frames(1)
-	check(sp.teleport_dest(r0) == null, "S11: sem lugar livre não há destino")
-		# S13 armadura fornalha: toque veste; segurar solta um jato contínuo; acabou o combustível, explode
+	check(sp.teleport_dest(r0) == null, "C04: sem lugar livre não há destino")
+		# T01 armadura fornalha: toque veste; segurar solta um jato contínuo; acabou o combustível, explode
 	place.call(2.5)
 	sp.clear(r0)
-	sp.equip(r0, "S13")
+	sp.equip(r0, "T01")
 	await frames(2)
 	await tap("v0", "item")
-	check(r0.spell_speed < 1.0 and r0.spell_push < 1.0 and sp.flags(r0).get("armor", false), "S13: veste a armadura (mais lento, resiste a empurrão)")
+	check(r0.spell_speed < 1.0 and r0.spell_push < 1.0 and sp.flags(r0).get("armor", false), "T01: veste a armadura (mais lento, resiste a empurrão)")
 	await frames(25)
 	r0.dmg = 0.0
 	r0.invuln = 0.0
 	r0.take_hit(-1, "pesado", 1)
 	var kx_arm: float = absf(r0.own_vx)
-	check(kx_arm < float(main.demo.cfg["amassometro"]["pesado"]["kx"]) * 0.6, "S13: marretada empurra bem menos (%.0f)" % kx_arm)
+	check(kx_arm < float(main.demo.cfg["amassometro"]["pesado"]["kx"]) * 0.6, "T01: marretada empurra bem menos (%.0f)" % kx_arm)
 	await frames(30)
 	place.call(2.5)
 	await frames(2)
 	vset("v0", "item", true)
 	await frames(40)
-	check(r1.dmg > 0.0 and sp.slot[0]["energy"] < float(sp.sc("S13")["combustivel_s"]) - 0.4, "S13: segurando, o jato acerta quem está na frente (dano %d%%)" % int(r1.dmg))
-	await frames(int(float(sp.sc("S13")["combustivel_s"]) * 60.0))
+	check(r1.dmg > 0.0 and sp.slot[0]["energy"] < float(sp.sc("T01")["combustivel_s"]) - 0.4, "T01: segurando, o jato acerta quem está na frente (dano %d%%)" % int(r1.dmg))
+	await frames(int(float(sp.sc("T01")["combustivel_s"]) * 60.0))
 	vset("v0", "item", false)
 	await frames(2)
-	check(r0.spell_speed == 1.0 and r0.spell_push == 1.0 and sp.hud_info(0).is_empty(), "S13: combustível acabou, a armadura explode e o slot esvazia")
+	check(r0.spell_speed == 1.0 and r0.spell_push == 1.0 and sp.hud_info(0).is_empty(), "T01: combustível acabou, a armadura explode e o slot esvazia")
 	# ===== Etapa 2 (ataque)
 	sp.boxes.clear()
-	# S02 laser: preparo com linha de mira, feixe atravessa robôs
+	# A02 laser: preparo com linha de mira, feixe atravessa robôs
 	place.call(6.0)
 	sp.clear(r0)
-	sp.equip(r0, "S02")
+	sp.equip(r0, "A02")
 	await frames(2)
 	await tap("v0", "item")
-	check(sp.flags(r0)["prep"] >= 0.0, "S02: mira antes de disparar")
-	await frames(int(float(sp.sc("S02")["preparo"]) * 60.0) + 4)
-	check(r1.dmg > 0.0 and sp.hud_info(0)["charges"] == 2, "S02: feixe acerta à distância (dano %d%%)" % int(r1.dmg))
-	# S04 marreta sísmica: no ar não gasta; no chão a onda pega quem está apoiado no mesmo trecho
+	check(sp.flags(r0)["prep"] >= 0.0, "A02: mira antes de disparar")
+	await frames(int(float(sp.sc("A02")["preparo"]) * 60.0) + 4)
+	check(r1.dmg > 0.0 and sp.hud_info(0)["charges"] == 2, "A02: feixe acerta à distância (dano %d%%)" % int(r1.dmg))
+	# A04 marreta sísmica: no ar não gasta; no chão a onda pega quem está apoiado no mesmo trecho
 	place.call(3.0)
 	sp.clear(r0)
-	sp.equip(r0, "S04")
+	sp.equip(r0, "A04")
 	r0.position.y -= 120.0
 	r0.velocity.y = -100.0
 	await frames(1)
 	await tap("v0", "item")
-	check(sp.hud_info(0).get("charges", 0) == 1 and sp.flags(r0)["prep"] < 0.0, "S04: no ar avisa e não gasta")
+	check(sp.hud_info(0).get("charges", 0) == 1 and sp.flags(r0)["prep"] < 0.0, "A04: no ar avisa e não gasta")
 	place.call(3.0)
 	await frames(30)
 	await tap("v0", "item")
-	await frames(int(float(sp.sc("S04")["preparo"]) * 60.0) + 25)
-	check(r1.dmg > 0.0 and r1.velocity.y < 0.0 or r1.dmg > 0.0, "S04: a onda tira o rival do chão (dano %d%%)" % int(r1.dmg))
+	await frames(int(float(sp.sc("A04")["preparo"]) * 60.0) + 25)
+	check(r1.dmg > 0.0 and r1.velocity.y < 0.0 or r1.dmg > 0.0, "A04: a onda tira o rival do chão (dano %d%%)" % int(r1.dmg))
 	place.call(3.0)
-	sp.equip(r0, "S04")
+	sp.equip(r0, "A04")
 	await frames(2)
 	await tap("v0", "item")
-	await frames(int(float(sp.sc("S04")["preparo"]) * 60.0) + 1)
+	await frames(int(float(sp.sc("A04")["preparo"]) * 60.0) + 1)
 	r1.velocity.y = -900.0   # pula na hora certa (a onda ainda está chegando)
 	await frames(20)
-	check(r1.dmg == 0.0, "S04: quem pulou escapa da onda (%s, %d%%)" % [r1.last_cause, int(r1.dmg)])
-	# S05 rebiteira: tiro rápido, acerta e some
+	check(r1.dmg == 0.0, "A04: quem pulou escapa da onda (%s, %d%%)" % [r1.last_cause, int(r1.dmg)])
+	# A05 rebiteira: tiro rápido, acerta e some
 	place.call(5.0)
 	sp.clear(r0)
-	sp.equip(r0, "S05")
+	sp.equip(r0, "A05")
 	await frames(2)
 	await tap("v0", "item")
 	await frames(25)
-	check(r1.dmg > 0.0 and sp.hud_info(0)["charges"] == 3, "S05: rebite acerta (dano %d%%)" % int(r1.dmg))
+	check(r1.dmg > 0.0 and sp.hud_info(0)["charges"] == 3, "A05: rebite acerta (dano %d%%)" % int(r1.dmg))
 	# ricochete: atira de costas para a parede de longe e o rebite volta
 	var rv_test := {"owner": 0, "pos": Vector2(x0, floor_y - 40.0), "vel": Vector2(0, 900.0), "bounces": 0, "t": 0.0, "hit": [], "trail": []}
 	sp.rivets.append(rv_test)
 	await frames(10)
-	check(rv_test["bounces"] >= 1 and rv_test["vel"].y < 0.0, "S05: rebite ricocheteia no chão (%d)" % rv_test["bounces"])
-	# S17 bate-estaca: marca, desce e lança para cima
+	check(rv_test["bounces"] >= 1 and rv_test["vel"].y < 0.0, "A05: rebite ricocheteia no chão (%d)" % rv_test["bounces"])
+	# A06 bate-estaca: marca, desce e lança para cima
 	place.call(2.6)
 	sp.clear(r0)
-	sp.equip(r0, "S17")
+	sp.equip(r0, "A06")
 	await frames(2)
 	await tap("v0", "item")
-	check(sp.piles.size() == 1 and r1.dmg == 0.0, "S17: toque rápido marca a faixa à frente antes de descer")
+	check(sp.piles.size() == 1 and r1.dmg == 0.0, "A06: toque rápido marca a faixa à frente antes de descer")
 	var y_before: float = r1.position.y
 	var top_y: float = y_before
-	for k in int(float(sp.sc("S17")["marca_s"]) * 60.0) + 40:
+	for k in int(float(sp.sc("A06")["marca_s"]) * 60.0) + 40:
 		await frames(1)
 		top_y = minf(top_y, r1.position.y)
-	check(r1.dmg > 0.0 and y_before - top_y > 2.0 * 64.0, "S17: estaca lança o rival para cima (%.1f tiles, %s)" % [(y_before - top_y) / 64.0, r1.last_cause])
+	check(r1.dmg > 0.0 and y_before - top_y > 2.0 * 64.0, "A06: estaca lança o rival para cima (%.1f tiles, %s)" % [(y_before - top_y) / 64.0, r1.last_cause])
 	# mirar segurando: a marca anda com o direcional
 	place.call(6.0)
-	sp.equip(r0, "S17")
+	sp.equip(r0, "A06")
 	await frames(2)
 	vset("v0", "item", true)
 	await frames(2)
@@ -2300,66 +2282,53 @@ func spells_test() -> void:
 	var mx1: float = sp.pile_aims[0]["x"] if sp.pile_aims.has(0) else 0.0
 	vset("v0", "item", false)
 	await frames(3)
-	check(mx1 - mx0 > 100.0 and sp.piles.size() >= 1 and absf(sp.piles[-1]["x"] - mx1) < 20.0, "S17: segurando, a mira anda (%.0f → %.0f) e a estaca cai lá" % [mx0, mx1])
-	# S18 disco: rola, acerta e volta para a mão
-	place.call(4.0)
-	sp.clear(r0)
-	sp.equip(r0, "S18")
-	await frames(2)
-	await tap("v0", "item")
-	await frames(30)
-	check(r1.dmg > 0.0, "S18: disco acerta rolando no chão (dano %d%%)" % int(r1.dmg))
-	var back := 0
-	while sp.discs.size() > 0 and back < 300:
-		await frames(1)
-		back += 1
-	check(sp.discs.is_empty() and back < 200, "S18: disco volta para a mão (%d quadros)" % back)
-	# S19 marreta-bumerangue: sem pesada enquanto voa, volta garantido
+	check(mx1 - mx0 > 100.0 and sp.piles.size() >= 1 and absf(sp.piles[-1]["x"] - mx1) < 20.0, "A06: segurando, a mira anda (%.0f → %.0f) e a estaca cai lá" % [mx0, mx1])
+	# A07 marreta-bumerangue: sem pesada enquanto voa, volta garantido
 	place.call(3.5)
 	sp.clear(r0)
-	sp.equip(r0, "S19")
+	sp.equip(r0, "A07")
 	await frames(2)
 	await tap("v0", "item")
 	await frames(3)
-	check(r0.hammer_out and not r0.vis.has_hammer, "S19: a marreta sai da mão")
+	check(r0.hammer_out and not r0.vis.has_hammer, "A07: a marreta sai da mão")
 	await tap("v0", "heavy")
-	check(r0.atk != "pesado", "S19: sem marretada pesada enquanto ela voa")
+	check(r0.atk != "pesado", "A07: sem marretada pesada enquanto ela voa")
 	var ret := 0
 	while r0.hammer_out and ret < 300:
 		await frames(1)
 		ret += 1
-	check(not r0.hammer_out and r1.dmg > 0.0, "S19: acerta na ida/volta e volta para a mão (%d quadros, dano %d%%)" % [ret, int(r1.dmg)])
-	# S20 canhão de molas: BOING forte no primeiro alvo
+	check(not r0.hammer_out and r1.dmg > 0.0, "A07: acerta na ida/volta e volta para a mão (%d quadros, dano %d%%)" % [ret, int(r1.dmg)])
+	# A08 canhão de molas: BOING forte no primeiro alvo
 	place.call(4.0)
 	sp.clear(r0)
-	sp.equip(r0, "S20")
+	sp.equip(r0, "A08")
 	await frames(2)
 	await tap("v0", "item")
 	var x_b: float = r1.position.x
-	await frames(int(float(sp.sc("S20")["preparo"]) * 60.0) + 60)
-	check(r1.dmg > 0.0 and r1.position.x - x_b > 3.0 * 64.0, "S20: BOING arremessa longe (%.1f tiles)" % ((r1.position.x - x_b) / 64.0))
+	await frames(int(float(sp.sc("A08")["preparo"]) * 60.0) + 60)
+	check(r1.dmg > 0.0 and r1.position.x - x_b > 3.0 * 64.0, "A08: BOING arremessa longe (%.1f tiles)" % ((r1.position.x - x_b) / 64.0))
 	sp.clear(r0)
 	# ===== Etapa 3 (controle e engenharia)
 	sp.boxes.clear()
-	# S07 turboventilador: segurando, empurra para longe sem tirar o controle
+	# C02 turboventilador: segurando, empurra para longe sem tirar o controle
 	place.call(3.0)
 	sp.clear(r0)
-	sp.equip(r0, "S07")
+	sp.equip(r0, "C02")
 	await frames(2)
 	var d7: float = r1.position.x - r0.position.x
 	vset("v0", "item", true)
 	await frames(40)
 	vset("v0", "item", false)
 	await frames(2)
-	check(r1.position.x - r0.position.x > d7 + 100.0 and r1.stun_t <= 0.0, "S07: vento empurra o rival (%.0f → %.0f px), sem tirar o controle" % [d7, r1.position.x - r0.position.x])
-	# S08 gancho: no rival dá tranco para perto; na parede puxa o dono
+	check(r1.position.x - r0.position.x > d7 + 100.0 and r1.stun_t <= 0.0, "C02: vento empurra o rival (%.0f → %.0f px), sem tirar o controle" % [d7, r1.position.x - r0.position.x])
+	# C03 gancho: no rival dá tranco para perto; na parede puxa o dono
 	place.call(5.0)
 	sp.clear(r0)
-	sp.equip(r0, "S08")
+	sp.equip(r0, "C03")
 	await frames(2)
 	await tap("v0", "item")
 	await frames(20)
-	check(r1.dmg > 0.0 and r1.own_vx < 0.0 or r1.dmg > 0.0, "S08: garra acerta o rival e puxa (dano %d%%)" % int(r1.dmg))
+	check(r1.dmg > 0.0 and r1.own_vx < 0.0 or r1.dmg > 0.0, "C03: garra acerta o rival e puxa (dano %d%%)" % int(r1.dmg))
 	place.call(9.0)
 	put(r1, Vector2(x0 - 600.0, floor_y))
 	var xg: float = r0.position.x
@@ -2373,50 +2342,34 @@ func spells_test() -> void:
 		await frames(1)
 		if r0.position.distance_to(Vector2(xg, floor_y)) > 120.0:
 			moved = true
-	check(moved or sp.hooks.is_empty(), "S08: garra na estrutura puxa o dono (ou volta se não achar nada)")
-	# S21 laço: liga os dois e o elástico puxa quando estica
+	check(moved or sp.hooks.is_empty(), "C03: garra na estrutura puxa o dono (ou volta se não achar nada)")
+	# C05 laço: liga os dois e o elástico puxa quando estica
 	place.call(4.0)
 	sp.clear(r0)
-	sp.equip(r0, "S21")
+	sp.equip(r0, "C05")
 	await frames(2)
 	await tap("v0", "item")
 	await frames(20)
-	check(sp.tethers.size() == 1, "S21: laço prende o rival")
+	check(sp.tethers.size() == 1, "C05: laço prende o rival")
 	put(r1, Vector2(r0.position.x + 6.0 * 64.0, floor_y))
 	await frames(12)
-	check(r1.position.x - r0.position.x < 6.0 * 64.0 - 40.0, "S21: esticado, o elástico aproxima os dois (%.0f px)" % (r1.position.x - r0.position.x))
-	await frames(int(float(sp.sc("S21")["duracao_s"]) * 60.0))
-	check(sp.tethers.is_empty(), "S21: o laço solta depois do tempo")
-	# S12 carga remota: instala, arma e detona no segundo toque
+	check(r1.position.x - r0.position.x < 6.0 * 64.0 - 40.0, "C05: esticado, o elástico aproxima os dois (%.0f px)" % (r1.position.x - r0.position.x))
+	await frames(int(float(sp.sc("C05")["duracao_s"]) * 60.0))
+	check(sp.tethers.is_empty(), "C05: o laço solta depois do tempo")
+	# E02 carga remota: instala, arma e detona no segundo toque
 	place.call(5.0)
 	sp.clear(r0)
-	sp.equip(r0, "S12")
+	sp.equip(r0, "E02")
 	await frames(2)
 	await tap("v0", "item")
-	check(sp.charges_placed.size() == 1 and sp.hud_info(0)["charges"] == 1, "S12: instala a carga (slot vira detonador)")
+	check(sp.charges_placed.size() == 1 and sp.hud_info(0)["charges"] == 1, "E02: instala a carga (slot vira detonador)")
 	put(r1, Vector2(sp.charges_placed[0]["pos"].x + 40.0, floor_y))
 	put(r0, Vector2(x0 + 5.0 * 64.0, floor_y))
 	await frames(40)
 	await tap("v0", "item")
 	await frames(3)
-	check(sp.charges_placed.is_empty() and r1.dmg > 0.0 and sp.flags(r0).get("fading", false), "S12: detona e lança quem está perto (dano %d%%)" % int(r1.dmg))
-	# S28 escudo: bloqueia o tiro
-	place.call(6.0)
-	sp.clear(r0)
-	sp.clear(r1)
-	sp.equip(r0, "S28")
-	await frames(2)
-	await tap("v0", "item")
-	await frames(25)
-	check(sp.shields.size() == 1, "S28: escudo sobe à frente")
-	sp.equip(r1, "S05")
-	r1.facing = -1
-	await frames(2)
-	await tap("v1", "item")
-	await frames(30)
-	check(r0.dmg == 0.0 and sp.shields.size() == 1 and sp.shields[0]["hp"] < int(sp.sc("S28")["resistencia"]), "S28: rebite bate no escudo e não acerta")
-	sp.clear(r1)
-	# S27 controle remoto: derruba a viga pendurada mais perto
+	check(sp.charges_placed.is_empty() and r1.dmg > 0.0 and sp.flags(r0).get("fading", false), "E02: detona e lança quem está perto (dano %d%%)" % int(r1.dmg))
+	# E03 controle remoto: derruba a viga pendurada mais perto
 	var vigas: Array = ct.parts.filter(func(p): return p["kind"] == "viga" and not p["fallen"])
 	if vigas.size() > 0:
 		var vg: Dictionary = vigas[0]
@@ -2424,15 +2377,14 @@ func spells_test() -> void:
 		sp.clear(r0)
 		put(r0, Vector2(vg["rect"].get_center().x - 120.0, floor_y))
 		r0.facing = 1
-		sp.equip(r0, "S27")
+		sp.equip(r0, "E03")
 		await frames(2)
 		var tg = sp.remote_target(r0)
 		await tap("v0", "item")
 		await frames(60)
-		check(tg != null and tg["fallen"], "S27: o cabo estala e a viga despenca")
+		check(tg != null and tg["fallen"], "E03: o cabo estala e a viga despenca")
 	sp.clear(r0)
 	# ===== Mira em 8 direções e regra das plataformas
-	sp.shields.clear()   # o muro do teste anterior ficaria na frente
 	# beirada de laje que ainda existe (os testes anteriores derrubam trechos)
 	var edge_x := 8 * 64.0 + 30.0
 	for pt in ct.parts:
@@ -2444,17 +2396,17 @@ func spells_test() -> void:
 		"plataforma vazada não para tiro (mas o gancho agarra); a laje para")
 	place.call(6.0)
 	sp.clear(r0)
-	sp.equip(r0, "S03")
+	sp.equip(r0, "A03")
 	await frames(2)
 	vset("v0", "up", true)
 	await tap("v0", "item")
-	await frames(int(float(sp.sc("S03")["preparo"]) * 60.0) + 2)
+	await frames(int(float(sp.sc("A03")["preparo"]) * 60.0) + 2)
 	vset("v0", "up", false)
 	check(sp.shots.size() > 0 and sp.shots[0]["vel"].y < -500.0 and absf(sp.shots[0]["vel"].x) < 1.0, "▲: canhão de gelo atira para cima")
 	await frames(30)
 	place.call(6.0)
 	sp.clear(r0)
-	sp.equip(r0, "S08")
+	sp.equip(r0, "C03")
 	await frames(2)
 	vset("v0", "up", true)
 	vset("v0", "right", true)
@@ -2465,7 +2417,7 @@ func spells_test() -> void:
 	await frames(60)
 	place.call(4.0)
 	sp.clear(r0)
-	sp.equip(r0, "S06")
+	sp.equip(r0, "C01")
 	await frames(2)
 	vset("v0", "item", true)
 	vset("v0", "up", true)
@@ -2476,15 +2428,7 @@ func spells_test() -> void:
 	await frames(3)
 	place.call(6.0)
 	sp.clear(r0)
-	sp.equip(r0, "S28")
-	await frames(2)
-	vset("v0", "up", true)
-	await tap("v0", "item")
-	vset("v0", "up", false)
-	check(sp.shields.size() > 0 and sp.shields[-1].get("roof", false), "▲: escudo de solda vira teto")
-	place.call(6.0)
-	sp.clear(r0)
-	sp.equip(r0, "S12")
+	sp.equip(r0, "E02")
 	await frames(2)
 	vset("v0", "up", true)
 	await tap("v0", "item")
@@ -2492,109 +2436,79 @@ func spells_test() -> void:
 	await frames(110)
 	check(sp.charges_placed.size() == 1 and not sp.charges_placed[0].get("flying", false) and sp.charges_placed[0]["pos"].distance_to(r0.position) > 40.0, "▲: carga arremessada gruda numa superfície")
 	sp.charges_placed.clear()
-	sp.shields.clear()   # o teto de solda do teste anterior seguraria a mola
 	place.call(6.0)
 	sp.clear(r0)
-	sp.equip(r0, "S20")
+	sp.equip(r0, "A08")
 	await frames(2)
 	vset("v0", "up", true)
 	await tap("v0", "item")
-	await frames(int(float(sp.sc("S20")["preparo"]) * 60.0) + 2)
+	await frames(int(float(sp.sc("A08")["preparo"]) * 60.0) + 2)
 	vset("v0", "up", false)
 	check(sp.springs.size() > 0 and sp.springs[0]["vel"].y < -600.0, "▲: canhão de molas em arco alto")
 	await frames(60)
 	sp.clear(r0)
-	put(r0, Vector2(edge_x, floor_y))
-	r0.facing = -1
-	sp.equip(r0, "S25")
-	await frames(3)
-	vset("v0", "up", true)
-	vset("v0", "left", true)
-	await tap("v0", "item")
-	vset("v0", "up", false)
-	vset("v0", "left", false)
-	check(sp.bridges.size() > 0 and float(sp.bridges[-1].get("slope", 0.0)) > 0.3, "▲: ponte vira rampa")
-	sp.clear(r0)
-	# ponte: dá para ANDAR do chão para a ponte sem pular
-	sp.clear(r0)
-	for b in sp.bridges:
-		b["body"].free()
-	sp.bridges.clear()
-	put(r0, Vector2(edge_x + 10.0, floor_y))
-	r0.facing = -1
-	sp.equip(r0, "S25")
-	await frames(4)
-	await tap("v0", "item")
-	await frames(25)
-	var xb: float = r0.position.x
-	vset("v0", "left", true)
-	await frames(24)
-	vset("v0", "left", false)
-	check(xb - r0.position.x > 150.0 and absf(r0.position.y - floor_y) < 4.0 and r0.is_on_floor(), "ponte: anda do chão para a ponte sem pular (%.0f px, y %.0f)" % [xb - r0.position.x, r0.position.y])
-	sp.clear(r0)
 	# ===== Etapa 4 (transformações)
-	sp.shields.clear()
-	# S14 empilhadeira: veste, ergue o rival à frente e joga
+	# T02 empilhadeira: veste, ergue o rival à frente e joga
 	place.call(1.3)
 	sp.clear(r0)
-	sp.equip(r0, "S14")
+	sp.equip(r0, "T02")
 	await frames(2)
 	await tap("v0", "item")
 	await frames(20)
-	check(sp.flags(r0).get("armor_set", "") == "S14" and r0.spell_speed < 1.0 and r0.vis.visible, "S14: veste a armadura de empilhadeira (mais lenta)")
+	check(sp.flags(r0).get("armor_set", "") == "T02" and r0.spell_speed < 1.0 and r0.vis.visible, "T02: veste a armadura de empilhadeira (mais lenta)")
 	place.call(1.3)
 	await frames(2)
 	await tap("v0", "item")
 	await frames(10)
-	check(r1.position.y < floor_y - 40.0, "S14: garfo ergue o rival (%.0f acima)" % (floor_y - r1.position.y))
+	check(r1.position.y < floor_y - 40.0, "T02: garfo ergue o rival (%.0f acima)" % (floor_y - r1.position.y))
 	var x14: float = r1.position.x
 	await frames(60)
-	check(r1.dmg > 0.0 and r1.position.x - x14 > 100.0, "S14: e joga para a frente (%.0f px)" % (r1.position.x - x14))
+	check(r1.dmg > 0.0 and r1.position.x - x14 > 100.0, "T02: e joga para a frente (%.0f px)" % (r1.position.x - x14))
 	sp.clear(r0)
-	check(r0.spell_speed == 1.0 and r0.vis.visible, "S14: desmonta ao limpar")
-	# S15 bola: rola com inércia e atropela
+	check(r0.spell_speed == 1.0 and r0.vis.visible, "T02: desmonta ao limpar")
+	# T03 bola: rola com inércia e atropela
 	place.call(5.0)
-	sp.equip(r0, "S15")
+	sp.equip(r0, "T03")
 	await frames(2)
 	await tap("v0", "item")
 	await frames(28)
-	check(r0.spell_form == "bola" and not r0.vis.visible, "S15: as cascas fecham e vira bola")
+	check(r0.spell_form == "bola" and not r0.vis.visible, "T03: as cascas fecham e vira bola")
 	vset("v0", "right", true)
 	await frames(50)
 	vset("v0", "right", false)
-	check(r1.dmg > 0.0, "S15: atropela o rival (dano %d%%)" % int(r1.dmg))
-	await frames(int(float(sp.sc("S15")["duracao_s"]) * 60.0))
-	check(r0.spell_form == "" and r0.vis.visible and sp.hud_info(0).is_empty(), "S15: abre de volta no fim")
-	# S16 jetpack: segurar = voar gastando combustível; acabou, a mochila cai
+	check(r1.dmg > 0.0, "T03: atropela o rival (dano %d%%)" % int(r1.dmg))
+	await frames(int(float(sp.sc("T03")["duracao_s"]) * 60.0))
+	check(r0.spell_form == "" and r0.vis.visible and sp.hud_info(0).is_empty(), "T03: abre de volta no fim")
+	# T04 jetpack: segurar = voar gastando combustível; acabou, a mochila cai
 	place.call(6.0)
-	sp.equip(r0, "S16")
+	sp.equip(r0, "T04")
 	await frames(2)
 	var y16: float = r0.position.y
 	vset("v0", "item", true)
 	await frames(40)
-	check(y16 - r0.position.y > 120.0 and sp.slot[0]["energy"] < float(sp.sc("S16")["combustivel_s"]) - 0.4 and r0.spell_fly, "S16: segurando, voa (subiu %.0f px)" % (y16 - r0.position.y))
+	check(y16 - r0.position.y > 120.0 and sp.slot[0]["energy"] < float(sp.sc("T04")["combustivel_s"]) - 0.4 and r0.spell_fly, "T04: segurando, voa (subiu %.0f px)" % (y16 - r0.position.y))
 	vset("v0", "right", true)
 	var x16: float = r0.position.x
 	await frames(25)
 	vset("v0", "right", false)
-	check(r0.position.x - x16 > 80.0, "S16: pilota para o lado voando (%.0f px)" % (r0.position.x - x16))
-	await frames(int(float(sp.sc("S16")["combustivel_s"]) * 60.0))
+	check(r0.position.x - x16 > 80.0, "T04: pilota para o lado voando (%.0f px)" % (r0.position.x - x16))
+	await frames(int(float(sp.sc("T04")["combustivel_s"]) * 60.0))
 	vset("v0", "item", false)
 	await frames(2)
-	check(sp.hud_info(0).is_empty() and not r0.spell_fly, "S16: combustível acabou, a mochila cai")
+	check(sp.hud_info(0).is_empty() and not r0.spell_fly, "T04: combustível acabou, a mochila cai")
 	await frames(60)
-	# S31 broca: rival na frente leva dano contínuo
+	# T05 broca: rival na frente leva dano contínuo
 	place.call(1.2)
-	sp.equip(r0, "S31")
+	sp.equip(r0, "T05")
 	await frames(2)
 	await tap("v0", "item")
 	place.call(1.2)
 	await frames(40)
-	check(r1.dmg > 0.0 and sp.flags(r0).get("armor_set", "") == "S31", "S31: veste a broca e fura quem está na frente (dano %d%%)" % int(r1.dmg))
+	check(r1.dmg > 0.0 and sp.flags(r0).get("armor_set", "") == "T05", "T05: veste a broca e fura quem está na frente (dano %d%%)" % int(r1.dmg))
 	sp.clear(r0)
-	# S33 soldador: arco curto e conserto de trecho rachado
+	# T06 soldador: arco curto e conserto de trecho rachado
 	place.call(1.2)
-	sp.equip(r0, "S33")
+	sp.equip(r0, "T06")
 	await frames(2)
 	await tap("v0", "item")
 	await frames(20)
@@ -2602,7 +2516,7 @@ func spells_test() -> void:
 	vset("v0", "item", true)
 	await frames(30)
 	vset("v0", "item", false)
-	check(r1.dmg > 0.0, "S33: arco de solda acerta de perto (dano %d%%)" % int(r1.dmg))
+	check(r1.dmg > 0.0, "T06: arco de solda acerta de perto (dano %d%%)" % int(r1.dmg))
 	var lajes: Array = ct.parts.filter(func(p): return p["kind"] == "laje" and not p["fallen"] and not p["nucleo"] and p["crit_t"] <= 0.0)
 	if lajes.size() > 0:
 		var lp: Dictionary = lajes[0]
@@ -2612,29 +2526,30 @@ func spells_test() -> void:
 		await frames(8)
 		vset("v0", "down", true)
 		vset("v0", "item", true)
-		await frames(int(float(sp.sc("S33")["reparo_s"]) * 60.0) + 10)
+		await frames(int(float(sp.sc("T06")["reparo_s"]) * 60.0) + 10)
 		vset("v0", "down", false)
 		vset("v0", "item", false)
-		check(int(lp["hp"]) == int(lp["max"]), "S33: parado com ▼ conserta o trecho rachado")
+		check(int(lp["hp"]) == int(lp["max"]), "T06: parado com ▼ conserta o trecho rachado")
 	sp.clear(r0)
-	# S34 minirrobô: encolhe (hitbox junto), corre mais, empurra menos; volta ao tamanho
+	# T07 minirrobô: encolhe (hitbox junto), corre mais, empurra menos; volta ao tamanho
 	place.call(5.0)
-	sp.equip(r0, "S34")
+	sp.equip(r0, "T07")
 	await frames(2)
 	await tap("v0", "item")
 	await frames(30)
-	check(r0.size_k < 0.7 and r0.rect().size.y < 50.0 and r0.spell_hit < 1.0, "S34: encolhe (hitbox %s)" % str(r0.rect().size))
-	await frames(int(float(sp.sc("S34")["duracao_s"]) * 60.0))
-	check(r0.size_k == 1.0 and r0.spell_hit == 1.0, "S34: volta ao tamanho no fim")
+	check(r0.size_k < 0.7 and r0.rect().size.y < 50.0 and r0.spell_hit < 1.0, "T07: encolhe (hitbox %s)" % str(r0.rect().size))
+	await frames(int(float(sp.sc("T07")["duracao_s"]) * 60.0))
+	check(r0.size_k == 1.0 and r0.spell_hit == 1.0, "T07: volta ao tamanho no fim")
 	# G10 carga especial: holofotes em 2 pontos e duas cápsulas descem
 	main.event_level = 2
 	main.events.manual = true
 	sp.boxes.clear()
 	main.events.trigger(main.events.ev("G10"))
 	await frames(3)
-	check(main.events.phase == "aviso" and main.events.spots.size() == 2 and main.events.spots[0].distance_to(main.events.spots[1]) > 200.0, "G10: anuncia 2 pontos afastados (holofotes)")
+	var nsp: int = main.events.spots.size()
+	check(main.events.phase == "aviso" and nsp >= 1 and nsp <= 3, "G10: anuncia 1 a 3 pontos (holofotes): %d" % nsp)
 	await frames(85)
-	check(sp.boxes.size() == 2 and sp.boxes.all(func(b): return b["special"]), "G10: duas cápsulas de spell descem")
+	check(sp.boxes.size() == nsp and sp.boxes.all(func(b): return b["special"] and sp.sc(b["id"])["familia"] == "transformacao"), "G10 Carga Especial: só ARMADURAS descem (%s)" % str(sp.boxes.map(func(b): return b["id"])))
 	main.events.manual = false
 	main.event_level = 0
 
@@ -3281,7 +3196,7 @@ func fase_frames(dir: String) -> void:
 ## kit e objeto nas costas). --equipa=DIR → 2 passadas (modelos 0-3 e 1-4), 1 quadro por estado.
 func equipa_frames(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
-	var states := [["S03", "carrega"], ["S02", "mira"], ["S13", "usa"], ["S14", "usa"], ["S31", "usa"], ["S33", "usa"], ["S16", "voa"], ["S13", "kit"], ["S04", "costas"], ["S34", "usa"]]
+	var states := [["A03", "carrega"], ["A02", "mira"], ["T01", "usa"], ["T02", "usa"], ["T05", "usa"], ["T06", "usa"], ["T04", "voa"], ["T01", "kit"], ["A04", "costas"], ["T07", "usa"]]
 	for pass_i in 2:
 		main.go_menu()
 		PlayerInput.virtual = {"v0": {}, "v1": {}, "v2": {}, "v3": {}}
@@ -3442,7 +3357,7 @@ func eventos_frames(dir: String) -> void:
 	var fy: float = nuc[0]["rect"].position.y
 	var x0: float = nuc[0]["rect"].position.x
 	_frame_no = 0
-	var ids := ["G02", "G03", "G04", "G05", "G06", "G11", "G12", "G13", "G14", "G09"]
+	var ids := ["G02", "G03", "G04", "G05", "G06", "G11", "G12", "G13", "G14"]
 	for a0 in OS.get_cmdline_user_args():
 		if a0.begins_with("--so-eventos="):
 			ids = ids.filter(func(x): return x in a0.substr(13).split("+"))
@@ -3455,14 +3370,6 @@ func eventos_frames(dir: String) -> void:
 			r.invuln = 0.0
 		put(r0, Vector2(x0 + 40.0, fy))
 		put(r1, Vector2(x0 + 300.0, fy))
-		if id == "G09":
-			ev._drop_crate(Vector2(x0 + 520.0, fy))
-			ev._drop_crate(Vector2(x0 + 160.0, fy))
-			var lj: Array = main.demo.canteiro.parts.filter(func(p): return p["kind"] == "laje" and not p["nucleo"] and not p["fallen"])
-			lj[0]["hp"] = int(lj[0]["max"] * 0.3)
-			lj[0]["state"] = 2
-			for k in 50:
-				await frames(1)
 		ev.trigger(ev.ev(id))
 		var a = ev.inst(id)
 		if id == "G04" and a != null:
@@ -3513,13 +3420,13 @@ func spells_frames(dir: String) -> void:
 	var fy: float = nuc[0]["rect"].position.y
 	var x0: float = nuc[0]["rect"].position.x + 40.0
 	_frame_no = 0
-	var segs := [["caixas", 50], ["S01", 60], ["S03", 120], ["S06", 90], ["S10", 70], ["S11", 70], ["S13", 300], ["troca", 60],
-		["S02", 60], ["S04", 70], ["S05", 60], ["S17", 90], ["S18", 80], ["S19", 90], ["S20", 70], ["porte", 90],
-		["S07", 90], ["S08", 70], ["S21", 120], ["S12", 110], ["S25", 90], ["S27", 90], ["S28", 90],
-		["lasercima", 70], ["gelodiag", 70], ["ganchocima", 90], ["ventocima", 80], ["fogocima", 140], ["socobaixo", 60], ["ganchocaixa", 70], ["murotteto", 80],
-		["S14", 130], ["S15", 120], ["S16", 100], ["S31", 100], ["S33", 100], ["S34", 110],
-		["kitS13", 40], ["kitS14", 40], ["kitS31", 40], ["kitS33", 40], ["kitS15", 40], ["kitS34", 40]]
-	var mira_sp := {"lasercima": "S02", "gelodiag": "S03", "ganchocima": "S08", "ventocima": "S07", "fogocima": "S13", "socobaixo": "S01"}
+	var segs := [["caixas", 50], ["A01", 60], ["A03", 120], ["C01", 90], ["E01", 70], ["C04", 70], ["T01", 300], ["troca", 60],
+		["A02", 60], ["A04", 70], ["A05", 60], ["A06", 90], ["A07", 90], ["A08", 70], ["porte", 90],
+		["C02", 90], ["C03", 70], ["C05", 120], ["E02", 110], ["E03", 90],
+		["lasercima", 70], ["gelodiag", 70], ["ganchocima", 90], ["ventocima", 80], ["fogocima", 140], ["socobaixo", 60], ["ganchocaixa", 70],
+		["T02", 130], ["T03", 120], ["T04", 100], ["T05", 100], ["T06", 100], ["T07", 110],
+		["kitT01", 40], ["kitT02", 40], ["kitT05", 40], ["kitT06", 40], ["kitT03", 40], ["kitT07", 40]]
+	var mira_sp := {"lasercima": "A02", "gelodiag": "A03", "ganchocima": "C03", "ventocima": "C02", "fogocima": "T01", "socobaixo": "A01"}
 	for a0 in OS.get_cmdline_user_args():
 		if a0.begins_with("--so-spells="):
 			segs = segs.filter(func(x): return x[0] in a0.substr(12).split("+"))
@@ -3534,38 +3441,29 @@ func spells_frames(dir: String) -> void:
 			sp.clear(r)
 		sp.boxes.clear()
 		put(r0, Vector2(x0, fy))
-		put(r1, Vector2(x0 + ({"S01": 3.0, "S13": 3.0, "S04": 3.0, "S17": 2.6, "S19": 3.5, "S18": 4.0, "S20": 4.0, "S07": 3.0, "S21": 4.0, "S12": 1.5,
-			"S14": 2.2, "S15": 6.0, "S31": 2.5, "S33": 1.6, "S34": 3.0}.get(nm, 5.5)) * 64.0, fy))
+		put(r1, Vector2(x0 + ({"A01": 3.0, "T01": 3.0, "A04": 3.0, "A06": 2.6, "A07": 3.5, "A08": 4.0, "C02": 3.0, "C05": 4.0, "E02": 1.5,
+			"T02": 2.2, "T03": 6.0, "T05": 2.5, "T06": 1.6, "T07": 3.0}.get(nm, 5.5)) * 64.0, fy))
 		r0.facing = 1
 		r1.facing = -1
 		if nm == "caixas":
-			var fams := ["S01", "S06", "S10", "S13"]
+			var fams := ["A01", "C01", "E01", "T01"]
 			for k in 4:
 				sp.drop_box(fams[k], Vector2(x0 + 90.0 + k * 90.0, fy - 260.0 - k * 40.0), false)
 		elif nm == "troca":
-			sp.equip(r0, "S03")
-			sp.drop_box("S13", Vector2(x0, fy - 100.0), false)
-		elif nm == "S25":
-			put(r0, Vector2(8 * 64.0 + 30.0, fy))
-			r0.facing = -1
-			sp.equip(r0, nm)
-		elif nm == "S27":
+			sp.equip(r0, "A03")
+			sp.drop_box("T01", Vector2(x0, fy - 100.0), false)
+		elif nm == "E03":
 			var vg: Array = main.demo.canteiro.parts.filter(func(p): return p["kind"] == "viga" and not p["fallen"])
 			if vg.size() > 0:
 				put(r0, Vector2(vg[0]["rect"].get_center().x - 160.0, fy))
 				put(r1, Vector2(vg[0]["rect"].get_center().x, fy))
 			sp.equip(r0, nm)
-		elif nm == "S28":
-			sp.equip(r0, nm)
-			sp.equip(r1, "S05")
 		elif nm.begins_with("kit"):
 			sp.equip(r0, nm.substr(3))
 		elif nm == "ganchocaixa":
-			sp.equip(r0, "S08")
-			sp.drop_box("S20", Vector2(x0 + 4.0 * 64.0, fy - 40.0), false)
+			sp.equip(r0, "C03")
+			sp.drop_box("A08", Vector2(x0 + 4.0 * 64.0, fy - 40.0), false)
 			put(r1, Vector2(x0 + 9.0 * 64.0, fy))
-		elif nm == "murotteto":
-			sp.equip(r0, "S28")
 		elif mira_sp.has(nm):
 			sp.equip(r0, mira_sp[nm])
 			if nm == "ganchocima":
@@ -3575,8 +3473,8 @@ func spells_frames(dir: String) -> void:
 			if nm in ["ventocima", "socobaixo"]:
 				put(r1, Vector2(x0 + 1.6 * 64.0, fy))
 		elif nm == "porte":
-			sp.equip(r0, "S05")
-			sp.equip(r1, "S10")
+			sp.equip(r0, "A05")
+			sp.equip(r1, "E01")
 		else:
 			sp.equip(r0, nm)
 		for f in int(sg[1]):
@@ -3584,18 +3482,15 @@ func spells_frames(dir: String) -> void:
 			match nm:
 				"troca":
 					a["v0"]["item"] = f >= 30 and f < 52
-				"S01", "S10", "S02", "S04", "S17", "S18", "S19", "S20":
+				"A01", "E01", "A02", "A04", "A06", "A07", "A08":
 					a["v0"]["item"] = f == 14 or f == 15
-				"S07":
+				"C02":
 					a["v0"]["item"] = f >= 10 and f < 80
-				"S08", "S21", "S25", "S27":
+				"C03", "C05", "E03":
 					a["v0"]["item"] = f == 14 or f == 15
-				"S12":
+				"E02":
 					a["v0"]["item"] = f in [14, 15, 80, 81]
 					a["v0"]["left"] = f >= 25 and f < 45
-				"S28":
-					a["v0"]["item"] = f == 14 or f == 15
-					a["v1"]["item"] = f in [45, 46, 60, 61]
 				"lasercima":
 					a["v0"]["up"] = true
 					a["v0"]["item"] = f == 14 or f == 15
@@ -3618,47 +3513,47 @@ func spells_frames(dir: String) -> void:
 					a["v0"]["right"] = f >= 4 and f < 14
 					a["v0"]["down"] = f >= 20
 					a["v0"]["item"] = f == 20 or f == 21
-				"kitS13", "kitS14", "kitS31", "kitS33", "kitS15", "kitS34":
+				"kitT01", "kitT02", "kitT05", "kitT06", "kitT03", "kitT07":
 					a["v0"]["right"] = f >= 22 and f < 36
 				"ganchocaixa":
 					a["v0"]["item"] = f == 14 or f == 15
-				"S14":
+				"T02":
 					a["v0"]["item"] = f in [16, 17, 56, 57]
 					a["v0"]["right"] = f >= 34 and f < 42
-				"S15":
+				"T03":
 					a["v0"]["item"] = f in [16, 17]
 					a["v0"]["right"] = f >= 40 and f < 95
-				"S16":
+				"T04":
 					a["v0"]["item"] = f >= 16 and f < 84
 					a["v0"]["right"] = f >= 40 and f < 60
 					a["v0"]["left"] = f >= 66 and f < 80
-				"S31":
+				"T05":
 					a["v0"]["item"] = f in [16, 17]
 					a["v0"]["right"] = f >= 40 and f < 62
 					a["v0"]["up"] = f >= 70 and f < 80
-				"S33":
+				"T06":
 					a["v0"]["item"] = (f == 16 or f == 17) or (f >= 45 and f < 85)
-				"S34":
+				"T07":
 					a["v0"]["item"] = f in [16, 17]
 					a["v0"]["right"] = f >= 50 and f < 80
 					a["v0"]["hammer"] = f in [82, 83]
 				"porte":
 					a["v0"]["right"] = f >= 10 and f < 40
 					a["v0"]["hammer"] = f in [55, 56]
-				"S05":
+				"A05":
 					a["v0"]["item"] = f in [14, 15, 30, 31]
 					a["v0"]["up"] = f >= 28 and f < 33
-				"S03":
+				"A03":
 					a["v0"]["item"] = f == 14 or f == 15
 					if f > 60:   # o congelado agita para sair
 						a["v1"]["left" if f % 8 < 4 else "right"] = true
-				"S06":
+				"C01":
 					a["v0"]["item"] = f >= 10 and f < 85
-				"S11":
+				"C04":
 					a["v0"]["item"] = f >= 10 and f < 40
 					a["v0"]["right"] = f >= 14 and f < 24
 					a["v0"]["up"] = f >= 18 and f < 24
-				"S13":
+				"T01":
 					a["v0"]["item"] = (f == 14 or f == 15) or (f >= 60 and f < 280)
 			PlayerInput.virtual = a
 			for r in main.robots:
@@ -3977,8 +3872,8 @@ func menus_frames(dir: String) -> void:
 		r.active = true
 	main.players[0]["score"] = 2
 	main.players[2]["score"] = 1
-	main.demo.spells.equip(main.robots[0], "S03")
-	main.demo.spells.equip(main.robots[1], "S13")
+	main.demo.spells.equip(main.robots[0], "A03")
+	main.demo.spells.equip(main.robots[1], "T01")
 	await frames(120)
 	await snap(dir, "m7_partida")
 	main.paused = true

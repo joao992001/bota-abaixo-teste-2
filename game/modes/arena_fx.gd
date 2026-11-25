@@ -194,8 +194,7 @@ func update(dt: float, running: bool) -> void:
 		queue_redraw()
 		return
 	_update_scroll(dt)
-	if main.events == null or not main.events.inspecao:   # G09 Inspeção: máquinas paradas
-		_update_machines(dt)
+	_update_machines(dt)
 	_update_pads_portals(dt)
 	# esteiras invertem
 	if flip_every > 0.0:

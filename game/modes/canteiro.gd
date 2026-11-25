@@ -162,12 +162,6 @@ func restore_body(p: Dictionary, r: Rect2) -> void:
 func damage(p: Dictionary, amount: int, at: Vector2) -> void:
 	if p["fallen"] or p["crit_t"] > 0.0 or p["evt"] != "" or p["kind"] == "terreo":
 		return
-	if main.events != null and main.events.inspecao:
-		# G09 Inspeção: estrutura reforçada (treme e faísca, não racha)
-		p["shake"] = 0.2
-		main.spark(at, 3)
-		Audio.play("chave", 0.8, -4.0)
-		return
 	p["shake"] = 0.3
 	main.dust(at, 0.9)
 	if p["nucleo"]:

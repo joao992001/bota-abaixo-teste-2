@@ -64,8 +64,8 @@ recorta os amassados) e `especial` (ver Passo 4). Em `TOOL_BOX[id]`, a caixa da 
 4. **Spells no corpo novo (encaixe automático):** as poses das spells foram desenhadas para um ombro padrão e são levadas
    para o ombro da frente do modelo (`RobotVis.shoulder_of(model)`, usado também no bico das armas em `spells.muzzle`).
    De armadura, o braço sai da lateral da máquina abaixo da vigia (`armor_shoulder` = olhos + (18, 18)); a armadura é
-   centrada nos olhos. Confira sempre com `--equipa=DIR` (S02 mira, S03 carrega, S13/S14/S31/S33 armaduras, kit nas
-   costas, S04 marreta nas costas, S16 jetpack): o bico da arma na altura do ombro, vigia livre, nada cruzando o rosto.
+   centrada nos olhos. Confira sempre com `--equipa=DIR` (A02 mira, A03 carrega, T01/T02/T05/T06 armaduras, kit nas
+   costas, A04 marreta nas costas, T04 jetpack): o bico da arma na altura do ombro, vigia livre, nada cruzando o rosto.
 
 ### Passo 4 — Animação (o que o motor faz e o que você pode acrescentar)
 `current_pose()` mistura os quadros no **ritmo do controle** (`data/controller.json`):

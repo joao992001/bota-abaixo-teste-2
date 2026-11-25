@@ -3,7 +3,7 @@ extends Node2D
 ## Até `max_simultaneos` eventos COMPATÍVEIS ao mesmo tempo (matriz `conflitos`). Intensidade nos AJUSTES:
 ## 0 desligados, 1 baixa, 2 normal, 3 alta (muda o ritmo, a força e a quantidade). Cada evento pode ser desligado
 ## na tela ESCOLHER EVENTOS. Números em data/modos.json → demolicao.eventos.
-## Estrutura (Canteiro): G01 Sirene, G05 Guindaste, G12 Troca de Andaimes, G13 Cabo Rompido, G09 Inspeção.
+## Estrutura (Canteiro): G01 Sirene, G05 Guindaste, G12 Troca de Andaimes, G13 Cabo Rompido.
 ## Universais: G06 Entulho, G11 Interdição, G02 Ventania, G03 Gravidade, G04 Sobrecarga, G14 Rebites, G10 Carga Especial.
 ## Eventos nunca fingem ser ataque de jogador: golpes do ambiente usam by = -1.
 
@@ -25,7 +25,6 @@ var fired: Array = []        # ids disparados (testes)
 var t := 0.0
 var gravity_mult := 1.0
 var wind := 0.0
-var inspecao := false        # G09: máquinas paradas, estrutura reforçada
 var crates: Array = []       # G06 {pos(pés), vy, floor, kind, state, life, hp, body, flash}
 var rivets: Array = []       # G14 {pos, vy, state, t, hits(dict), ev}
 var bits: Array = []         # partículas {pos, vel, t, life, kind, rot, spin, size}
@@ -49,7 +48,7 @@ func setup(m: Node) -> void:
 	for e in cfg["lista"]:
 		enabled[e["id"]] = true
 	for k in ["g02_exaustor", "g02_helice", "g02_grade", "g04_bobina", "g05_carga", "g05_moitao", "g06_caixa", "g06_sucata",
-			"g11_tapume", "g14_rebite", "g09_drone"]:
+			"g11_tapume", "g14_rebite"]:
 		tex[k] = Data.tex("spells/" + k)
 	tex["pedaco"] = Data.tex("canteiro/laje_pedaco_1")
 	front = Node2D.new()
@@ -69,7 +68,6 @@ func reset_round() -> void:
 	bits.clear()
 	gravity_mult = 1.0
 	wind = 0.0
-	inspecao = false
 	var lvl: int = main.event_level
 	timer = float(cfg["primeiro_s"][lvl]) * main.rng.randf_range(0.85, 1.15)
 
@@ -175,7 +173,7 @@ func eligible(e: Dictionary) -> bool:
 		"V3":
 			return _agua() != null
 		"G01":
-			return ct != null and ct.can_alert() and not inspecao
+			return ct != null and ct.can_alert()
 		"G10":
 			return main.demo.spells != null and (main.demo.items_on or manual) and main.demo.spells.spawn_points().size() >= 2
 		"G02", "G03", "G14":
@@ -186,8 +184,6 @@ func eligible(e: Dictionary) -> bool:
 			return ct != null and _crane_spot() != null
 		"G06":
 			return _ground_spots(2).size() >= 4
-		"G09":
-			return ct != null or (main.demo.fx != null and is_instance_valid(main.demo.fx))
 		"G11":
 			return not _wall_spots().is_empty()
 		"G12":
@@ -207,7 +203,6 @@ func update(dt: float) -> void:
 	_update_rivets(dt)
 	wind = 0.0
 	gravity_mult = 1.0
-	inspecao = false
 	if main.event_level <= 0 or main.state != main.S.RUN or main.countdown > 0.0:
 		return
 	var et = main.demo.etapas if main.demo != null else null
@@ -263,7 +258,7 @@ func _announce(e: Dictionary, aviso: float) -> bool:
 	fired.append(e["id"])
 	main.demo.banner = String(e.get("curto", e["nome"])).to_upper() + "!"
 	main.demo.banner_t = 2.0
-	Audio.play("evento", 0.8 if e["id"] == "G09" else 1.0)
+	Audio.play("evento", 1.0)
 	return true
 
 ## Dispara um evento agora (painel do Laboratório): aviso curto; tira da frente o que conflita.
@@ -403,8 +398,6 @@ func _on_aviso(a: Dictionary) -> bool:
 			d["hits"] = {}
 			_new_wave(a)
 			Audio.play("alarme", 1.5, -6.0)
-		"G09":
-			Audio.play("capacete", 0.8, -4.0)
 	return true
 
 func _on_ativo(a: Dictionary) -> void:
@@ -412,9 +405,9 @@ func _on_ativo(a: Dictionary) -> void:
 	var d: Dictionary = a["d"]
 	var ct = _canteiro()
 	match a["id"]:
-		"G10":
+		"G10":   # CARGA ESPECIAL = chuva de ARMADURAS (as transformações, as spells mais fortes)
 			for p in d["spots"]:
-				main.demo.spells.spawn_box(p, true)
+				main.demo.spells.spawn_box(p, true, String(e.get("classe", "transformacao")))
 			Audio.play("elevador", 1.2, -4.0)
 		"G02":
 			Audio.play("soprador", 0.8, -2.0)
@@ -483,8 +476,6 @@ func _on_ativo(a: Dictionary) -> void:
 			if ag != null:
 				ag["s"]["enchente"] = float(e["dur"])
 				ag["s"]["enchente_mult"] = float(e["altura_mult"])
-		"G09":
-			d["stamped"] = {}
 
 func _on_fim(a: Dictionary) -> void:
 	var d: Dictionary = a["d"]
@@ -507,9 +498,6 @@ func _on_fim(a: Dictionary) -> void:
 			d["from_y"] = d["y"]
 			if d["state"] == "chao" or d["state"] == "cai":
 				Audio.play("gancho", 0.8, -4.0)
-		"G09":
-			main.float_text(_vr().get_center() + Vector2(0, -200), "LIBERADO!", Color("#9ff7c8"))
-			Audio.play("alavanca", 1.2, -2.0)
 
 ## Fim de verdade (também ao trocar de rodada): tudo volta ao normal, nada fica preso.
 func _cleanup(a: Dictionary) -> void:
@@ -636,22 +624,6 @@ func _tick_ativo(a: Dictionary, dt: float, pa: float) -> void:
 			_beam_step(a, dt)
 		"G14":
 			_tick_rivets(a, dt, a["age"])
-		"G09":
-			inspecao = true
-			var x := _drone_pos(a).x
-			if ct != null:
-				for p in ct.parts:
-					if not p["fallen"] and int(p["etapa"]) == ct.etapa_now() and x >= p["rect"].get_center().x and not d["stamped"].has(p["idx"] * 10 + ["laje", "andaime", "viga"].find(p["kind"])):
-						d["stamped"][p["idx"] * 10 + ["laje", "andaime", "viga"].find(p["kind"])] = a["age"]
-						Audio.play("chave", 1.5, -8.0)
-						_repair(p)
-			for c in crates:   # recolhe o entulho que ficou no chão (raio trator)
-				if c["state"] == "chao" and absf(c["pos"].x - x) < 40.0:
-					if c["body"] != null and is_instance_valid(c["body"]):
-						c["body"].queue_free()
-					c["body"] = null
-					c["state"] = "recolhe"
-					Audio.play("vortice", 1.6, -8.0)
 
 func _tick_fim(a: Dictionary, dt: float, _pa: float) -> void:
 	var e: Dictionary = a["e"]
@@ -753,14 +725,6 @@ func _update_crates(dt: float) -> void:
 				body.add_child(cs)
 				add_child(body)
 				c["body"] = body
-		elif c["state"] == "recolhe":
-			var g = inst("G09")
-			var to: Vector2 = _drone_pos(g) + Vector2(0, 40) if g != null else c["pos"] + Vector2(0, -400)
-			c["pos"] = c["pos"].move_toward(to + Vector2(0, 52), 520.0 * dt)
-			c["rot"] += dt * 3.0
-			if c["pos"].distance_to(to + Vector2(0, 52)) < 8.0:
-				crates.erase(c)
-				main.spark(to, 3)
 		elif c["state"] == "chao":
 			c["life"] -= dt
 			if c["life"] <= 0.0 or not _solid_px(Vector2(c["pos"].x, c["floor"] + 8.0)):
@@ -829,21 +793,6 @@ func grab_at(p: Vector2) -> bool:
 		if Rect2(br.position.x, b["d"]["y"], br.size.x, 26).grow(4).has_point(p):
 			return true
 	return false
-
-# ---------------------------------------------------------------- G09 inspeção
-## Conserta UM estágio de rachadura da peça carimbada (crítico/caindo e o que já caiu não voltam).
-func _repair(p: Dictionary) -> void:
-	if p["fallen"] or p["crit_t"] > 0.0 or p["nucleo"] or int(p["state"]) == 0:
-		return
-	var mx: int = p["max"]
-	var need := int(ceil(mx * (0.68 if int(p["state"]) == 1 else 0.35))) + 1
-	p["hp"] = clampi(maxi(int(p["hp"]), need), 0, mx)
-	var frac := float(p["hp"]) / float(mx)
-	p["state"] = 0 if frac > 0.67 else (1 if frac > 0.34 else 2)
-	var c: Vector2 = p["rect"].get_center()
-	main.float_text(c + Vector2(0, -50), "CONSERTADO", Color("#9ff7c8"))
-	for k in 6:
-		_spark_bit(Vector2(randf_range(p["rect"].position.x + 10, p["rect"].end.x - 10), p["rect"].position.y))
 
 # ---------------------------------------------------------------- G05 guindaste
 ## Desce e trava; ao travar, uma caixa especial de spell desce de paraquedas EM CIMA da carga (motivo para subir).
@@ -1092,8 +1041,6 @@ func _update_rivets(dt: float) -> void:
 				main.spark(p, 3)
 				stop = true
 				break
-		if not stop and sp != null and sp.shield_block(p, -1):
-			stop = true
 		if not stop and prev.y > _pr().position.y and (_solid_px(p) or (sp != null and sp._grab_at(p))):
 			rv["pos"].y = floor(p.y / 4.0) * 4.0
 			rv["state"] = "cravado"
@@ -1198,18 +1145,20 @@ func _pick_spots() -> Array:
 	for q in pts:   # o segundo o mais longe possível do primeiro (disputa dos dois lados)
 		if q["pos"].distance_to(a) > b.distance_to(a):
 			b = q["pos"]
-	return [a, b]
+	var out := [a, b]
+	var n: int = main.rng.randi_range(int(cfg_ev("G10").get("caixas", [1, 3])[0]), int(cfg_ev("G10").get("caixas", [1, 3])[1]))
+	for q in pts:   # a 3ª (se sair) longe das outras duas
+		if out.size() >= 3:
+			break
+		if q["pos"].distance_to(a) > 300.0 and q["pos"].distance_to(b) > 300.0:
+			out.append(q["pos"])
+	return out.slice(0, maxi(n, 1))
 
-func _drone_pos(a: Dictionary) -> Vector2:
-	var pr := _vr()
-	var k := 0.0
-	if a["phase"] == "ativo":
-		k = clampf((a["len"] - a["t"]) / a["len"], 0.0, 1.0)
-	elif a["phase"] == "fim":
-		k = 1.0 + (1.0 - a["t"] / a["len"]) * 0.2
-	else:
-		k = -0.15 + 0.15 * clampf((a["len"] - a["t"]) / a["len"], 0.0, 1.0)
-	return Vector2(lerpf(pr.position.x + 80.0, pr.end.x - 80.0, k), pr.position.y + 250.0 + sin(t * 3.0) * 12.0)
+func cfg_ev(id: String) -> Dictionary:
+	for e in cfg["lista"]:
+		if e["id"] == id:
+			return e
+	return {}
 
 # ---------------------------------------------------------------- partículas
 func _update_bits(dt: float) -> void:
@@ -1464,11 +1413,6 @@ func _draw_crate(c: Dictionary) -> void:
 	if c["state"] == "chao" and c["life"] < 1.0:
 		a = 0.5 + 0.5 * float(fmod(t, 0.2) < 0.1)
 	var sc := 1.0
-	if c["state"] == "recolhe":
-		var g = inst("G09")
-		if g != null:
-			sc = clampf(c["pos"].distance_to(_drone_pos(g)) / 160.0, 0.35, 1.0)
-			draw_line(r.get_center(), _drone_pos(g) + Vector2(0, 30), Color(0.62, 0.97, 0.78, 0.5), 10.0 * sc)
 	draw_set_transform(r.get_center(), c["rot"], Vector2(sc, sc))
 	draw_texture_rect(tex[c["kind"]], Rect2(-32, -30, 64, 56) if c["kind"] != "pedaco" else Rect2(-40, -34, 80, 66), false, Color(1, 1, 1, a) if c["flash"] <= 0.0 else Color(2, 2, 2, 1))
 	draw_set_transform(Vector2.ZERO)
@@ -1681,8 +1625,6 @@ func _draw_front() -> void:
 		match a["id"]:
 			"G03":
 				_draw_gauge(fr, a)
-			"G09":
-				_draw_inspection(fr, a)
 		if a["id"] == "G03" and a["phase"] == "ativo":
 			for r in main.robots:   # anéis de anti-gravidade embaixo de quem está no ar
 				if r.alive and not r.is_on_floor():
@@ -1707,50 +1649,6 @@ func _draw_gauge(fr: Node2D, a: Dictionary) -> void:
 	fr.draw_line(c, c + Vector2.from_angle(ang) * 38.0, RED, 5.0, true)
 	fr.draw_circle(c, 7.0, INK)
 	Kit.text(fr, c + Vector2(-60, 46), "G", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, 120, 5, INK)
-
-## G09: drone vistoriador passa carimbando; presilhas verdes nas peças; luz verde.
-func _draw_inspection(fr: Node2D, a: Dictionary) -> void:
-	var ct = _canteiro()
-	var d: Dictionary = a["d"]
-	if ct != null and a["phase"] != "aviso":
-		var close := 1.0 if a["phase"] == "ativo" else clampf(a["t"] / a["len"], 0.0, 1.0)
-		for p in ct.parts:
-			if p["fallen"] or int(p["etapa"]) != ct.etapa_now():
-				continue
-			var r: Rect2 = p["rect"]
-			var g := 10.0 * close
-			for corner in [r.position, Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y), r.end]:
-				var sx := 1.0 if corner.x <= r.position.x else -1.0
-				var sy := 1.0 if corner.y <= r.position.y else -1.0
-				var q: Vector2 = corner + Vector2(-sx * (14.0 - g), -sy * (6.0 - g * 0.4))
-				fr.draw_polyline(PackedVector2Array([q + Vector2(0, sy * 18.0), q, q + Vector2(sx * 18.0, 0)]), INK, 9.0, true)
-				fr.draw_polyline(PackedVector2Array([q + Vector2(0, sy * 18.0), q, q + Vector2(sx * 18.0, 0)]), GREEN, 5.0, true)
-			var key: int = p["idx"] * 10 + ["laje", "andaime", "viga"].find(p["kind"])
-			if d.get("stamped", {}).has(key):
-				var age: float = a["age"] - d["stamped"][key]
-				var s := 1.0 + maxf(0.4 - age, 0.0) * 2.0
-				var c := Vector2(r.get_center().x, r.position.y - 30.0)
-				fr.draw_set_transform(c, -0.2, Vector2(s, s))
-				fr.draw_circle(Vector2.ZERO, 17.0, INK)
-				fr.draw_circle(Vector2.ZERO, 13.0, Color("#5cc45c"))
-				fr.draw_polyline(PackedVector2Array([Vector2(-7, 0), Vector2(-2, 6), Vector2(8, -6)]), Color.WHITE, 4.0, true)
-				fr.draw_set_transform(Vector2.ZERO)
-	# luz verde no alto
-	var pr := _vr()
-	var on := fmod(t, 0.8) < 0.5
-	_beacon_on(fr, Vector2(pr.position.x + 60.0, pr.position.y + 130.0), Color("#5cc45c"), on)
-	_beacon_on(fr, Vector2(pr.end.x - 60.0, pr.position.y + 130.0), Color("#5cc45c"), on)
-	# drone
-	var dp := _drone_pos(a)
-	var tilt := 0.12 if a["phase"] == "ativo" else 0.0
-	fr.draw_set_transform(dp, tilt + sin(t * 4.0) * 0.04, Vector2(1.5, 1.5))
-	fr.draw_texture_rect(tex["g09_drone"], Rect2(-56, -44, 112, 88), false)
-	for hx in [-41.0, 29.0]:   # hélices girando
-		var w := absf(sin(t * 40.0)) * 16.0 + 4.0
-		fr.draw_line(Vector2(hx + 15.0 - w, -36), Vector2(hx + 15.0 + w, -36), Color(1, 1, 1, 0.8), 3.0)
-	fr.draw_set_transform(Vector2.ZERO)
-	if a["phase"] == "ativo":
-		fr.draw_colored_polygon(PackedVector2Array([dp + Vector2(-8, 28), dp + Vector2(8, 28), dp + Vector2(80, 330), dp + Vector2(-80, 330)]), Color(0.62, 0.97, 0.78, 0.14))
 
 func _beacon_on(fr: Node2D, p: Vector2, col: Color, on: bool) -> void:
 	fr.draw_circle(p, 13.0, INK)
