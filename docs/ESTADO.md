@@ -5,6 +5,7 @@ Repositórios (GitHub privado, ramo `main`): `joao992001/bota-abaixo` = versão 
 **`joao992001/bota-abaixo-teste-2` = cópia para as mudanças estruturais grandes (trabalhe aqui).**
 
 ## ▶ Retomar aqui (sessão nova)
+**PAUSA DE 2026-11-25 → leia primeiro `docs/RETOMADA_2026-11-25.md`** (o que foi feito, estado no commit `7556692`, decisões pendentes e verificação).
 **LIMPA DE SPELLS/EVENTOS (anotações, NÃO executar sem pedido):** `docs/revisoes/limpa_spells_eventos.md`.
 **REORGANIZAÇÃO MODULAR (2026-11-25, branch `reorg-modular` → `main`):** comece por `docs/manuais/README.md`. Conteúdo de
 cada mapa no manifesto `data/mapas/<modo>/<mapa>.json` (lido por `game/modes/mapa.gd` = MapaReg); classes de spell no
