@@ -5,6 +5,7 @@ Repositórios (GitHub privado, ramo `main`): `joao992001/bota-abaixo` = versão 
 **`joao992001/bota-abaixo-teste-2` = cópia para as mudanças estruturais grandes (trabalhe aqui).**
 
 ## ▶ Retomar aqui (sessão nova)
+**LIMPA DE SPELLS/EVENTOS (anotações, NÃO executar sem pedido):** `docs/revisoes/limpa_spells_eventos.md`.
 **REORGANIZAÇÃO MODULAR (2026-11-25, branch `reorg-modular` → `main`):** comece por `docs/manuais/README.md`. Conteúdo de
 cada mapa no manifesto `data/mapas/<modo>/<mapa>.json` (lido por `game/modes/mapa.gd` = MapaReg); classes de spell no
 modo; transição de cena aos 90% de destruição com diretor adaptativo (sem cronômetro); biblioteca da Fase 1 em
