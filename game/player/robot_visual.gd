@@ -89,6 +89,7 @@ const HAND_PROPS := {"S18": ["s18_disco", Vector2(24, 24)], "S12": ["s12_carga",
 # aparência
 var color_idx := 0
 var model := 0
+var skin := ""                 # skin vestida (ex.: "k1" = Mestre de Obras do Canteiro); "" = padrão. Só troca texturas.
 var has_hammer := true
 # estado da animação
 var expression := "normal"
@@ -246,7 +247,7 @@ func launch(v: Vector2) -> void:
 		_snap_ghost(0.4)
 
 func look() -> Dictionary:
-	var lk := {"color": color_idx, "model": model, "hammer": has_hammer, "dmg": dmg_level,
+	var lk := {"color": color_idx, "model": model, "hammer": has_hammer, "dmg": dmg_level, "skin": skin,
 		"ham_cd": robot != null and robot.get("heavy_cd") != null and robot.heavy_cd > 0.0}
 	if robot != null and robot.has_method("fx_flags"):
 		lk["fx"] = robot.fx_flags()
@@ -1089,7 +1090,8 @@ static func victory_pose(time: float, danca := 0) -> Dictionary:
 static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base := Transform2D.IDENTITY) -> void:
 	var col_idx: int = lk["color"]
 	var mname: String = Data.MODELS[posmod(int(lk["model"]), Data.MODELS.size())]
-	var body := Data.tex("robo/corpo_%s_p%d" % [mname, col_idx + 1])
+	var sk := _sk(lk, mname)
+	var body := Data.tex("robo/corpo_%s%s_p%d" % [mname, sk, col_idx + 1])
 	if body == null or Data.robot_meta.is_empty():
 		return
 	if pose.has("rot"):   # mortal, giro do arremesso, esquiva no ar: gira em torno do meio do corpo
@@ -1130,7 +1132,7 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 		hb = hf + Vector2(float(g["grip2"][0]), float(g["grip2"][1])).rotated(ham_ang)   # as duas mãos no cabo
 	else:
 		hb = bx * _v(g["hand_back"]) + pose["hb_off"]
-	var ttex := Data.tex("robo/ferramenta_" + mname)
+	var ttex := Data.tex("robo/ferramenta_" + mname + sk)
 	var tsz := Vector2(float(g["tool"][0]), float(g["tool"][1]))
 	var tgr := Vector2(float(g["tool_grip"][0]), float(g["tool_grip"][1]))
 	var reach := float(g.get("reach", 40.0))
@@ -1352,6 +1354,13 @@ static func _armor_piece(ci: CanvasItem, xf: Transform2D, name: String, asm: flo
 	ci.draw_set_transform_matrix(xf)
 	ci.draw_texture_rect(Data.tex("spells/" + name), Rect2(at - Vector2(36.0 * sx, 24) + drop, Vector2(72.0 * sx, 62.4)), false, mod)
 
+## Sufixo das texturas da skin ("_k1") se ela existir para este robô; senão "" (padrão).
+static func _sk(lk: Dictionary, mname: String) -> String:
+	var k := String(lk.get("skin", ""))
+	if k == "" or Data.tex("robo/corpo_%s_%s_p1" % [mname, k]) == null:
+		return ""
+	return "_" + k
+
 static func _v(a: Array) -> Vector2:
 	return Vector2(float(a[0]), float(a[1])) - ORIGIN
 
@@ -1375,12 +1384,13 @@ static func parts(lk: Dictionary) -> Array:
 	var g: Dictionary = Data.robot_meta["modelos"][mname]
 	var limb := Color(Data.robot_meta["membros"][lk["color"]])
 	var out := []
-	out.append({"tex": [Data.tex("robo/corpo_%s_p%d" % [mname, lk["color"] + 1]), Data.tex("robo/rosto_%s_eliminado" % mname)],
+	var sk := _sk(lk, mname)
+	out.append({"tex": [Data.tex("robo/corpo_%s%s_p%d" % [mname, sk, lk["color"] + 1]), Data.tex("robo/rosto_%s_eliminado" % mname)],
 		"rect": Rect2(-ORIGIN, Vector2(128, 128)), "mod": Color.WHITE})
 	out.append({"tex": [Data.tex("robo/antena_" + mname)], "rect": Rect2(-ORIGIN, Vector2(128, 128)), "mod": Color.WHITE})
 	if lk.get("hammer", true):
 		var tsz2 := Vector2(float(g["tool"][0]), float(g["tool"][1]))
-		out.append({"tex": [Data.tex("robo/ferramenta_" + mname)], "rect": Rect2(_v(g["hand_front"]) - Vector2(float(g["tool_grip"][0]), float(g["tool_grip"][1])), tsz2), "mod": Color.WHITE})
+		out.append({"tex": [Data.tex("robo/ferramenta_" + mname + sk)], "rect": Rect2(_v(g["hand_front"]) - Vector2(float(g["tool_grip"][0]), float(g["tool_grip"][1])), tsz2), "mod": Color.WHITE})
 	var hs := 16.0 * float(g["hand_s"])
 	for hp in [g["hand_back"], g["hand_front"]]:
 		out.append({"tex": [Data.tex("robo/mao")], "rect": Rect2(_v(hp) - Vector2(hs, hs) / 2.0, Vector2(hs, hs)), "mod": Color.WHITE})

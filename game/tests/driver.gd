@@ -3138,6 +3138,16 @@ func combate_frames(dir: String) -> void:
 ## Vitrine das spells da Etapa 1 no Canteiro (--spells=DIR): caixas, cada spell em uso e a troca. 30 quadros/s.
 ## Vitrine do elenco (--elenco=DIR, --so-elenco=0+3): cada robô de perto: parado, corre, 3 golpes rápidos, marretada
 ## pesada num boneco, esquiva no chão, pulo + esquiva no ar. 1 quadro a cada 2 (30/s).
+## Vitrines com --skins: cada robô veste a skin do mapa (manifesto → skins_originadas). Só para capturas (sem menu).
+func _vestir_skins() -> void:
+	if not "--skins" in OS.get_cmdline_user_args():
+		return
+	var por := {}
+	for k in MapaReg.manifesto("derruba", "canteiro_obras").get("skins_originadas", []):
+		por[String(k["robo"])] = String(k["id"]).to_lower()
+	for r in main.robots:
+		r.vis.skin = por.get(Data.MODELS[posmod(r.vis.model, Data.MODELS.size())], "")
+
 func elenco_frames(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	var which := [0, 1, 2, 3, 4]
@@ -3164,6 +3174,7 @@ func elenco_frames(dir: String) -> void:
 		await demo_round()
 		main.demo.spells.spawn_t = 999.0
 		main.hud.visible = false
+		_vestir_skins()
 		var r0 = main.robots[0]
 		var r1 = main.robots[1]
 		put(r0, Vector2(col_x(11), 576))
@@ -3258,6 +3269,7 @@ func equipa_frames(dir: String) -> void:
 		var sp = main.demo.spells
 		sp.spawn_t = 999.0
 		main.hud.visible = false
+		_vestir_skins()
 		for st in states:
 			for i in 4:
 				var r = main.robots[i]

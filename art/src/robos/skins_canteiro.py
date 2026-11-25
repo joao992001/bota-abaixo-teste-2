@@ -194,7 +194,7 @@ def pa_tool():
     out += S(rect_d(-17, -2.4, 49, 4.8, 2), YEL, (-18, -3, 33, 3), k=0.5, dark=YEL_D)
     out += S("M33,-12 L52,-12 C58,-8 58,8 52,12 L33,12 Z", YEL, (32, -13, 59, 13), k=0.6, dark=YEL_D)
     for y in (-9, -3, 3, 9):
-        out += f'<path d="M56,{y - 2.4} L62,{y} L56,{y + 2.4} Z" fill="{STEEL_L}"/>'
+        out += f'<path d="M54,{y - 2.4} L59,{y} L54,{y + 2.4} Z" fill="{STEEL_L}"/>'
     out += f'<rect x="33" y="-12" width="4" height="24" fill="{INK}"/>'
     return out
 
@@ -256,7 +256,32 @@ def prancha():
     return doc(W, H, f'<g filter="url(#rough)">{"".join(b)}</g>', rough(seed=11, scale=0.8, freq=0.08))
 
 
+def export_game():
+    """Texturas de jogo das skins (mesma geometria do robô): corpo_<robô>_<k#>_p<cor>.png e ferramenta_<robô>_<k#>.png.
+    O desenho do robô no jogo (robot_visual.gd) troca só estas texturas quando o robô veste a skin."""
+    out_dir = os.path.join(E.ROOT, "art/out/game/robo")
+    src = os.path.join(E.ROOT, "art/src/robos/svg/skins")
+    os.makedirs(src, exist_ok=True)
+    ids = {"marretao": "k1", "picareta": "k2", "chave": "k3", "britadeira": "k4", "pa": "k5"}
+    for mi, cid in enumerate(E.CHARS):
+        vestir(cid, 0)
+        ch = E.CHARS[cid]
+        seed = 40 + mi * 3
+        k = ids[cid]
+        for ci in range(4):
+            col = E.COLORS[ci]
+            body = f'<g transform="{E._xf(cid)}">{ch["torso"](col, "")}</g><g transform="{E._head_xf(cid)}">{ch["head"](col, "", "base")}</g>'
+            queue(E._gwrap(body, seed), f"{src}/corpo_{cid}_{k}_p{ci + 1}.svg", f"{out_dir}/corpo_{cid}_{k}_p{ci + 1}.png", 128, 128, E.K4)
+        tbody, tsize, _, _, _ = E._tool_export(cid)
+        queue(E._gwrap(tbody, seed + 7, tsize[0], tsize[1]), f"{src}/ferramenta_{cid}_{k}.svg", f"{out_dir}/ferramenta_{cid}_{k}.png", tsize[0], tsize[1], E.K4)
+        vestir(cid, -1)
+
+
 def main():
+    if "--jogo" in sys.argv:
+        export_game()
+        print("skins (jogo):", render_all())
+        return
     src = os.path.join(E.ROOT, "art/src/robos/svg")
     os.makedirs(src, exist_ok=True)
     out = os.path.join(E.ROOT, "art/out/prancha_skins_canteiro.png")

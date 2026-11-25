@@ -13,4 +13,7 @@ Manifesto: `skins_originadas` = K1–K5 (arte aprovada). Recurso no jogo (seleto
 | K4 | Britadeira | Concreteiro | corpo coberto de cimento, capacete respingado, máscara de pó, britadeira suja | APROVADO — arte (2026-11-25) |
 | K5 | Pá | Operador de Escavadeira | corpo de máquina nº 01 com zebra, cabine com santo-antônio e giroflex, pá-caçamba com dentes | APROVADO — arte (2026-11-25) |
 Regra nova da v2 (APROVADA em 2026-11-25): o uniforme pode cobrir o tronco inteiro; a COR DO JOGADOR passa para o capacete/cabine
-grande (e segue nos braços e pernas). Próximo gate: aplicação em movimento (13 poses + spells/armaduras).
+grande (e segue nos braços e pernas). Aplicação em movimento (2026-11-25): no jogo as skins só trocam texturas (`corpo_<robô>_<k#>_p<cor>.png`,
+`ferramenta_<robô>_<k#>.png`, geradas por `python3 art/src/robos/skins_canteiro.py --jogo`); `robot_visual.skin = "k1"`.
+Vitrines: `--elenco=DIR --skins` (13 poses) e `--equipa=DIR --skins` (armas, kits, armaduras) → AGUARDANDO_APROVAÇÃO.
+Ainda sem menu: jogadores não escolhem skin (precisa de autorização).
