@@ -3937,6 +3937,9 @@ func video_frames(dir: String) -> void:
 		main.arena_choice = tour[0]
 	main.start_match()
 	main.demo.spells.spawn_t = 1.5
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--virada=") and main.demo.etapas != null:   # vídeo promocional: a obra cede em N s
+			main.demo.etapas.t = main.demo.etapas.virada_s() - float(a.substr(9))
 	var f := 0
 	var end_f := -1
 	var per := 60 * 10
