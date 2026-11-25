@@ -11,13 +11,17 @@
 | Catálogo original (histórico, conceito aprovado em 2026-11-24) | [`../f1_canteiro.md`](../f1_canteiro.md) |
 
 **Conceito:** demolição de um prédio em obra. A luta começa no **Térreo** (laje sobre escoras, andaimes, vigas penduradas,
-grua gigante ao fundo) e, quando a obra está 90% destruída, **a obra cede**: todos caem pelo poço até a **Fundação**
-(subsolo escuro, 3 lajes sobre o vazio, bate-estaca, água).
+grua gigante ao fundo). Na verificação por tempo, a destruição decide: muita destruição → **a obra cede** e todos caem pelo
+poço até a **Fundação** (subsolo escuro, 3 lajes sobre o vazio, bate-estaca, água); destruição moderada → outra cena (nova).
 
-| Cena | Arquivo | Próxima |
-|---|---|---|
-| 1 · Térreo (`terreo`) | [`cenas/terreo.md`](cenas/terreo.md) | Fundação, aos 90% de destruição |
-| 2 · Fundação (`fundacao`) | [`cenas/fundacao.md`](cenas/fundacao.md) | — (última) |
+**Topologia v2 (APROVADA 2026-11-25): mapa de 3 cenas.** Hoje o jogo ainda tem 2 cenas em linha (Térreo → Fundação aos
+90% + diretor); a migração é a etapa D da `docs/revisoes/reformulacao_derruba.md`.
+
+| Nível | Cena | Arquivo | Como chega | Estado |
+|---|---|---|---|---|
+| 1 | Térreo (`terreo`) — Início | [`cenas/terreo.md`](cenas/terreo.md) | início da partida | APROVADO |
+| 2 | Fundação (`fundacao`) — **Rota Total** (≥ 90% na verificação) | [`cenas/fundacao.md`](cenas/fundacao.md) | a obra cede inteira, todos caem pelo poço | APROVADO (cena) · rota v2 a implementar |
+| 2 | **cena nova — Rota Moderada** (50–90% na verificação) | `cenas/<id>.md` (a criar) | desmoronamento parcial que leva a outra parte da obra (conceito a propor) | PENDENTE (ficha → fotografia → aprovação) |
 
 Inventários: [`eventos.md`](eventos.md) · [`perigos_mecanismos.md`](perigos_mecanismos.md) · [`spells.md`](spells.md) ·
 [`skins.md`](skins.md) · decisões, lições e testes: [`decisoes_testes.md`](decisoes_testes.md).

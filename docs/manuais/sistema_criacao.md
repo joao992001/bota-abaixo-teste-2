@@ -6,6 +6,7 @@
 | **Jogo** | personagens, controles, padrões de qualidade, fluxo universal, áudio comum, processo de skins | 5 robôs humanoides; marreta/esquiva; papel e giz | `data/controller.json`, `art/src/robos/`, manuais da raiz |
 | **Modo** | objetivo, vitória, regras, **classes de spell**, regras de destruição/transição, bibliotecas de comportamentos reutilizáveis | Derruba: Ataque, Controle, Engenharia, Transformação; cenas por 90% de destruição | `data/modos.json` → `demolicao.modos[<modo>]` + `demolicao.spells`/`eventos` (bibliotecas) |
 | **Mapa** | conceito, direção visual, cenas, **spells autorizadas**, eventos autorizados, perigos/mecanismos, skins originadas | Canteiro de Obras (Térreo → Fundação) | `data/mapas/<modo>/<mapa>.json` + `docs/fases/<modo>/<mapa>/` + `levels/<mapa>.lvl` |
+| **Nível** | profundidade dentro do mapa (Derruba v2: 2 níveis no mapa de 3 cenas, 3 no de 7) — não é mapa novo nem rodada | 1 = Início; 2 = Moderada/Total | `cenas[].nivel` (manifesto v2) |
 | **Cena** | região jogável: arquitetura (base fixa × destrutível), eventos da cena, instâncias de perigos/mecanismos, próxima cena | Térreo, Fundação | `cenas[]` do manifesto + `etapaN`/`koN`/`buracoN` no `.lvl` |
 | **Elemento** | spell, evento, perigo/mecanismo, skin: especificação, arte, animação, testes e aprovação individuais | T01 Armadura Fornalha, V3 Enchente, M6 Bate-estaca | manual do tipo + biblioteca do mapa |
 

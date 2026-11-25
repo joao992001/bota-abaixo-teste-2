@@ -14,10 +14,26 @@ Leia também: **regras do modo** em [`README.md`](README.md) (cenas, 90%, direto
 [`mapa_cartilha.md`](mapa_cartilha.md) e o exemplo completo: biblioteca [`f1_canteiro/`](../../fases/derruba/f1_canteiro/README.md),
 manifesto `data/mapas/derruba/canteiro_obras.json` e arte `art/src/cenarios/fase1_*.py`. Skill: `criar-fase`.
 
+## 0. Atualização v2 (APROVADA em 2026-11-25 — implementação pendente; ver `README.md` do modo)
+- **Topologia:** escolha na biblioteca do mapa: **3 cenas** (Início → Rota Moderada | Rota Total) ou **7 cenas**
+  (Início → Moderada | Total → cada uma com a sua Moderada | Total). Nada de saltar níveis nem 3ª rota.
+- **Cada cena de nível intermediário precisa de DUAS transições** (para a Moderada e para a Total), cada uma com
+  cinematografia própria coerente com a destruição (ex.: Total = a obra cede inteira; Moderada = desmoronamento parcial que
+  leva a outra parte do mapa). Storyboard das duas na prancha.
+- **Manifesto v2 (esquema a implementar na etapa D1):** por cena `nivel`, `rota_moderada` e `rota_total` (ids da próxima
+  cena; nulos no último nível), `verificacao` opcional {`primeira_s`, `intervalo_s`} que sobrescreve a tabela por vidas;
+  validação: árvore (sem ciclo, sem salto, 3 ou 7 cenas, cada intermediária com as duas rotas).
+- **Geometria:** cada cena tem área própria no `.lvl` (`etapaN`) e, por transição, o lugar por onde se vai (`buracoN`
+  hoje; a v2 terá um por rota).
+- **Sem destruição espontânea:** não desenhe a fase contando com o diretor (saiu). A cena precisa ser destrutível pelos
+  jogadores em tempo razoável: confira com bots que 50% e 90% são alcançáveis no tempo das vidas padrão.
+- Checklist extra: a cena tem as duas saídas bem diferentes e legíveis? O manômetro faz sentido nela (estruturas
+  elegíveis suficientes)? "Nenhum evento" não quebra a cena?
+
 ## 1. Ordem obrigatória e pontos de aprovação (o usuário aprova cada um antes do próximo)
 | # | Entrega | O usuário aprova… | Arquivos |
 |---|---|---|---|
-| 1 | **Biblioteca do mapa** (copie `docs/fases/derruba/_modelo/` → `fN_<nome>/`) + esquema em imagem: tema, direção artística, **quantas cenas (≥ 2)**, por cena estruturas fixas × destrutíveis, perigos/mecanismos, eventos coerentes com a arquitetura, spells autorizadas | tudo isso; o que o usuário JÁ definiu entra como `APROVADO` e não é reaberto | `docs/fases/derruba/fN_<nome>/`, `art/src/cenarios/fN_catalogo.py` |
+| 1 | **Biblioteca do mapa** (copie `docs/fases/derruba/_modelo/` → `fN_<nome>/`) + esquema em imagem: tema, direção artística, **topologia (3 ou 7 cenas, v2)**, por cena estruturas fixas × destrutíveis, perigos/mecanismos, eventos coerentes com a arquitetura, spells autorizadas | tudo isso; o que o usuário JÁ definiu entra como `APROVADO` e não é reaberto | `docs/fases/derruba/fN_<nome>/`, `art/src/cenarios/fN_catalogo.py` |
 | 2 | **Fotografia conceitual de CADA cena** (tela de jogo com o elenco), já com a posição e o apoio físico dos principais perigos/mecanismos | composição e visual (é aqui que "não faz sentido" tem de aparecer) | `art/src/cenarios/fN_prancha.py` |
 | 3 | **Código em 6 blocos A–F** (§3), cada um testado e com commit | — (só avisar o andamento) | ver §3 |
 | 4 | **Vitrine para jogar**: GIF da transição + 4 quadros de cada cena + `.exe` | jogo de verdade; voltam correções | §4 |

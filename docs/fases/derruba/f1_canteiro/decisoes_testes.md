@@ -8,6 +8,9 @@
 - `SUBSTITUÍDO` 2026-11-25 — virada cronometrada (90 s) → 90% de destruição + diretor adaptativo (regra do modo).
 - `SUBSTITUÍDO` 2026-11-25 — G01 como evento sorteado → ferramenta do diretor.
 
+- `APROVADO` 2026-11-25 (reformulação v2) — mapa de **3 cenas**: Térreo → Fundação (Rota Total) | cena nova (Rota Moderada).
+- `SUBSTITUÍDO` 2026-11-25 (v2) — transição imediata aos 90% + diretor adaptativo; G01 Sirene volta como evento selecionável.
+
 ## Lições
 Registro completo de erros da Fase 1: `docs/manuais/derruba/mapa.md` §7 (processo, composição, palco, transição, técnico).
 Migração 2026-11-25: números do JSON chegam como decimais (2.0) — `2 in [2.0]` é falso no GDScript; converta para int ao ler

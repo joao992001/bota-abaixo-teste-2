@@ -1,33 +1,53 @@
-# Modo DERRUBA — regras do modo e acesso aos manuais
+# Modo DERRUBA — regras do modo e acesso aos manuais (VERSÃO 2, 2026-11-25)
 
-**Objetivo do modo:** tirar os rivais da arena (KO ao cair do palco ou sair da zona); cada robô tem vidas
-(`lives_setting`); vence quem sobra. Dano acumulado no Amassômetro (%) aumenta o arremesso. Motor: `game/modes/demolicao.gd`.
+> **Atenção:** a versão 2 foi APROVADA pelo usuário em 2026-11-25 (reformulação: rotas por destruição, partida única,
+> manômetro, telas de seleção). **A implementação ainda não foi feita** — a coluna "No jogo hoje" diz o que o código faz
+> agora. Ao implementar uma linha, atualize a coluna. Registro completo das decisões (aprovado × provisório × pendente):
+> [`docs/revisoes/reformulacao_derruba.md`](../../revisoes/reformulacao_derruba.md).
+
+**O Derruba é o modo principal do jogo.** Objetivo: tirar os rivais da arena (KO ao cair do palco ou sair da zona); vence
+quem sobra. Dano acumulado (Amassômetro %) aumenta o arremesso. Motor: `game/modes/demolicao.gd`.
+
+## Vocabulário (não trocar os termos)
+**JOGO → MODO → MAPA → NÍVEL (profundidade) → CENA → ELEMENTOS.** *Mapa* = experiência temática escolhida no menu.
+*Nível* = profundidade dentro do mapa (não é mapa novo nem rodada). *Cena* = arena física de um nível. *Rota Moderada /
+Rota Total* = os dois destinos possíveis de uma transição. *Evento/modificação* = ocorrência opcional escolhida na
+configuração. *Partida* = uma luta até sobrar um robô.
 
 ## Regras do modo (valem para TODO mapa do Derruba)
-| Tema | Regra | Dados / código |
+| Tema | Regra (v2, APROVADA) | No jogo hoje |
 |---|---|---|
-| **Classes de spell** | Ataque, Controle, Engenharia, Transformação (pesos do sorteio). O mapa não cria classe. | `data/modos.json` → `demolicao.modos[derruba].classes_spells` · `spells.gd` `classes()` |
-| **Spells por mapa** | o manifesto do mapa lista as autorizadas (`spells_permitidas`); sorteio = classe (peso) → spell (raridade) | `MapaReg.spells()` |
-| **Cenas** | todo mapa tem **≥ 2 cenas** (admite N), em ordem, no mesmo mundo (a próxima cena fica embaixo/ao lado) | manifesto `cenas[]` + `.lvl` `etapaN`, `koN`, `buracoN`, nascimentos 4·(N−1)+1…4·N |
-| **Base fixa × destrutível** | cada cena tem estrutura **fixa** (nunca leva dano, nunca conta) e **destrutíveis** | manifesto `cenas[].estruturas` + `base_fixa` |
-| **Origens de dano** | ações dos jogadores (marretada pesada, robô arremessado), spells, mecanismos, eventos e a deterioração espontânea | tudo passa por `canteiro.damage()` |
-| **Transição** | ao chegar a **90% da destruição elegível** da cena, havendo próxima: aviso "A OBRA VAI CEDER!" → desaba → queda lenta (sem KO, sem controle, câmera desce junto) → próxima cena. Uma vez por cena. Sem cronômetro. | `modos[derruba].destruicao` · `modes/etapas.gd` · cinemática `demolicao.etapas` |
-| **Medida dos 90%** | soma(peso × HP perdido) / soma(peso) das peças destrutíveis da cena; caída = 100%; peso = largura em tiles (laje ×2); fora: base fixa, pedaços gerados (entulho), outras cenas, decoração. Calculada do estado (nada conta 2×) | `canteiro.progresso(n)` |
-| **Diretor adaptativo** (proposta do usuário, `APROVADO` 2026-11-25) | mede o ritmo: se os jogadores quebram pouco, derruba peças sozinho (sirene + fita zebrada → cai) para chegar aos 90% perto de um alvo sorteado (75–120 s); se quebram muito, quase não age. Nem toda rodada precisa virar. Sem barra no HUD (surpresa). | `etapas._diretor()` · `destruicao.alvo_s/intervalo_s/chance_calma/deficit_max` |
-| **Última cena** | não tem transição; só deterioração calma | `MapaReg.tem_proxima()` |
-| **Eventos** | autorizados por mapa e por cena; até 2 juntos (conflitos); aviso → ativo → fim | manifesto `cenas[].eventos` · `eventos.gd` |
-| **Perigos/mecanismos** | instâncias por cena no manifesto, presas à arquitetura | `cenas[].mecanismos` · `mecanismos.gd` |
-| **KO** | cair do piso em qualquer ponto = KO rápido; saída para KO em ≥ 2 lados por cena | `.lvl` `koN` |
+| **Topologia** | **Mapa pequeno: 3 cenas** (nível 1 Início → nível 2: Moderada ou Total). **Mapa grande: 7 cenas** (1 → 2 → 4: cada cena do nível 2 tem as suas duas). Só avança para o próximo nível; o último nível não tem transição. | cenas em linha (1 → 2), manifesto com `proxima` |
+| **Quando verificar** | o **tempo** decide QUANDO: 1ª verificação e intervalo dependem das **vidas** (PROVISÓRIO: 6 → 90 s / 30 s · 5 → 70/23 · 4 → 50/17 · 3 → 30/10); cada cena pode ter tempo próprio; sem cronômetro no HUD; a nova cena zera o tempo | não existe (transição imediata aos 90%) |
+| **Para onde ir** | a **destruição elegível** decide PARA ONDE: < 50% fica (verifica de novo no intervalo) · ≥ 50% e < 90% → **Rota Moderada** · ≥ 90% → **Rota Total**. Chegar a 90% antes da verificação não antecipa. | só "≥ 90% → próxima" |
+| **Medida da destruição** | soma(peso × HP perdido) / soma(peso) das peças destrutíveis da cena; caída = 100%; peso = largura em tiles (laje ×2); fora: base fixa, pedaços gerados, outras cenas, decoração. Do estado (nada conta 2×). A auditar antes da v2. | igual (`canteiro.progresso(n)`) |
+| **Destruição espontânea** | **NÃO existe** (o diretor adaptativo saiu). Destruição "de sorte" só por **evento** escolhido na configuração (ex.: G01 Sirene de Demolição volta como evento). | diretor adaptativo ainda ativo (`etapas._diretor`) |
+| **Partida** | **uma luta** até sobrar um robô; **vidas de 3 a 6** (padrão sugerido 4). Chegar a outra cena nunca é condição de vitória. | partida em rodadas com estrelas (3/5/7) |
+| **Transição** | física e cinematográfica (aviso, desabamento, queda/deslocamento, câmera junto), própria de cada rota; nunca teletransporte | cinemática "a obra cede" pronta (`etapas.gd`), linear |
+| **HUD** | só retratos com % de dano + **manômetro circular no topo** (estilo do jogo), destruição da cena atual em 6 zonas (verde → vermelho), zera na troca de cena | só retratos |
+| **Fim da partida** | resultados: ranking 1º/2º/3º, **estrela para o vencedor**, destruição da partida (moderada × total → gangorra), exploração (cena nova?) → **Jogar de novo** (mesmo mapa, cena inicial, estrelas somam) · **Configurar mapa** · **Selecionar mapa** · **Menu principal** | placar entre rodadas + vitória |
+| **Fluxo de telas** | JOGAR → MODOS → DERRUBA → MAPAS → SPELLS → EVENTOS → PERSONAGENS/SKINS → PARTIDA → RESULTADOS | menu → modos → arenas → ajustes (lista de eventos em texto) → entrada |
+| **Seleção de spells/eventos** | telas em **mosaico**, por controle, acender/apagar, Aleatório (eventos: também "nenhum"); **tudo liberado por enquanto**. "Nenhum evento" nunca desliga mecanismos da cena. Travas por conta: ver `progressao.md` (futuro). | spells: todas do mapa; eventos: tela de lista em texto |
+| **Classes de spell** | Ataque, Controle, Engenharia, Transformação (pesos do sorteio). O mapa não cria classe. | igual (`classes_spells`) |
+| **Spells/eventos por mapa** | o manifesto lista o que o mapa permite; a configuração da partida escolhe um subconjunto | manifesto (sem subconjunto da partida) |
+| **Perigos/mecanismos** | instâncias por cena no manifesto, presas à arquitetura; fazem parte da cena (não são opcionais) | igual |
+| **KO** | cair do piso em qualquer ponto = KO rápido; saída para KO em ≥ 2 lados por cena | igual |
+| **Skins** | cada jogador escolhe robô e skin; skins têm origem no mapa | igual (X/□ na entrada) |
+| **Progressão** | gangorra de recompensas e Projetos de Demolição: **documentados para o futuro** (`progressao.md`) | não existe |
 
 ## Manuais do modo
 - **Fase (mapa):** [`mapa.md`](mapa.md) — método VALIDADO (obrigatório) · regras de desenho: [`mapa_cartilha.md`](mapa_cartilha.md)
 - **Spell:** [`spell.md`](spell.md) · **Evento:** [`evento.md`](evento.md) · **Perigos/mecanismos:** [`perigos_mecanismos.md`](perigos_mecanismos.md)
+- **Progressão, desbloqueios e online (futuro):** [`progressao.md`](progressao.md)
 - Bibliotecas dos mapas: `docs/fases/derruba/` (Fase 1: [`f1_canteiro/`](../../fases/derruba/f1_canteiro/README.md); modelo: `_modelo/`)
 
 ## Histórico de decisões do modo
-- 2026-11-25 — `SUBSTITUÍDO`: transição **cronometrada** (90 s, `etapas.virada_s`) → transição por **90% de destruição** +
-  diretor adaptativo. A cinematografia aprovada (aviso, desabamento, queda lenta, câmera descendo junto) foi mantida.
-- 2026-11-25 — `SUBSTITUÍDO`: no Canteiro, o "ciclo da obra" (evento G01 Sirene: sirene + fita → um trecho cai) deixou de
-  ser evento sorteado e virou a **ferramenta do diretor** (deterioração espontânea). G01 continua na biblioteca de eventos.
+- 2026-11-25 — `APROVADO` (v2): reformulação do Derruba (rotas Moderada/Total por destruição verificada no tempo, 3 ou 7
+  cenas, partida única com 3–6 vidas, manômetro, resultados com estrelas e 4 opções, telas de seleção). Implementação pendente.
+- 2026-11-25 — `SUBSTITUÍDO` (pela v2): transição imediata aos 90% + **diretor adaptativo** (destruição espontânea para
+  chegar aos 90%). Motivo: a rota passa a depender do mérito dos jogadores; destruição de sorte só por evento escolhido.
+- 2026-11-25 — `SUBSTITUÍDO` (pela v2): partida em rodadas com estrelas (3/5/7) → partida única; estrelas viram placar das
+  revanches na tela de resultados.
+- 2026-11-25 — `SUBSTITUÍDO`: transição **cronometrada** (90 s, `etapas.virada_s`) → 90% de destruição (depois substituído pela v2).
 - 2026-11-25 — `APROVADO`: classes de spell no modo; spells/eventos/mecanismos autorizados no manifesto do mapa;
   sem herança silenciosa de spells/eventos entre modos (só mapas-ferramenta recebem tudo, explícito).
