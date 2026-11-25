@@ -44,11 +44,31 @@ const ARM := 18.0
 static func shoulder_of(model: int, armor := false) -> Vector2:
 	var g: Dictionary = Data.model_meta(model)
 	if armor:   # de armadura o braço sai da lateral da máquina, abaixo da vigia (nunca cruza o rosto)
-		return armor_shoulder(g)
+		return armor_shoulder(Data.MODELS[posmod(model, Data.MODELS.size())])
 	return _v(g["shoulders"][1]) + Vector2(-2, 5)
 
-static func armor_shoulder(g: Dictionary) -> Vector2:
-	return (_v(g["eyes"][0]) + _v(g["eyes"][1])) / 2.0 + Vector2(18, 18)
+static func armor_shoulder(mname: String) -> Vector2:
+	return armor_fit(mname)[0] + Vector2(18, 18)
+
+## Encaixe da armadura em cada corpo: a placa (72x62) é centrada no CORPO (não no rosto — o Marretão, largo e com o
+## rosto lá na frente, sobrava pelas costas) e alargada se o corpo não couber; o rosto vai para a vigia.
+## Devolve [vigia (relativa aos pés), escala x]. Medido uma vez no recorte do corpo.
+static var _fit := {}
+static func armor_fit(mname: String) -> Array:
+	if _fit.has(mname):
+		return _fit[mname]
+	var g: Dictionary = Data.robot_meta["modelos"][mname]
+	var eye: Vector2 = (_v(g["eyes"][0]) + _v(g["eyes"][1])) / 2.0
+	var res := [eye, 1.0]
+	var t: Texture2D = Data.tex("robo/corpo_%s_p1" % mname)
+	if t != null:
+		var k := 128.0 / float(t.get_width())
+		var ur := t.get_image().get_used_rect()
+		var b := Rect2(Vector2(ur.position) * k - ORIGIN, Vector2(ur.size) * k)
+		var wy := clampf(eye.y, b.end.y - 36.0, b.position.y + 22.0) if b.size.y < 58.0 else b.position.y + b.size.y * 0.39
+		res = [Vector2(b.get_center().x, wy), maxf(1.0, (b.size.x + 10.0) / 72.0)]
+	_fit[mname] = res
+	return res
 ## Spells sem arma: objeto nas costas (andaime dobrado, marreta sísmica, fornalha desmontada) ou na mão de trás.
 const BACK_PROPS := {"S04": ["s04_marreta", Vector2(30, 60), -0.5], "S10": ["s10_trouxa", Vector2(34, 23), 1.35],
 	"S25": ["s25_tabua", Vector2(46, 15), 1.45],
@@ -1163,8 +1183,11 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 		ci.draw_set_transform_matrix(base * bx * Transform2D(float(bp[2]), _v(sh[0]) + Vector2(-12, 10)))
 		ci.draw_texture_rect(Data.tex("spells/" + bp[0]), Rect2(-bp[1] / 2.0, bp[1]), false)
 	var eye: Vector2 = (_v(g["eyes"][0]) + _v(g["eyes"][1])) / 2.0
+	var afit: Array = armor_fit(mname) if armor else [eye, 1.0]
+	var aw: Vector2 = afit[0]
+	var asx: float = afit[1]
 	if armor:   # costas da armadura (tanque + chaminé) atrás do corpo
-		_armor_piece(ci, base * bx, aspec["back"], asm, eye + Vector2(-5, 0), sf)
+		_armor_piece(ci, base * bx, aspec["back"], asm, aw + Vector2(-5, 0), sf, asx)
 	# pernas + botas (grossura, dobra do joelho e bota de cada robô)
 	var foot := Data.tex("robo/pe")
 	var legw := float(g.get("leg_w", lw)) * (1.0 + 0.9 * asm)
@@ -1224,15 +1247,17 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 			var hcol := Color(0.58, 0.62, 0.72) if lk.get("ham_cd", false) else Color.WHITE
 			ci.draw_texture_rect(ttex, Rect2(-tgr, tsz), false, hcol)
 	if armor:   # frente da armadura por cima do corpo; o rosto do robô aparece na vigia
-		_armor_piece(ci, base * bx, aspec["front"], asm, eye, sf)
+		_armor_piece(ci, base * bx, aspec["front"], asm, aw, sf, asx)
 		var drop := Vector2(0, -(1.0 - asm) * 30.0)
+		var eye_real := eye
+		eye = aw
 		var win: String = aspec["window"]
 		ci.draw_set_transform_matrix(base * bx)
 		if win == "circle":
 			ci.draw_circle(eye + drop, 10.0, Color("#2b3d4f"))
 		else:
 			ci.draw_rect(Rect2(eye + drop - Vector2(13, 8), Vector2(26, 16)), Color("#2b3d4f") if win == "rect" else Color("#1d3a22"))
-		ci.draw_set_transform_matrix(base * bx * Transform2D(0.0, q, 0.0, -ORIGIN))
+		ci.draw_set_transform_matrix(base * bx * Transform2D(0.0, q, 0.0, -ORIGIN + (aw - eye_real) * asm + drop))   # rosto na vigia
 		ci.draw_texture(Data.tex("robo/rosto_%s_%s" % [mname, pose["expr"]]), Vector2.ZERO)
 		ci.draw_set_transform_matrix(base * bx)
 		var ring := Color(aspec["ring"])
@@ -1298,7 +1323,7 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 			for k in 3:
 				var u := fposmod(tnow * 3.0 + k * 0.33, 1.0)
 				ci.draw_circle(Vector2(-grip.x + 4.0, -6.0 - u * 18.0), 3.0 + u * 4.0, Color(1, 1, 1, 0.6 * (1.0 - u) * pk))
-	_limb(ci, base, bx * (_v(sh[1]).lerp(armor_shoulder(g), asm) if armor else _v(sh[1])), hf, limb, Vector2(0, 3), lw)
+	_limb(ci, base, bx * (_v(sh[1]).lerp(armor_shoulder(mname), asm) if armor else _v(sh[1])), hf, limb, Vector2(0, 3), lw)
 	# brilho na cabeça da marreta no fim do preparo da pesada
 	var gl := float(pose.get("glint", 0.0))
 	if gl > 0.0:
@@ -1320,13 +1345,13 @@ static func draw_robot(ci: CanvasItem, lk: Dictionary, pose: Dictionary, base :=
 
 ## Placa da Armadura Fornalha (S13): arte de design 150x130 em escala 0,48 (o robô "vira" a fornalha), vigia (75,50) em `at`.
 ## Montagem: cai de cima e assenta; nos últimos instantes pisca avisando que vai desmontar.
-static func _armor_piece(ci: CanvasItem, xf: Transform2D, name: String, asm: float, at: Vector2, sf: Dictionary) -> void:
+static func _armor_piece(ci: CanvasItem, xf: Transform2D, name: String, asm: float, at: Vector2, sf: Dictionary, sx := 1.0) -> void:
 	var drop := Vector2(0, -(1.0 - asm) * 30.0)
 	var mod := Color(1, 1, 1, asm)
 	if float(sf.get("armor_end", 0.0)) > 0.0 and fmod(Time.get_ticks_msec() / 1000.0, 0.16) < 0.08:
 		mod = Color(1.6, 1.4, 1.2, asm)
 	ci.draw_set_transform_matrix(xf)
-	ci.draw_texture_rect(Data.tex("spells/" + name), Rect2(at - Vector2(36, 24) + drop, Vector2(72, 62.4)), false, mod)
+	ci.draw_texture_rect(Data.tex("spells/" + name), Rect2(at - Vector2(36.0 * sx, 24) + drop, Vector2(72.0 * sx, 62.4)), false, mod)
 
 static func _v(a: Array) -> Vector2:
 	return Vector2(float(a[0]), float(a[1])) - ORIGIN
